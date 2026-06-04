@@ -1,0 +1,215 @@
+:root {
+  --mr-gold-400: #B0924F;
+  --mr-gold-300: #C9B483;
+
+  --mr-cream-100: #FDFBF5;
+
+  --mr-ink-900: #0B0B0B;
+  --mr-ink-800: #1A1815;
+  --mr-ink-700: #2E2A24;
+  --mr-ink-600: #3F3A32;
+  --mr-ink-500: #5C564C;
+  --mr-ink-400: #8A8376;
+
+  --mr-dash-bg: #F4F2EC;
+  --mr-dash-surface: #FFFFFF;
+  --mr-dash-sub: #F9F7F2;
+  --mr-dash-hair: #E6E2D8;
+  --mr-dash-content-bg: var(--mr-dash-bg);
+
+  --mr-fg: var(--mr-ink-900);
+  --mr-fg-2: var(--mr-ink-700);
+  --mr-fg-3: var(--mr-ink-500);
+  --mr-fg-4: var(--mr-ink-400);
+
+  --mr-font-label: "Jost", "Futura", system-ui, sans-serif;
+  --mr-font-ui: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mr-font-mono: "SF Mono", ui-monospace, "Menlo", monospace;
+
+  --mr-text-md: 17px;
+  --mr-text-xl: 26px;
+
+  --mr-radius-sm: 4px;
+  --mr-radius-md: 8px;
+  --mr-radius-lg: 14px;
+  --mr-radius-pill: 999px;
+
+  --mr-dur-instant: 80ms;
+  --mr-dur-fast: 200ms;
+  --mr-ease-snappy: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --mr-st-ok-bg: #E5F1E6;
+  --mr-st-ok-fg: #2C5A38;
+  --mr-st-warn-bg: #FBEFCF;
+  --mr-st-warn-fg: #7A5212;
+  --mr-st-danger-bg: #FADDDE;
+  --mr-st-danger-fg: #8E1418;
+  --mr-st-muted-bg: #ECE8DE;
+  --mr-st-muted-fg: #5A5244;
+
+  --mr-dash-sidebar-bg: var(--mr-ink-900);
+  --mr-dash-sidebar-text: var(--mr-cream-100);
+  --mr-dash-sidebar-muted: var(--mr-ink-400);
+  --mr-dash-sidebar-hover: var(--mr-ink-800);
+  --mr-dash-sidebar-accent: var(--mr-gold-400);
+  --mr-dash-sidebar-width: 240px;
+  --mr-dash-topbar-height: 56px;
+  --mr-dash-card-radius: var(--mr-radius-lg);
+
+  --mr-dash-table-header-bg: var(--mr-dash-sub);
+  --mr-dash-table-row-hover: #F0EDE4;
+  --mr-dash-table-border: var(--mr-dash-hair);
+
+  /* ── Extended brand palette ── */
+  --mr-gold-900: #6B5526;
+  --mr-gold-700: #846432;
+  --mr-gold-500: #95783C;
+  --mr-gold-200: #E4D7B4;
+  --mr-gold-100: #EEE6D1;
+  --mr-cream-200: #F6F2E9;
+  --mr-cream-300: #EDE7D6;
+  --mr-cream-400: #DCD3BB;
+  --mr-ink-300: #B5AE9F;
+  --mr-crimson-900: #3B0001;
+  --mr-crimson-700: #670003;
+  --mr-crimson-500: #8E1418;
+  --mr-success: #3F6B4A;
+  --mr-warning: #B8832A;
+  --mr-danger:  #8E1418;
+
+  /* ── Semantic surfaces ── */
+  --mr-bg:          var(--mr-cream-200);
+  --mr-bg-raised:   var(--mr-cream-100);
+  --mr-bg-sunken:   var(--mr-cream-300);
+  --mr-accent:      var(--mr-gold-500);
+  --mr-hairline:    #E0D7BF;
+  --mr-border:      #CFC3A4;
+
+  /* ── Extended type ── */
+  --mr-font-serif:  'Cormorant Garamond', 'Didot', Georgia, serif;
+  --mr-text-xs:   12px;  --mr-text-sm:  13px;  --mr-text-base: 15px;
+  --mr-text-lg:  20px;   --mr-text-2xl:  34px;  --mr-text-3xl: 46px;
+  --mr-text-4xl:  64px;  --mr-text-5xl:  88px;  --mr-text-6xl: 120px;
+
+  /* ── Spacing (4px grid) ── */
+  --mr-sp-1:4px; --mr-sp-2:8px;   --mr-sp-3:12px; --mr-sp-4:16px;
+  --mr-sp-5:24px;--mr-sp-6:32px;  --mr-sp-7:48px; --mr-sp-8:64px;
+  --mr-sp-9:96px;--mr-sp-10:128px;
+
+  /* ── Extended radii ── */
+  --mr-radius-xs:   2px;
+  --mr-radius-xl:   22px;
+
+  /* ── Shadows ── */
+  --mr-shadow-xs:  0 1px 1px rgba(11,11,11,.04), 0 1px 2px rgba(11,11,11,.06);
+  --mr-shadow-sm:  0 2px 4px rgba(11,11,11,.05), 0 4px 10px rgba(11,11,11,.06);
+  --mr-shadow-md:  0 6px 14px rgba(11,11,11,.10), 0 12px 28px rgba(11,11,11,.10);
+  --mr-shadow-lg:  0 14px 28px rgba(11,11,11,.14), 0 28px 56px rgba(11,11,11,.16);
+  --mr-shadow-xl:  0 28px 48px rgba(11,11,11,.20), 0 56px 96px rgba(11,11,11,.22);
+
+  /* ── Extended motion durations ── */
+  --mr-dur-quick:   150ms;
+  --mr-dur-normal:  250ms;
+  --mr-dur-medium:  300ms;
+  --mr-dur-slow:    500ms;
+  --mr-dur-crawl:   800ms;
+
+  /* ── Easing tokens ── */
+  --mr-ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
+  --mr-ease-out:      cubic-bezier(0.16, 1, 0.3, 1);
+  --mr-ease-in-exit:  cubic-bezier(0.4, 0, 1, 1);
+  --mr-ease-ios:      cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  /* ── Scale tokens ── */
+  --mr-scale-press: 0.96;
+  --mr-scale-hover: 1.02;
+  --mr-scale-enter: 0.94;
+
+  /* ── Layout ── */
+  --mr-content-max: 1280px;
+  --mr-gutter: clamp(20px, 4vw, 48px);
+
+  /* ── Status info pair ── */
+  --mr-st-info-bg:   #E3EAF2; --mr-st-info-fg:   #2E466B;
+}
+
+/* ── Keyframes ── */
+
+@keyframes mr-hero-drift {
+  0%   { transform: scale(1.00) translate3d(0,0,0); }
+  50%  { transform: scale(1.035) translate3d(-0.5%,-0.7%,0); }
+  100% { transform: scale(1.00) translate3d(0,0,0); }
+}
+
+@keyframes mr-breath {
+  0%,100% { transform: scale(1); opacity: 1; }
+  50%     { transform: scale(1.1); opacity: .78; }
+}
+
+@keyframes mr-float {
+  0%,100% { transform: translateY(0); }
+  50%     { transform: translateY(-4px); }
+}
+
+@keyframes mr-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@keyframes mr-word-in {
+  from { opacity: 0; filter: blur(8px); transform: translateY(18px); }
+  to   { opacity: 1; filter: blur(0);   transform: translateY(0); }
+}
+
+@keyframes mr-letter-in {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes mr-sparkle-bloom {
+  0%   { transform: scale(0) rotate(-40deg); opacity: 0; }
+  65%  { transform: scale(1.3) rotate(8deg);  opacity: 1; }
+  100% { transform: scale(1) rotate(0);        opacity: 1; }
+}
+
+@keyframes mr-draw-in {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@keyframes mr-badge-pulse {
+  0%  { transform: scale(1); }
+  40% { transform: scale(1.32); }
+  100%{ transform: scale(1); }
+}
+
+@keyframes hero-slide-in {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes mr-fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Utility classes ── */
+.mr-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  letter-spacing: -0.005em;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--mr-cream-400); border-radius: 2px; }
+
+/* ── Accessibility ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

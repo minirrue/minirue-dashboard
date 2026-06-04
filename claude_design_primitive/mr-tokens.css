@@ -1,0 +1,293 @@
+/* ============================================================
+   MiniRue — Unified Design + Motion Token Sheet
+   Combines colors_and_type.css + mr-motion.css + new animation keyframes
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Jost:wght@300;400;500;600&family=Inter+Tight:wght@400;500;600;700&display=swap');
+
+:root {
+  /* ── Brand palette ── */
+  --mr-gold-900: #6B5526;
+  --mr-gold-700: #846432;
+  --mr-gold-500: #95783C;
+  --mr-gold-400: #B0924F;
+  --mr-gold-300: #C9B483;
+  --mr-gold-200: #E4D7B4;
+  --mr-gold-100: #EEE6D1;
+
+  --mr-cream-100: #FDFBF5;
+  --mr-cream-200: #F6F2E9;
+  --mr-cream-300: #EDE7D6;
+  --mr-cream-400: #DCD3BB;
+
+  --mr-ink-900: #0B0B0B;
+  --mr-ink-800: #1A1815;
+  --mr-ink-700: #2E2A24;
+  --mr-ink-500: #5C564C;
+  --mr-ink-400: #8A8376;
+  --mr-ink-300: #B5AE9F;
+
+  --mr-crimson-900: #3B0001;
+  --mr-crimson-700: #670003;
+  --mr-crimson-500: #8E1418;
+
+  --mr-success: #3F6B4A;
+  --mr-warning: #B8832A;
+  --mr-danger:  #8E1418;
+
+  /* ── Semantic surfaces ── */
+  --mr-bg:          var(--mr-cream-200);
+  --mr-bg-raised:   var(--mr-cream-100);
+  --mr-bg-sunken:   var(--mr-cream-300);
+  --mr-fg:          var(--mr-ink-900);
+  --mr-fg-2:        var(--mr-ink-700);
+  --mr-fg-3:        var(--mr-ink-500);
+  --mr-fg-4:        var(--mr-ink-400);
+  --mr-accent:      var(--mr-gold-500);
+  --mr-hairline:    #E0D7BF;
+  --mr-border:      #CFC3A4;
+
+  /* ── Typography ── */
+  --mr-font-serif:  'Cormorant Garamond', 'Didot', Georgia, serif;
+  --mr-font-label:  'Jost', 'Futura', system-ui, sans-serif;
+  --mr-font-ui:     'Inter Tight', 'Inter', system-ui, -apple-system, sans-serif;
+  --mr-font-mono:   'SF Mono', ui-monospace, 'Menlo', monospace;
+
+  /* ── Type scale ── */
+  --mr-text-xs:   12px;  --mr-text-sm:  13px;  --mr-text-base: 15px;
+  --mr-text-md:   17px;  --mr-text-lg:  20px;  --mr-text-xl:   26px;
+  --mr-text-2xl:  34px;  --mr-text-3xl: 46px;  --mr-text-4xl:  64px;
+  --mr-text-5xl:  88px;  --mr-text-6xl: 120px;
+
+  /* ── Spacing (4px grid) ── */
+  --mr-sp-1:4px; --mr-sp-2:8px;   --mr-sp-3:12px; --mr-sp-4:16px;
+  --mr-sp-5:24px;--mr-sp-6:32px;  --mr-sp-7:48px; --mr-sp-8:64px;
+  --mr-sp-9:96px;--mr-sp-10:128px;
+
+  /* ── Radii ── */
+  --mr-radius-xs:   2px;
+  --mr-radius-sm:   4px;
+  --mr-radius-md:   8px;
+  --mr-radius-lg:   14px;
+  --mr-radius-xl:   22px;
+  --mr-radius-pill: 999px;
+
+  /* ── Shadows (warm-toned) ── */
+  --mr-shadow-xs:  0 1px 1px rgba(11,11,11,.04), 0 1px 2px rgba(11,11,11,.06);
+  --mr-shadow-sm:  0 2px 4px rgba(11,11,11,.05), 0 4px 10px rgba(11,11,11,.06);
+  --mr-shadow-md:  0 6px 14px rgba(11,11,11,.10), 0 12px 28px rgba(11,11,11,.10);
+  --mr-shadow-lg:  0 14px 28px rgba(11,11,11,.14), 0 28px 56px rgba(11,11,11,.16);
+  --mr-shadow-xl:  0 28px 48px rgba(11,11,11,.20), 0 56px 96px rgba(11,11,11,.22);
+  --mr-shadow-crimson: 0 20px 40px rgba(142,20,24,.28), 0 40px 80px rgba(11,11,11,.35);
+
+  /* ── Motion durations ── */
+  --mr-dur-instant: 80ms;
+  --mr-dur-quick:   150ms;
+  --mr-dur-fast:    200ms;
+  --mr-dur-normal:  250ms;
+  --mr-dur-medium:  300ms;
+  --mr-dur-slow:    500ms;
+  --mr-dur-crawl:   800ms;
+
+  /* ── Easing tokens ── */
+  --mr-ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
+  --mr-ease-out:      cubic-bezier(0.16, 1, 0.3, 1);
+  --mr-ease-snappy:   cubic-bezier(0.4, 0, 0.2, 1);
+  --mr-ease-in-exit:  cubic-bezier(0.4, 0, 1, 1);
+  --mr-ease-ios:      cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  /* ── Scale tokens ── */
+  --mr-scale-press: 0.96;
+  --mr-scale-hover: 1.02;
+  --mr-scale-enter: 0.94;
+
+  /* ── Layout ── */
+  --mr-content-max: 1280px;
+  --mr-gutter: clamp(20px, 4vw, 48px);
+
+  /* ── Motion personality defaults (luxury) ── */
+  --mp-dur-hover: 300ms;
+  --mp-dur-enter: 500ms;
+  --mp-ease-hover: cubic-bezier(0.16, 1, 0.3, 1);
+  --mp-scale-hover: 1.015;
+  --mp-stagger: 55ms;
+
+  /* ── Dashboard tokens ── */
+  --mr-dash-bg:      #F4F2EC;
+  --mr-dash-surface: #FFFFFF;
+  --mr-dash-sub:     #F9F7F2;
+  --mr-dash-hair:    #E6E2D8;
+  --mr-st-ok-bg:     #E5F1E6; --mr-st-ok-fg:     #2C5A38;
+  --mr-st-warn-bg:   #FBEFCF; --mr-st-warn-fg:   #7A5212;
+  --mr-st-danger-bg: #FADDDE; --mr-st-danger-fg: #8E1418;
+  --mr-st-muted-bg:  #ECE8DE; --mr-st-muted-fg:  #5A5244;
+  --mr-st-info-bg:   #E3EAF2; --mr-st-info-fg:   #2E466B;
+}
+
+/* ── Motion personality overrides ── */
+[data-motion="ios"] {
+  --mp-dur-hover: 250ms;
+  --mp-ease-hover: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --mp-scale-hover: 1.02;
+  --mp-stagger: 45ms;
+}
+[data-motion="energetic"] {
+  --mp-dur-hover: 180ms;
+  --mp-ease-hover: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --mp-scale-hover: 1.03;
+  --mp-stagger: 38ms;
+}
+
+/* ── Dark editorial surface ── */
+[data-mr-surface="ink"] {
+  --mr-bg: var(--mr-ink-900); --mr-bg-raised: #141311; --mr-bg-sunken: #050505;
+  --mr-fg: var(--mr-cream-100); --mr-fg-2: var(--mr-cream-200);
+  --mr-fg-3: var(--mr-ink-300); --mr-fg-4: var(--mr-ink-400);
+  --mr-hairline: rgba(238,230,209,.14); --mr-border: rgba(238,230,209,.22);
+}
+
+/* ── Keyframes ── */
+
+/* Ken Burns hero drift */
+@keyframes mr-hero-drift {
+  0%   { transform: scale(1.00) translate3d(0,0,0); }
+  50%  { transform: scale(1.035) translate3d(-0.5%,-0.7%,0); }
+  100% { transform: scale(1.00) translate3d(0,0,0); }
+}
+.mr-hero-drift { animation: mr-hero-drift 26s var(--mr-ease-ios) infinite; }
+
+/* Sparkle breath */
+@keyframes mr-breath {
+  0%,100% { transform: scale(1); opacity: 1; }
+  50%     { transform: scale(1.1); opacity: .78; }
+}
+.mr-breath { animation: mr-breath 4200ms var(--mr-ease-ios) infinite; transform-origin: center; }
+
+/* Bottle float */
+@keyframes mr-float {
+  0%,100% { transform: translateY(0); }
+  50%     { transform: translateY(-4px); }
+}
+.mr-float { animation: mr-float 5200ms var(--mr-ease-ios) infinite; }
+
+/* Marquee infinite scroll */
+@keyframes mr-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* Word blur-reveal — word by word */
+@keyframes mr-word-in {
+  from { opacity: 0; filter: blur(8px); transform: translateY(18px); }
+  to   { opacity: 1; filter: blur(0);   transform: translateY(0); }
+}
+
+/* Letter drop-in — splash screen */
+@keyframes mr-letter-in {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Sparkle bloom — splash */
+@keyframes mr-sparkle-bloom {
+  0%   { transform: scale(0) rotate(-40deg); opacity: 0; }
+  65%  { transform: scale(1.3) rotate(8deg);  opacity: 1; }
+  100% { transform: scale(1) rotate(0);        opacity: 1; }
+}
+
+/* Hairline draw-in */
+@keyframes mr-draw-in {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.mr-draw-in { transform-origin: left center; transform: scaleX(0); transition: transform 900ms var(--mr-ease-out); }
+.mr-draw-in.is-visible { transform: scaleX(1); }
+
+/* Badge pulse */
+@keyframes mr-badge-pulse {
+  0%  { transform: scale(1); }
+  40% { transform: scale(1.32); }
+  100%{ transform: scale(1); }
+}
+[data-bump="1"] { animation: mr-badge-pulse 420ms var(--mr-ease-spring); }
+
+/* Hero carousel slide-in from right */
+@keyframes hero-slide-in {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+/* Fade up (generic utility) */
+@keyframes mr-fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Component micro-styles ── */
+
+/* Nav link underline wipe */
+.mr-nav-link { position: relative; display: inline-block; }
+.mr-nav-link::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -4px;
+  height: 1px; background: currentColor; opacity: .6;
+  transform: scaleX(0); transform-origin: right center;
+  transition: transform 360ms var(--mr-ease-out); pointer-events: none;
+}
+.mr-nav-link:hover::after { transform: scaleX(1); transform-origin: left center; }
+
+/* Sweep button */
+.mr-btn-sweep { position: relative; overflow: hidden; isolation: isolate; }
+.mr-btn-sweep > * { position: relative; z-index: 1; }
+.mr-btn-sweep::before {
+  content: ''; position: absolute; inset: 0; z-index: 0;
+  background: var(--sweep-color, var(--mr-cream-100));
+  transform: scaleX(0); transform-origin: right center;
+  transition: transform 480ms var(--mr-ease-out); will-change: transform;
+}
+.mr-btn-sweep:hover::before { transform: scaleX(1); transform-origin: left center; }
+
+/* Footer newsletter input */
+.mr-underline-input { position: relative; display: flex; align-items: center; }
+.mr-underline-input::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -1px;
+  height: 1px; background: var(--mr-gold-400);
+  transform: scaleX(0); transform-origin: left center;
+  transition: transform 380ms var(--mr-ease-out);
+}
+.mr-underline-input:focus-within::after { transform: scaleX(1); }
+
+/* Link arrow slide */
+.mr-link-arrow { display: inline-block; transition: transform 260ms var(--mr-ease-out); }
+a:hover .mr-link-arrow, button:hover .mr-link-arrow { transform: translateX(4px); }
+
+/* Header compact transition */
+.mr-header-inner { transition: padding 320ms var(--mr-ease-out); }
+
+/* Page sheet — sits above fixed footer, lifts off to reveal it */
+.mr-page-sheet {
+  position: relative; z-index: 1;
+  background: var(--mr-cream-200);
+  box-shadow: 0 8px 0 0 var(--mr-cream-200), 0 24px 48px rgba(11,11,11,0.22), 0 48px 0 0 var(--mr-cream-200);
+  min-height: 100vh;
+}
+
+/* Tabular numbers utility */
+.mr-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  letter-spacing: -0.005em;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--mr-cream-400); border-radius: 2px; }
+
+/* ── Accessibility ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
