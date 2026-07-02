@@ -62,7 +62,7 @@ function RevenueChart({ points }: { points: RevenuePoint[] }) {
                 </td>
                 <td className="dash-revenue-bar-cell">
                   <div className="dash-revenue-bar-track">
-                    <div className="dash-revenue-bar-fill" style={{ width: `${Math.round((p.total_cents / max) * 100)}%` }} />
+                    <div className="dash-revenue-bar-fill" style={{ transform: `scaleX(${(p.total_cents / max).toFixed(4)})` }} />
                   </div>
                 </td>
                 <td style={{ textAlign: 'right', paddingLeft: 12, color: 'var(--mr-fg-2)', whiteSpace: 'nowrap' }}>
@@ -135,7 +135,7 @@ function OrdersFunnelPanel({ funnel }: { funnel: OrdersFunnel }) {
             <div className="dash-revenue-bar-track">
               <div
                 className="dash-revenue-bar-fill"
-                style={{ width: `${Math.round((step.value / max) * 100)}%`, opacity: 0.85 }}
+                style={{ transform: `scaleX(${(step.value / max).toFixed(4)})`, opacity: 0.85 }}
               />
             </div>
             <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--mr-fg-2)', minWidth: 48, textAlign: 'right' }}>

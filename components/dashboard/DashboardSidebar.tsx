@@ -3,6 +3,7 @@
 import React from 'react';
 import { canAccessDashboardRoute } from '@/lib/auth/roles';
 import RoleBadge from './RoleBadge';
+import { Sparkle } from '../primitives';
 
 /* ── Icon helpers (inline SVG to avoid external deps) ── */
 
@@ -189,7 +190,7 @@ export default function DashboardSidebar({ activePath = '/dashboard', userRole }
         <div className="dash-sidebar-logo">
           MiniRue
           <span className="dash-sidebar-logo-mark" aria-hidden="true">
-            *
+            <Sparkle size={9} />
           </span>
         </div>
         <div className="dash-sidebar-subtitle">Atelier dashboard</div>

@@ -14,9 +14,19 @@ export interface DashboardCardProps {
 }
 
 function TrendArrow({ trend }: { trend: 'up' | 'down' | 'flat' }) {
-  if (trend === 'up') return <span aria-hidden="true">{'↑'}</span>;
-  if (trend === 'down') return <span aria-hidden="true">{'↓'}</span>;
-  return <span aria-hidden="true">{'→'}</span>;
+  if (trend === 'flat') {
+    return (
+      <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M5 12h14" />
+      </svg>
+    );
+  }
+  const d = trend === 'up' ? 'M12 19V5M5 12l7-7 7 7' : 'M12 5v14M5 12l7 7 7-7';
+  return (
+    <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={d} />
+    </svg>
+  );
 }
 
 export default function DashboardCard({

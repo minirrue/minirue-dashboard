@@ -1,5 +1,8 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import RoleBadge from './RoleBadge';
+import NotificationDrawer from './NotificationDrawer';
 
 export interface BreadcrumbItem {
   label: string;
@@ -34,8 +37,10 @@ export default function DashboardTopbar({
 }: DashboardTopbarProps) {
   const resolvedTitle = title ?? breadcrumbs[breadcrumbs.length - 1]?.label ?? 'Dashboard';
   const resolvedEyebrow = eyebrow ?? breadcrumbs[0]?.label ?? 'Dashboard';
+  const [notifOpen, setNotifOpen] = useState(false);
 
   return (
+    <>
     <header className="dash-topbar">
       <div className="dash-topbar-copy">
         <div className="dash-topbar-eyebrow">{resolvedEyebrow}</div>
@@ -61,18 +66,41 @@ export default function DashboardTopbar({
         </div>
       </div>
 
-      <div className="dash-user-menu">
-        <RoleBadge role={userRole} />
-        <div className="dash-user-meta">
-          <div className="dash-user-name" title={userName}>
-            {userName}
+      <div className="dash-topbar-actions">
+        <label className="dash-topbar-search">
+          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="7" />
+            <path d="M20 20l-3.5-3.5" />
+          </svg>
+          <input type="search" placeholder="Search orders, products…" aria-label="Search" />
+        </label>
+
+        <button
+          className="dash-notif-btn"
+          onClick={() => setNotifOpen(true)}
+          aria-label="Open notifications"
+        >
+          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 9a6 6 0 0 1 12 0v5l2 3H4l2-3V9zM10 19a2 2 0 0 0 4 0" />
+          </svg>
+          <span className="dash-notif-dot" aria-hidden="true" />
+        </button>
+
+        <div className="dash-user-menu">
+          <RoleBadge role={userRole} />
+          <div className="dash-user-meta">
+            <div className="dash-user-name" title={userName}>
+              {userName}
+            </div>
+            {userRole ? <div className="dash-user-role-label">Signed in</div> : null}
           </div>
-          {userRole ? <div className="dash-user-role-label">Signed in</div> : null}
-        </div>
-        <div className="dash-avatar" title={userName} aria-label={`Signed in as ${userName}`}>
-          <span>{getInitials(userName)}</span>
+          <div className="dash-avatar" title={userName} aria-label={`Signed in as ${userName}`}>
+            <span>{getInitials(userName)}</span>
+          </div>
         </div>
       </div>
     </header>
+    <NotificationDrawer open={notifOpen} onClose={() => setNotifOpen(false)} />
+    </>
   );
 }

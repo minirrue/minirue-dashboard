@@ -134,7 +134,7 @@ export default function CollabAnalyticsClient() {
                     <div className="dash-revenue-bar-track">
                       <div
                         className="dash-revenue-bar-fill"
-                        style={{ width: `${(row.orders / maxOrders) * 100}%` }}
+                        style={{ transform: `scaleX(${(row.orders / maxOrders).toFixed(4)})` }}
                       />
                     </div>
                   </td>
