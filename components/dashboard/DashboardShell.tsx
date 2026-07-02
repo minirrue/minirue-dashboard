@@ -3,6 +3,7 @@
 import React from 'react';
 import DashboardSidebar from './DashboardSidebar';
 import DashboardTopbar, { type BreadcrumbItem } from './DashboardTopbar';
+import MagneticCursor from './MagneticCursor';
 
 export interface DashboardShellProps {
   children: React.ReactNode;
@@ -31,6 +32,7 @@ export function DashboardShell({
 }: DashboardShellProps) {
   return (
     <div className="dash-shell">
+      <MagneticCursor />
       <DashboardSidebar activePath={activePath} userRole={userRole} />
       <main className="dash-main">
         <DashboardTopbar
