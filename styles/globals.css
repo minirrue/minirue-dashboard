@@ -2,10 +2,17 @@
 @plugin "tailwind-scrollbar-hide";
 @import "./mr-tokens.css";
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* Reset lives in @layer base so it does NOT override layered layout rules.
+   Unlayered declarations beat every @layer regardless of specificity — an
+   unlayered `* { margin:0 }` was overriding `.dash-main { margin-left }` and
+   `.dash-content { padding }` (both in @layer components), collapsing the
+   shell layout under the fixed sidebar. Layering the reset fixes that. */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 }
 
 body {
