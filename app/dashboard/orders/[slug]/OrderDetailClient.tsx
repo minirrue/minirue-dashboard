@@ -4,8 +4,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { apiAdminGetOrder, apiAdminTransitionStatus, apiAdminCancelOrder } from '@/lib/api/orders';
 import type { Order, OrderStatus, OrderItem } from '@/lib/api/orders';
-import { apiAdminListOrderPayments } from '@/lib/api/payments';
-import type { PaymentAttempt } from '@/lib/api/payments';
+import { apiAdminListOrderPayments, apiAdminVerifyInstapay, apiAdminRejectInstapay } from '@/lib/api/payments';
+import type { AdminPaymentAttempt } from '@/lib/api/payments';
 import type { ApiError } from '@/lib/api/client';
 
 /* ── Helpers ── */
@@ -66,7 +66,7 @@ function OrderActions({
       {status === 'CONFIRMED' && (
         <>
           <button className="dash-btn-primary" disabled={busy} onClick={onShip}>
-            Mark Shipped
+            Start processing
           </button>
           <button className="dash-btn-danger" disabled={busy} onClick={onCancel}>
             Cancel
@@ -75,7 +75,7 @@ function OrderActions({
       )}
       {status === 'PROCESSING' && (
         <button className="dash-btn-primary" disabled={busy} onClick={onShip}>
-          Mark Shipped
+          Mark shipped
         </button>
       )}
     </div>
@@ -100,7 +100,8 @@ export default function OrderDetailClient({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [payments, setPayments] = useState<PaymentAttempt[]>([]);
+  const [payments, setPayments] = useState<AdminPaymentAttempt[]>([]);
+  const [paymentBusy, setPaymentBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -134,6 +135,26 @@ export default function OrderDetailClient({ id }: { id: string }) {
     }
   };
 
+  const runPaymentAction = async (
+    attemptId: string,
+    action: 'verify' | 'reject',
+  ) => {
+    setPaymentBusy(attemptId);
+    setActionError(null);
+    try {
+      const updated =
+        action === 'verify'
+          ? await apiAdminVerifyInstapay(attemptId)
+          : await apiAdminRejectInstapay(attemptId, 'Receipt could not be verified');
+      setPayments((prev) => prev.map((p) => (p.id === attemptId ? updated : p)));
+      if (action === 'verify') await load();
+    } catch (e) {
+      setActionError((e as ApiError).message ?? 'Payment action failed');
+    } finally {
+      setPaymentBusy(null);
+    }
+  };
+
   if (loading) return <Skeleton />;
   if (error) {
     return (
@@ -164,7 +185,14 @@ export default function OrderDetailClient({ id }: { id: string }) {
           busy={busy}
           onConfirm={() => runAction(() => apiAdminTransitionStatus(id, 'CONFIRMED'))}
           onCancel={() => runAction(() => apiAdminCancelOrder(id))}
-          onShip={() => runAction(() => apiAdminTransitionStatus(id, 'SHIPPED'))}
+          onShip={() =>
+            runAction(() =>
+              apiAdminTransitionStatus(
+                id,
+                order.status === 'CONFIRMED' ? 'PROCESSING' : 'SHIPPED',
+              ),
+            )
+          }
         />
       </div>
 
@@ -245,10 +273,19 @@ export default function OrderDetailClient({ id }: { id: string }) {
                   <th style={{ textAlign: 'right' }}>Amount</th>
                   <th>Date</th>
                   <th>Ref</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
-                {payments.map((p) => (
+                {payments.map((p) => {
+                  const receiptUrl =
+                    typeof p.gatewayMeta?.receiptDataUrl === 'string'
+                      ? p.gatewayMeta.receiptDataUrl
+                      : null;
+                  const awaiting =
+                    p.method === 'INSTAPAY' &&
+                    (p.status === 'PROCESSING' || p.status === 'PENDING');
+                  return (
                   <tr key={p.id}>
                     <td>{p.method}</td>
                     <td>
@@ -262,8 +299,46 @@ export default function OrderDetailClient({ id }: { id: string }) {
                     </td>
                     <td style={{ color: 'var(--mr-fg-3)' }}>{formatDate(p.createdAt)}</td>
                     <td style={{ color: 'var(--mr-fg-4)', fontSize: 12 }}>{p.gatewayReference ?? '—'}</td>
+                    <td>
+                      {receiptUrl && (
+                        <a
+                          href={receiptUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="dash-btn-ghost"
+                          style={{ fontSize: 12, marginRight: 8 }}
+                        >
+                          View receipt
+                        </a>
+                      )}
+                      {awaiting && (
+                        <div className="dash-row-actions">
+                          <button
+                            type="button"
+                            className="dash-btn-ok"
+                            disabled={paymentBusy === p.id}
+                            onClick={() => void runPaymentAction(p.id, 'verify')}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            className="dash-btn-danger"
+                            disabled={paymentBusy === p.id}
+                            onClick={() => void runPaymentAction(p.id, 'reject')}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                      {p.failureReason && (
+                        <span style={{ fontSize: 12, color: 'var(--mr-st-danger-fg)' }}>
+                          {p.failureReason}
+                        </span>
+                      )}
+                    </td>
                   </tr>
-                ))}
+                );})}
               </tbody>
             </table>
           </div>

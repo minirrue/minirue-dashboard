@@ -12,6 +12,12 @@ export interface DashboardShellProps {
   breadcrumbs?: BreadcrumbItem[];
   /** User display name */
   userName?: string;
+  /** Canonical role from `/auth/me` */
+  userRole?: string;
+  /** Optional topbar eyebrow copy */
+  shellEyebrow?: string;
+  /** Optional topbar title */
+  shellTitle?: string;
 }
 
 export function DashboardShell({
@@ -19,13 +25,24 @@ export function DashboardShell({
   activePath,
   breadcrumbs,
   userName,
+  userRole,
+  shellEyebrow,
+  shellTitle,
 }: DashboardShellProps) {
   return (
     <div className="dash-shell">
-      <DashboardSidebar activePath={activePath} />
+      <DashboardSidebar activePath={activePath} userRole={userRole} />
       <main className="dash-main">
-        <DashboardTopbar breadcrumbs={breadcrumbs} userName={userName} />
-        <div className="dash-content">{children}</div>
+        <DashboardTopbar
+          breadcrumbs={breadcrumbs}
+          userName={userName}
+          userRole={userRole}
+          eyebrow={shellEyebrow}
+          title={shellTitle}
+        />
+        <div className="dash-content">
+          <div className="dash-content-inner">{children}</div>
+        </div>
       </main>
     </div>
   );

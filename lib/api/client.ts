@@ -6,7 +6,7 @@ export interface ApiError {
   error?: string;
 }
 
-const BASE = (process.env.NEXT_PUBLIC_API_URL ?? '') + '/v1';
+const BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8002') + '/v1';
 
 export async function apiFetch<T>(
   path: string,

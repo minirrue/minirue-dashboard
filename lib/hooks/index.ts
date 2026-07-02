@@ -1,5 +1,5 @@
 // Auth hooks
-export { useLogin, useRegister, useLogout, useUser } from './use-auth';
+export { useLogin, useLogout, useUser } from './use-auth';
 
 // Catalog hooks
 export {

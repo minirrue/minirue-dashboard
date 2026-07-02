@@ -5,8 +5,9 @@ import {
   apiGetAnalyticsOverview,
   apiGetRevenueSeries,
   apiGetTopProducts,
+  apiGetOrdersFunnel,
 } from '@/lib/api/analytics';
-import type { AnalyticsOverview, RevenuePoint, TopProduct } from '@/lib/api/analytics';
+import type { AnalyticsOverview, RevenuePoint, TopProduct, OrdersFunnel } from '@/lib/api/analytics';
 import type { ApiError } from '@/lib/api/client';
 
 function egp(cents: number): string {
@@ -115,10 +116,46 @@ function TopProductsTable({ products }: { products: TopProduct[] }) {
   );
 }
 
+function OrdersFunnelPanel({ funnel }: { funnel: OrdersFunnel }) {
+  const steps = [
+    { label: 'Carts created', value: funnel.carts_created },
+    { label: 'Orders placed', value: funnel.orders_placed },
+    { label: 'Orders paid', value: funnel.orders_paid },
+    { label: 'Orders fulfilled', value: funnel.orders_fulfilled },
+  ];
+  const max = Math.max(...steps.map((s) => s.value), 1);
+
+  return (
+    <div className="dash-card" style={{ padding: '16px 20px' }}>
+      <p className="dash-section-title" style={{ marginBottom: 12 }}>Checkout funnel</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {steps.map((step) => (
+          <div key={step.label} style={{ display: 'grid', gridTemplateColumns: '140px 1fr auto', gap: 12, alignItems: 'center' }}>
+            <span style={{ fontSize: 13, color: 'var(--mr-fg-3)' }}>{step.label}</span>
+            <div className="dash-revenue-bar-track">
+              <div
+                className="dash-revenue-bar-fill"
+                style={{ width: `${Math.round((step.value / max) * 100)}%`, opacity: 0.85 }}
+              />
+            </div>
+            <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--mr-fg-2)', minWidth: 48, textAlign: 'right' }}>
+              {step.value.toLocaleString()}
+            </span>
+          </div>
+        ))}
+      </div>
+      <p style={{ marginTop: 14, fontSize: 12, color: 'var(--mr-fg-4)' }}>
+        Cart → paid: {funnel.conversion_to_paid.toFixed(1)}% · Paid → fulfilled: {funnel.conversion_to_fulfilled.toFixed(1)}%
+      </p>
+    </div>
+  );
+}
+
 export default function AnalyticsClient() {
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [revenue, setRevenue] = useState<RevenuePoint[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [funnel, setFunnel] = useState<OrdersFunnel | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -126,14 +163,16 @@ export default function AnalyticsClient() {
     setLoading(true);
     setError(null);
     try {
-      const [ov, rev, top] = await Promise.all([
+      const [ov, rev, top, fn] = await Promise.all([
         apiGetAnalyticsOverview(),
         apiGetRevenueSeries('30d'),
         apiGetTopProducts(5),
+        apiGetOrdersFunnel(),
       ]);
       setOverview(ov);
       setRevenue(rev);
       setTopProducts(top);
+      setFunnel(fn);
     } catch (e) {
       setError((e as ApiError).message ?? 'Failed to load analytics');
     } finally {
@@ -174,6 +213,12 @@ export default function AnalyticsClient() {
       {!loading && !error && (
         <div style={{ marginBottom: 20 }}>
           <RevenueChart points={revenue} />
+        </div>
+      )}
+
+      {!loading && !error && funnel && (
+        <div style={{ marginBottom: 20 }}>
+          <OrdersFunnelPanel funnel={funnel} />
         </div>
       )}
 

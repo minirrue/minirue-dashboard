@@ -33,10 +33,10 @@ function validateVariant(v: VariantFormValues): VariantFormErrors {
 
 const BOTTLE_OPTIONS: Array<{ value: BottleType | ''; label: string }> = [
   { value: '', label: 'Select type…' },
-  { value: 'spray', label: 'Spray' },
-  { value: 'splash', label: 'Splash' },
-  { value: 'travel', label: 'Travel' },
-  { value: 'refill', label: 'Refill' },
+  { value: 'EDP', label: 'EDP' },
+  { value: 'EDT', label: 'EDT' },
+  { value: 'Parfum', label: 'Parfum' },
+  { value: 'Hair Mist', label: 'Hair Mist' },
 ];
 
 const EMPTY_FORM: VariantFormValues = {
@@ -44,7 +44,7 @@ const EMPTY_FORM: VariantFormValues = {
   sizeMl: '',
   bottleType: '',
   priceAmount: '',
-  currency: 'USD',
+  currency: 'EGP',
 };
 
 interface Props {

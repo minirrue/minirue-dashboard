@@ -4,6 +4,9 @@ export { default as DashboardTopbar } from './DashboardTopbar';
 export { default as DashboardCard } from './DashboardCard';
 export { default as DashboardTable } from './DashboardTable';
 export { default as StatusBadge } from './StatusBadge';
+export { default as RoleBadge } from './RoleBadge';
+export { default as AccessDeniedPanel } from './AccessDeniedPanel';
+export { default as DashboardRoleWelcome } from './DashboardRoleWelcome';
 
 export type { DashboardShellProps } from './DashboardShell';
 export type { DashboardSidebarProps, NavItem } from './DashboardSidebar';

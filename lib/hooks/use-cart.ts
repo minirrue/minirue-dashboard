@@ -49,8 +49,14 @@ export function useAddCartItem() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: AddCartItemRequest) =>
-      apiFetch<Cart>('/cart/items', { method: 'POST', auth: true, body: JSON.stringify(data) }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: CART_QUERY_KEY }); },
+      apiFetch<Cart>('/cart/items', {
+        method: 'POST',
+        auth: true,
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
+    },
   });
 }
 
@@ -58,8 +64,14 @@ export function useUpdateCartItem() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ itemId, ...data }: { itemId: string } & UpdateCartItemRequest) =>
-      apiFetch<Cart>(`/cart/items/${itemId}`, { method: 'PATCH', auth: true, body: JSON.stringify(data) }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: CART_QUERY_KEY }); },
+      apiFetch<Cart>(`/cart/items/${itemId}`, {
+        method: 'PATCH',
+        auth: true,
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
+    },
   });
 }
 
@@ -67,8 +79,13 @@ export function useRemoveCartItem() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (itemId: string) =>
-      apiFetch<Cart>(`/cart/items/${itemId}`, { method: 'DELETE', auth: true }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: CART_QUERY_KEY }); },
+      apiFetch<Cart>(`/cart/items/${itemId}`, {
+        method: 'DELETE',
+        auth: true,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
+    },
   });
 }
 
@@ -76,6 +93,8 @@ export function useClearCart() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => apiFetch<void>('/cart', { method: 'DELETE', auth: true }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: CART_QUERY_KEY }); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
+    },
   });
 }

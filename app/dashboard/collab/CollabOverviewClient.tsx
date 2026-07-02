@@ -1,0 +1,220 @@
+'use client';
+
+
+
+import Link from 'next/link';
+
+import { useEffect, useState } from 'react';
+
+import {
+
+  CollabEmptyState,
+
+  CollabErrorPanel,
+
+  CollabLoadingBlock,
+
+  CollabPageHeader,
+
+  formatModuleList,
+
+} from '@/components/collab/collab-ui';
+
+import { apiCollabOverview, type CollabOverview } from '@/lib/api/collab-portal';
+
+import type { ApiError } from '@/lib/api/client';
+
+
+
+export default function CollabOverviewClient() {
+
+  const [overview, setOverview] = useState<CollabOverview | null>(null);
+
+  const [error, setError] = useState<string | null>(null);
+
+  const [loading, setLoading] = useState(true);
+
+
+
+  useEffect(() => {
+
+    apiCollabOverview()
+
+      .then(setOverview)
+
+      .catch((err: ApiError) => setError(err.message || 'Failed to load overview'))
+
+      .finally(() => setLoading(false));
+
+  }, []);
+
+
+
+  if (loading) return <CollabLoadingBlock />;
+
+
+
+  if (error) {
+
+    return (
+
+      <CollabErrorPanel
+
+        message={error}
+
+        action={
+
+          <button type="button" className="dash-btn-secondary" onClick={() => window.location.reload()}>
+
+            Retry
+
+          </button>
+
+        }
+
+      />
+
+    );
+
+  }
+
+
+
+  const empty = (overview?.counts.orders ?? 0) === 0 && (overview?.counts.products ?? 0) === 0;
+
+  const title = overview?.displayName || overview?.brandSlug || 'Your brand';
+
+  const moduleSummary = overview?.modules.length ? formatModuleList(overview.modules) : '';
+
+
+
+  return (
+
+    <>
+
+      <CollabPageHeader title="Overview" subtitle={`Workspace for ${title}`} />
+
+
+
+      <p className="collab-summary-line">
+
+        <span>
+
+          <strong>{overview?.counts.orders ?? 0}</strong> orders
+
+        </span>
+
+        <span className="collab-summary-sep">·</span>
+
+        <span>
+
+          <strong>{overview?.counts.products ?? 0}</strong> products
+
+        </span>
+
+        {moduleSummary ? (
+
+          <>
+
+            <span className="collab-summary-sep">·</span>
+
+            <span>{moduleSummary} enabled</span>
+
+          </>
+
+        ) : null}
+
+      </p>
+
+
+
+      {empty ? (
+
+        <CollabEmptyState
+
+          title="Welcome to your brand workspace"
+
+          copy="Complete your brand profile and add your first product to appear on the storefront."
+
+          action={
+
+            <div className="collab-action-row collab-action-row--center">
+
+              <Link href="/dashboard/collab/brand" className="dash-btn-primary">
+
+                Complete brand profile
+
+              </Link>
+
+              {overview?.modules.includes('PRODUCTS') ? (
+
+                <Link href="/dashboard/collab/products/new" className="dash-btn-secondary">
+
+                  Add first product
+
+                </Link>
+
+              ) : null}
+
+            </div>
+
+          }
+
+        />
+
+      ) : (
+
+        <div className="dash-card collab-section-card">
+
+          <h2 className="dash-card-title">Quick links</h2>
+
+          <div className="collab-action-row">
+
+            {overview?.modules.includes('PRODUCTS') ? (
+
+              <Link href="/dashboard/collab/products" className="dash-btn-secondary">
+
+                Manage products
+
+              </Link>
+
+            ) : null}
+
+            {overview?.modules.includes('ORDERS') ? (
+
+              <Link href="/dashboard/collab/orders" className="dash-btn-secondary">
+
+                View orders
+
+              </Link>
+
+            ) : null}
+
+            {overview?.modules.includes('ANALYTICS') ? (
+
+              <Link href="/dashboard/collab/analytics" className="dash-btn-secondary">
+
+                Analytics
+
+              </Link>
+
+            ) : null}
+
+            <Link href="/dashboard/collab/brand" className="dash-btn-ghost">
+
+              Brand profile
+
+            </Link>
+
+          </div>
+
+        </div>
+
+      )}
+
+    </>
+
+  );
+
+}
+

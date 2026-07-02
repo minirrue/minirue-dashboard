@@ -119,7 +119,7 @@ export default function NewProductPage() {
         },
         idempotencyKey,
       );
-      router.push(`/products/${product.id}/edit`);
+      router.push(`/dashboard/products/${product.id}/edit`);
     } catch (e) {
       const err = e as ApiError;
       setSubmitError(err.message ?? 'Something went wrong. Please try again.');
@@ -131,7 +131,7 @@ export default function NewProductPage() {
     <>
       <div className="dash-page-header">
         <h1 className="dash-page-title">New Product</h1>
-        <Link href="/products" className="dash-btn-ghost">
+        <Link href="/dashboard/products" className="dash-btn-ghost">
           Cancel
         </Link>
       </div>
@@ -257,7 +257,7 @@ export default function NewProductPage() {
           <button type="submit" className="dash-btn-primary" disabled={submitting}>
             {submitting ? 'Creating…' : 'Create Product'}
           </button>
-          <Link href="/products" className="dash-btn-ghost">
+          <Link href="/dashboard/products" className="dash-btn-ghost">
             Cancel
           </Link>
         </div>

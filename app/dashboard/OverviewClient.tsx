@@ -4,6 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiGetAnalyticsOverview } from '@/lib/api/analytics';
 import { apiAdminListOrders } from '@/lib/api/orders';
+import { canAccessDashboardRoute } from '@/lib/auth/roles';
+import { useUser } from '@/lib/hooks/use-auth';
+import DashboardRoleWelcome from '@/components/dashboard/DashboardRoleWelcome';
 import type { AnalyticsOverview } from '@/lib/api/analytics';
 import type { Order } from '@/lib/api/orders';
 import type { ApiError } from '@/lib/api/client';
@@ -65,14 +68,19 @@ function SkeletonTable() {
 
 export default function OverviewClient() {
   const router = useRouter();
+  const { data: user } = useUser();
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!user) return;
+
+    const canAnalytics = canAccessDashboardRoute(user.role, '/dashboard/analytics');
+
     Promise.all([
-      apiGetAnalyticsOverview(),
+      canAnalytics ? apiGetAnalyticsOverview() : Promise.resolve(null),
       apiAdminListOrders({ limit: 6 }),
     ])
       .then(([ov, ord]) => {
@@ -81,7 +89,7 @@ export default function OverviewClient() {
       })
       .catch((e) => setError((e as ApiError).message ?? 'Failed to load overview'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [user]);
 
   if (loading) {
     return (
@@ -92,16 +100,28 @@ export default function OverviewClient() {
     );
   }
 
-  if (error) {
+  if (error || !user) {
     return (
       <div className="dash-card">
-        <p className="dash-inline-error">{error}</p>
+        <p className="dash-inline-error">{error ?? 'Unable to load your session.'}</p>
       </div>
     );
   }
 
+  const canAnalytics = canAccessDashboardRoute(user.role, '/dashboard/analytics');
+  const displayName = user.name?.trim() || user.email.split('@')[0];
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <DashboardRoleWelcome userName={displayName} role={user.role} />
+
+      {!canAnalytics ? (
+        <div className="dash-role-notice">
+          Analytics and revenue summaries are limited to owner and staff roles. Catalog, customers, and
+          settings remain available in the sidebar.
+        </div>
+      ) : null}
+
       {overview && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
           {[

@@ -13,6 +13,29 @@ export interface PaymentAttempt {
   createdAt: string;
 }
 
-export async function apiAdminListOrderPayments(orderId: string): Promise<PaymentAttempt[]> {
-  return apiFetch<PaymentAttempt[]>(`/admin/payments/orders/${orderId}`, { auth: true });
+export interface AdminPaymentAttempt extends PaymentAttempt {
+  gatewayMeta: Record<string, unknown> | null;
+  failureReason: string | null;
+}
+
+export async function apiAdminListOrderPayments(orderId: string): Promise<AdminPaymentAttempt[]> {
+  return apiFetch<AdminPaymentAttempt[]>(`/admin/payments/orders/${orderId}`, { auth: true });
+}
+
+export async function apiAdminVerifyInstapay(attemptId: string): Promise<AdminPaymentAttempt> {
+  return apiFetch<AdminPaymentAttempt>(`/admin/payments/attempts/${attemptId}/verify`, {
+    method: 'POST',
+    auth: true,
+  });
+}
+
+export async function apiAdminRejectInstapay(
+  attemptId: string,
+  reason?: string,
+): Promise<AdminPaymentAttempt> {
+  return apiFetch<AdminPaymentAttempt>(`/admin/payments/attempts/${attemptId}/reject`, {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify({ reason }),
+  });
 }

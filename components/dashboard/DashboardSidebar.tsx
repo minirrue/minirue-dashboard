@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import { canAccessDashboardRoute } from '@/lib/auth/roles';
+import RoleBadge from './RoleBadge';
 
 /* ── Icon helpers (inline SVG to avoid external deps) ── */
 
@@ -102,6 +104,18 @@ function IconRefreshCcw() {
   );
 }
 
+function IconPalette() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="13.5" cy="6.5" r="2.5" />
+      <circle cx="17.5" cy="10.5" r="2.5" />
+      <circle cx="8.5" cy="7.5" r="2.5" />
+      <circle cx="6.5" cy="12.5" r="2.5" />
+      <path d="M12 22a10 10 0 0 0 10-10c0-2.5-1-4.5-2.5-6" />
+    </svg>
+  );
+}
+
 export interface NavItem {
   label: string;
   href: string;
@@ -111,9 +125,21 @@ export interface NavItem {
 export interface DashboardSidebarProps {
   /** Currently active route path */
   activePath?: string;
+  /** Signed-in staff role from `/auth/me` */
+  userRole?: string;
 }
 
 const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
+  {
+    section: 'Partner',
+    items: [
+      { label: 'Workspace', href: '/dashboard/collab', icon: <IconBarChart /> },
+      { label: 'My orders', href: '/dashboard/collab/orders', icon: <IconShoppingBag /> },
+      { label: 'My products', href: '/dashboard/collab/products', icon: <IconPackage /> },
+      { label: 'Brand profile', href: '/dashboard/collab/brand', icon: <IconPalette /> },
+      { label: 'My analytics', href: '/dashboard/collab/analytics', icon: <IconTrendingUp /> },
+    ],
+  },
   {
     section: 'Store',
     items: [
@@ -122,6 +148,8 @@ const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
       { label: 'Categories', href: '/dashboard/categories', icon: <IconGrid /> },
       { label: 'Orders', href: '/dashboard/orders', icon: <IconShoppingBag /> },
       { label: 'Customers', href: '/dashboard/customers', icon: <IconUsers /> },
+      { label: 'Collaborators', href: '/dashboard/collaborators', icon: <IconUsers /> },
+      { label: 'Storefront', href: '/dashboard/storefront-appearance', icon: <IconPalette /> },
     ],
   },
   {
@@ -147,34 +175,62 @@ const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
   },
 ];
 
-export default function DashboardSidebar({ activePath = '/dashboard' }: DashboardSidebarProps) {
+export default function DashboardSidebar({ activePath = '/dashboard', userRole }: DashboardSidebarProps) {
+  const visibleGroups = NAV_ITEMS.map((group) => ({
+    ...group,
+    items: userRole
+      ? group.items.filter((item) => canAccessDashboardRoute(userRole, item.href))
+      : group.items,
+  })).filter((group) => group.items.length > 0);
+
   return (
     <aside className="dash-sidebar">
-      <div className="dash-sidebar-logo">
-        Mini<span>Rue</span>
+      <div className="dash-sidebar-brand">
+        <div className="dash-sidebar-logo">
+          MiniRue
+          <span className="dash-sidebar-logo-mark" aria-hidden="true">
+            *
+          </span>
+        </div>
+        <div className="dash-sidebar-subtitle">Atelier dashboard</div>
       </div>
 
       <nav className="dash-sidebar-nav">
-        {NAV_ITEMS.map((group) => (
-          <React.Fragment key={group.section}>
+        {visibleGroups.map((group) => (
+          <section className="dash-sidebar-group" key={group.section} aria-label={group.section}>
             <div className="dash-sidebar-section">{group.section}</div>
-            {group.items.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className="dash-sidebar-link"
-                data-active={activePath === item.href ? 'true' : undefined}
-              >
-                {item.icon}
-                {item.label}
-              </a>
-            ))}
-          </React.Fragment>
+            <div className="dash-sidebar-group-items">
+              {group.items.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="dash-sidebar-link"
+                  data-active={
+                    activePath === item.href || (item.href !== '/dashboard' && activePath.startsWith(`${item.href}/`))
+                      ? 'true'
+                      : undefined
+                  }
+                >
+                  <span className="dash-sidebar-link-icon">{item.icon}</span>
+                  <span className="dash-sidebar-link-label">{item.label}</span>
+                </a>
+              ))}
+            </div>
+          </section>
         ))}
       </nav>
 
       <div className="dash-sidebar-footer">
-        MiniRue Admin v0.1
+        <div className="dash-sidebar-footer-link">Storefront</div>
+        <div className="dash-sidebar-footer-user">
+          <div className="dash-sidebar-footer-avatar" aria-hidden="true">
+            MR
+          </div>
+          <div className="dash-sidebar-footer-copy">
+            {userRole ? <RoleBadge role={userRole} size="compact" /> : null}
+            <span className="dash-sidebar-footer-version">MiniRue Admin v0.1</span>
+          </div>
+        </div>
       </div>
     </aside>
   );

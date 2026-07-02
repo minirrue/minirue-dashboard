@@ -10,11 +10,12 @@ import {
   archiveProduct,
   listCategories,
 } from '@/lib/catalog/api';
-import type { Product, Category, Gender, ProductVariant } from '@/lib/catalog/types';
+import type { Product, Category, Gender, ProductVariant, ProductMedia } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
 import StatusBadge from '@/components/dashboard/StatusBadge';
 import type { StatusKind } from '@/components/dashboard/StatusBadge';
 import VariantsSection from './VariantsSection';
+import MediaSection from './MediaSection';
 
 /* ── Types ── */
 interface FormValues {
@@ -123,6 +124,7 @@ export default function EditProductPage() {
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
 
   const [variants, setVariants] = useState<ProductVariant[]>([]);
+  const [media, setMedia] = useState<ProductMedia[]>([]);
 
   /* Load product */
   useEffect(() => {
@@ -140,6 +142,7 @@ export default function EditProductPage() {
           categoryIds: p.categories.map((c) => c.id),
         });
         setVariants(p.variants);
+        setMedia(p.media ?? []);
       })
       .catch((e: ApiError) => setLoadError(e.message ?? 'Failed to load product.'))
       .finally(() => setLoading(false));
@@ -216,7 +219,7 @@ export default function EditProductPage() {
     setArchiving(true);
     try {
       await archiveProduct(id);
-      router.push('/products');
+      router.push('/dashboard/products');
     } catch (e) {
       const err = e as ApiError;
       setPublishError(err.message ?? 'Archive failed.');
@@ -229,7 +232,7 @@ export default function EditProductPage() {
       <>
         <div className="dash-page-header">
           <h1 className="dash-page-title">Edit Product</h1>
-          <Link href="/products" className="dash-btn-ghost">Back to Products</Link>
+          <Link href="/dashboard/products" className="dash-btn-ghost">Back to Products</Link>
         </div>
         <EditSkeleton />
       </>
@@ -244,7 +247,7 @@ export default function EditProductPage() {
         </div>
         <div className="dash-card">
           <p className="dash-inline-error">{loadError ?? 'Product not found.'}</p>
-          <Link href="/products" className="dash-btn-ghost" style={{ marginTop: 12, display: 'inline-block' }}>
+          <Link href="/dashboard/products" className="dash-btn-ghost" style={{ marginTop: 12, display: 'inline-block' }}>
             Back to Products
           </Link>
         </div>
@@ -288,7 +291,7 @@ export default function EditProductPage() {
               Archive
             </button>
           )}
-          <Link href="/products" className="dash-btn-ghost">
+          <Link href="/dashboard/products" className="dash-btn-ghost">
             Back
           </Link>
         </div>
@@ -422,6 +425,8 @@ export default function EditProductPage() {
           )}
         </div>
       </form>
+
+      <MediaSection productId={id} media={media} onMediaChange={setMedia} />
 
       <VariantsSection
         productId={id}

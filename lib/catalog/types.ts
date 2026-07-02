@@ -1,5 +1,5 @@
 export type ProductStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED' | 'PUBLISHED';
-export type BottleType = 'EDP' | 'EDT' | 'EAU_DE_COLOGNE' | 'PERFUME_OIL' | 'spray' | 'splash' | 'travel' | 'refill';
+export type BottleType = 'EDP' | 'EDT' | 'Parfum' | 'Hair Mist' | 'spray' | 'splash' | 'travel' | 'refill';
 export type Gender = 'MASCULINE' | 'FEMININE' | 'UNISEX' | 'men' | 'women' | 'unisex';
 
 export interface Category {
@@ -22,6 +22,15 @@ export interface ProductVariant {
   priceAmount: number;
   currency: string;
   stock: number;
+}
+
+export interface ProductMedia {
+  id: string;
+  cloudinaryPublicId: string;
+  width: number | null;
+  height: number | null;
+  altText: string | null;
+  sortOrder: number;
 }
 
 export interface ProductListItem {
@@ -52,6 +61,7 @@ export interface Product {
   category: Category | null;
   categories: Category[];
   variants: ProductVariant[];
+  media: ProductMedia[];
   createdAt: string;
   updatedAt: string;
 }

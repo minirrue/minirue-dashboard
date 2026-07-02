@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import DashboardTable from '@/components/dashboard/DashboardTable';
 import type { Column } from '@/components/dashboard/DashboardTable';
 import { apiAdminListCustomers } from '@/lib/api/customers';
@@ -67,12 +68,24 @@ function SkeletonRows() {
   );
 }
 
+const TIER_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'All tiers' },
+  { value: 'BRONZE', label: 'Bronze' },
+  { value: 'SILVER', label: 'Silver' },
+  { value: 'GOLD', label: 'Gold' },
+  { value: 'PLATINUM', label: 'Platinum' },
+];
+
 const COLUMNS: Column<CustomerListItem>[] = [
   {
     key: 'displayName',
     label: 'Name',
     sortable: true,
-    render: (row) => displayName(row),
+    render: (row) => (
+      <Link href={`/dashboard/customers/${row.customerId}`} className="dash-link">
+        {displayName(row)}
+      </Link>
+    ),
   },
   {
     key: 'tier',
@@ -97,6 +110,16 @@ const COLUMNS: Column<CustomerListItem>[] = [
     sortable: true,
     render: (row) => formatDate(row.createdAt),
   },
+  {
+    key: '_actions',
+    label: '',
+    align: 'right',
+    render: (row) => (
+      <Link href={`/dashboard/customers/${row.customerId}`} className="dash-btn-ghost">
+        View
+      </Link>
+    ),
+  },
 ];
 
 export default function CustomersClient() {
@@ -104,12 +127,13 @@ export default function CustomersClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [tierFilter, setTierFilter] = useState('');
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (tier?: TierLevel) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiAdminListCustomers({ limit: 200 });
+      const res = await apiAdminListCustomers({ limit: 200, tier });
       setAllCustomers(res.data);
     } catch (e) {
       setError((e as ApiError).message ?? 'Failed to load customers');
@@ -118,7 +142,9 @@ export default function CustomersClient() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load(tierFilter ? (tierFilter as TierLevel) : undefined);
+  }, [load, tierFilter]);
 
   const customers = search.trim()
     ? allCustomers.filter((c) => {
@@ -142,6 +168,18 @@ export default function CustomersClient() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        <select
+          className="dash-select"
+          value={tierFilter}
+          onChange={(e) => setTierFilter(e.target.value)}
+          style={{ minWidth: 140 }}
+        >
+          {TIER_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {loading ? (
@@ -149,7 +187,11 @@ export default function CustomersClient() {
       ) : error ? (
         <div className="dash-card">
           <p className="dash-inline-error">{error}</p>
-          <button className="dash-btn-secondary" style={{ marginTop: 12 }} onClick={load}>
+          <button
+            className="dash-btn-secondary"
+            style={{ marginTop: 12 }}
+            onClick={() => load(tierFilter ? (tierFilter as TierLevel) : undefined)}
+          >
             Retry
           </button>
         </div>

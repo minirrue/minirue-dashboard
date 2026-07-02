@@ -151,7 +151,7 @@ export default function ProductsClient() {
       label: 'Product',
       sortable: true,
       render: (row) => (
-        <Link href={`/products/${row.id}/edit`} className="dash-link">
+        <Link href={`/dashboard/products/${row.id}/edit`} className="dash-link">
           {row.name}
         </Link>
       ),
@@ -180,7 +180,7 @@ export default function ProductsClient() {
       label: 'Actions',
       render: (row) => (
         <div className="dash-row-actions">
-          <Link href={`/products/${row.id}/edit`} className="dash-btn-ghost">
+          <Link href={`/dashboard/products/${row.id}/edit`} className="dash-btn-ghost">
             Edit
           </Link>
           {row.status !== 'PUBLISHED' && (
@@ -211,7 +211,7 @@ export default function ProductsClient() {
       {/* Header */}
       <div className="dash-page-header">
         <h1 className="dash-page-title">Products</h1>
-        <Link href="/products/new" className="dash-btn-primary">
+        <Link href="/dashboard/products/new" className="dash-btn-primary">
           New Product
         </Link>
       </div>
