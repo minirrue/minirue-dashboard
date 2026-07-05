@@ -1,7 +1,12 @@
 import { apiFetch } from './client';
-import type { UpdateWorkspaceProfile } from '@minirue/contracts/collaborators';
 
 export type CollabModule = 'ORDERS' | 'PRODUCTS' | 'ANALYTICS';
+
+export interface UpdateWorkspaceProfile {
+  brandSlug: string;
+  contactEmail: string;
+  storefrontVisible?: boolean;
+}
 
 export interface CollabOverview {
   brandSlug: string;
