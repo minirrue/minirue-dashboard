@@ -73,8 +73,8 @@ export default function MediaSection({ productId, media, onMediaChange }: Props)
                   width: '100%',
                   aspectRatio: '4/5',
                   objectFit: 'cover',
-                  borderRadius: 4,
-                  border: '1px solid var(--dash-border, #e8e4dc)',
+                  borderRadius: 'var(--mr-radius-sm)',
+                  border: '1px solid var(--mr-dash-hair)',
                 }}
               />
               <figcaption

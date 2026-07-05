@@ -4,6 +4,7 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiLogin } from '@/lib/api/auth';
 import type { ApiError } from '@/lib/api/client';
+import ErrorBanner from '@/components/dashboard/ErrorBanner';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -42,7 +43,7 @@ export default function LoginPage() {
     <div
       style={{
         minHeight: '100vh',
-        background: '#F6F2E9',
+        background: 'var(--mr-cream-200)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -51,12 +52,12 @@ export default function LoginPage() {
     >
       <div
         style={{
-          background: '#fff',
-          borderRadius: 16,
+          background: 'var(--mr-dash-surface)',
+          borderRadius: 'var(--mr-radius-lg)',
           padding: '40px',
           width: '100%',
           maxWidth: 400,
-          boxShadow: '0 6px 14px rgba(11,11,11,0.10), 0 12px 28px rgba(11,11,11,0.08)',
+          boxShadow: 'var(--mr-shadow-md)',
         }}
       >
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
@@ -65,7 +66,7 @@ export default function LoginPage() {
               fontFamily: "'Cormorant Garamond', serif",
               fontWeight: 500,
               fontSize: 28,
-              color: '#95783C',
+              color: 'var(--mr-gold-500)',
               letterSpacing: '-0.01em',
               lineHeight: 1,
             }}
@@ -78,7 +79,7 @@ export default function LoginPage() {
               fontSize: 10,
               letterSpacing: '0.18em',
               textTransform: 'uppercase',
-              color: '#8A8376',
+              color: 'var(--mr-ink-400)',
               marginTop: 6,
             }}
           >
@@ -87,19 +88,8 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div
-            role="alert"
-            style={{
-              background: '#FADDDE',
-              color: '#8E1418',
-              borderRadius: 8,
-              padding: '10px 14px',
-              fontFamily: "'Inter Tight', sans-serif",
-              fontSize: 13,
-              marginBottom: 20,
-            }}
-          >
-            {error}
+          <div style={{ marginBottom: 20 }}>
+            <ErrorBanner animated={false} message={error} />
           </div>
         )}
 
@@ -113,7 +103,7 @@ export default function LoginPage() {
                 fontSize: 10,
                 letterSpacing: '0.18em',
                 textTransform: 'uppercase',
-                color: '#5C564C',
+                color: 'var(--mr-ink-500)',
                 marginBottom: 8,
               }}
             >
@@ -132,11 +122,11 @@ export default function LoginPage() {
                 borderTop: 'none',
                 borderLeft: 'none',
                 borderRight: 'none',
-                borderBottom: '1px solid #CFC3A4',
+                borderBottom: '1px solid var(--mr-border)',
                 padding: '10px 0',
                 fontFamily: "'Inter Tight', sans-serif",
                 fontSize: 14,
-                color: '#0B0B0B',
+                color: 'var(--mr-ink-900)',
                 background: 'transparent',
                 outline: 'none',
                 boxSizing: 'border-box',
@@ -153,7 +143,7 @@ export default function LoginPage() {
                 fontSize: 10,
                 letterSpacing: '0.18em',
                 textTransform: 'uppercase',
-                color: '#5C564C',
+                color: 'var(--mr-ink-500)',
                 marginBottom: 8,
               }}
             >
@@ -172,11 +162,11 @@ export default function LoginPage() {
                 borderTop: 'none',
                 borderLeft: 'none',
                 borderRight: 'none',
-                borderBottom: '1px solid #CFC3A4',
+                borderBottom: '1px solid var(--mr-border)',
                 padding: '10px 0',
                 fontFamily: "'Inter Tight', sans-serif",
                 fontSize: 14,
-                color: '#0B0B0B',
+                color: 'var(--mr-ink-900)',
                 background: 'transparent',
                 outline: 'none',
                 boxSizing: 'border-box',
@@ -191,10 +181,10 @@ export default function LoginPage() {
               display: 'block',
               width: '100%',
               height: 48,
-              background: loading ? '#2E2A24' : '#0B0B0B',
-              color: '#F6F2E9',
+              background: loading ? 'var(--mr-ink-700)' : 'var(--mr-ink-900)',
+              color: 'var(--mr-cream-200)',
               border: 'none',
-              borderRadius: 6,
+              borderRadius: 'var(--mr-radius-sm)',
               fontFamily: "'Jost', sans-serif",
               fontSize: 14,
               letterSpacing: '0.22em',

@@ -1119,7 +1119,7 @@
   height: 14px;
   background: var(--mr-dash-sub);
   border-radius: var(--mr-radius-sm);
-  animation: dash-shimmer 1.4s ease-in-out infinite;
+  animation: dash-shimmer calc(var(--mr-dur-crawl) + var(--mr-dur-medium) + var(--mr-dur-medium)) var(--mr-ease-ios) infinite;
 }
 @keyframes dash-shimmer {
   0%, 100% { opacity: 1; }
@@ -2002,5 +2002,41 @@
 @media (pointer: coarse), (prefers-reduced-motion: reduce) {
   .mr-cursor {
     display: none !important;
+  }
+}
+
+.dash-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--mr-crimson-100);
+  color: var(--mr-crimson-700);
+  border-radius: var(--mr-radius-md);
+  font-family: "Inter Tight", sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+}
+.dash-error-banner[data-animated="true"] {
+  animation: mr-fade-up 0.25s ease-out;
+}
+.dash-error-banner-message {
+  flex: 1;
+}
+.dash-error-banner-dismiss {
+  background: transparent;
+  border: none;
+  color: var(--mr-crimson-700);
+  font-family: "Jost", sans-serif;
+  font-size: 11px;
+  text-transform: uppercase;
+  cursor: pointer;
+  min-width: 32px;
+  min-height: 32px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dash-error-banner[data-animated="true"] {
+    animation: none;
   }
 }
