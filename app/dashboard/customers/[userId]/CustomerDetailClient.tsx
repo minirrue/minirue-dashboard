@@ -91,7 +91,7 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
     <>
       <div className="dash-page-header">
         <div>
-          <Link href="/dashboard/customers" className="dash-link" style={{ fontSize: 13 }}>
+          <Link href="/customers" className="dash-link" style={{ fontSize: 13 }}>
             ← Customers
           </Link>
           <h1 className="dash-page-title" style={{ marginTop: 8 }}>

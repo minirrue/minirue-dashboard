@@ -28,7 +28,7 @@ export default function CollabAccessDenied({ moduleName = 'This module' }: Colla
 
       action={
 
-        <Link href="/dashboard/collab" className="dash-btn-primary">
+        <Link href="/collab" className="dash-btn-primary">
 
           Back to partner workspace
 

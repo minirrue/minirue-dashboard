@@ -1,4 +1,5 @@
 import { apiFetch } from './client';
+import type { UpdateWorkspaceProfile } from '@minirue/contracts/collaborators';
 
 export type CollabModule = 'ORDERS' | 'PRODUCTS' | 'ANALYTICS';
 
@@ -7,6 +8,8 @@ export interface CollabOverview {
   displayName: string;
   modules: CollabModule[];
   autoPublishProducts?: boolean;
+  contactEmail: string;
+  storefrontVisible: boolean;
   counts: { orders: number; products: number };
 }
 
@@ -102,4 +105,12 @@ export async function apiCollabAnalytics(period: '7d' | '30d' | '90d' = '30d'): 
   daily: Array<{ date: string; orders: number; revenueCents: number }>;
 }> {
   return apiFetch(`/collab/analytics?period=${period}`, { auth: true });
+}
+
+export async function apiUpdateWorkspaceProfile(data: UpdateWorkspaceProfile): Promise<{message: string}> {
+  return apiFetch<{message: string}>('/collab/workspace/profile', {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify(data),
+  });
 }

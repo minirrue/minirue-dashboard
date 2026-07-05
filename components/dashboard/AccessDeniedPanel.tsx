@@ -13,7 +13,7 @@ export interface AccessDeniedPanelProps {
 
 export default function AccessDeniedPanel({ role, attemptedPath }: AccessDeniedPanelProps) {
   const section = routeSectionLabel(attemptedPath);
-  const homeHref = isRole(role) ? firstAccessibleDashboardRoute(role) : '/dashboard';
+  const homeHref = isRole(role) ? firstAccessibleDashboardRoute(role) : '/overview';
   const brief = isRole(role) ? roleBrief(role) : null;
 
   return (
@@ -43,13 +43,13 @@ export default function AccessDeniedPanel({ role, attemptedPath }: AccessDeniedP
         <Link href={homeHref} className="dash-btn-primary">
           Go to my dashboard
         </Link>
-        {role === Role.STAFF && canAccessDashboardRoute(role, '/dashboard/collab') ? (
-          <Link href="/dashboard/collab" className="dash-btn-secondary">
+        {role === Role.STAFF && canAccessDashboardRoute(role, '/collab') ? (
+          <Link href="/collab" className="dash-btn-secondary">
             Partner workspace
           </Link>
         ) : null}
-        {isRole(role) && canAccessDashboardRoute(role, '/dashboard/orders') ? (
-          <Link href="/dashboard/orders" className="dash-btn-secondary">
+        {isRole(role) && canAccessDashboardRoute(role, '/orders') ? (
+          <Link href="/orders" className="dash-btn-secondary">
             View orders
           </Link>
         ) : null}

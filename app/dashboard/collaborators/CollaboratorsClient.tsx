@@ -48,7 +48,7 @@ const COLUMNS: Column<CollaboratorListItem>[] = [
 
     render: (row) => (
 
-      <Link href={`/dashboard/collaborators/${row.id}`} className="dash-link">
+      <Link href={`/collaborators/${row.id}`} className="dash-link">
 
         {row.brandName}
 
@@ -108,7 +108,7 @@ const COLUMNS: Column<CollaboratorListItem>[] = [
 
     render: (row) => (
 
-      <Link href={`/dashboard/collaborators/${row.id}`} className="dash-btn-ghost">
+      <Link href={`/collaborators/${row.id}`} className="dash-btn-ghost">
 
         Manage
 
@@ -196,13 +196,13 @@ export default function CollaboratorsClient() {
 
         <div className="collab-action-row" style={{ marginTop: 0 }}>
 
-          <Link href="/dashboard/collaborators/review" className="dash-btn-secondary">
+          <Link href="/collaborators/review" className="dash-btn-secondary">
 
             Review queue
 
           </Link>
 
-          <Link href="/dashboard/collaborators/new" className="dash-btn-primary">
+          <Link href="/collaborators/new" className="dash-btn-primary">
 
             Add collaborator
 
@@ -260,7 +260,7 @@ export default function CollaboratorsClient() {
 
           action={
 
-            <Link href="/dashboard/collaborators/new" className="dash-btn-primary">
+            <Link href="/collaborators/new" className="dash-btn-primary">
 
               Add collaborator
 

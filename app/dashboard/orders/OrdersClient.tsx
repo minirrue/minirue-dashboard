@@ -170,7 +170,7 @@ export default function OrdersClient() {
         label: 'Order',
         sortable: true,
         render: (row) => (
-          <Link href={`/dashboard/orders/${row.id}`} className="dash-link">
+          <Link href={`/orders/${row.id}`} className="dash-link">
             {row.orderNumber}
           </Link>
         ),
@@ -209,7 +209,7 @@ export default function OrdersClient() {
         label: '',
         align: 'right',
         render: (row) => (
-          <Link href={`/dashboard/orders/${row.id}`} className="dash-btn-ghost">
+          <Link href={`/orders/${row.id}`} className="dash-btn-ghost">
             View
           </Link>
         ),

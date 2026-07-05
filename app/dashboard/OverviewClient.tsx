@@ -161,7 +161,7 @@ export default function OverviewClient() {
   useEffect(() => {
     if (!user) return;
 
-    const canAnalytics = canAccessDashboardRoute(user.role, '/dashboard/analytics');
+    const canAnalytics = canAccessDashboardRoute(user.role, '/analytics');
 
     Promise.all([
       canAnalytics ? apiGetAnalyticsOverview().catch(() => null) : Promise.resolve(null),
@@ -196,7 +196,7 @@ export default function OverviewClient() {
     );
   }
 
-  const canAnalytics = canAccessDashboardRoute(user.role, '/dashboard/analytics');
+  const canAnalytics = canAccessDashboardRoute(user.role, '/analytics');
   const displayName = user.name?.trim() || user.email.split('@')[0];
 
   /* ── metric cards (real data) ── */
@@ -274,7 +274,7 @@ export default function OverviewClient() {
       <div className="dash-card" style={{ padding: 0, overflow: 'hidden', animationDelay: '340ms' }}>
         <div className="dash-panel-head">
           <h2 className="dash-panel-title" style={{ margin: 0 }}>Recent orders</h2>
-          <button className="dash-btn-ghost" onClick={() => router.push('/dashboard/orders')}>View all →</button>
+          <button className="dash-btn-ghost" onClick={() => router.push('/orders')}>View all →</button>
         </div>
         <div className="dash-table-wrap">
           <table className="dash-table">
@@ -300,7 +300,7 @@ export default function OverviewClient() {
                     <tr
                       key={o.id}
                       style={{ cursor: 'pointer', animation: 'mr-fade-up 0.4s var(--mr-ease-out) both', animationDelay: `${400 + i * 45}ms` }}
-                      onClick={() => router.push(`/dashboard/orders/${o.id}`)}
+                      onClick={() => router.push(`/orders/${o.id}`)}
                     >
                       <td><code style={{ fontSize: 12, color: 'var(--mr-fg-3)' }}>{o.orderNumber}</code></td>
                       <td style={{ fontSize: 13, color: 'var(--mr-fg)' }}>{o.shippingAddressSnapshot.fullName}</td>

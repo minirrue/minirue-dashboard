@@ -222,7 +222,7 @@ export default function RefundsClient() {
                     <tr key={row.id}>
                       <td><code style={{ fontSize: 12 }}>{row.id.slice(0, 8)}…</code></td>
                       <td>
-                        <Link href={`/dashboard/orders/${row.orderId}`} className="dash-link">
+                        <Link href={`/orders/${row.orderId}`} className="dash-link">
                           {row.orderId.slice(0, 8)}…
                         </Link>
                       </td>

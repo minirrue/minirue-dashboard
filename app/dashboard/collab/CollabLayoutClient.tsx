@@ -24,11 +24,11 @@ import type { ApiError } from '@/lib/api/client';
 
 const MODULE_LINKS: { module: CollabModule; label: string; href: string }[] = [
 
-  { module: 'ORDERS', label: 'Orders', href: '/dashboard/collab/orders' },
+  { module: 'ORDERS', label: 'Orders', href: '/collab/orders' },
 
-  { module: 'PRODUCTS', label: 'Products', href: '/dashboard/collab/products' },
+  { module: 'PRODUCTS', label: 'Products', href: '/collab/products' },
 
-  { module: 'ANALYTICS', label: 'Analytics', href: '/dashboard/collab/analytics' },
+  { module: 'ANALYTICS', label: 'Analytics', href: '/collab/analytics' },
 
 ];
 
@@ -80,7 +80,7 @@ export default function CollabLayoutClient({ children }: { children: ReactNode }
 
           </div>
 
-          <Link href="/dashboard/collab/brand" className="dash-btn-secondary">
+          <Link href="/collab/brand" className="dash-btn-secondary">
 
             Brand profile
 
@@ -92,15 +92,29 @@ export default function CollabLayoutClient({ children }: { children: ReactNode }
 
           <Link
 
-            href="/dashboard/collab"
+            href="/collab"
 
             className="dash-btn-ghost"
 
-            data-active={pathname === '/dashboard/collab' ? 'true' : undefined}
+            data-active={pathname === '/collab' ? 'true' : undefined}
 
           >
 
             Overview
+
+          </Link>
+
+          <Link
+
+            href="/collab/profile"
+
+            className="dash-btn-ghost"
+
+            data-active={pathname === '/collab/profile' ? 'true' : undefined}
+
+          >
+
+            Profile
 
           </Link>
 

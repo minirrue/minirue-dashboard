@@ -174,7 +174,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
       {/* Page header */}
       <div className="dash-page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Link href="/dashboard/orders" className="dash-btn-ghost">
+          <Link href="/orders" className="dash-btn-ghost">
             ← Orders
           </Link>
           <h1 className="dash-page-title">{order.orderNumber}</h1>

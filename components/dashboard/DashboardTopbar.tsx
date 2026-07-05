@@ -29,14 +29,14 @@ function getInitials(name: string): string {
 }
 
 export default function DashboardTopbar({
-  breadcrumbs = [{ label: 'Dashboard' }],
+  breadcrumbs = [{ label: 'Overview' }],
   userName = 'Admin',
   userRole,
   eyebrow,
   title,
 }: DashboardTopbarProps) {
-  const resolvedTitle = title ?? breadcrumbs[breadcrumbs.length - 1]?.label ?? 'Dashboard';
-  const resolvedEyebrow = eyebrow ?? breadcrumbs[0]?.label ?? 'Dashboard';
+  const resolvedTitle = title ?? breadcrumbs[breadcrumbs.length - 1]?.label ?? 'Overview';
+  const resolvedEyebrow = eyebrow ?? breadcrumbs[0]?.label ?? 'Overview';
   const [notifOpen, setNotifOpen] = useState(false);
 
   return (

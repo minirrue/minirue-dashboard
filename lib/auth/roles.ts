@@ -8,24 +8,24 @@ const COLLAB_ROLES: RoleType[] = [Role.COLLAB, Role.DEV];
  * See `knowledge/specs/005-shared-enums-types/data-model.md` RBAC matrix.
  */
 export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
-  '/dashboard': [Role.ADMIN, Role.OWNER, Role.STAFF, Role.DEV],
-  '/dashboard/products': [Role.ADMIN, Role.OWNER, Role.DEV],
-  '/dashboard/categories': [Role.ADMIN, Role.OWNER, Role.DEV],
-  '/dashboard/orders': [Role.ADMIN, Role.OWNER, Role.STAFF, Role.DEV],
-  '/dashboard/customers': [Role.ADMIN, Role.OWNER, Role.DEV],
-  '/dashboard/fulfillment': [Role.ADMIN, Role.OWNER, Role.STAFF, Role.DEV],
-  '/dashboard/refunds': [Role.ADMIN, Role.OWNER, Role.DEV],
-  '/dashboard/inventory': [Role.ADMIN, Role.OWNER, Role.DEV],
-  '/dashboard/analytics': [Role.OWNER, Role.STAFF, Role.DEV],
-  '/dashboard/loyalty': [Role.ADMIN, Role.OWNER, Role.DEV],
-  '/dashboard/settings': [Role.ADMIN, Role.OWNER, Role.DEV],
-  '/dashboard/storefront-appearance': [Role.ADMIN, Role.OWNER, Role.DEV],
-  '/dashboard/collaborators': [Role.ADMIN, Role.OWNER],
-  '/dashboard/collab': COLLAB_ROLES,
-  '/dashboard/collab/orders': COLLAB_ROLES,
-  '/dashboard/collab/products': COLLAB_ROLES,
-  '/dashboard/collab/brand': COLLAB_ROLES,
-  '/dashboard/collab/analytics': COLLAB_ROLES,
+  '/overview': [Role.ADMIN, Role.OWNER, Role.STAFF, Role.DEV],
+  '/products': [Role.ADMIN, Role.OWNER, Role.DEV],
+  '/categories': [Role.ADMIN, Role.OWNER, Role.DEV],
+  '/orders': [Role.ADMIN, Role.OWNER, Role.STAFF, Role.DEV],
+  '/customers': [Role.ADMIN, Role.OWNER, Role.DEV],
+  '/fulfillment': [Role.ADMIN, Role.OWNER, Role.STAFF, Role.DEV],
+  '/refunds': [Role.ADMIN, Role.OWNER, Role.DEV],
+  '/inventory': [Role.ADMIN, Role.OWNER, Role.DEV],
+  '/analytics': [Role.OWNER, Role.STAFF, Role.DEV],
+  '/loyalty': [Role.ADMIN, Role.OWNER, Role.DEV],
+  '/settings': [Role.ADMIN, Role.OWNER, Role.DEV],
+  '/storefront-appearance': [Role.ADMIN, Role.OWNER, Role.DEV],
+  '/collaborators': [Role.ADMIN, Role.OWNER],
+  '/collab': COLLAB_ROLES,
+  '/collab/orders': COLLAB_ROLES,
+  '/collab/products': COLLAB_ROLES,
+  '/collab/brand': COLLAB_ROLES,
+  '/collab/analytics': COLLAB_ROLES,
 };
 
 export const DASHBOARD_NAV_PATHS = Object.keys(DASHBOARD_ROUTE_ACCESS).sort(
@@ -37,10 +37,11 @@ export function isStaffRole(role: string): boolean {
 }
 
 export function normalizeDashboardPath(path: string): string {
+  const normalizedPath = path === '/dashboard' ? '/overview' : path.replace(/^\/dashboard(?=\/)/, '');
   for (const href of DASHBOARD_NAV_PATHS) {
-    if (path === href || path.startsWith(`${href}/`)) return href;
+    if (normalizedPath === href || normalizedPath.startsWith(`${href}/`)) return href;
   }
-  return '/dashboard';
+  return '/overview';
 }
 
 export function canAccessDashboardRoute(role: string, path: string): boolean {
@@ -54,15 +55,15 @@ export function canAccessDashboardRoute(role: string, path: string): boolean {
 export function firstAccessibleDashboardRoute(role: string): string {
   if (!isStaffRole(role)) return '/login';
   for (const href of [
-    '/dashboard/collab',
-    '/dashboard',
-    '/dashboard/orders',
-    '/dashboard/fulfillment',
-    '/dashboard/products',
-    '/dashboard/analytics',
-    '/dashboard/settings',
+    '/collab',
+    '/overview',
+    '/orders',
+    '/fulfillment',
+    '/products',
+    '/analytics',
+    '/settings',
   ]) {
     if (canAccessDashboardRoute(role, href)) return href;
   }
-  return '/dashboard';
+  return '/overview';
 }

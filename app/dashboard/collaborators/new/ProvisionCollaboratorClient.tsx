@@ -130,7 +130,7 @@ export default function ProvisionCollaboratorClient() {
 
       });
 
-      router.push('/dashboard/collaborators');
+      router.push('/collaborators');
 
     } catch (err) {
 
@@ -166,7 +166,7 @@ export default function ProvisionCollaboratorClient() {
 
         </div>
 
-        <Link href="/dashboard/collaborators" className="dash-btn-ghost">
+        <Link href="/collaborators" className="dash-btn-ghost">
 
           Cancel
 

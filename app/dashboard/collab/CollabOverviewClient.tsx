@@ -140,7 +140,7 @@ export default function CollabOverviewClient() {
 
             <div className="collab-action-row collab-action-row--center">
 
-              <Link href="/dashboard/collab/brand" className="dash-btn-primary">
+              <Link href="/collab/brand" className="dash-btn-primary">
 
                 Complete brand profile
 
@@ -148,7 +148,7 @@ export default function CollabOverviewClient() {
 
               {overview?.modules.includes('PRODUCTS') ? (
 
-                <Link href="/dashboard/collab/products/new" className="dash-btn-secondary">
+                <Link href="/collab/products/new" className="dash-btn-secondary">
 
                   Add first product
 
@@ -172,7 +172,7 @@ export default function CollabOverviewClient() {
 
             {overview?.modules.includes('PRODUCTS') ? (
 
-              <Link href="/dashboard/collab/products" className="dash-btn-secondary">
+              <Link href="/collab/products" className="dash-btn-secondary">
 
                 Manage products
 
@@ -182,7 +182,7 @@ export default function CollabOverviewClient() {
 
             {overview?.modules.includes('ORDERS') ? (
 
-              <Link href="/dashboard/collab/orders" className="dash-btn-secondary">
+              <Link href="/collab/orders" className="dash-btn-secondary">
 
                 View orders
 
@@ -192,7 +192,7 @@ export default function CollabOverviewClient() {
 
             {overview?.modules.includes('ANALYTICS') ? (
 
-              <Link href="/dashboard/collab/analytics" className="dash-btn-secondary">
+              <Link href="/collab/analytics" className="dash-btn-secondary">
 
                 Analytics
 
@@ -200,7 +200,7 @@ export default function CollabOverviewClient() {
 
             ) : null}
 
-            <Link href="/dashboard/collab/brand" className="dash-btn-ghost">
+            <Link href="/collab/brand" className="dash-btn-ghost">
 
               Brand profile
 

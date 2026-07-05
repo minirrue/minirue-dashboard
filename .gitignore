@@ -41,3 +41,4 @@ ruvector.db
 ruvector.db.lock
 
 .vercel
+.gstack/

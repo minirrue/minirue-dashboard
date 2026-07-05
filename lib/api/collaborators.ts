@@ -129,3 +129,33 @@ export async function apiRejectCollaboratorProduct(
     body: JSON.stringify({ reason }),
   });
 }
+
+export interface CollaboratorScope {
+  collaboratorId: string;
+  blockKey: string;
+  canEdit: boolean;
+  requiresApproval: boolean;
+}
+
+export interface AssignCollaboratorScope {
+  blockKey: string;
+  canEdit: boolean;
+  requiresApproval?: boolean;
+}
+
+export async function apiListCollaboratorScopes(
+  id: string,
+): Promise<{ items: CollaboratorScope[] }> {
+  return apiFetch(`/admin/collaborators/${id}/scopes`, { auth: true });
+}
+
+export async function apiAssignCollaboratorScope(
+  id: string,
+  data: AssignCollaboratorScope,
+): Promise<{ message: string }> {
+  return apiFetch(`/admin/collaborators/${id}/scopes`, {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify(data),
+  });
+}

@@ -114,7 +114,7 @@ export default function CollabProductsClient() {
 
           profileComplete ? (
 
-            <Link href="/dashboard/collab/products/new" className="dash-btn-primary">
+            <Link href="/collab/products/new" className="dash-btn-primary">
 
               Add product
 
@@ -122,7 +122,7 @@ export default function CollabProductsClient() {
 
           ) : (
 
-            <Link href="/dashboard/collab/brand" className="dash-btn-secondary">
+            <Link href="/collab/brand" className="dash-btn-secondary">
 
               Complete brand profile
 
@@ -168,7 +168,7 @@ export default function CollabProductsClient() {
 
             profileComplete ? (
 
-              <Link href="/dashboard/collab/products/new" className="dash-btn-primary">
+              <Link href="/collab/products/new" className="dash-btn-primary">
 
                 Add product
 
@@ -231,7 +231,7 @@ export default function CollabProductsClient() {
 
                         <Link
 
-                          href={`/dashboard/collab/products/${row.id}/edit`}
+                          href={`/collab/products/${row.id}/edit`}
 
                           className="dash-btn-ghost"
 

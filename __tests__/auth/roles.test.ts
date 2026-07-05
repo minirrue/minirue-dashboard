@@ -12,7 +12,7 @@ describe('role vocabulary', () => {
     expect(ROLE_VALUES).toEqual(
       expect.arrayContaining([Role.CUSTOMER, Role.STAFF, Role.ADMIN, Role.OWNER, Role.DEV]),
     );
-    expect(ROLE_VALUES).toHaveLength(5);
+    expect(ROLE_VALUES).toHaveLength(6);
   });
 
   it('rejects non-canonical role strings', () => {
@@ -24,23 +24,24 @@ describe('role vocabulary', () => {
 
 describe('dashboard RBAC routes', () => {
   it('maps nested paths to dashboard sections', () => {
-    expect(normalizeDashboardPath('/dashboard/orders/abc')).toBe('/dashboard/orders');
-    expect(normalizeDashboardPath('/dashboard')).toBe('/dashboard');
+    expect(normalizeDashboardPath('/dashboard/orders/abc')).toBe('/orders');
+    expect(normalizeDashboardPath('/orders/abc')).toBe('/orders');
+    expect(normalizeDashboardPath('/dashboard')).toBe('/overview');
   });
 
   it('allows staff operations for STAFF but not catalog admin', () => {
-    expect(canAccessDashboardRoute(Role.STAFF, '/dashboard/orders')).toBe(true);
-    expect(canAccessDashboardRoute(Role.STAFF, '/dashboard/products')).toBe(false);
+    expect(canAccessDashboardRoute(Role.STAFF, '/orders')).toBe(true);
+    expect(canAccessDashboardRoute(Role.STAFF, '/products')).toBe(false);
   });
 
   it('allows analytics for OWNER and STAFF but not ADMIN', () => {
-    expect(canAccessDashboardRoute(Role.OWNER, '/dashboard/analytics')).toBe(true);
-    expect(canAccessDashboardRoute(Role.STAFF, '/dashboard/analytics')).toBe(true);
-    expect(canAccessDashboardRoute(Role.ADMIN, '/dashboard/analytics')).toBe(false);
+    expect(canAccessDashboardRoute(Role.OWNER, '/analytics')).toBe(true);
+    expect(canAccessDashboardRoute(Role.STAFF, '/analytics')).toBe(true);
+    expect(canAccessDashboardRoute(Role.ADMIN, '/analytics')).toBe(false);
   });
 
   it('redirects unknown staff to their first allowed route', () => {
-    expect(firstAccessibleDashboardRoute(Role.STAFF)).toBe('/dashboard');
+    expect(firstAccessibleDashboardRoute(Role.STAFF)).toBe('/overview');
     expect(isStaffRole(Role.CUSTOMER)).toBe(false);
   });
 });

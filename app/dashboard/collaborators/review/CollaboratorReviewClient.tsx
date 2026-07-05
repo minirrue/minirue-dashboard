@@ -8,8 +8,6 @@ import Link from 'next/link';
 
 import {
 
-  CollabApiNotice,
-
   CollabEmptyState,
 
   CollabLoadingBlock,
@@ -44,8 +42,6 @@ export default function CollaboratorReviewClient() {
 
   const [error, setError] = useState<string | null>(null);
 
-  const [notice, setNotice] = useState<string | null>(null);
-
   const [rejectId, setRejectId] = useState<string | null>(null);
 
   const [rejectReason, setRejectReason] = useState('');
@@ -60,8 +56,6 @@ export default function CollaboratorReviewClient() {
 
     setError(null);
 
-    setNotice(null);
-
     try {
 
       const res = await apiListPendingReviewProducts();
@@ -72,17 +66,7 @@ export default function CollaboratorReviewClient() {
 
       const err = e as ApiError;
 
-      if (err.status === 404) {
-
-        setNotice('Review queue API not available yet — UI ready for when backend ships.');
-
-        setItems([]);
-
-      } else {
-
-        setError(err.message || 'Failed to load review queue');
-
-      }
+      setError(err.message || 'Failed to load review queue');
 
     } finally {
 
@@ -180,7 +164,7 @@ export default function CollaboratorReviewClient() {
 
         </div>
 
-        <Link href="/dashboard/collaborators" className="dash-btn-ghost">
+        <Link href="/collaborators" className="dash-btn-ghost">
 
           Back to collaborators
 
@@ -189,8 +173,6 @@ export default function CollaboratorReviewClient() {
       </div>
 
 
-
-      {notice ? <CollabApiNotice>{notice}</CollabApiNotice> : null}
 
       {error ? <p className="dash-inline-error">{error}</p> : null}
 

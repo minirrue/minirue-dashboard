@@ -164,13 +164,13 @@ export default function StockOverviewClient() {
       <div className="dash-page-header">
         <h1 className="dash-page-title">Inventory</h1>
         <div style={{ display: 'flex', gap: 8 }}>
-          <Link href="/dashboard/inventory/receive" className="dash-btn-primary">
+          <Link href="/inventory/receive" className="dash-btn-primary">
             Receive Stock
           </Link>
-          <Link href="/dashboard/inventory/movements" className="dash-btn-secondary">
+          <Link href="/inventory/movements" className="dash-btn-secondary">
             Movements
           </Link>
-          <Link href="/dashboard/inventory/warehouses" className="dash-btn-secondary">
+          <Link href="/inventory/warehouses" className="dash-btn-secondary">
             Warehouses
           </Link>
         </div>

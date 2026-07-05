@@ -134,49 +134,49 @@ const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
   {
     section: 'Partner',
     items: [
-      { label: 'Workspace', href: '/dashboard/collab', icon: <IconBarChart /> },
-      { label: 'My orders', href: '/dashboard/collab/orders', icon: <IconShoppingBag /> },
-      { label: 'My products', href: '/dashboard/collab/products', icon: <IconPackage /> },
-      { label: 'Brand profile', href: '/dashboard/collab/brand', icon: <IconPalette /> },
-      { label: 'My analytics', href: '/dashboard/collab/analytics', icon: <IconTrendingUp /> },
+      { label: 'Workspace', href: '/collab', icon: <IconBarChart /> },
+      { label: 'My orders', href: '/collab/orders', icon: <IconShoppingBag /> },
+      { label: 'My products', href: '/collab/products', icon: <IconPackage /> },
+      { label: 'Brand profile', href: '/collab/brand', icon: <IconPalette /> },
+      { label: 'My analytics', href: '/collab/analytics', icon: <IconTrendingUp /> },
     ],
   },
   {
     section: 'Store',
     items: [
-      { label: 'Overview', href: '/dashboard', icon: <IconBarChart /> },
-      { label: 'Products', href: '/dashboard/products', icon: <IconPackage /> },
-      { label: 'Categories', href: '/dashboard/categories', icon: <IconGrid /> },
-      { label: 'Orders', href: '/dashboard/orders', icon: <IconShoppingBag /> },
-      { label: 'Customers', href: '/dashboard/customers', icon: <IconUsers /> },
-      { label: 'Collaborators', href: '/dashboard/collaborators', icon: <IconUsers /> },
-      { label: 'Storefront', href: '/dashboard/storefront-appearance', icon: <IconPalette /> },
+      { label: 'Overview', href: '/overview', icon: <IconBarChart /> },
+      { label: 'Products', href: '/products', icon: <IconPackage /> },
+      { label: 'Categories', href: '/categories', icon: <IconGrid /> },
+      { label: 'Orders', href: '/orders', icon: <IconShoppingBag /> },
+      { label: 'Customers', href: '/customers', icon: <IconUsers /> },
+      { label: 'Collaborators', href: '/collaborators', icon: <IconUsers /> },
+      { label: 'Storefront', href: '/storefront-appearance', icon: <IconPalette /> },
     ],
   },
   {
     section: 'Operations',
     items: [
-      { label: 'Fulfillment', href: '/dashboard/fulfillment', icon: <IconTruck /> },
-      { label: 'Refunds', href: '/dashboard/refunds', icon: <IconRefreshCcw /> },
-      { label: 'Inventory', href: '/dashboard/inventory', icon: <IconPackage /> },
+      { label: 'Fulfillment', href: '/fulfillment', icon: <IconTruck /> },
+      { label: 'Refunds', href: '/refunds', icon: <IconRefreshCcw /> },
+      { label: 'Inventory', href: '/inventory', icon: <IconPackage /> },
     ],
   },
   {
     section: 'Insights',
     items: [
-      { label: 'Analytics', href: '/dashboard/analytics', icon: <IconTrendingUp /> },
-      { label: 'Loyalty', href: '/dashboard/loyalty', icon: <IconStar /> },
+      { label: 'Analytics', href: '/analytics', icon: <IconTrendingUp /> },
+      { label: 'Loyalty', href: '/loyalty', icon: <IconStar /> },
     ],
   },
   {
     section: 'System',
     items: [
-      { label: 'Settings', href: '/dashboard/settings', icon: <IconSettings /> },
+      { label: 'Settings', href: '/settings', icon: <IconSettings /> },
     ],
   },
 ];
 
-export default function DashboardSidebar({ activePath = '/dashboard', userRole }: DashboardSidebarProps) {
+export default function DashboardSidebar({ activePath = '/overview', userRole }: DashboardSidebarProps) {
   const visibleGroups = NAV_ITEMS.map((group) => ({
     ...group,
     items: userRole
@@ -207,7 +207,7 @@ export default function DashboardSidebar({ activePath = '/dashboard', userRole }
                   href={item.href}
                   className="dash-sidebar-link"
                   data-active={
-                    activePath === item.href || (item.href !== '/dashboard' && activePath.startsWith(`${item.href}/`))
+                    activePath === item.href || (item.href !== '/overview' && activePath.startsWith(`${item.href}/`))
                       ? 'true'
                       : undefined
                   }

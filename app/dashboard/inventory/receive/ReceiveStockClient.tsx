@@ -139,7 +139,7 @@ export default function ReceiveStockClient() {
     <>
       <div className="dash-page-header">
         <h1 className="dash-page-title">Receive Stock</h1>
-        <Link href="/dashboard/inventory" className="dash-btn-secondary">
+        <Link href="/inventory" className="dash-btn-secondary">
           Back to Inventory
         </Link>
       </div>
@@ -156,7 +156,7 @@ export default function ReceiveStockClient() {
             <button
               className="dash-btn-secondary"
               style={{ marginLeft: 'auto', marginTop: 8 }}
-              onClick={() => router.push('/dashboard/inventory')}
+              onClick={() => router.push('/inventory')}
             >
               View Inventory
             </button>
@@ -272,7 +272,7 @@ export default function ReceiveStockClient() {
               <button type="submit" className="dash-btn-primary" disabled={submitting}>
                 {submitting ? 'Receiving...' : 'Receive Stock'}
               </button>
-              <Link href="/dashboard/inventory" className="dash-btn-secondary">Cancel</Link>
+              <Link href="/inventory" className="dash-btn-secondary">Cancel</Link>
             </div>
           </div>
         </form>

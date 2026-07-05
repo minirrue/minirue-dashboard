@@ -219,7 +219,7 @@ export default function EditProductPage() {
     setArchiving(true);
     try {
       await archiveProduct(id);
-      router.push('/dashboard/products');
+      router.push('/products');
     } catch (e) {
       const err = e as ApiError;
       setPublishError(err.message ?? 'Archive failed.');
@@ -232,7 +232,7 @@ export default function EditProductPage() {
       <>
         <div className="dash-page-header">
           <h1 className="dash-page-title">Edit Product</h1>
-          <Link href="/dashboard/products" className="dash-btn-ghost">Back to Products</Link>
+          <Link href="/products" className="dash-btn-ghost">Back to Products</Link>
         </div>
         <EditSkeleton />
       </>
@@ -247,7 +247,7 @@ export default function EditProductPage() {
         </div>
         <div className="dash-card">
           <p className="dash-inline-error">{loadError ?? 'Product not found.'}</p>
-          <Link href="/dashboard/products" className="dash-btn-ghost" style={{ marginTop: 12, display: 'inline-block' }}>
+          <Link href="/products" className="dash-btn-ghost" style={{ marginTop: 12, display: 'inline-block' }}>
             Back to Products
           </Link>
         </div>
@@ -291,7 +291,7 @@ export default function EditProductPage() {
               Archive
             </button>
           )}
-          <Link href="/dashboard/products" className="dash-btn-ghost">
+          <Link href="/products" className="dash-btn-ghost">
             Back
           </Link>
         </div>

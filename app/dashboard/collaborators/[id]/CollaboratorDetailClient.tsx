@@ -6,7 +6,6 @@ import { useParams } from 'next/navigation';
 import {
   CollaboratorModuleChips,
   CollaboratorStatusBadge,
-  CollabApiNotice,
   CollabLoadingBlock,
 } from '@/components/collab/collab-ui';
 import {
@@ -40,7 +39,6 @@ export default function CollaboratorDetailClient() {
   const [actionLoading, setActionLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [settingsError, setSettingsError] = useState<string | null>(null);
-  const [settingsNotice, setSettingsNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [settingsSavedAt, setSettingsSavedAt] = useState<Date | null>(null);
@@ -124,7 +122,6 @@ export default function CollaboratorDetailClient() {
     }
     setSettingsSaving(true);
     setSettingsError(null);
-    setSettingsNotice(null);
     try {
       const updated = await apiUpdateCollaboratorSettings(id, {
         autoPublishProducts: autoPublish,
@@ -137,13 +134,7 @@ export default function CollaboratorDetailClient() {
       setSettingsSavedAt(new Date());
     } catch (e) {
       const err = e as ApiError;
-      if (err.status === 404) {
-        setSettingsNotice(
-          'Settings API not available yet — form is wired; save will work when backend ships PATCH /settings.',
-        );
-      } else {
-        setSettingsError(err.message || 'Failed to save settings');
-      }
+      setSettingsError(err.message || 'Failed to save settings');
     } finally {
       setSettingsSaving(false);
     }
@@ -192,7 +183,7 @@ export default function CollaboratorDetailClient() {
           <h1 className="dash-page-title">Collaborator</h1>
         </div>
         <p className="dash-inline-error">{error ?? 'Not found'}</p>
-        <Link href="/dashboard/collaborators" className="dash-btn-ghost">
+        <Link href="/collaborators" className="dash-btn-ghost">
           Back to list
         </Link>
       </>
@@ -211,8 +202,11 @@ export default function CollaboratorDetailClient() {
           </div>
         </div>
         <div className="collab-action-row" style={{ marginTop: 0 }}>
+          <Link href={`/dashboard/collaborators/${id}/scopes`} className="dash-btn-secondary">
+            Scopes
+          </Link>
           {!autoPublish ? (
-            <Link href="/dashboard/collaborators/review" className="dash-btn-secondary">
+            <Link href="/collaborators/review" className="dash-btn-secondary">
               Review queue
             </Link>
           ) : null}
@@ -235,7 +229,7 @@ export default function CollaboratorDetailClient() {
               Reactivate
             </button>
           ) : null}
-          <Link href="/dashboard/collaborators" className="dash-btn-ghost">
+          <Link href="/collaborators" className="dash-btn-ghost">
             Back
           </Link>
         </div>
@@ -383,7 +377,6 @@ export default function CollaboratorDetailClient() {
         </fieldset>
 
         {settingsError ? <p className="dash-inline-error">{settingsError}</p> : null}
-        {settingsNotice ? <CollabApiNotice>{settingsNotice}</CollabApiNotice> : null}
         <div className="dash-form-actions">
           <button type="submit" className="dash-btn-primary" disabled={settingsSaving}>
             {settingsSaving ? 'Saving…' : 'Save settings'}

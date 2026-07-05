@@ -158,7 +158,7 @@ export function ProductStatusBadge({ state }: { state: PublishState }) {
 
 export function CollabTrustBanner({ trusted }: { trusted: boolean }) {
   return (
-    <div className="collab-trust-banner" role="status">
+    <div className="collab-trust-banner" role="status" data-trust={trusted ? "trusted" : "review"}>
       {trusted ? (
         <p>
           <strong>Trusted partner</strong> — new products go live on your brand page immediately.
@@ -178,10 +178,10 @@ export function CollabProfileGate({ brandSlug }: { brandSlug: string }) {
     <div className="dash-role-notice collab-profile-gate">
       <p>
         Add a <strong>display name</strong> on your{' '}
-        <Link href="/dashboard/collab/brand" className="dash-link">
+        <Link href="/collab/brand" className="dash-link">
           brand profile
         </Link>{' '}
-        before creating products. Your storefront slug is <code>{brandSlug}</code>.
+        before creating products. Your storefront slug is <code className="dash-slug">{brandSlug}</code>.
       </p>
     </div>
   );

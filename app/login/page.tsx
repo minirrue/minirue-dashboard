@@ -19,7 +19,7 @@ export default function LoginPage() {
 
     try {
       await apiLogin(email, password);
-      router.push('/dashboard');
+      router.push('/overview');
     } catch (err: unknown) {
       const apiErr = err as ApiError;
       if (!navigator.onLine || apiErr.status === 0) {

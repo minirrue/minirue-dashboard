@@ -283,6 +283,30 @@ export async function createVariant(
   return mapVariant(raw);
 }
 
+export async function updateVariant(
+  productId: string,
+  variantId: string,
+  data: {
+    sizeMl?: number;
+    bottleType?: string;
+    priceAmount?: number;
+    currency?: string;
+  },
+): Promise<ProductVariant> {
+  const body: Record<string, unknown> = {};
+  if (data.sizeMl !== undefined) body.size_ml = data.sizeMl;
+  if (data.bottleType !== undefined) {
+    body.bottle_type = BOTTLE_TYPE_MAP[data.bottleType] ?? 'EDP';
+  }
+  if (data.priceAmount !== undefined) body.price_amount = data.priceAmount.toFixed(4);
+  if (data.currency !== undefined) body.price_currency = data.currency;
+  const raw = await apiFetch<BackendVariant>(
+    `${ADMIN}/products/${productId}/variants/${variantId}`,
+    { method: 'PATCH', auth: true, body: JSON.stringify(body) },
+  );
+  return mapVariant(raw);
+}
+
 export async function getProduct(id: string): Promise<Product> {
   const raw = await apiFetch<BackendProduct>(`${ADMIN}/products/${id}`, { auth: true });
   return mapProduct(raw);

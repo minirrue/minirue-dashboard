@@ -154,7 +154,7 @@ export default function MovementsClient() {
     <>
       <div className="dash-page-header">
         <h1 className="dash-page-title">Movement History</h1>
-        <Link href="/dashboard/inventory" className="dash-btn-secondary">Back to Inventory</Link>
+        <Link href="/inventory" className="dash-btn-secondary">Back to Inventory</Link>
       </div>
 
       <div className="dash-filters">

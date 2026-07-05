@@ -57,7 +57,7 @@ export default function CollabAddProductClient() {
       const stock = form.initialStock.trim();
       if (stock) payload.initialStock = Number.parseInt(stock, 10);
       await apiCollabCreateProduct(payload);
-      router.push('/dashboard/collab/products');
+      router.push('/collab/products');
     } catch (err) {
       const apiErr = err as ApiError;
       setError(apiErr.message || 'Failed to create product');
@@ -74,7 +74,7 @@ export default function CollabAddProductClient() {
         title="Add product"
         subtitle="Create a sellable SKU for your brand page."
         action={
-          <Link href="/dashboard/collab/products" className="dash-btn-ghost">
+          <Link href="/collab/products" className="dash-btn-ghost">
             Cancel
           </Link>
         }

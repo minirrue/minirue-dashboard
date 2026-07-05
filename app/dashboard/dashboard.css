@@ -930,8 +930,8 @@
   display: inline-flex;
   align-items: center;
   padding: 7px 14px;
-  background: var(--mr-st-danger-bg, #fee2e2);
-  color: var(--mr-st-danger-fg, #b91c1c);
+  background: var(--mr-st-danger-bg);
+  color: var(--mr-st-danger-fg);
   border: 1px solid transparent;
   border-radius: var(--mr-radius-md);
   font-size: 13px;
@@ -993,7 +993,7 @@
   margin: 0;
 }
 .dash-required {
-  color: var(--mr-st-danger-fg, #b91c1c);
+  color: var(--mr-st-danger-fg);
   margin-left: 2px;
 }
 .dash-input,
@@ -1014,11 +1014,11 @@
 .dash-select:focus,
 .dash-textarea:focus {
   outline: none;
-  border-color: var(--mr-ink-600, #6b7280);
+  border-color: var(--mr-ink-500);
 }
 .dash-input.dash-input-error,
 .dash-select.dash-input-error {
-  border-color: var(--mr-st-danger-fg, #b91c1c);
+  border-color: var(--mr-st-danger-fg);
 }
 .dash-input-search {
   min-width: 200px;
@@ -1029,7 +1029,7 @@
 }
 .dash-field-error {
   font-size: 12px;
-  color: var(--mr-st-danger-fg, #b91c1c);
+  color: var(--mr-st-danger-fg);
   margin: 2px 0 0;
 }
 .dash-help-text {
@@ -1092,10 +1092,14 @@
 /* ── Inline error ── */
 .dash-inline-error {
   font-size: 13px;
-  color: var(--mr-st-danger-fg, #b91c1c);
-  background: var(--mr-st-danger-bg, #fee2e2);
+  color: var(--mr-st-danger-fg);
+  background: var(--mr-st-danger-bg);
   border-radius: var(--mr-radius-sm);
   padding: 8px 12px;
+  margin: 0;
+}
+.dash-error {
+  color: var(--mr-st-danger-fg);
   margin: 0;
 }
 
@@ -1294,61 +1298,18 @@
   overflow: hidden;
 }
 .dash-revenue-bar-fill {
-  background: var(--mr-ink-700, #374151);
+  background: var(--mr-ink-700);
   height: 100%;
   width: 100%;
   border-radius: var(--mr-radius-sm);
   transform-origin: left;
-  transition: transform var(--mr-dur-normal, 250ms) var(--mr-ease-out, ease-in-out);
+  transition: transform var(--mr-dur-normal) var(--mr-ease-out);
 }
 .dash-status-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: currentColor;
-}
-
-/* ── Role badge (domain 005 RBAC UI) ── */
-.dash-role-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  border: 1px solid transparent;
-  white-space: nowrap;
-}
-.dash-role-badge--compact {
-  font-size: 10px;
-  padding: 3px 8px;
-  margin-bottom: 8px;
-}
-.dash-role-badge--owner {
-  color: #5c4a1f;
-  background: #f5ecd6;
-  border-color: #e8d9b0;
-}
-.dash-role-badge--admin {
-  color: #1e3a5f;
-  background: #e8f0fa;
-  border-color: #c5d9f0;
-}
-.dash-role-badge--staff {
-  color: #1f4d3a;
-  background: #e6f4ee;
-  border-color: #b8dcc8;
-}
-.dash-role-badge--dev {
-  color: #4a1f5c;
-  background: #f0e8fa;
-  border-color: #d4c0e8;
-}
-.dash-role-badge--customer {
-  color: var(--mr-fg-2);
-  background: var(--mr-dash-sub);
-  border-color: var(--mr-dash-hair);
 }
 
 /* ── Role welcome strip ── */
@@ -1397,8 +1358,8 @@
   font-size: 13px;
   line-height: 1.5;
   color: var(--mr-fg-2);
-  background: var(--mr-st-info-bg, #eff6ff);
-  border: 1px solid var(--mr-st-info-fg, #93c5fd);
+  background: var(--mr-st-info-bg);
+  border: 1px solid var(--mr-st-info-fg);
   border-radius: var(--mr-radius-md);
 }
 
@@ -1455,6 +1416,33 @@
   .dash-access-denied {
     transition: none;
   }
+  .dash-skeleton,
+  .dash-card {
+    animation: none;
+  }
+}
+
+/* ── Card heading ── */
+.dash-card-title {
+  font-size: var(--mr-text-md);
+  font-weight: 600;
+  font-family: var(--mr-font-label);
+  margin: 0 0 12px;
+  color: var(--mr-fg);
+}
+
+/* ── Page subtitle ── */
+.dash-page-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--mr-fg-2);
+}
+
+/* ── Toolbar ── */
+.dash-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* ── Collaborator portal ── */
@@ -1485,6 +1473,16 @@
 }
 .collab-trust-banner p {
   margin: 0;
+}
+.collab-trust-banner[data-trust="trusted"] {
+  background: var(--mr-st-ok-bg);
+  color: var(--mr-st-ok-fg);
+  border-color: color-mix(in srgb, var(--mr-st-ok-fg) 18%, var(--mr-st-ok-bg));
+}
+.collab-trust-banner[data-trust="review"] {
+  background: var(--mr-st-info-bg);
+  color: var(--mr-st-info-fg);
+  border-color: color-mix(in srgb, var(--mr-st-info-fg) 18%, var(--mr-st-info-bg));
 }
 .collab-summary-line {
   display: flex;
@@ -1615,7 +1613,7 @@
 .collab-save-ok {
   margin: 0;
   font-size: 13px;
-  color: var(--mr-success);
+  color: var(--mr-st-ok-fg);
 }
 .collab-profile-gate {
   margin-bottom: 16px;

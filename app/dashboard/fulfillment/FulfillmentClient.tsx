@@ -213,7 +213,7 @@ export default function FulfillmentClient() {
                   shipments.map((row) => (
                     <tr key={row.id}>
                       <td>
-                        <Link href={`/dashboard/orders/${row.orderId}`} className="dash-link">
+                        <Link href={`/orders/${row.orderId}`} className="dash-link">
                           {row.orderId.slice(0, 8)}…
                         </Link>
                       </td>

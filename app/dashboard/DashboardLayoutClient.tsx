@@ -36,7 +36,7 @@ function titleFromSegment(segment: string): string {
 export default function DashboardLayoutClient({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const activePath = normalizeDashboardPath(pathname ?? '/dashboard');
+  const activePath = normalizeDashboardPath(pathname ?? '/overview');
   const { data: user, isLoading, isError } = useUser();
   const [mounted, setMounted] = useState(false);
 
@@ -56,9 +56,9 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
     if (!mounted || isLoading || !user) return;
     if (
       user.role === Role.STAFF &&
-      (pathname === '/dashboard/collaborators' || pathname?.startsWith('/dashboard/collaborators/'))
+      (pathname === '/collaborators' || pathname?.startsWith('/collaborators/'))
     ) {
-      router.replace('/dashboard/collab');
+      router.replace('/collab');
     }
   }, [isLoading, mounted, pathname, router, user]);
 
@@ -74,14 +74,14 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
     Boolean(user) && !canAccessDashboardRoute(user!.role, activePath);
   const showLoadingShell = !mounted || isLoading;
   const pathSegments = activePath.split('/').filter(Boolean);
-  const isCollaboratorArea = pathSegments[1] === 'collab';
+  const isCollaboratorArea = pathSegments[0] === 'collab';
   const shellEyebrow = isCollaboratorArea ? 'Partner workspace' : 'MiniRue dashboard';
   const shellTitle =
     pathSegments.length <= 1
       ? isCollaboratorArea
         ? 'Workspace'
         : 'Overview'
-      : titleFromSegment(pathSegments[pathSegments.length - 1] ?? 'dashboard');
+      : titleFromSegment(pathSegments[pathSegments.length - 1] ?? 'overview');
 
   return (
     <DashboardShell

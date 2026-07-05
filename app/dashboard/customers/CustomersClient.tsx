@@ -82,7 +82,7 @@ const COLUMNS: Column<CustomerListItem>[] = [
     label: 'Name',
     sortable: true,
     render: (row) => (
-      <Link href={`/dashboard/customers/${row.customerId}`} className="dash-link">
+      <Link href={`/customers/${row.customerId}`} className="dash-link">
         {displayName(row)}
       </Link>
     ),
@@ -115,7 +115,7 @@ const COLUMNS: Column<CustomerListItem>[] = [
     label: '',
     align: 'right',
     render: (row) => (
-      <Link href={`/dashboard/customers/${row.customerId}`} className="dash-btn-ghost">
+      <Link href={`/customers/${row.customerId}`} className="dash-btn-ghost">
         View
       </Link>
     ),

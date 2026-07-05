@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { createVariant } from '@/lib/catalog/api';
+import { createVariant, updateVariant } from '@/lib/catalog/api';
 import type { ProductVariant, BottleType } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
 
@@ -59,6 +59,11 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
   const [formErrors, setFormErrors] = useState<VariantFormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<VariantFormValues>(EMPTY_FORM);
+  const [editErrors, setEditErrors] = useState<VariantFormErrors>({});
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editSubmitError, setEditSubmitError] = useState<string | null>(null);
 
   function setField<K extends keyof VariantFormValues>(key: K, value: VariantFormValues[K]) {
     setFormValues((prev) => ({ ...prev, [key]: value }));
@@ -95,6 +100,62 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
     }
   }
 
+  function editSetField<K extends keyof VariantFormValues>(key: K, value: VariantFormValues[K]) {
+    setEditValues((prev) => ({ ...prev, [key]: value }));
+    if (editErrors[key as keyof VariantFormErrors]) {
+      setEditErrors((prev) => ({ ...prev, [key]: undefined }));
+    }
+  }
+
+  function handleStartEdit(v: ProductVariant) {
+    setEditingId(v.id);
+    setEditValues({
+      sku: v.sku,
+      sizeMl: String(v.sizeMl),
+      bottleType: v.bottleType as BottleType,
+      priceAmount: String(v.priceAmount),
+      currency: v.currency,
+    });
+    setEditErrors({});
+    setEditSubmitError(null);
+  }
+
+  function handleCancelEdit() {
+    setEditingId(null);
+    setEditValues(EMPTY_FORM);
+    setEditErrors({});
+    setEditSubmitError(null);
+  }
+
+  async function handleEditSave(e: React.FormEvent, v: ProductVariant) {
+    e.preventDefault();
+    const errs = validateVariant(editValues);
+    if (Object.keys(errs).length > 0) {
+      setEditErrors(errs);
+      return;
+    }
+    setEditSubmitError(null);
+    setEditSubmitting(true);
+    try {
+      const updated = await updateVariant(productId, v.id, {
+        sizeMl: Number(editValues.sizeMl),
+        bottleType: editValues.bottleType as BottleType,
+        priceAmount: Number(editValues.priceAmount),
+        currency: editValues.currency.trim() || 'USD',
+      });
+      onVariantsChange(
+        variants.map((x) => (x.id === v.id ? updated : x)),
+      );
+      setEditingId(null);
+      setEditValues(EMPTY_FORM);
+    } catch (e) {
+      const err = e as ApiError;
+      setEditSubmitError(err.message ?? 'Failed to update variant.');
+    } finally {
+      setEditSubmitting(false);
+    }
+  }
+
   function formatPrice(amount: number, currency: string) {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
   }
@@ -126,16 +187,132 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
                 <th>Size (ml)</th>
                 <th>Bottle</th>
                 <th style={{ textAlign: 'right' }}>Price</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {variants.map((v) => (
-                <tr key={v.id}>
-                  <td>{v.sku}</td>
-                  <td>{v.sizeMl}</td>
-                  <td style={{ textTransform: 'capitalize' }}>{v.bottleType}</td>
-                  <td style={{ textAlign: 'right' }}>{formatPrice(v.priceAmount, v.currency)}</td>
-                </tr>
+                <React.Fragment key={v.id}>
+                  <tr>
+                    <td>{v.sku}</td>
+                    <td>{v.sizeMl}</td>
+                    <td style={{ textTransform: 'capitalize' }}>{v.bottleType}</td>
+                    <td style={{ textAlign: 'right' }}>{formatPrice(v.priceAmount, v.currency)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="dash-btn-ghost"
+                        onClick={() => handleStartEdit(v)}
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                  {editingId === v.id && (
+                    <tr>
+                      <td colSpan={5} style={{ background: 'var(--mr-dash-sub)', padding: '12px 14px' }}>
+                        <form className="dash-inline-form" onSubmit={(e) => handleEditSave(e, v)} noValidate>
+                          <div className="dash-field-row">
+                            <div className="dash-field">
+                              <label className="dash-label" htmlFor={`edit-sku-${v.id}`}>
+                                SKU
+                              </label>
+                              <input
+                                id={`edit-sku-${v.id}`}
+                                className="dash-input"
+                                value={editValues.sku}
+                                disabled
+                              />
+                            </div>
+                            <div className="dash-field">
+                              <label className="dash-label" htmlFor={`edit-size-${v.id}`}>
+                                Size (ml) <span className="dash-required">*</span>
+                              </label>
+                              <input
+                                id={`edit-size-${v.id}`}
+                                type="number"
+                                min={1}
+                                className={`dash-input${editErrors.sizeMl ? ' dash-input-error' : ''}`}
+                                value={editValues.sizeMl}
+                                onChange={(e) => editSetField('sizeMl', e.target.value)}
+                                disabled={editSubmitting}
+                              />
+                              {editErrors.sizeMl && <p className="dash-field-error">{editErrors.sizeMl}</p>}
+                            </div>
+                            <div className="dash-field">
+                              <label className="dash-label" htmlFor={`edit-bottle-${v.id}`}>
+                                Bottle Type <span className="dash-required">*</span>
+                              </label>
+                              <select
+                                id={`edit-bottle-${v.id}`}
+                                className={`dash-select${editErrors.bottleType ? ' dash-input-error' : ''}`}
+                                value={editValues.bottleType}
+                                onChange={(e) => editSetField('bottleType', e.target.value as BottleType | '')}
+                                disabled={editSubmitting}
+                              >
+                                {BOTTLE_OPTIONS.map((o) => (
+                                  <option key={o.value} value={o.value}>
+                                    {o.label}
+                                  </option>
+                                ))}
+                              </select>
+                              {editErrors.bottleType && <p className="dash-field-error">{editErrors.bottleType}</p>}
+                            </div>
+                          </div>
+                          <div className="dash-field-row">
+                            <div className="dash-field">
+                              <label className="dash-label" htmlFor={`edit-price-${v.id}`}>
+                                Price <span className="dash-required">*</span>
+                              </label>
+                              <input
+                                id={`edit-price-${v.id}`}
+                                type="number"
+                                min={0}
+                                step={0.01}
+                                className={`dash-input${editErrors.priceAmount ? ' dash-input-error' : ''}`}
+                                value={editValues.priceAmount}
+                                onChange={(e) => editSetField('priceAmount', e.target.value)}
+                                placeholder="185.00"
+                                disabled={editSubmitting}
+                              />
+                              {editErrors.priceAmount && (
+                                <p className="dash-field-error">{editErrors.priceAmount}</p>
+                              )}
+                            </div>
+                            <div className="dash-field">
+                              <label className="dash-label" htmlFor={`edit-currency-${v.id}`}>
+                                Currency
+                              </label>
+                              <input
+                                id={`edit-currency-${v.id}`}
+                                className="dash-input"
+                                value={editValues.currency}
+                                onChange={(e) => editSetField('currency', e.target.value.toUpperCase())}
+                                placeholder="USD"
+                                maxLength={3}
+                                disabled={editSubmitting}
+                              />
+                            </div>
+                          </div>
+                          {editSubmitError && <p className="dash-inline-error">{editSubmitError}</p>}
+                          <div className="dash-form-actions">
+                            <button type="submit" className="dash-btn-primary" disabled={editSubmitting}>
+                              {editSubmitting ? 'Saving…' : 'Save'}
+                            </button>
+                            <button
+                              type="button"
+                              className="dash-btn-ghost"
+                              onClick={handleCancelEdit}
+                              disabled={editSubmitting}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </form>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>

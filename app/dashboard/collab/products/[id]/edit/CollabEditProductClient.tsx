@@ -88,7 +88,7 @@ export default function CollabEditProductClient() {
     setError(null);
     try {
       await apiCollabUpdateProduct(id, { unpublish: true });
-      router.push('/dashboard/collab/products');
+      router.push('/collab/products');
     } catch (err) {
       const apiErr = err as ApiError;
       setError(apiErr.message || 'Failed to unpublish product');
@@ -111,7 +111,7 @@ export default function CollabEditProductClient() {
       const stock = form.initialStock.trim();
       if (stock) payload.initialStock = Number.parseInt(stock, 10);
       await apiCollabUpdateProduct(id, payload);
-      router.push('/dashboard/collab/products');
+      router.push('/collab/products');
     } catch (err) {
       const apiErr = err as ApiError;
       setError(apiErr.message || 'Failed to update product');
@@ -127,7 +127,7 @@ export default function CollabEditProductClient() {
       <CollabErrorPanel
         message={error}
         action={
-          <Link href="/dashboard/collab/products" className="dash-btn-secondary">
+          <Link href="/collab/products" className="dash-btn-secondary">
             Back to products
           </Link>
         }
@@ -146,7 +146,7 @@ export default function CollabEditProductClient() {
           </span>
         }
         action={
-          <Link href="/dashboard/collab/products" className="dash-btn-ghost">
+          <Link href="/collab/products" className="dash-btn-ghost">
             Cancel
           </Link>
         }
