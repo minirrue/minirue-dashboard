@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 
 /* ── Types ── */
 
@@ -29,6 +29,11 @@ export interface DashboardTableProps<T extends Record<string, any>> {
 
 type SortDir = 'asc' | 'desc';
 
+/* ── Helpers ── */
+
+/** Columns to show on mobile cards (first 3). */
+const MOBILE_VISIBLE_COLS = 3;
+
 /* ── Component ── */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -41,6 +46,17 @@ export default function DashboardTable<T extends Record<string, any>>({
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [page, setPage] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+
+  /* Mobile detection */
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const handler = (e: MediaQueryListEvent | MediaQueryList) => setIsMobile(e.matches);
+    handler(mq);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   /* Sort */
   const sorted = useMemo(() => {
@@ -82,51 +98,125 @@ export default function DashboardTable<T extends Record<string, any>>({
     [sortKey],
   );
 
+  const toggleExpand = useCallback((ri: number) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(ri)) next.delete(ri);
+      else next.add(ri);
+      return next;
+    });
+  }, []);
+
+  /* ── Desktop table renderer ── */
+  const renderTable = () => (
+    <div className="dash-table-wrap">
+      <table className="dash-table">
+        <thead>
+          <tr>
+            {columns.map((col) => (
+              <th
+                key={col.key}
+                data-sortable={col.sortable ? 'true' : undefined}
+                data-sort-dir={sortKey === col.key ? sortDir : undefined}
+                onClick={col.sortable ? () => handleSort(col.key) : undefined}
+                style={{ textAlign: col.align ?? 'left' }}
+              >
+                {col.label}
+                {col.sortable && (
+                  <span className="dash-sort-icon">
+                    {sortKey === col.key ? (sortDir === 'asc' ? '▲' : '▼') : '▽'}
+                  </span>
+                )}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {paginated.length === 0 ? (
+            <tr>
+              <td colSpan={columns.length} className="dash-table-empty">
+                {emptyMessage}
+              </td>
+            </tr>
+          ) : (
+            paginated.map((row, ri) => (
+              <tr key={ri}>
+                {columns.map((col) => (
+                  <td key={col.key} style={{ textAlign: col.align ?? 'left' }}>
+                    {col.render ? col.render(row) : (row[col.key] as React.ReactNode)}
+                  </td>
+                ))}
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  /* ── Mobile card renderer ── */
+  const renderCards = () => {
+    if (paginated.length === 0) {
+      return <div className="dash-table-empty">{emptyMessage}</div>;
+    }
+
+    return (
+      <div className="dash-mobile-cards">
+        {paginated.map((row, ri) => {
+          const isExpanded = expandedRows.has(ri);
+          const visibleCols = columns.slice(0, MOBILE_VISIBLE_COLS);
+          const hiddenCols = columns.slice(MOBILE_VISIBLE_COLS);
+
+          return (
+            <div
+              key={ri}
+              className={`dash-mobile-card${isExpanded ? ' dash-mobile-card-expanded' : ''}`}
+            >
+              {/* Visible fields (first 3 columns) */}
+              {visibleCols.map((col) => (
+                <div className="dash-mobile-card-field" key={col.key}>
+                  <span className="dash-mobile-card-label">{col.label}</span>
+                  <span className="dash-mobile-card-value">
+                    {col.render ? col.render(row) : (row[col.key] as React.ReactNode)}
+                  </span>
+                </div>
+              ))}
+
+              {/* Hidden fields (expandable) */}
+              {hiddenCols.length > 0 && (
+                <div
+                  className={`dash-mobile-card-hidden${isExpanded ? ' dash-mobile-card-hidden--open' : ''}`}
+                >
+                  {hiddenCols.map((col) => (
+                    <div className="dash-mobile-card-field" key={col.key}>
+                      <span className="dash-mobile-card-label">{col.label}</span>
+                      <span className="dash-mobile-card-value">
+                        {col.render ? col.render(row) : (row[col.key] as React.ReactNode)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Expand / collapse button */}
+              {hiddenCols.length > 0 && (
+                <button
+                  className="dash-mobile-card-expand-btn"
+                  onClick={() => toggleExpand(ri)}
+                >
+                  {isExpanded ? 'Show less' : `Show ${hiddenCols.length} more`}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="dash-card" style={{ padding: 0, overflow: 'hidden' }}>
-      <div className="dash-table-wrap">
-        <table className="dash-table">
-          <thead>
-            <tr>
-              {columns.map((col) => (
-                <th
-                  key={col.key}
-                  data-sortable={col.sortable ? 'true' : undefined}
-                  data-sort-dir={sortKey === col.key ? sortDir : undefined}
-                  onClick={col.sortable ? () => handleSort(col.key) : undefined}
-                  style={{ textAlign: col.align ?? 'left' }}
-                >
-                  {col.label}
-                  {col.sortable && (
-                    <span className="dash-sort-icon">
-                      {sortKey === col.key ? (sortDir === 'asc' ? '▲' : '▼') : '▽'}
-                    </span>
-                  )}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {paginated.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className="dash-table-empty">
-                  {emptyMessage}
-                </td>
-              </tr>
-            ) : (
-              paginated.map((row, ri) => (
-                <tr key={ri}>
-                  {columns.map((col) => (
-                    <td key={col.key} style={{ textAlign: col.align ?? 'left' }}>
-                      {col.render ? col.render(row) : (row[col.key] as React.ReactNode)}
-                    </td>
-                  ))}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {isMobile ? renderCards() : renderTable()}
 
       {pageSize > 0 && totalPages > 1 && (
         <div className="dash-pagination">
