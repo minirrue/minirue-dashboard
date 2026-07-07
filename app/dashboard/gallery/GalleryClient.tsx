@@ -253,13 +253,68 @@ function UploadDropzone({ folderId, onUploaded }: UploadDropzoneProps) {
   );
 }
 
+/* ── Full-size preview modal — tap a thumbnail to see the real upload,
+   uncropped (object-fit: contain, not cover — the point is verifying what
+   was actually uploaded, not a cropped decorative preview). ── */
+function ItemPreviewModal({
+  item,
+  onClose,
+}: {
+  item: GalleryItem;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="dash-gallery-preview-overlay"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Image preview"
+      data-trace-id={`${TRACE}::EL-MODAL-gallery-item-preview@${item.id}`}
+    >
+      <button
+        type="button"
+        className="dash-gallery-preview-close"
+        onClick={onClose}
+        aria-label="Close preview"
+        data-trace-id={`${TRACE}::EL-BTN-close-gallery-preview@${item.id}`}
+      >
+        ✕
+      </button>
+      <div className="dash-gallery-preview-frame" onClick={(e) => e.stopPropagation()}>
+        {item.kind === 'video' ? (
+          <video
+            src={item.url}
+            className="dash-gallery-preview-media"
+            controls
+            autoPlay
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={item.url} alt="" className="dash-gallery-preview-media" />
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── Item grid ── */
 function ItemGrid({
   items,
   onDelete,
+  onPreview,
 }: {
   items: GalleryItem[];
   onDelete: (id: string) => Promise<void>;
+  onPreview: (item: GalleryItem) => void;
 }) {
   if (items.length === 0) {
     return <p className="dash-help-text">No items in this folder yet.</p>;
@@ -272,12 +327,20 @@ function ItemGrid({
           className="dash-gallery-item-card"
           data-trace-id={`${TRACE}::EL-CARD-gallery-item@${item.id}`}
         >
-          {item.kind === 'video' ? (
-            <video src={item.url} className="dash-gallery-item-media" controls muted />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={item.url} alt="" className="dash-gallery-item-media" />
-          )}
+          <button
+            type="button"
+            className="dash-gallery-item-media-btn"
+            onClick={() => onPreview(item)}
+            aria-label="View full size"
+            data-trace-id={`${TRACE}::EL-BTN-preview-gallery-item@${item.id}`}
+          >
+            {item.kind === 'video' ? (
+              <video src={item.url} className="dash-gallery-item-media" muted />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={item.url} alt="" className="dash-gallery-item-media" />
+            )}
+          </button>
           <div className="dash-gallery-item-meta">
             <span>{formatDate(item.createdAt)}</span>
             <button
@@ -311,6 +374,8 @@ export default function GalleryClient() {
   const [newFolderName, setNewFolderName] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+
+  const [previewItem, setPreviewItem] = useState<GalleryItem | null>(null);
 
   const loadFolders = useCallback(async () => {
     setLoadError(null);
@@ -541,12 +606,16 @@ export default function GalleryClient() {
               ) : itemsError ? (
                 <p className="dash-inline-error">{itemsError}</p>
               ) : (
-                <ItemGrid items={items} onDelete={handleDeleteItem} />
+                <ItemGrid items={items} onDelete={handleDeleteItem} onPreview={setPreviewItem} />
               )}
             </>
           )}
         </div>
       </div>
+
+      {previewItem && (
+        <ItemPreviewModal item={previewItem} onClose={() => setPreviewItem(null)} />
+      )}
     </>
   );
 }

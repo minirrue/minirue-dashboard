@@ -2371,6 +2371,48 @@
   font-size: 11px;
   color: var(--mr-fg-3);
 }
+.dash-gallery-item-media-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+.dash-gallery-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(11, 11, 11, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+.dash-gallery-preview-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+}
+.dash-gallery-preview-frame {
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+}
+.dash-gallery-preview-media {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  display: block;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .dash-error-banner[data-animated="true"] {
