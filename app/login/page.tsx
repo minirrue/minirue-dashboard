@@ -60,7 +60,7 @@ export default function LoginPage() {
           boxShadow: 'var(--mr-shadow-md)',
         }}
       >
-        <div style={{ textAlign: 'center', marginBottom: 36 }}>
+        <div data-trace-id="PG-DASHBOARD-IAM-001::EL-REGION-brand-header" style={{ textAlign: 'center', marginBottom: 36 }}>
           <div
             style={{
               fontFamily: "'Cormorant Garamond', serif",
@@ -89,11 +89,19 @@ export default function LoginPage() {
 
         {error && (
           <div style={{ marginBottom: 20 }}>
-            <ErrorBanner animated={false} message={error} />
+            <ErrorBanner
+              animated={false}
+              message={error}
+              traceId="PG-DASHBOARD-IAM-001::EL-REGION-login-error-banner"
+            />
           </div>
         )}
 
-        <form onSubmit={handleSubmit} noValidate>
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          data-trace-id="PG-DASHBOARD-IAM-001::EL-FORM-login-form"
+        >
           <div style={{ marginBottom: 24 }}>
             <label
               htmlFor="email"
@@ -116,6 +124,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
+              data-trace-id="PG-DASHBOARD-IAM-001::EL-INPUT-email"
               style={{
                 display: 'block',
                 width: '100%',
@@ -156,6 +165,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
+              data-trace-id="PG-DASHBOARD-IAM-001::EL-INPUT-password"
               style={{
                 display: 'block',
                 width: '100%',
@@ -177,6 +187,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
+            data-trace-id="PG-DASHBOARD-IAM-001::EL-BTN-sign-in"
             style={{
               display: 'block',
               width: '100%',

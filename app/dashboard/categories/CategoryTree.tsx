@@ -78,7 +78,7 @@ function CategoryRow({ category, depth, onUpdated }: CategoryRowProps) {
 
   return (
     <>
-      <tr className="dash-cat-row">
+      <tr className="dash-cat-row" data-trace-id={`PG-DASHBOARD-CAT-004::EL-ROW-category-row@${category.id}`}>
         <td style={{ paddingLeft: 14 + depth * 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {hasChildren ? (
@@ -87,6 +87,7 @@ function CategoryRow({ category, depth, onUpdated }: CategoryRowProps) {
                 className="dash-tree-toggle"
                 onClick={() => setExpanded((v) => !v)}
                 aria-label={expanded ? 'Collapse' : 'Expand'}
+                data-trace-id={`PG-DASHBOARD-CAT-004::EL-BTN-toggle-category-expand@${category.id}`}
               >
                 {expanded ? '▾' : '▸'}
               </button>
@@ -110,6 +111,7 @@ function CategoryRow({ category, depth, onUpdated }: CategoryRowProps) {
               setEditing((v) => !v);
               setSaveError(null);
             }}
+            data-trace-id={`PG-DASHBOARD-CAT-004::EL-BTN-edit-category@${category.id}`}
           >
             {editing ? 'Cancel' : 'Edit'}
           </button>
@@ -119,7 +121,12 @@ function CategoryRow({ category, depth, onUpdated }: CategoryRowProps) {
       {editing && (
         <tr>
           <td colSpan={4} style={{ background: 'var(--mr-dash-sub)', padding: '12px 14px' }}>
-            <form className="dash-inline-form" onSubmit={handleSave} noValidate>
+            <form
+              className="dash-inline-form"
+              onSubmit={handleSave}
+              noValidate
+              data-trace-id={`PG-DASHBOARD-CAT-004::EL-FORM-edit-category-form@${category.id}`}
+            >
               <div className="dash-field-row">
                 <div className="dash-field">
                   <label className="dash-label" htmlFor={`cat-name-${category.id}`}>
@@ -131,6 +138,7 @@ function CategoryRow({ category, depth, onUpdated }: CategoryRowProps) {
                     value={values.name}
                     onChange={(e) => setField('name', e.target.value)}
                     disabled={saving}
+                    data-trace-id={`PG-DASHBOARD-CAT-004::EL-INPUT-edit-category-name@${category.id}`}
                   />
                   {errors.name && <p className="dash-field-error">{errors.name}</p>}
                 </div>
@@ -144,6 +152,7 @@ function CategoryRow({ category, depth, onUpdated }: CategoryRowProps) {
                     value={values.slug}
                     onChange={(e) => setField('slug', e.target.value)}
                     disabled={saving}
+                    data-trace-id={`PG-DASHBOARD-CAT-004::EL-INPUT-edit-category-slug@${category.id}`}
                   />
                   {errors.slug && <p className="dash-field-error">{errors.slug}</p>}
                 </div>
@@ -158,12 +167,18 @@ function CategoryRow({ category, depth, onUpdated }: CategoryRowProps) {
                     value={values.sortOrder}
                     onChange={(e) => setField('sortOrder', e.target.value)}
                     disabled={saving}
+                    data-trace-id={`PG-DASHBOARD-CAT-004::EL-INPUT-edit-category-sort-order@${category.id}`}
                   />
                 </div>
               </div>
               {saveError && <p className="dash-inline-error">{saveError}</p>}
               <div className="dash-form-actions">
-                <button type="submit" className="dash-btn-primary" disabled={saving}>
+                <button
+                  type="submit"
+                  className="dash-btn-primary"
+                  disabled={saving}
+                  data-trace-id={`PG-DASHBOARD-CAT-004::EL-BTN-save-category-edit@${category.id}`}
+                >
                   {saving ? 'Saving…' : 'Save'}
                 </button>
                 <button
@@ -171,6 +186,7 @@ function CategoryRow({ category, depth, onUpdated }: CategoryRowProps) {
                   className="dash-btn-ghost"
                   onClick={() => { setEditing(false); setSaveError(null); }}
                   disabled={saving}
+                  data-trace-id={`PG-DASHBOARD-CAT-004::EL-BTN-cancel-category-edit@${category.id}`}
                 >
                   Cancel
                 </button>
@@ -209,7 +225,11 @@ export default function CategoryTree({ categories, onCategoryUpdated }: Props) {
   }
 
   return (
-    <div className="dash-card" style={{ padding: 0, overflow: 'hidden' }}>
+    <div
+      className="dash-card"
+      style={{ padding: 0, overflow: 'hidden' }}
+      data-trace-id="PG-DASHBOARD-CAT-004::EL-TABLE-categories-tree"
+    >
       <table className="dash-table">
         <thead>
           <tr>

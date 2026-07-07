@@ -114,7 +114,11 @@ export default function CollabProductsClient() {
 
           profileComplete ? (
 
-            <Link href="/collab/products/new" className="dash-btn-primary">
+            <Link
+              href="/collab/products/new"
+              className="dash-btn-primary"
+              data-trace-id="PG-DASHBOARD-COLLAB-007::EL-LINK-products-cta"
+            >
 
               Add product
 
@@ -122,7 +126,11 @@ export default function CollabProductsClient() {
 
           ) : (
 
-            <Link href="/collab/brand" className="dash-btn-secondary">
+            <Link
+              href="/collab/brand"
+              className="dash-btn-secondary"
+              data-trace-id="PG-DASHBOARD-COLLAB-007::EL-LINK-products-cta"
+            >
 
               Complete brand profile
 
@@ -138,7 +146,10 @@ export default function CollabProductsClient() {
 
       {!profileComplete ? (
 
-        <div className="dash-role-notice collab-profile-gate">
+        <div
+          className="dash-role-notice collab-profile-gate"
+          data-trace-id="PG-DASHBOARD-COLLAB-007::EL-REGION-products-profile-gate"
+        >
 
           Set your display name on the brand profile before adding products.
 
@@ -150,11 +161,11 @@ export default function CollabProductsClient() {
 
       {error ? (
 
-        <CollabErrorPanel message={error} />
+        <CollabErrorPanel message={error} traceId="PG-DASHBOARD-COLLAB-007::EL-REGION-products-error" />
 
       ) : loading ? (
 
-        <CollabLoadingBlock />
+        <CollabLoadingBlock traceId="PG-DASHBOARD-COLLAB-007::EL-REGION-products-loading" />
 
       ) : items.length === 0 ? (
 
@@ -163,6 +174,8 @@ export default function CollabProductsClient() {
           title="No products yet"
 
           copy="Add your first fragrance SKU to start selling on MiniRue."
+
+          traceId="PG-DASHBOARD-COLLAB-007::EL-REGION-products-empty"
 
           action={
 
@@ -182,7 +195,7 @@ export default function CollabProductsClient() {
 
       ) : (
 
-        <CollabTableCard>
+        <CollabTableCard traceId="PG-DASHBOARD-COLLAB-007::EL-TABLE-products-table">
 
           <table className="dash-table">
 
@@ -213,9 +226,13 @@ export default function CollabProductsClient() {
                   row.rejectionReason ?? row.rejection_reason ?? null;
                 const showRejection =
                   state === 'REJECTED' && rejectionReason?.trim();
+                const rowKey = String(row.id ?? i);
 
                 return (
-                  <tr key={String(row.id ?? i)}>
+                  <tr
+                    key={rowKey}
+                    data-trace-id={`PG-DASHBOARD-COLLAB-007::EL-ROW-product-row@${rowKey}`}
+                  >
                     <td>{String(row.name ?? '—')}</td>
                     <td>
                       <ProductStatusBadge state={state} />
@@ -234,6 +251,8 @@ export default function CollabProductsClient() {
                           href={`/collab/products/${row.id}/edit`}
 
                           className="dash-btn-ghost"
+
+                          data-trace-id={`PG-DASHBOARD-COLLAB-007::EL-LINK-product-edit@${row.id}`}
 
                         >
 

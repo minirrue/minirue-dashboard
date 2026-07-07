@@ -64,11 +64,14 @@ export default function CollabLayoutClient({ children }: { children: ReactNode }
 
     <div className="collab-portal-shell">
 
-      <div className="dash-card collab-portal-header">
+      <div
+        className="dash-card collab-portal-header"
+        data-trace-id="PG-DASHBOARD-COLLAB-004::EL-REGION-portal-header"
+      >
 
         <div className="collab-portal-header-row">
 
-          <div>
+          <div data-trace-id="PG-DASHBOARD-COLLAB-004::EL-REGION-portal-title">
 
             <p className="dash-label collab-portal-brand-label">Partner workspace</p>
 
@@ -80,7 +83,11 @@ export default function CollabLayoutClient({ children }: { children: ReactNode }
 
           </div>
 
-          <Link href="/collab/brand" className="dash-btn-secondary">
+          <Link
+            href="/collab/brand"
+            className="dash-btn-secondary"
+            data-trace-id="PG-DASHBOARD-COLLAB-004::EL-LINK-portal-brand-profile"
+          >
 
             Brand profile
 
@@ -98,6 +105,8 @@ export default function CollabLayoutClient({ children }: { children: ReactNode }
 
             data-active={pathname === '/collab' ? 'true' : undefined}
 
+            data-trace-id="PG-DASHBOARD-COLLAB-004::EL-TAB-portal-nav-overview"
+
           >
 
             Overview
@@ -111,6 +120,8 @@ export default function CollabLayoutClient({ children }: { children: ReactNode }
             className="dash-btn-ghost"
 
             data-active={pathname === '/collab/profile' ? 'true' : undefined}
+
+            data-trace-id="PG-DASHBOARD-COLLAB-004::EL-TAB-portal-nav-profile"
 
           >
 
@@ -130,6 +141,8 @@ export default function CollabLayoutClient({ children }: { children: ReactNode }
 
               data-active={pathname?.startsWith(link.href) ? 'true' : undefined}
 
+              data-trace-id={`PG-DASHBOARD-COLLAB-004::EL-TAB-portal-nav-${link.module.toLowerCase()}`}
+
             >
 
               {link.label}
@@ -140,7 +153,14 @@ export default function CollabLayoutClient({ children }: { children: ReactNode }
 
         </nav>
 
-        {error ? <p className="dash-error collab-portal-error">{error}</p> : null}
+        {error ? (
+          <p
+            className="dash-error collab-portal-error"
+            data-trace-id="PG-DASHBOARD-COLLAB-004::EL-REGION-portal-error"
+          >
+            {error}
+          </p>
+        ) : null}
 
       </div>
 

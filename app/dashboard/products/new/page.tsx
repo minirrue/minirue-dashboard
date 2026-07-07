@@ -129,14 +129,23 @@ export default function NewProductPage() {
 
   return (
     <>
-      <div className="dash-page-header">
+      <div className="dash-page-header" data-trace-id="PG-DASHBOARD-CAT-002::EL-REGION-new-product-page-header">
         <h1 className="dash-page-title">New Product</h1>
-        <Link href="/products" className="dash-btn-ghost">
+        <Link
+          href="/products"
+          className="dash-btn-ghost"
+          data-trace-id="PG-DASHBOARD-CAT-002::EL-LINK-cancel-new-product"
+        >
           Cancel
         </Link>
       </div>
 
-      <form className="dash-form-card" onSubmit={handleSubmit} noValidate>
+      <form
+        className="dash-form-card"
+        onSubmit={handleSubmit}
+        noValidate
+        data-trace-id="PG-DASHBOARD-CAT-002::EL-FORM-new-product-form"
+      >
         {/* Name */}
         <div className="dash-field">
           <label className="dash-label" htmlFor="name">
@@ -149,6 +158,7 @@ export default function NewProductPage() {
             onChange={(e) => set('name', e.target.value)}
             placeholder="e.g. Noir Absolu"
             disabled={submitting}
+            data-trace-id="PG-DASHBOARD-CAT-002::EL-INPUT-product-name"
           />
           {errors.name && <p className="dash-field-error">{errors.name}</p>}
         </div>
@@ -165,6 +175,7 @@ export default function NewProductPage() {
             onChange={(e) => set('brand', e.target.value)}
             placeholder="e.g. MiniRue"
             disabled={submitting}
+            data-trace-id="PG-DASHBOARD-CAT-002::EL-INPUT-product-brand"
           />
           {errors.brand && <p className="dash-field-error">{errors.brand}</p>}
         </div>
@@ -182,6 +193,7 @@ export default function NewProductPage() {
             onChange={(e) => set('description', e.target.value)}
             placeholder="Product description…"
             disabled={submitting}
+            data-trace-id="PG-DASHBOARD-CAT-002::EL-FIELD-product-description"
           />
         </div>
 
@@ -198,6 +210,7 @@ export default function NewProductPage() {
               onChange={(e) => set('fragranceFamily', e.target.value)}
               placeholder="e.g. Oriental, Floral"
               disabled={submitting}
+              data-trace-id="PG-DASHBOARD-CAT-002::EL-INPUT-fragrance-family"
             />
           </div>
           <div className="dash-field">
@@ -210,6 +223,7 @@ export default function NewProductPage() {
               value={values.gender}
               onChange={(e) => set('gender', e.target.value as Gender | '')}
               disabled={submitting}
+              data-trace-id="PG-DASHBOARD-CAT-002::EL-SELECT-product-gender"
             >
               {GENDER_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -228,7 +242,10 @@ export default function NewProductPage() {
           ) : categories.length === 0 ? (
             <p className="dash-help-text">No categories available.</p>
           ) : (
-            <div className="dash-checkbox-grid">
+            <div
+              className="dash-checkbox-grid"
+              data-trace-id="PG-DASHBOARD-CAT-002::EL-REGION-category-checklist"
+            >
               {categories.map((cat) => (
                 <label
                   key={cat.id}
@@ -241,6 +258,7 @@ export default function NewProductPage() {
                     checked={values.categoryIds.includes(cat.id)}
                     onChange={() => toggleCategory(cat.id)}
                     disabled={submitting}
+                    data-trace-id={`PG-DASHBOARD-CAT-002::EL-CHECK-category-option@${cat.id}`}
                   />
                   {cat.name}
                 </label>
@@ -254,10 +272,19 @@ export default function NewProductPage() {
 
         {/* Actions */}
         <div className="dash-form-actions">
-          <button type="submit" className="dash-btn-primary" disabled={submitting}>
+          <button
+            type="submit"
+            className="dash-btn-primary"
+            disabled={submitting}
+            data-trace-id="PG-DASHBOARD-CAT-002::EL-BTN-create-product"
+          >
             {submitting ? 'Creating…' : 'Create Product'}
           </button>
-          <Link href="/products" className="dash-btn-ghost">
+          <Link
+            href="/products"
+            className="dash-btn-ghost"
+            data-trace-id="PG-DASHBOARD-CAT-002::EL-LINK-cancel-new-product"
+          >
             Cancel
           </Link>
         </div>

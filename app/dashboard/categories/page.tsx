@@ -141,10 +141,14 @@ export default function CategoriesPage() {
 
   return (
     <>
-      <div className="dash-page-header">
+      <div className="dash-page-header" data-trace-id="PG-DASHBOARD-CAT-004::EL-REGION-categories-page-header">
         <h1 className="dash-page-title">Categories</h1>
         {!showAddForm && (
-          <button className="dash-btn-primary" onClick={() => setShowAddForm(true)}>
+          <button
+            className="dash-btn-primary"
+            onClick={() => setShowAddForm(true)}
+            data-trace-id="PG-DASHBOARD-CAT-004::EL-BTN-show-add-category-form"
+          >
             Add Category
           </button>
         )}
@@ -152,7 +156,12 @@ export default function CategoriesPage() {
 
       {/* Add category form */}
       {showAddForm && (
-        <form className="dash-form-card" onSubmit={handleAddCategory} noValidate>
+        <form
+          className="dash-form-card"
+          onSubmit={handleAddCategory}
+          noValidate
+          data-trace-id="PG-DASHBOARD-CAT-004::EL-FORM-add-category-form"
+        >
           <h2 className="dash-section-title" style={{ marginBottom: 16 }}>
             New Category
           </h2>
@@ -169,6 +178,7 @@ export default function CategoriesPage() {
                 placeholder="e.g. Woody"
                 disabled={adding}
                 autoFocus
+                data-trace-id="PG-DASHBOARD-CAT-004::EL-INPUT-add-category-name"
               />
               {addErrors.name && <p className="dash-field-error">{addErrors.name}</p>}
             </div>
@@ -183,6 +193,7 @@ export default function CategoriesPage() {
                 onChange={(e) => setAddField('slug', e.target.value)}
                 placeholder="woody"
                 disabled={adding}
+                data-trace-id="PG-DASHBOARD-CAT-004::EL-INPUT-add-category-slug"
               />
               {addErrors.slug && <p className="dash-field-error">{addErrors.slug}</p>}
             </div>
@@ -198,6 +209,7 @@ export default function CategoriesPage() {
                 value={addValues.parentId}
                 onChange={(e) => setAddField('parentId', e.target.value)}
                 disabled={adding}
+                data-trace-id="PG-DASHBOARD-CAT-004::EL-SELECT-add-category-parent"
               >
                 <option value="">None (top-level)</option>
                 {flatOptions.map((cat) => (
@@ -219,6 +231,7 @@ export default function CategoriesPage() {
                 value={addValues.sortOrder}
                 onChange={(e) => setAddField('sortOrder', e.target.value)}
                 disabled={adding}
+                data-trace-id="PG-DASHBOARD-CAT-004::EL-INPUT-add-category-sort-order"
               />
             </div>
           </div>
@@ -226,7 +239,12 @@ export default function CategoriesPage() {
           {addError && <p className="dash-inline-error">{addError}</p>}
 
           <div className="dash-form-actions">
-            <button type="submit" className="dash-btn-primary" disabled={adding}>
+            <button
+              type="submit"
+              className="dash-btn-primary"
+              disabled={adding}
+              data-trace-id="PG-DASHBOARD-CAT-004::EL-BTN-create-category"
+            >
               {adding ? 'Creating…' : 'Create Category'}
             </button>
             <button
@@ -239,6 +257,7 @@ export default function CategoriesPage() {
                 setAddError(null);
               }}
               disabled={adding}
+              data-trace-id="PG-DASHBOARD-CAT-004::EL-BTN-cancel-add-category"
             >
               Cancel
             </button>
@@ -248,7 +267,11 @@ export default function CategoriesPage() {
 
       {/* Tree */}
       {loading ? (
-        <div className="dash-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div
+          className="dash-card"
+          style={{ padding: 0, overflow: 'hidden' }}
+          data-trace-id="PG-DASHBOARD-CAT-004::EL-REGION-categories-tree-skeleton"
+        >
           <table className="dash-table">
             <thead>
               <tr>
@@ -271,9 +294,14 @@ export default function CategoriesPage() {
           </table>
         </div>
       ) : loadError ? (
-        <div className="dash-card">
+        <div className="dash-card" data-trace-id="PG-DASHBOARD-CAT-004::EL-REGION-categories-load-error">
           <p className="dash-inline-error">{loadError}</p>
-          <button className="dash-btn-secondary" style={{ marginTop: 12 }} onClick={load}>
+          <button
+            className="dash-btn-secondary"
+            style={{ marginTop: 12 }}
+            onClick={load}
+            data-trace-id="PG-DASHBOARD-CAT-004::EL-BTN-retry-load-categories"
+          >
             Retry
           </button>
         </div>

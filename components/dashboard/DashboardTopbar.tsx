@@ -76,7 +76,11 @@ export default function DashboardTopbar({
   return (
     <>
     {logoutError && (
-      <ErrorBanner message={logoutError} onDismiss={() => setLogoutError(null)} />
+      <ErrorBanner
+        message={logoutError}
+        onDismiss={() => setLogoutError(null)}
+        traceId="PG-DASHBOARD-IAM-002::EL-REGION-logout-error-banner"
+      />
     )}
     <header className="dash-topbar">
       <div className="dash-topbar-copy">
@@ -153,7 +157,7 @@ export default function DashboardTopbar({
           <span className="dash-notif-dot" aria-hidden="true" />
         </button>
 
-        <div className="dash-user-menu">
+        <div className="dash-user-menu" data-trace-id="PG-DASHBOARD-IAM-002::EL-REGION-user-menu">
           <RoleBadge role={userRole} />
           <div className="dash-user-meta">
             <div className="dash-user-name" title={userName}>
@@ -168,6 +172,7 @@ export default function DashboardTopbar({
             className="dash-sidebar-link"
             onClick={handleLogout}
             disabled={logoutMutation.isPending}
+            data-trace-id="PG-DASHBOARD-IAM-002::EL-BTN-sign-out"
             style={{
               display: 'flex',
               alignItems: 'center',

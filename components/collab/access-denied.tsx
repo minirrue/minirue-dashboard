@@ -12,11 +12,13 @@ export interface CollabAccessDeniedProps {
 
   moduleName?: string;
 
+  traceId?: string;
+
 }
 
 
 
-export default function CollabAccessDenied({ moduleName = 'This module' }: CollabAccessDeniedProps) {
+export default function CollabAccessDenied({ moduleName = 'This module', traceId }: CollabAccessDeniedProps) {
 
   return (
 
@@ -25,6 +27,8 @@ export default function CollabAccessDenied({ moduleName = 'This module' }: Colla
       title={`${moduleName} is not available for your account`}
 
       copy="Your administrator has not enabled this capability. Contact the store team if you need access."
+
+      traceId={traceId}
 
       action={
 

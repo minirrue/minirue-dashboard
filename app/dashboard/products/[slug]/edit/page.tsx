@@ -56,7 +56,7 @@ const GENDER_OPTIONS: Array<{ value: Gender | ''; label: string }> = [
 /* ── Skeleton loader ── */
 function EditSkeleton() {
   return (
-    <div className="dash-form-card">
+    <div className="dash-form-card" data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-edit-product-skeleton">
       {[200, 140, 300, 160].map((w, i) => (
         <div key={i} className="dash-field">
           <span className="dash-skeleton" style={{ width: 80, marginBottom: 6, display: 'block' }} />
@@ -77,13 +77,21 @@ interface ConfirmDialogProps {
 function ConfirmDialog({ message, onConfirm, onCancel }: ConfirmDialogProps) {
   return (
     <div className="dash-dialog-overlay">
-      <div className="dash-dialog">
+      <div className="dash-dialog" data-trace-id="PG-DASHBOARD-CAT-003::EL-MODAL-archive-confirm">
         <p className="dash-dialog-message">{message}</p>
         <div className="dash-form-actions">
-          <button className="dash-btn-danger" onClick={onConfirm}>
+          <button
+            className="dash-btn-danger"
+            onClick={onConfirm}
+            data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-archive-confirm-yes"
+          >
             Confirm
           </button>
-          <button className="dash-btn-ghost" onClick={onCancel}>
+          <button
+            className="dash-btn-ghost"
+            onClick={onCancel}
+            data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-archive-confirm-cancel"
+          >
             Cancel
           </button>
         </div>
@@ -267,10 +275,12 @@ export default function EditProductPage() {
         />
       )}
 
-      <div className="dash-page-header">
+      <div className="dash-page-header" data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-edit-product-page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <h1 className="dash-page-title">{product.name}</h1>
-          <StatusBadge status={statusKind} />
+          <span data-trace-id="PG-DASHBOARD-CAT-003::EL-BADGE-product-status-edit">
+            <StatusBadge status={statusKind} />
+          </span>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {product.status !== 'PUBLISHED' && (
@@ -278,6 +288,7 @@ export default function EditProductPage() {
               className="dash-btn-ok"
               disabled={publishing || archiving}
               onClick={handlePublish}
+              data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-publish-product-edit"
             >
               {publishing ? 'Publishing…' : 'Publish'}
             </button>
@@ -287,23 +298,37 @@ export default function EditProductPage() {
               className="dash-btn-ghost dash-btn-muted"
               disabled={publishing || archiving}
               onClick={() => setShowArchiveConfirm(true)}
+              data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-archive-product-edit"
             >
               Archive
             </button>
           )}
-          <Link href="/products" className="dash-btn-ghost">
+          <Link
+            href="/products"
+            className="dash-btn-ghost"
+            data-trace-id="PG-DASHBOARD-CAT-003::EL-LINK-back-to-products"
+          >
             Back
           </Link>
         </div>
       </div>
 
       {publishError && (
-        <p className="dash-inline-error" style={{ marginBottom: 16 }}>
+        <p
+          className="dash-inline-error"
+          style={{ marginBottom: 16 }}
+          data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-publish-error"
+        >
           {publishError}
         </p>
       )}
 
-      <form className="dash-form-card" onSubmit={handleSave} noValidate>
+      <form
+        className="dash-form-card"
+        onSubmit={handleSave}
+        noValidate
+        data-trace-id="PG-DASHBOARD-CAT-003::EL-FORM-edit-product-form"
+      >
         {/* Name */}
         <div className="dash-field">
           <label className="dash-label" htmlFor="name">
@@ -315,6 +340,7 @@ export default function EditProductPage() {
             value={values.name}
             onChange={(e) => setField('name', e.target.value)}
             disabled={saving}
+            data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-edit-product-name"
           />
           {errors.name && <p className="dash-field-error">{errors.name}</p>}
         </div>
@@ -330,6 +356,7 @@ export default function EditProductPage() {
             value={values.brand}
             onChange={(e) => setField('brand', e.target.value)}
             disabled={saving}
+            data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-edit-product-brand"
           />
           {errors.brand && <p className="dash-field-error">{errors.brand}</p>}
         </div>
@@ -346,6 +373,7 @@ export default function EditProductPage() {
             value={values.description}
             onChange={(e) => setField('description', e.target.value)}
             disabled={saving}
+            data-trace-id="PG-DASHBOARD-CAT-003::EL-FIELD-edit-product-description"
           />
         </div>
 
@@ -361,6 +389,7 @@ export default function EditProductPage() {
               value={values.fragranceFamily}
               onChange={(e) => setField('fragranceFamily', e.target.value)}
               disabled={saving}
+              data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-edit-fragrance-family"
             />
           </div>
           <div className="dash-field">
@@ -373,6 +402,7 @@ export default function EditProductPage() {
               value={values.gender}
               onChange={(e) => setField('gender', e.target.value as Gender | '')}
               disabled={saving}
+              data-trace-id="PG-DASHBOARD-CAT-003::EL-SELECT-edit-product-gender"
             >
               {GENDER_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -391,7 +421,10 @@ export default function EditProductPage() {
           ) : categories.length === 0 ? (
             <p className="dash-help-text">No categories available.</p>
           ) : (
-            <div className="dash-checkbox-grid">
+            <div
+              className="dash-checkbox-grid"
+              data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-edit-category-checklist"
+            >
               {categories.map((cat) => (
                 <label
                   key={cat.id}
@@ -404,6 +437,7 @@ export default function EditProductPage() {
                     checked={values.categoryIds.includes(cat.id)}
                     onChange={() => toggleCategory(cat.id)}
                     disabled={saving}
+                    data-trace-id={`PG-DASHBOARD-CAT-003::EL-CHECK-edit-category-option@${cat.id}`}
                   />
                   {cat.name}
                 </label>
@@ -415,7 +449,12 @@ export default function EditProductPage() {
         {saveError && <p className="dash-inline-error">{saveError}</p>}
 
         <div className="dash-form-actions">
-          <button type="submit" className="dash-btn-primary" disabled={saving}>
+          <button
+            type="submit"
+            className="dash-btn-primary"
+            disabled={saving}
+            data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-save-product-changes"
+          >
             {saving ? 'Saving…' : 'Save Changes'}
           </button>
           {savedAt && (

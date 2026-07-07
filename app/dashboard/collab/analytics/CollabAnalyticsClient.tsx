@@ -63,15 +63,22 @@ export default function CollabAnalyticsClient() {
   const maxOrders = Math.max(1, ...dailyRows.map((r) => r.orders));
 
   if (error) {
-    return <CollabErrorPanel message={error} />;
+    return (
+      <CollabErrorPanel message={error} traceId="PG-DASHBOARD-COLLAB-002::EL-REGION-analytics-error" />
+    );
   }
 
   if (loading || allowed === null) {
-    return <CollabLoadingBlock />;
+    return <CollabLoadingBlock traceId="PG-DASHBOARD-COLLAB-002::EL-REGION-analytics-loading" />;
   }
 
   if (!allowed) {
-    return <CollabAccessDenied moduleName="Analytics" />;
+    return (
+      <CollabAccessDenied
+        moduleName="Analytics"
+        traceId="PG-DASHBOARD-COLLAB-002::EL-REGION-analytics-access-denied"
+      />
+    );
   }
 
   const kpis = analytics?.kpis ?? {
@@ -93,6 +100,7 @@ export default function CollabAnalyticsClient() {
               value={period}
               onChange={(e) => setPeriod(e.target.value as Period)}
               aria-label="Analytics period"
+              data-trace-id="PG-DASHBOARD-COLLAB-002::EL-SELECT-analytics-period"
             >
               <option value="7d">Last 7 days</option>
               <option value="30d">Last 30 days</option>
@@ -102,9 +110,9 @@ export default function CollabAnalyticsClient() {
         }
       />
 
-      <CollabScopeNote />
+      <CollabScopeNote traceId="PG-DASHBOARD-COLLAB-002::EL-REGION-analytics-scope-note" />
 
-      <p className="collab-summary-line">
+      <p className="collab-summary-line" data-trace-id="PG-DASHBOARD-COLLAB-002::EL-REGION-analytics-kpi-summary">
         <span>
           <strong>{kpis.ordersCount}</strong> orders
         </span>
@@ -118,7 +126,10 @@ export default function CollabAnalyticsClient() {
         </span>
       </p>
 
-      <div className="dash-card collab-section-card">
+      <div
+        className="dash-card collab-section-card"
+        data-trace-id="PG-DASHBOARD-COLLAB-002::EL-REGION-analytics-daily-chart"
+      >
         <h2 className="dash-card-title">Daily orders</h2>
         {dailyRows.length === 0 ? (
           <p className="collab-empty-copy">
@@ -128,7 +139,10 @@ export default function CollabAnalyticsClient() {
           <table className="dash-revenue-chart collab-analytics-chart">
             <tbody>
               {dailyRows.map((row) => (
-                <tr key={row.date}>
+                <tr
+                  key={row.date}
+                  data-trace-id={`PG-DASHBOARD-COLLAB-002::EL-ROW-analytics-daily-bar@${row.date}`}
+                >
                   <td className="collab-chart-date">{row.date}</td>
                   <td className="dash-revenue-bar-cell">
                     <div className="dash-revenue-bar-track">
@@ -150,9 +164,10 @@ export default function CollabAnalyticsClient() {
         <CollabEmptyState
           title="No activity in this period"
           copy="Try a longer date range, or check back once your brand page receives orders."
+          traceId="PG-DASHBOARD-COLLAB-002::EL-REGION-analytics-empty"
         />
       ) : (
-        <CollabTableCard>
+        <CollabTableCard traceId="PG-DASHBOARD-COLLAB-002::EL-TABLE-analytics-breakdown">
           <div className="collab-table-heading">
             <h2 className="dash-card-title">Daily breakdown</h2>
           </div>
@@ -166,7 +181,10 @@ export default function CollabAnalyticsClient() {
             </thead>
             <tbody>
               {dailyRows.slice(0, 14).map((row) => (
-                <tr key={`act-${row.date}`}>
+                <tr
+                  key={`act-${row.date}`}
+                  data-trace-id={`PG-DASHBOARD-COLLAB-002::EL-ROW-analytics-breakdown-row@${row.date}`}
+                >
                   <td>{row.date}</td>
                   <td>{row.orders}</td>
                   <td>{formatRevenueCents(row.revenueCents)}</td>

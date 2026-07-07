@@ -48,7 +48,11 @@ const COLUMNS: Column<CollaboratorListItem>[] = [
 
     render: (row) => (
 
-      <Link href={`/collaborators/${row.id}`} className="dash-link">
+      <Link
+        href={`/collaborators/${row.id}`}
+        className="dash-link"
+        data-trace-id={`PG-DASHBOARD-COLLAB-011::EL-LINK-collaborator-name@${row.id}`}
+      >
 
         {row.brandName}
 
@@ -108,7 +112,11 @@ const COLUMNS: Column<CollaboratorListItem>[] = [
 
     render: (row) => (
 
-      <Link href={`/collaborators/${row.id}`} className="dash-btn-ghost">
+      <Link
+        href={`/collaborators/${row.id}`}
+        className="dash-btn-ghost"
+        data-trace-id={`PG-DASHBOARD-COLLAB-011::EL-LINK-collaborator-manage@${row.id}`}
+      >
 
         Manage
 
@@ -196,13 +204,21 @@ export default function CollaboratorsClient() {
 
         <div className="collab-action-row" style={{ marginTop: 0 }}>
 
-          <Link href="/collaborators/review" className="dash-btn-secondary">
+          <Link
+            href="/collaborators/review"
+            className="dash-btn-secondary"
+            data-trace-id="PG-DASHBOARD-COLLAB-011::EL-LINK-list-review-queue"
+          >
 
             Review queue
 
           </Link>
 
-          <Link href="/collaborators/new" className="dash-btn-primary">
+          <Link
+            href="/collaborators/new"
+            className="dash-btn-primary"
+            data-trace-id="PG-DASHBOARD-COLLAB-011::EL-LINK-list-add-collaborator"
+          >
 
             Add collaborator
 
@@ -226,6 +242,8 @@ export default function CollaboratorsClient() {
 
           aria-label="Filter by status"
 
+          data-trace-id="PG-DASHBOARD-COLLAB-011::EL-SELECT-list-status-filter"
+
         >
 
           <option value="">All statuses</option>
@@ -242,13 +260,20 @@ export default function CollaboratorsClient() {
 
 
 
-      {error ? <p className="dash-inline-error">{error}</p> : null}
+      {error ? (
+        <p
+          className="dash-inline-error"
+          data-trace-id="PG-DASHBOARD-COLLAB-011::EL-REGION-list-inline-error"
+        >
+          {error}
+        </p>
+      ) : null}
 
 
 
       {loading ? (
 
-        <CollabLoadingBlock />
+        <CollabLoadingBlock traceId="PG-DASHBOARD-COLLAB-011::EL-REGION-list-loading" />
 
       ) : items.length === 0 && !error && !statusFilter ? (
 
@@ -258,9 +283,15 @@ export default function CollaboratorsClient() {
 
           copy="Provision a brand partner to give them a scoped workspace and storefront page."
 
+          traceId="PG-DASHBOARD-COLLAB-011::EL-REGION-list-empty"
+
           action={
 
-            <Link href="/collaborators/new" className="dash-btn-primary">
+            <Link
+              href="/collaborators/new"
+              className="dash-btn-primary"
+              data-trace-id="PG-DASHBOARD-COLLAB-011::EL-LINK-list-empty-add-collaborator"
+            >
 
               Add collaborator
 
@@ -272,7 +303,13 @@ export default function CollaboratorsClient() {
 
       ) : (
 
-        <DashboardTable columns={COLUMNS} data={items} emptyMessage="No collaborators match this filter." />
+        <DashboardTable
+          columns={COLUMNS}
+          data={items}
+          emptyMessage="No collaborators match this filter."
+          tableTraceId="PG-DASHBOARD-COLLAB-011::EL-TABLE-collaborators-table"
+          getRowTraceId={(row) => `PG-DASHBOARD-COLLAB-011::EL-ROW-collaborator-row@${row.id}`}
+        />
 
       )}
 

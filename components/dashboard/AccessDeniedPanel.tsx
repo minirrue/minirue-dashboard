@@ -17,7 +17,11 @@ export default function AccessDeniedPanel({ role, attemptedPath }: AccessDeniedP
   const brief = isRole(role) ? roleBrief(role) : null;
 
   return (
-    <div className="dash-access-denied" role="alert">
+    <div
+      className="dash-access-denied"
+      role="alert"
+      data-trace-id="PG-DASHBOARD-IAM-003::EL-REGION-access-denied-panel"
+    >
       <div className="dash-access-denied-icon" aria-hidden="true">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
           <rect x="3" y="11" width="18" height="11" rx="2" />
@@ -33,23 +37,39 @@ export default function AccessDeniedPanel({ role, attemptedPath }: AccessDeniedP
       {brief ? (
         <p className="dash-access-denied-hint">
           Your role is set up for{' '}
-          <Link href={brief.primaryAction.href} className="dash-link">
+          <Link
+            href={brief.primaryAction.href}
+            className="dash-link"
+            data-trace-id="PG-DASHBOARD-IAM-003::EL-LINK-role-primary-action"
+          >
             {brief.primaryAction.label.toLowerCase()}
           </Link>
           .
         </p>
       ) : null}
       <div className="dash-access-denied-actions">
-        <Link href={homeHref} className="dash-btn-primary">
+        <Link
+          href={homeHref}
+          className="dash-btn-primary"
+          data-trace-id="PG-DASHBOARD-IAM-003::EL-LINK-go-to-dashboard"
+        >
           Go to my dashboard
         </Link>
         {role === Role.STAFF && canAccessDashboardRoute(role, '/collab') ? (
-          <Link href="/collab" className="dash-btn-secondary">
+          <Link
+            href="/collab"
+            className="dash-btn-secondary"
+            data-trace-id="PG-DASHBOARD-IAM-003::EL-LINK-partner-workspace"
+          >
             Partner workspace
           </Link>
         ) : null}
         {isRole(role) && canAccessDashboardRoute(role, '/orders') ? (
-          <Link href="/orders" className="dash-btn-secondary">
+          <Link
+            href="/orders"
+            className="dash-btn-secondary"
+            data-trace-id="PG-DASHBOARD-IAM-003::EL-LINK-view-orders"
+          >
             View orders
           </Link>
         ) : null}

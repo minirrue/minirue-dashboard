@@ -60,9 +60,20 @@ export function mapOrderStatus(raw: string): { attr: string; label: string } {
   return { attr, label: label.charAt(0).toUpperCase() + label.slice(1) };
 }
 
-export function CollabLoadingBlock({ lines = 2 }: { lines?: number }) {
+export function CollabLoadingBlock({
+  lines = 2,
+  traceId,
+}: {
+  lines?: number;
+  traceId?: string;
+}) {
   return (
-    <div className="dash-card collab-loading-block" aria-busy="true" aria-live="polite">
+    <div
+      className="dash-card collab-loading-block"
+      aria-busy="true"
+      aria-live="polite"
+      data-trace-id={traceId}
+    >
       {Array.from({ length: lines }, (_, i) => (
         <span
           key={i}
@@ -77,12 +88,14 @@ export function CollabLoadingBlock({ lines = 2 }: { lines?: number }) {
 export function CollabErrorPanel({
   message,
   action,
+  traceId,
 }: {
   message: string;
   action?: ReactNode;
+  traceId?: string;
 }) {
   return (
-    <div className="dash-card collab-error-panel" role="alert">
+    <div className="dash-card collab-error-panel" role="alert" data-trace-id={traceId}>
       <p className="dash-error">{message}</p>
       {action}
     </div>
@@ -93,13 +106,15 @@ export function CollabEmptyState({
   title,
   copy,
   action,
+  traceId,
 }: {
   title: string;
   copy: string;
   action?: ReactNode;
+  traceId?: string;
 }) {
   return (
-    <div className="dash-card collab-empty-panel">
+    <div className="dash-card collab-empty-panel" data-trace-id={traceId}>
       <p className="collab-empty-title">{title}</p>
       <p className="collab-empty-copy">{copy}</p>
       {action}
@@ -111,8 +126,18 @@ export function CollabApiNotice({ children }: { children: ReactNode }) {
   return <p className="dash-role-notice collab-api-notice">{children}</p>;
 }
 
-export function CollabTableCard({ children }: { children: ReactNode }) {
-  return <div className="dash-card collab-table-card">{children}</div>;
+export function CollabTableCard({
+  children,
+  traceId,
+}: {
+  children: ReactNode;
+  traceId?: string;
+}) {
+  return (
+    <div className="dash-card collab-table-card" data-trace-id={traceId}>
+      {children}
+    </div>
+  );
 }
 
 export function CollaboratorModuleChips({ modules }: { modules: CollaboratorModule[] }) {
@@ -187,9 +212,9 @@ export function CollabProfileGate({ brandSlug }: { brandSlug: string }) {
   );
 }
 
-export function CollabScopeNote() {
+export function CollabScopeNote({ traceId }: { traceId?: string }) {
   return (
-    <p className="collab-scope-note">
+    <p className="collab-scope-note" data-trace-id={traceId}>
       Figures below include only orders and products for your brand — not other partners or store-wide
       totals.
     </p>
@@ -211,13 +236,15 @@ export function CollabPageHeader({
   title,
   subtitle,
   action,
+  traceId,
 }: {
   title: string;
   subtitle?: ReactNode;
   action?: ReactNode;
+  traceId?: string;
 }) {
   return (
-    <div className="dash-page-header">
+    <div className="dash-page-header" data-trace-id={traceId}>
       <div>
         <h1 className="dash-page-title">{title}</h1>
         {subtitle ? (

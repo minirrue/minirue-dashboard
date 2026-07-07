@@ -173,7 +173,7 @@ export default function CollaboratorDetailClient() {
   }
 
   if (loading) {
-    return <CollabLoadingBlock />;
+    return <CollabLoadingBlock traceId="PG-DASHBOARD-COLLAB-008::EL-REGION-detail-loading" />;
   }
 
   if (error || !collab) {
@@ -182,7 +182,12 @@ export default function CollaboratorDetailClient() {
         <div className="dash-page-header">
           <h1 className="dash-page-title">Collaborator</h1>
         </div>
-        <p className="dash-inline-error">{error ?? 'Not found'}</p>
+        <p
+          className="dash-inline-error"
+          data-trace-id="PG-DASHBOARD-COLLAB-008::EL-REGION-detail-error"
+        >
+          {error ?? 'Not found'}
+        </p>
         <Link href="/collaborators" className="dash-btn-ghost">
           Back to list
         </Link>
@@ -192,7 +197,7 @@ export default function CollaboratorDetailClient() {
 
   return (
     <>
-      <div className="dash-page-header">
+      <div className="dash-page-header" data-trace-id="PG-DASHBOARD-COLLAB-008::EL-REGION-detail-header">
         <div>
           <h1 className="dash-page-title">{collab.brandName}</h1>
           <p className="dash-page-subtitle">{collab.email}</p>
@@ -202,11 +207,19 @@ export default function CollaboratorDetailClient() {
           </div>
         </div>
         <div className="collab-action-row" style={{ marginTop: 0 }}>
-          <Link href={`/dashboard/collaborators/${id}/scopes`} className="dash-btn-secondary">
+          <Link
+            href={`/dashboard/collaborators/${id}/scopes`}
+            className="dash-btn-secondary"
+            data-trace-id="PG-DASHBOARD-COLLAB-008::EL-LINK-detail-scopes"
+          >
             Scopes
           </Link>
           {!autoPublish ? (
-            <Link href="/collaborators/review" className="dash-btn-secondary">
+            <Link
+              href="/collaborators/review"
+              className="dash-btn-secondary"
+              data-trace-id="PG-DASHBOARD-COLLAB-008::EL-LINK-detail-review-queue"
+            >
               Review queue
             </Link>
           ) : null}
@@ -216,6 +229,7 @@ export default function CollaboratorDetailClient() {
               className="dash-btn-ghost dash-btn-muted"
               disabled={actionLoading || saving}
               onClick={() => void handleSuspend()}
+              data-trace-id="PG-DASHBOARD-COLLAB-008::EL-BTN-detail-suspend"
             >
               Suspend
             </button>
@@ -225,24 +239,38 @@ export default function CollaboratorDetailClient() {
               className="dash-btn-ok"
               disabled={actionLoading || saving}
               onClick={() => void handleReactivate()}
+              data-trace-id="PG-DASHBOARD-COLLAB-008::EL-BTN-detail-reactivate"
             >
               Reactivate
             </button>
           ) : null}
-          <Link href="/collaborators" className="dash-btn-ghost">
+          <Link
+            href="/collaborators"
+            className="dash-btn-ghost"
+            data-trace-id="PG-DASHBOARD-COLLAB-008::EL-LINK-detail-back"
+          >
             Back
           </Link>
         </div>
       </div>
 
       {actionError ? (
-        <div className="dash-card dash-inline-error" role="alert" style={{ padding: 16, marginBottom: 16 }}>
+        <div
+          className="dash-card dash-inline-error"
+          role="alert"
+          style={{ padding: 16, marginBottom: 16 }}
+          data-trace-id="PG-DASHBOARD-COLLAB-008::EL-REGION-detail-action-error"
+        >
           {actionError}
         </div>
       ) : null}
 
       <div className="collab-admin-grid">
-      <form className="dash-form-card" onSubmit={handleSave}>
+      <form
+        className="dash-form-card"
+        onSubmit={handleSave}
+        data-trace-id="PG-DASHBOARD-COLLAB-008::EL-FORM-detail-identity-form"
+      >
         <h2 className="dash-card-title">Identity</h2>
         <div className="dash-field">
           <label className="dash-label">Status</label>
@@ -259,6 +287,7 @@ export default function CollaboratorDetailClient() {
             onChange={(e) => setBrandSlug(e.target.value)}
             pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
             disabled={saving}
+            data-trace-id="PG-DASHBOARD-COLLAB-008::EL-INPUT-detail-brand-slug"
           />
         </div>
         <div className="dash-field">
@@ -272,6 +301,7 @@ export default function CollaboratorDetailClient() {
                   checked={modules.includes(opt.value)}
                   onChange={() => toggleModule(opt.value)}
                   disabled={saving}
+                  data-trace-id={`PG-DASHBOARD-COLLAB-008::EL-CHECK-detail-module-toggle@${opt.value}`}
                 />
                 {opt.label}
               </label>
@@ -286,14 +316,23 @@ export default function CollaboratorDetailClient() {
         ) : null}
         {saveError ? <p className="dash-inline-error">{saveError}</p> : null}
         <div className="dash-form-actions">
-          <button type="submit" className="dash-btn-primary" disabled={saving}>
+          <button
+            type="submit"
+            className="dash-btn-primary"
+            disabled={saving}
+            data-trace-id="PG-DASHBOARD-COLLAB-008::EL-BTN-detail-save-identity"
+          >
             {saving ? 'Saving…' : 'Save identity'}
           </button>
           {savedAt ? <span className="dash-help-text">Saved at {savedAt.toLocaleTimeString()}</span> : null}
         </div>
       </form>
 
-      <form className="dash-form-card collab-admin-settings" onSubmit={handleSettingsSave}>
+      <form
+        className="dash-form-card collab-admin-settings"
+        onSubmit={handleSettingsSave}
+        data-trace-id="PG-DASHBOARD-COLLAB-008::EL-FORM-detail-settings-form"
+      >
         <h2 className="dash-card-title">Trust & publishing</h2>
         <label className="dash-checkbox-label">
           <input
@@ -302,6 +341,7 @@ export default function CollaboratorDetailClient() {
             checked={autoPublish}
             onChange={(e) => setAutoPublish(e.target.checked)}
             disabled={settingsSaving}
+            data-trace-id="PG-DASHBOARD-COLLAB-008::EL-CHECK-detail-auto-publish"
           />
           Auto-publish products (skip review queue)
         </label>
@@ -320,6 +360,7 @@ export default function CollaboratorDetailClient() {
             checked={homeFeature}
             onChange={(e) => setHomeFeature(e.target.checked)}
             disabled={settingsSaving}
+            data-trace-id="PG-DASHBOARD-COLLAB-008::EL-CHECK-detail-home-feature"
           />
           Feature brand on storefront home page
         </label>
@@ -330,6 +371,7 @@ export default function CollaboratorDetailClient() {
             checked={navLink}
             onChange={(e) => setNavLink(e.target.checked)}
             disabled={settingsSaving}
+            data-trace-id="PG-DASHBOARD-COLLAB-008::EL-CHECK-detail-nav-link"
           />
           Add link to brand page in storefront navbar
         </label>
@@ -349,6 +391,7 @@ export default function CollaboratorDetailClient() {
               value={commissionPct}
               onChange={(e) => setCommissionPct(e.target.value)}
               disabled={settingsSaving}
+              data-trace-id="PG-DASHBOARD-COLLAB-008::EL-INPUT-detail-commission-rate"
             />
           </div>
         </div>
@@ -361,6 +404,7 @@ export default function CollaboratorDetailClient() {
               checked={fulfillmentMode === 'MINIRUE_SHIPS'}
               onChange={() => setFulfillmentMode('MINIRUE_SHIPS')}
               disabled={settingsSaving}
+              data-trace-id="PG-DASHBOARD-COLLAB-008::EL-RADIO-detail-fulfillment-mode@MINIRUE_SHIPS"
             />
             MiniRue ships
           </label>
@@ -371,6 +415,7 @@ export default function CollaboratorDetailClient() {
               checked={fulfillmentMode === 'COLLAB_DROPSHIP'}
               onChange={() => setFulfillmentMode('COLLAB_DROPSHIP')}
               disabled={settingsSaving}
+              data-trace-id="PG-DASHBOARD-COLLAB-008::EL-RADIO-detail-fulfillment-mode@COLLAB_DROPSHIP"
             />
             Collaborator dropship
           </label>
@@ -378,7 +423,12 @@ export default function CollaboratorDetailClient() {
 
         {settingsError ? <p className="dash-inline-error">{settingsError}</p> : null}
         <div className="dash-form-actions">
-          <button type="submit" className="dash-btn-primary" disabled={settingsSaving}>
+          <button
+            type="submit"
+            className="dash-btn-primary"
+            disabled={settingsSaving}
+            data-trace-id="PG-DASHBOARD-COLLAB-008::EL-BTN-detail-save-settings"
+          >
             {settingsSaving ? 'Saving…' : 'Save settings'}
           </button>
           {settingsSavedAt ? (

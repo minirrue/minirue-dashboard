@@ -104,11 +104,11 @@ export default function CollabOrdersClient() {
 
       {loading ? (
 
-        <CollabLoadingBlock />
+        <CollabLoadingBlock traceId="PG-DASHBOARD-COLLAB-005::EL-REGION-orders-loading" />
 
       ) : error ? (
 
-        <CollabErrorPanel message={error} />
+        <CollabErrorPanel message={error} traceId="PG-DASHBOARD-COLLAB-005::EL-REGION-orders-error" />
 
       ) : items.length === 0 ? (
 
@@ -118,11 +118,13 @@ export default function CollabOrdersClient() {
 
           copy="When customers buy from your brand page, orders appear here."
 
+          traceId="PG-DASHBOARD-COLLAB-005::EL-REGION-orders-empty"
+
         />
 
       ) : (
 
-        <CollabTableCard>
+        <CollabTableCard traceId="PG-DASHBOARD-COLLAB-005::EL-TABLE-orders-table">
 
           <table className="dash-table">
 
@@ -150,9 +152,14 @@ export default function CollabOrdersClient() {
 
                 const { attr, label } = mapOrderStatus(rawStatus);
 
+                const rowKey = String(row.id ?? i);
+
                 return (
 
-                  <tr key={String(row.id ?? i)}>
+                  <tr
+                    key={rowKey}
+                    data-trace-id={`PG-DASHBOARD-COLLAB-005::EL-ROW-order-row@${rowKey}`}
+                  >
 
                     <td>{orderLabel(row)}</td>
 

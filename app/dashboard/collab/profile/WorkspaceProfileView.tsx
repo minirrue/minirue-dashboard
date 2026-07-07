@@ -131,10 +131,13 @@ export default function WorkspaceProfileView() {
     setSaved(false);
   }
 
-  if (loading) return <CollabLoadingBlock />;
+  if (loading)
+    return <CollabLoadingBlock traceId="PG-DASHBOARD-COLLAB-010::EL-REGION-workspace-loading" />;
 
   if (error && !brand) {
-    return <CollabErrorPanel message={error} />;
+    return (
+      <CollabErrorPanel message={error} traceId="PG-DASHBOARD-COLLAB-010::EL-REGION-workspace-error" />
+    );
   }
 
   return (
@@ -144,7 +147,11 @@ export default function WorkspaceProfileView() {
         subtitle="Manage your storefront slug, contact email, and visibility."
       />
 
-      <form className="dash-form-card collab-profile-form" onSubmit={onSave}>
+      <form
+        className="dash-form-card collab-profile-form"
+        onSubmit={onSave}
+        data-trace-id="PG-DASHBOARD-COLLAB-010::EL-FORM-workspace-profile-form"
+      >
         <div className="dash-field">
           <label className="dash-label" htmlFor="profile-slug">
             Slug (brand URL)
@@ -156,6 +163,7 @@ export default function WorkspaceProfileView() {
             onChange={(e) => { setBrandSlug(e.target.value); setSlugError(null); }}
             onBlur={handleSlugBlur}
             disabled={saving}
+            data-trace-id="PG-DASHBOARD-COLLAB-010::EL-INPUT-workspace-slug"
           />
           {slugError ? <p className="dash-inline-error">{slugError}</p> : null}
         </div>
@@ -172,6 +180,7 @@ export default function WorkspaceProfileView() {
             onChange={(e) => { setContactEmail(e.target.value); setEmailError(null); }}
             onBlur={handleEmailBlur}
             disabled={saving}
+            data-trace-id="PG-DASHBOARD-COLLAB-010::EL-INPUT-workspace-email"
           />
           {emailError ? <p className="dash-inline-error">{emailError}</p> : null}
         </div>
@@ -185,6 +194,7 @@ export default function WorkspaceProfileView() {
               checked={storefrontVisible === true}
               onChange={() => setStorefrontVisible(true)}
               disabled={saving}
+              data-trace-id="PG-DASHBOARD-COLLAB-010::EL-RADIO-workspace-visible@yes"
             />
             Yes
           </label>
@@ -195,14 +205,27 @@ export default function WorkspaceProfileView() {
               checked={storefrontVisible === false}
               onChange={() => setStorefrontVisible(false)}
               disabled={saving}
+              data-trace-id="PG-DASHBOARD-COLLAB-010::EL-RADIO-workspace-visible@no"
             />
             No
           </label>
         </fieldset>
 
-        {error ? <p className="dash-inline-error">{error}</p> : null}
+        {error ? (
+          <p
+            className="dash-inline-error"
+            data-trace-id="PG-DASHBOARD-COLLAB-010::EL-REGION-workspace-inline-error"
+          >
+            {error}
+          </p>
+        ) : null}
         {saved ? (
-          <p className="collab-save-ok" role="status" aria-live="polite">
+          <p
+            className="collab-save-ok"
+            role="status"
+            aria-live="polite"
+            data-trace-id="PG-DASHBOARD-COLLAB-010::EL-REGION-workspace-save-confirmation"
+          >
             Profile saved.
           </p>
         ) : null}
@@ -213,6 +236,7 @@ export default function WorkspaceProfileView() {
             className="dash-btn-ghost"
             onClick={onCancel}
             disabled={saving || !isDirty}
+            data-trace-id="PG-DASHBOARD-COLLAB-010::EL-BTN-workspace-cancel"
           >
             Cancel
           </button>
@@ -220,6 +244,7 @@ export default function WorkspaceProfileView() {
             type="submit"
             className="dash-btn-primary"
             disabled={saving || !isDirty}
+            data-trace-id="PG-DASHBOARD-COLLAB-010::EL-BTN-workspace-save"
           >
             {saving ? 'Saving…' : 'Save Profile'}
           </button>

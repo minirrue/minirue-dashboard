@@ -144,13 +144,14 @@ export default function CollabBrandClient() {
 
 
 
-  if (loading) return <CollabLoadingBlock />;
+  if (loading)
+    return <CollabLoadingBlock traceId="PG-DASHBOARD-COLLAB-003::EL-REGION-brand-loading" />;
 
 
 
   if (error && !brand) {
 
-    return <CollabErrorPanel message={error} />;
+    return <CollabErrorPanel message={error} traceId="PG-DASHBOARD-COLLAB-003::EL-REGION-brand-error" />;
 
   }
 
@@ -176,7 +177,10 @@ export default function CollabBrandClient() {
 
       {profileIncomplete ? (
 
-        <div className="dash-role-notice collab-profile-gate">
+        <div
+          className="dash-role-notice collab-profile-gate"
+          data-trace-id="PG-DASHBOARD-COLLAB-003::EL-REGION-brand-profile-gate"
+        >
 
           Add a display name before you can create products.
 
@@ -186,9 +190,16 @@ export default function CollabBrandClient() {
 
 
 
-      <form className="dash-form-card collab-brand-form" onSubmit={onSave}>
+      <form
+        className="dash-form-card collab-brand-form"
+        onSubmit={onSave}
+        data-trace-id="PG-DASHBOARD-COLLAB-003::EL-FORM-brand-form"
+      >
 
-        <div className="collab-brand-logo-row">
+        <div
+          className="collab-brand-logo-row"
+          data-trace-id="PG-DASHBOARD-COLLAB-003::EL-REGION-brand-logo-display"
+        >
 
           {brand?.logoUrl ? (
 
@@ -226,6 +237,8 @@ export default function CollabBrandClient() {
 
               onClick={() => fileRef.current?.click()}
 
+              data-trace-id="PG-DASHBOARD-COLLAB-003::EL-BTN-brand-upload-logo"
+
             >
 
               Upload logo
@@ -249,6 +262,8 @@ export default function CollabBrandClient() {
                 if (f) void onLogo(f);
 
               }}
+
+              data-trace-id="PG-DASHBOARD-COLLAB-003::EL-INPUT-brand-logo-file"
 
             />
 
@@ -278,6 +293,8 @@ export default function CollabBrandClient() {
 
             required
 
+            data-trace-id="PG-DASHBOARD-COLLAB-003::EL-INPUT-brand-display-name"
+
           />
 
         </div>
@@ -302,11 +319,13 @@ export default function CollabBrandClient() {
 
             onChange={(e) => setDescription(e.target.value)}
 
+            data-trace-id="PG-DASHBOARD-COLLAB-003::EL-INPUT-brand-description"
+
           />
 
         </div>
 
-        <p className="dash-label">
+        <p className="dash-label" data-trace-id="PG-DASHBOARD-COLLAB-003::EL-REGION-brand-storefront-url">
 
           Storefront{' '}
 
@@ -316,10 +335,22 @@ export default function CollabBrandClient() {
 
 
 
-        {error ? <p className="dash-inline-error">{error}</p> : null}
+        {error ? (
+          <p
+            className="dash-inline-error"
+            data-trace-id="PG-DASHBOARD-COLLAB-003::EL-REGION-brand-inline-error"
+          >
+            {error}
+          </p>
+        ) : null}
 
         {saved ? (
-          <p className="collab-save-ok" role="status" aria-live="polite">
+          <p
+            className="collab-save-ok"
+            role="status"
+            aria-live="polite"
+            data-trace-id="PG-DASHBOARD-COLLAB-003::EL-REGION-brand-save-confirmation"
+          >
             Changes saved.
           </p>
         ) : null}
@@ -328,7 +359,12 @@ export default function CollabBrandClient() {
 
         <div className="dash-form-actions">
 
-          <button type="submit" className="dash-btn-primary" disabled={saving}>
+          <button
+            type="submit"
+            className="dash-btn-primary"
+            disabled={saving}
+            data-trace-id="PG-DASHBOARD-COLLAB-003::EL-BTN-brand-save"
+          >
 
             {saving ? 'Saving…' : 'Save changes'}
 

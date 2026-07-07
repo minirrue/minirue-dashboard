@@ -93,10 +93,15 @@ export default function CollaboratorScopesClient() {
               type="button"
               className="dash-btn-primary"
               onClick={() => setShowAssign(true)}
+              data-trace-id="PG-DASHBOARD-COLLAB-009::EL-BTN-scopes-assign-open"
             >
               + Assign
             </button>
-            <Link href={`/dashboard/collaborators/${id}`} className="dash-btn-ghost">
+            <Link
+              href={`/dashboard/collaborators/${id}`}
+              className="dash-btn-ghost"
+              data-trace-id="PG-DASHBOARD-COLLAB-009::EL-LINK-scopes-back"
+            >
               Back to collaborator
             </Link>
           </div>
@@ -104,10 +109,11 @@ export default function CollaboratorScopesClient() {
       />
 
       {loading ? (
-        <CollabLoadingBlock lines={3} />
+        <CollabLoadingBlock lines={3} traceId="PG-DASHBOARD-COLLAB-009::EL-REGION-scopes-loading" />
       ) : error ? (
         <CollabErrorPanel
           message={error}
+          traceId="PG-DASHBOARD-COLLAB-009::EL-REGION-scopes-error"
           action={
             <button type="button" className="dash-btn-primary" onClick={() => void load()}>
               Retry
@@ -118,6 +124,7 @@ export default function CollaboratorScopesClient() {
         <CollabEmptyState
           title="No scopes assigned yet"
           copy="Add the first scope to get started."
+          traceId="PG-DASHBOARD-COLLAB-009::EL-REGION-scopes-empty"
           action={
             <button type="button" className="dash-btn-primary" onClick={() => setShowAssign(true)}>
               + Assign
@@ -125,7 +132,7 @@ export default function CollaboratorScopesClient() {
           }
         />
       ) : (
-        <CollabTableCard>
+        <CollabTableCard traceId="PG-DASHBOARD-COLLAB-009::EL-TABLE-scopes-table">
           <table className="dash-table">
             <thead>
               <tr>
@@ -136,7 +143,10 @@ export default function CollaboratorScopesClient() {
             </thead>
             <tbody>
               {scopes.map((scope) => (
-                <tr key={scope.blockKey}>
+                <tr
+                  key={scope.blockKey}
+                  data-trace-id={`PG-DASHBOARD-COLLAB-009::EL-ROW-scope-row@${scope.blockKey}`}
+                >
                   <td><code>{scope.blockKey}</code></td>
                   <td>{scope.canEdit ? 'Yes' : 'No'}</td>
                   <td>{scope.requiresApproval ? 'Yes' : 'No'}</td>
@@ -148,7 +158,12 @@ export default function CollaboratorScopesClient() {
       )}
 
       {showAssign ? (
-        <form className="dash-form-card" onSubmit={handleAssign} style={{ marginTop: 16 }}>
+        <form
+          className="dash-form-card"
+          onSubmit={handleAssign}
+          style={{ marginTop: 16 }}
+          data-trace-id="PG-DASHBOARD-COLLAB-009::EL-FORM-scopes-assign-form"
+        >
           <h2 className="dash-card-title">Assign scope</h2>
           <div className="dash-field">
             <label className="dash-label" htmlFor="blockKey">Block key</label>
@@ -161,6 +176,7 @@ export default function CollaboratorScopesClient() {
               minLength={2}
               maxLength={120}
               disabled={assigning}
+              data-trace-id="PG-DASHBOARD-COLLAB-009::EL-INPUT-scopes-block-key"
             />
           </div>
           <label className="dash-checkbox-label">
@@ -170,6 +186,7 @@ export default function CollaboratorScopesClient() {
               checked={canEdit}
               onChange={(e) => setCanEdit(e.target.checked)}
               disabled={assigning}
+              data-trace-id="PG-DASHBOARD-COLLAB-009::EL-CHECK-scopes-can-edit"
             />
             Can edit
           </label>
@@ -180,15 +197,26 @@ export default function CollaboratorScopesClient() {
               checked={requiresApproval}
               onChange={(e) => setRequiresApproval(e.target.checked)}
               disabled={assigning}
+              data-trace-id="PG-DASHBOARD-COLLAB-009::EL-CHECK-scopes-requires-approval"
             />
             Requires approval
           </label>
           {assignError ? <p className="dash-inline-error">{assignError}</p> : null}
           <div className="dash-form-actions">
-            <button type="submit" className="dash-btn-primary" disabled={assigning}>
+            <button
+              type="submit"
+              className="dash-btn-primary"
+              disabled={assigning}
+              data-trace-id="PG-DASHBOARD-COLLAB-009::EL-BTN-scopes-assign-submit"
+            >
               {assigning ? 'Assigning…' : 'Assign'}
             </button>
-            <button type="button" className="dash-btn-ghost" onClick={resetAssignForm}>
+            <button
+              type="button"
+              className="dash-btn-ghost"
+              onClick={resetAssignForm}
+              data-trace-id="PG-DASHBOARD-COLLAB-009::EL-BTN-scopes-assign-cancel"
+            >
               Cancel
             </button>
           </div>

@@ -161,7 +161,7 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
   }
 
   return (
-    <section className="dash-form-section">
+    <section className="dash-form-section" data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-variants-section">
       <div className="dash-section-header">
         <h2 className="dash-section-title">Variants</h2>
         {!showForm && (
@@ -169,6 +169,7 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
             type="button"
             className="dash-btn-secondary"
             onClick={() => setShowForm(true)}
+            data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-add-variant-toggle"
           >
             + Add Variant
           </button>
@@ -179,7 +180,11 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
       {variants.length === 0 && !showForm ? (
         <p className="dash-help-text">No variants yet. Add a variant to set pricing and sizing.</p>
       ) : (
-        <div className="dash-card" style={{ padding: 0, overflow: 'hidden', marginBottom: 16 }}>
+        <div
+          className="dash-card"
+          style={{ padding: 0, overflow: 'hidden', marginBottom: 16 }}
+          data-trace-id="PG-DASHBOARD-CAT-003::EL-TABLE-variants-table"
+        >
           <table className="dash-table">
             <thead>
               <tr>
@@ -193,7 +198,7 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
             <tbody>
               {variants.map((v) => (
                 <React.Fragment key={v.id}>
-                  <tr>
+                  <tr data-trace-id={`PG-DASHBOARD-CAT-003::EL-ROW-variant-row@${v.id}`}>
                     <td>{v.sku}</td>
                     <td>{v.sizeMl}</td>
                     <td style={{ textTransform: 'capitalize' }}>{v.bottleType}</td>
@@ -203,6 +208,7 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
                         type="button"
                         className="dash-btn-ghost"
                         onClick={() => handleStartEdit(v)}
+                        data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-edit-variant@${v.id}`}
                       >
                         Edit
                       </button>
@@ -211,7 +217,12 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
                   {editingId === v.id && (
                     <tr>
                       <td colSpan={5} style={{ background: 'var(--mr-dash-sub)', padding: '12px 14px' }}>
-                        <form className="dash-inline-form" onSubmit={(e) => handleEditSave(e, v)} noValidate>
+                        <form
+                          className="dash-inline-form"
+                          onSubmit={(e) => handleEditSave(e, v)}
+                          noValidate
+                          data-trace-id={`PG-DASHBOARD-CAT-003::EL-FORM-edit-variant-form@${v.id}`}
+                        >
                           <div className="dash-field-row">
                             <div className="dash-field">
                               <label className="dash-label" htmlFor={`edit-sku-${v.id}`}>
@@ -236,6 +247,7 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
                                 value={editValues.sizeMl}
                                 onChange={(e) => editSetField('sizeMl', e.target.value)}
                                 disabled={editSubmitting}
+                                data-trace-id={`PG-DASHBOARD-CAT-003::EL-INPUT-edit-variant-size@${v.id}`}
                               />
                               {editErrors.sizeMl && <p className="dash-field-error">{editErrors.sizeMl}</p>}
                             </div>
@@ -249,6 +261,7 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
                                 value={editValues.bottleType}
                                 onChange={(e) => editSetField('bottleType', e.target.value as BottleType | '')}
                                 disabled={editSubmitting}
+                                data-trace-id={`PG-DASHBOARD-CAT-003::EL-SELECT-edit-variant-bottle-type@${v.id}`}
                               >
                                 {BOTTLE_OPTIONS.map((o) => (
                                   <option key={o.value} value={o.value}>
@@ -274,6 +287,7 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
                                 onChange={(e) => editSetField('priceAmount', e.target.value)}
                                 placeholder="185.00"
                                 disabled={editSubmitting}
+                                data-trace-id={`PG-DASHBOARD-CAT-003::EL-INPUT-edit-variant-price@${v.id}`}
                               />
                               {editErrors.priceAmount && (
                                 <p className="dash-field-error">{editErrors.priceAmount}</p>
@@ -291,12 +305,18 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
                                 placeholder="USD"
                                 maxLength={3}
                                 disabled={editSubmitting}
+                                data-trace-id={`PG-DASHBOARD-CAT-003::EL-INPUT-edit-variant-currency@${v.id}`}
                               />
                             </div>
                           </div>
                           {editSubmitError && <p className="dash-inline-error">{editSubmitError}</p>}
                           <div className="dash-form-actions">
-                            <button type="submit" className="dash-btn-primary" disabled={editSubmitting}>
+                            <button
+                              type="submit"
+                              className="dash-btn-primary"
+                              disabled={editSubmitting}
+                              data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-save-variant-edit@${v.id}`}
+                            >
                               {editSubmitting ? 'Saving…' : 'Save'}
                             </button>
                             <button
@@ -304,6 +324,7 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
                               className="dash-btn-ghost"
                               onClick={handleCancelEdit}
                               disabled={editSubmitting}
+                              data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-cancel-variant-edit@${v.id}`}
                             >
                               Cancel
                             </button>
@@ -321,7 +342,12 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
 
       {/* Add variant form */}
       {showForm && (
-        <form className="dash-inline-form" onSubmit={handleAddVariant} noValidate>
+        <form
+          className="dash-inline-form"
+          onSubmit={handleAddVariant}
+          noValidate
+          data-trace-id="PG-DASHBOARD-CAT-003::EL-FORM-add-variant-form"
+        >
           <div className="dash-field-row">
             <div className="dash-field">
               <label className="dash-label" htmlFor="var-sku">
@@ -334,6 +360,7 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
                 onChange={(e) => setField('sku', e.target.value)}
                 placeholder="MR-001-50ML"
                 disabled={submitting}
+                data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-add-variant-sku"
               />
               {formErrors.sku && <p className="dash-field-error">{formErrors.sku}</p>}
             </div>
@@ -350,6 +377,7 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
                 onChange={(e) => setField('sizeMl', e.target.value)}
                 placeholder="50"
                 disabled={submitting}
+                data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-add-variant-size"
               />
               {formErrors.sizeMl && <p className="dash-field-error">{formErrors.sizeMl}</p>}
             </div>
@@ -363,6 +391,7 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
                 value={formValues.bottleType}
                 onChange={(e) => setField('bottleType', e.target.value as BottleType | '')}
                 disabled={submitting}
+                data-trace-id="PG-DASHBOARD-CAT-003::EL-SELECT-add-variant-bottle-type"
               >
                 {BOTTLE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -388,6 +417,7 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
                 onChange={(e) => setField('priceAmount', e.target.value)}
                 placeholder="185.00"
                 disabled={submitting}
+                data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-add-variant-price"
               />
               {formErrors.priceAmount && (
                 <p className="dash-field-error">{formErrors.priceAmount}</p>
@@ -405,6 +435,7 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
                 placeholder="USD"
                 maxLength={3}
                 disabled={submitting}
+                data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-add-variant-currency"
               />
             </div>
           </div>
@@ -412,7 +443,12 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
           {submitError && <p className="dash-inline-error">{submitError}</p>}
 
           <div className="dash-form-actions">
-            <button type="submit" className="dash-btn-primary" disabled={submitting}>
+            <button
+              type="submit"
+              className="dash-btn-primary"
+              disabled={submitting}
+              data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-submit-add-variant"
+            >
               {submitting ? 'Adding…' : 'Add Variant'}
             </button>
             <button
@@ -425,6 +461,7 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
                 setSubmitError(null);
               }}
               disabled={submitting}
+              data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-cancel-add-variant"
             >
               Cancel
             </button>

@@ -25,6 +25,17 @@ export interface DashboardTableProps<T extends Record<string, any>> {
   pageSize?: number;
   /** Render when data is empty */
   emptyMessage?: string;
+  /**
+   * §27 trace-id threading (optional — existing callers are unaffected). When provided, rendered
+   * as `data-trace-id` on the outer table/card wrapper (e.g. `PG-{...}::EL-TABLE-{slug}`).
+   */
+  tableTraceId?: string;
+  /**
+   * §27 trace-id threading (optional). When provided, called per row to produce the row's
+   * `data-trace-id` (e.g. `PG-{...}::EL-ROW-{slug}@{row.id}`); applied to both the desktop `<tr>`
+   * and the mobile card for that row.
+   */
+  getRowTraceId?: (row: T, index: number) => string | undefined;
 }
 
 type SortDir = 'asc' | 'desc';
@@ -42,6 +53,8 @@ export default function DashboardTable<T extends Record<string, any>>({
   data,
   pageSize = 10,
   emptyMessage = 'No data to display',
+  tableTraceId,
+  getRowTraceId,
 }: DashboardTableProps<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -140,7 +153,7 @@ export default function DashboardTable<T extends Record<string, any>>({
             </tr>
           ) : (
             paginated.map((row, ri) => (
-              <tr key={ri}>
+              <tr key={ri} data-trace-id={getRowTraceId?.(row, ri)}>
                 {columns.map((col) => (
                   <td key={col.key} style={{ textAlign: col.align ?? 'left' }}>
                     {col.render ? col.render(row) : (row[col.key] as React.ReactNode)}
@@ -171,6 +184,7 @@ export default function DashboardTable<T extends Record<string, any>>({
             <div
               key={ri}
               className={`dash-mobile-card${isExpanded ? ' dash-mobile-card-expanded' : ''}`}
+              data-trace-id={getRowTraceId?.(row, ri)}
             >
               {/* Visible fields (first 3 columns) */}
               {visibleCols.map((col) => (
@@ -215,7 +229,7 @@ export default function DashboardTable<T extends Record<string, any>>({
   };
 
   return (
-    <div className="dash-card" style={{ padding: 0, overflow: 'hidden' }}>
+    <div className="dash-card" style={{ padding: 0, overflow: 'hidden' }} data-trace-id={tableTraceId}>
       {isMobile ? renderCards() : renderTable()}
 
       {pageSize > 0 && totalPages > 1 && (

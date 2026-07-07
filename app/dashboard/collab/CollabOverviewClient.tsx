@@ -50,7 +50,8 @@ export default function CollabOverviewClient() {
 
 
 
-  if (loading) return <CollabLoadingBlock />;
+  if (loading)
+    return <CollabLoadingBlock traceId="PG-DASHBOARD-COLLAB-006::EL-REGION-overview-loading" />;
 
 
 
@@ -62,9 +63,16 @@ export default function CollabOverviewClient() {
 
         message={error}
 
+        traceId="PG-DASHBOARD-COLLAB-006::EL-REGION-overview-error"
+
         action={
 
-          <button type="button" className="dash-btn-secondary" onClick={() => window.location.reload()}>
+          <button
+            type="button"
+            className="dash-btn-secondary"
+            onClick={() => window.location.reload()}
+            data-trace-id="PG-DASHBOARD-COLLAB-006::EL-BTN-overview-retry"
+          >
 
             Retry
 
@@ -96,7 +104,7 @@ export default function CollabOverviewClient() {
 
 
 
-      <p className="collab-summary-line">
+      <p className="collab-summary-line" data-trace-id="PG-DASHBOARD-COLLAB-006::EL-REGION-overview-summary">
 
         <span>
 
@@ -136,11 +144,17 @@ export default function CollabOverviewClient() {
 
           copy="Complete your brand profile and add your first product to appear on the storefront."
 
+          traceId="PG-DASHBOARD-COLLAB-006::EL-REGION-overview-empty"
+
           action={
 
             <div className="collab-action-row collab-action-row--center">
 
-              <Link href="/collab/brand" className="dash-btn-primary">
+              <Link
+                href="/collab/brand"
+                className="dash-btn-primary"
+                data-trace-id="PG-DASHBOARD-COLLAB-006::EL-LINK-overview-complete-brand-profile"
+              >
 
                 Complete brand profile
 
@@ -148,7 +162,11 @@ export default function CollabOverviewClient() {
 
               {overview?.modules.includes('PRODUCTS') ? (
 
-                <Link href="/collab/products/new" className="dash-btn-secondary">
+                <Link
+                  href="/collab/products/new"
+                  className="dash-btn-secondary"
+                  data-trace-id="PG-DASHBOARD-COLLAB-006::EL-LINK-overview-add-first-product"
+                >
 
                   Add first product
 
@@ -164,7 +182,10 @@ export default function CollabOverviewClient() {
 
       ) : (
 
-        <div className="dash-card collab-section-card">
+        <div
+          className="dash-card collab-section-card"
+          data-trace-id="PG-DASHBOARD-COLLAB-006::EL-REGION-overview-quicklinks"
+        >
 
           <h2 className="dash-card-title">Quick links</h2>
 
@@ -172,7 +193,11 @@ export default function CollabOverviewClient() {
 
             {overview?.modules.includes('PRODUCTS') ? (
 
-              <Link href="/collab/products" className="dash-btn-secondary">
+              <Link
+                href="/collab/products"
+                className="dash-btn-secondary"
+                data-trace-id="PG-DASHBOARD-COLLAB-006::EL-LINK-overview-manage-products"
+              >
 
                 Manage products
 
@@ -182,7 +207,11 @@ export default function CollabOverviewClient() {
 
             {overview?.modules.includes('ORDERS') ? (
 
-              <Link href="/collab/orders" className="dash-btn-secondary">
+              <Link
+                href="/collab/orders"
+                className="dash-btn-secondary"
+                data-trace-id="PG-DASHBOARD-COLLAB-006::EL-LINK-overview-view-orders"
+              >
 
                 View orders
 
@@ -192,7 +221,11 @@ export default function CollabOverviewClient() {
 
             {overview?.modules.includes('ANALYTICS') ? (
 
-              <Link href="/collab/analytics" className="dash-btn-secondary">
+              <Link
+                href="/collab/analytics"
+                className="dash-btn-secondary"
+                data-trace-id="PG-DASHBOARD-COLLAB-006::EL-LINK-overview-analytics"
+              >
 
                 Analytics
 
@@ -200,7 +233,11 @@ export default function CollabOverviewClient() {
 
             ) : null}
 
-            <Link href="/collab/brand" className="dash-btn-ghost">
+            <Link
+              href="/collab/brand"
+              className="dash-btn-ghost"
+              data-trace-id="PG-DASHBOARD-COLLAB-006::EL-LINK-overview-brand-profile"
+            >
 
               Brand profile
 

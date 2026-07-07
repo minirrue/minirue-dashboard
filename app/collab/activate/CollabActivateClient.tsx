@@ -40,7 +40,10 @@ export default function CollabActivateClient() {
 
   return (
     <main className="collab-activate-shell">
-      <div className="collab-activate-card dash-card">
+      <div
+        className="collab-activate-card dash-card"
+        data-trace-id="PG-DASHBOARD-COLLAB-001::EL-CARD-activate-card"
+      >
         <h1 className="dash-page-title" style={{ fontSize: '1.35rem' }}>
           Activate partner account
         </h1>
@@ -48,7 +51,11 @@ export default function CollabActivateClient() {
           Set a password to access your MiniRue brand workspace.
         </p>
 
-        <form onSubmit={onSubmit} className="collab-activate-form">
+        <form
+          onSubmit={onSubmit}
+          className="collab-activate-form"
+          data-trace-id="PG-DASHBOARD-COLLAB-001::EL-FORM-activate-form"
+        >
           <div className="dash-field">
             <label className="dash-label" htmlFor="activate-password">
               Password
@@ -63,6 +70,7 @@ export default function CollabActivateClient() {
               minLength={8}
               autoComplete="new-password"
               disabled={loading}
+              data-trace-id="PG-DASHBOARD-COLLAB-001::EL-INPUT-activate-password"
             />
           </div>
           <div className="dash-field">
@@ -79,10 +87,16 @@ export default function CollabActivateClient() {
               minLength={8}
               autoComplete="new-password"
               disabled={loading}
+              data-trace-id="PG-DASHBOARD-COLLAB-001::EL-INPUT-activate-confirm-password"
             />
           </div>
           {error ? (
-          <p className="dash-inline-error" role="alert" id="activate-error">
+          <p
+            className="dash-inline-error"
+            role="alert"
+            id="activate-error"
+            data-trace-id="PG-DASHBOARD-COLLAB-001::EL-REGION-activate-error"
+          >
             {error}
           </p>
         ) : null}
@@ -91,6 +105,7 @@ export default function CollabActivateClient() {
           className="dash-btn-primary"
           disabled={loading}
           aria-describedby={error ? 'activate-error' : undefined}
+          data-trace-id="PG-DASHBOARD-COLLAB-001::EL-BTN-activate-submit"
         >
             {loading ? 'Activating…' : 'Activate account'}
           </button>
@@ -98,7 +113,11 @@ export default function CollabActivateClient() {
 
         <p className="collab-activate-footer">
           Already activated?{' '}
-          <Link href="/login" className="dash-link">
+          <Link
+            href="/login"
+            className="dash-link"
+            data-trace-id="PG-DASHBOARD-COLLAB-001::EL-LINK-activate-sign-in"
+          >
             Sign in
           </Link>
         </p>

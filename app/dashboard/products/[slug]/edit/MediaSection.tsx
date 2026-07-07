@@ -46,7 +46,11 @@ export default function MediaSection({ productId, media, onMediaChange }: Props)
   }
 
   return (
-    <section className="dash-form-card" style={{ marginTop: 24 }}>
+    <section
+      className="dash-form-card"
+      style={{ marginTop: 24 }}
+      data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-product-images"
+    >
       <h2 className="dash-card-title" style={{ marginTop: 0 }}>
         Product images
       </h2>
@@ -69,6 +73,7 @@ export default function MediaSection({ productId, media, onMediaChange }: Props)
               <img
                 src={cloudinaryPreviewUrl(m.cloudinaryPublicId)}
                 alt={m.altText ?? ''}
+                data-trace-id={`PG-DASHBOARD-CAT-003::EL-IMG-product-image@${m.id}`}
                 style={{
                   width: '100%',
                   aspectRatio: '4/5',
@@ -101,6 +106,7 @@ export default function MediaSection({ productId, media, onMediaChange }: Props)
               onChange={(e) => setPublicId(e.target.value)}
               placeholder="folder/image-name"
               disabled={submitting}
+              data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-media-public-id"
             />
           </div>
           <div className="dash-field">
@@ -113,12 +119,18 @@ export default function MediaSection({ productId, media, onMediaChange }: Props)
               value={altText}
               onChange={(e) => setAltText(e.target.value)}
               disabled={submitting}
+              data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-media-alt-text"
             />
           </div>
         </div>
         {error && <p className="dash-inline-error">{error}</p>}
         <div className="dash-form-actions">
-          <button type="submit" className="dash-btn-primary" disabled={submitting}>
+          <button
+            type="submit"
+            className="dash-btn-primary"
+            disabled={submitting}
+            data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-add-image"
+          >
             {submitting ? 'Adding…' : 'Add image'}
           </button>
         </div>
