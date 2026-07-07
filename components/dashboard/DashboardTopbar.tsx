@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import RoleBadge from './RoleBadge';
 import NotificationDrawer from './NotificationDrawer';
@@ -45,8 +45,19 @@ export default function DashboardTopbar({
   const resolvedEyebrow = eyebrow ?? breadcrumbs[0]?.label ?? 'Overview';
   const [notifOpen, setNotifOpen] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [searchExpanded, setSearchExpanded] = useState(false);
   const router = useRouter();
   const logoutMutation = useLogout();
+
+  /* Mobile detection (same breakpoint as sidebar: 760px) */
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 760px)');
+    const handler = (e: MediaQueryListEvent | MediaQueryList) => setIsMobile(e.matches);
+    handler(mq);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   const handleLogout = () => {
     setLogoutError(null);
@@ -104,13 +115,32 @@ export default function DashboardTopbar({
             <line x1="3" y1="18" x2="21" y2="18" />
           </svg>
         </button>
-        <label className="dash-topbar-search">
-          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="7" />
-            <path d="M20 20l-3.5-3.5" />
-          </svg>
-          <input type="search" placeholder="Search orders, products…" aria-label="Search" />
-        </label>
+        {isMobile && !searchExpanded ? (
+          <button
+            className="dash-topbar-search-icon-btn"
+            onClick={() => setSearchExpanded(true)}
+            aria-label="Open search"
+          >
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M20 20l-3.5-3.5" />
+            </svg>
+          </button>
+        ) : (
+          <label className={`dash-topbar-search${isMobile ? ' dash-topbar-search--mobile' : ''}`}>
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M20 20l-3.5-3.5" />
+            </svg>
+            <input
+              type="search"
+              placeholder="Search orders, products…"
+              aria-label="Search"
+              autoFocus={isMobile && searchExpanded}
+              onBlur={() => { if (isMobile) setSearchExpanded(false); }}
+            />
+          </label>
+        )}
 
         <button
           className="dash-notif-btn"
