@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import "../styles/globals.css";
-import { RootQueryProvider } from "@/lib/hooks";
+import { RootQueryProvider, getQueryClient } from "@/lib/hooks";
 
 export const metadata: Metadata = {
   title: "MiniRue Admin Dashboard",
@@ -14,10 +15,15 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const queryClient = getQueryClient();
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <RootQueryProvider>{children}</RootQueryProvider>
+        <RootQueryProvider>
+          <HydrationBoundary state={dehydrate(queryClient)}>
+            {children}
+          </HydrationBoundary>
+        </RootQueryProvider>
         <Analytics />
         <SpeedInsights />
       </body>
