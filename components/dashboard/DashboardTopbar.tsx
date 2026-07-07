@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import RoleBadge from './RoleBadge';
 import NotificationDrawer from './NotificationDrawer';
+import ErrorBanner from './ErrorBanner';
+import { useLogout } from '@/lib/hooks/use-auth';
 
 export interface BreadcrumbItem {
   label: string;
@@ -38,9 +41,29 @@ export default function DashboardTopbar({
   const resolvedTitle = title ?? breadcrumbs[breadcrumbs.length - 1]?.label ?? 'Overview';
   const resolvedEyebrow = eyebrow ?? breadcrumbs[0]?.label ?? 'Overview';
   const [notifOpen, setNotifOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const router = useRouter();
+  const logoutMutation = useLogout();
+
+  const handleLogout = () => {
+    setLogoutError(null);
+    logoutMutation.mutate(undefined, {
+      onSuccess: () => {
+        router.push('/login');
+      },
+      onError: (err: unknown) => {
+        const message =
+          err instanceof Error ? err.message : 'Sign out failed. Please try again.';
+        setLogoutError(message);
+      },
+    });
+  };
 
   return (
     <>
+    {logoutError && (
+      <ErrorBanner message={logoutError} onDismiss={() => setLogoutError(null)} />
+    )}
     <header className="dash-topbar">
       <div className="dash-topbar-copy">
         <div className="dash-topbar-eyebrow">{resolvedEyebrow}</div>
@@ -97,6 +120,28 @@ export default function DashboardTopbar({
           <div className="dash-avatar" title={userName} aria-label={`Signed in as ${userName}`}>
             <span>{getInitials(userName)}</span>
           </div>
+          <button
+            className="dash-sidebar-link"
+            onClick={handleLogout}
+            disabled={logoutMutation.isPending}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 4px',
+              marginTop: 4,
+              border: 'none',
+              background: 'transparent',
+              cursor: logoutMutation.isPending ? 'default' : 'pointer',
+              color: 'var(--dash-fg-3)',
+              fontSize: 'var(--dash-text-xs)',
+              fontFamily: 'var(--dash-font-ui)',
+              opacity: logoutMutation.isPending ? 0.6 : 1,
+            }}
+            aria-label="Sign out"
+          >
+            {logoutMutation.isPending ? 'Signing out\u2026' : 'Sign out'}
+          </button>
         </div>
       </div>
     </header>
