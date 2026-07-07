@@ -135,10 +135,6 @@ export interface DashboardSidebarProps {
   mobileDrawerOpen?: boolean;
   /** Mobile drawer close callback */
   onMobileDrawerClose?: () => void;
-  /** Desktop collapsed (icon-rail) state — lifted to DashboardShell */
-  collapsed?: boolean;
-  /** Toggle callback for the desktop collapse control */
-  onToggleCollapsed?: () => void;
 }
 
 const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
@@ -193,8 +189,6 @@ export default function DashboardSidebar({
   userName,
   mobileDrawerOpen,
   onMobileDrawerClose,
-  collapsed = false,
-  onToggleCollapsed,
 }: DashboardSidebarProps) {
   const visibleGroups = NAV_ITEMS.map((group) => ({
     ...group,
@@ -230,28 +224,13 @@ export default function DashboardSidebar({
     </nav>
   );
 
-  const renderBrand = (showCollapseToggle: boolean) => (
+  const renderBrand = () => (
     <div className="dash-sidebar-brand">
-      <div className="dash-sidebar-brand-row">
-        <div className="dash-sidebar-logo">
-          MiniRue
-          <span className="dash-sidebar-logo-mark" aria-hidden="true">
-            <Sparkle size={9} />
-          </span>
-        </div>
-        {showCollapseToggle && (
-          <button
-            type="button"
-            className="dash-sidebar-collapse-btn"
-            onClick={onToggleCollapsed}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            aria-expanded={!collapsed}
-          >
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              {collapsed ? <polyline points="9 18 15 12 9 6" /> : <polyline points="15 18 9 12 15 6" />}
-            </svg>
-          </button>
-        )}
+      <div className="dash-sidebar-logo">
+        MiniRue
+        <span className="dash-sidebar-logo-mark" aria-hidden="true">
+          <Sparkle size={9} />
+        </span>
       </div>
       <div className="dash-sidebar-subtitle">Atelier dashboard</div>
     </div>
@@ -266,18 +245,18 @@ export default function DashboardSidebar({
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="dash-sidebar" data-collapsed={collapsed ? 'true' : undefined}>
-        {renderBrand(true)}
+      <aside className="dash-sidebar">
+        {renderBrand()}
         {renderNav()}
         {renderFooter()}
       </aside>
 
-      {/* Mobile slide-out drawer — untouched by the collapse feature */}
+      {/* Mobile slide-out drawer */}
       <aside
         className="dash-mobile-drawer"
         data-open={mobileDrawerOpen ? 'true' : undefined}
       >
-        {renderBrand(false)}
+        {renderBrand()}
         {renderNav()}
         {renderFooter()}
       </aside>

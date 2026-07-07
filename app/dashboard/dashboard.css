@@ -168,35 +168,6 @@
     font-size: 13px;
   }
 
-  /* ── Sidebar brand row (logo + desktop collapse toggle) ── */
-  .dash-sidebar-brand-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 8px;
-  }
-
-  .dash-sidebar-collapse-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 26px;
-    height: 26px;
-    flex-shrink: 0;
-    margin-top: 2px;
-    border: 1px solid var(--mr-dash-hair);
-    border-radius: var(--mr-radius-sm);
-    background: var(--mr-dash-surface);
-    color: var(--mr-fg-3);
-    cursor: pointer;
-    transition: background var(--mr-dur-fast) var(--mr-ease-snappy), color var(--mr-dur-fast) var(--mr-ease-snappy);
-  }
-
-  .dash-sidebar-collapse-btn:hover {
-    background: var(--mr-dash-sub);
-    color: var(--mr-fg);
-  }
-
   /* ── Unified identity popover — anchored to the sidebar footer, opens above the trigger ── */
   .dash-user-menu-wrap {
     position: relative;
@@ -293,40 +264,6 @@
     flex-direction: column;
     min-height: 100vh;
     background: var(--mr-dash-bg);
-  }
-
-  /* ── Desktop icon-only rail (collapsed) ──
-     Driven from DashboardShell state, not a CSS sibling selector — see the
-     comment in DashboardShell.tsx for why. */
-  .dash-sidebar[data-collapsed="true"] {
-    width: 64px;
-  }
-
-  .dash-sidebar[data-collapsed="true"] .dash-sidebar-link-label,
-  .dash-sidebar[data-collapsed="true"] .dash-sidebar-subtitle,
-  .dash-sidebar[data-collapsed="true"] .dash-user-menu-copy,
-  .dash-sidebar[data-collapsed="true"] .dash-user-menu-chevron {
-    display: none;
-  }
-
-  .dash-sidebar[data-collapsed="true"] .dash-sidebar-brand-row {
-    justify-content: center;
-  }
-
-  .dash-sidebar[data-collapsed="true"] .dash-sidebar-group-items {
-    align-items: center;
-  }
-
-  .dash-sidebar[data-collapsed="true"] .dash-sidebar-link {
-    justify-content: center;
-  }
-
-  .dash-sidebar[data-collapsed="true"] .dash-sidebar-section {
-    display: none;
-  }
-
-  .dash-main[data-sidebar-collapsed="true"] {
-    margin-left: 64px;
   }
 
   .dash-topbar {
