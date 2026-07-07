@@ -609,6 +609,13 @@
 
     .dash-user-menu {
       align-self: flex-start;
+      min-width: 0;
+      overflow: hidden;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .dash-user-meta {
+      display: none;
     }
 
     .dash-content {
