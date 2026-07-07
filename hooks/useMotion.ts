@@ -1,5 +1,8 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { useBreakpoint } from '@/lib/hooks/useBreakpoint'
+
+export { useBreakpoint }
 
 const PRESETS: Record<string, { stiffness: number; damping: number; mass: number }> = {
   default:     { stiffness: 300, damping: 30, mass: 1 },
@@ -85,12 +88,3 @@ export function useStaggerEnter(
   return useEnterSpring({ preset, from, delay: baseDelay + index * step })
 }
 
-export function useBreakpoint() {
-  const [w, setW] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200)
-  useEffect(() => {
-    const handler = () => setW(window.innerWidth)
-    window.addEventListener('resize', handler)
-    return () => window.removeEventListener('resize', handler)
-  }, [])
-  return { w, mobile: w < 640, tablet: w < 1024 }
-}

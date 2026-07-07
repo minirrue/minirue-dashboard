@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { createVariant, updateVariant } from '@/lib/catalog/api';
+import { createVariant, updateVariant, softDeleteVariant, hardDeleteVariant } from '@/lib/catalog/api';
 import type { ProductVariant, BottleType } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
+import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
 
 interface VariantFormValues {
   sku: string;
@@ -64,6 +65,7 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
   const [editErrors, setEditErrors] = useState<VariantFormErrors>({});
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editSubmitError, setEditSubmitError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ProductVariant | null>(null);
 
   function setField<K extends keyof VariantFormValues>(key: K, value: VariantFormValues[K]) {
     setFormValues((prev) => ({ ...prev, [key]: value }));
@@ -160,8 +162,29 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
     return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
   }
 
+  async function handleSoftDeleteVariant(v: ProductVariant) {
+    await softDeleteVariant(productId, v.id);
+    onVariantsChange(variants.filter((x) => x.id !== v.id));
+    setDeleteTarget(null);
+  }
+
+  async function handleHardDeleteVariant(v: ProductVariant) {
+    await hardDeleteVariant(productId, v.id);
+    onVariantsChange(variants.filter((x) => x.id !== v.id));
+    setDeleteTarget(null);
+  }
+
   return (
     <section className="dash-form-section" data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-variants-section">
+      {deleteTarget && (
+        <DeleteChoiceDialog
+          productName={deleteTarget.sku}
+          onSoftDelete={() => handleSoftDeleteVariant(deleteTarget)}
+          onHardDelete={() => handleHardDeleteVariant(deleteTarget)}
+          onCancel={() => setDeleteTarget(null)}
+          traceIdPrefix={`PG-DASHBOARD-CAT-003::EL-MODAL-delete-variant-confirm@${deleteTarget.id}`}
+        />
+      )}
       <div className="dash-section-header">
         <h2 className="dash-section-title">Variants</h2>
         {!showForm && (
@@ -211,6 +234,14 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
                         data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-edit-variant@${v.id}`}
                       >
                         Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="dash-btn-ghost dash-btn-danger"
+                        onClick={() => setDeleteTarget(v)}
+                        data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-delete-variant@${v.id}`}
+                      >
+                        Delete
                       </button>
                     </td>
                   </tr>

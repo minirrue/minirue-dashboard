@@ -9,10 +9,9 @@ export interface Breakpoint {
 }
 
 export function useBreakpoint(): Breakpoint {
-  const [w, setW] = React.useState(0);
+  const [w, setW] = React.useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
 
   React.useEffect(() => {
-    setW(window.innerWidth);
     const h = () => setW(window.innerWidth);
     window.addEventListener('resize', h);
     return () => window.removeEventListener('resize', h);

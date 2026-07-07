@@ -8,8 +8,17 @@ import StatusBadge from '@/components/dashboard/StatusBadge';
 import type { Column } from '@/components/dashboard/DashboardTable';
 import type { StatusKind } from '@/components/dashboard/StatusBadge';
 import type { ProductListItem, ProductStatus } from '@/lib/catalog/types';
-import { listProducts, publishProduct, archiveProduct } from '@/lib/catalog/api';
+import {
+  listProducts,
+  publishProduct,
+  archiveProduct,
+  listBrands,
+  softDeleteProduct,
+  hardDeleteProduct,
+} from '@/lib/catalog/api';
 import type { ApiError } from '@/lib/api/client';
+import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
+import { useDebounce } from '@/lib/hooks/useDebounce';
 
 /* ── Row type for table ── */
 interface ProductRow extends ProductListItem {
@@ -87,38 +96,55 @@ export default function ProductsClient() {
 
   const [statusFilter, setStatusFilter] = useState<'' | ProductStatus>('');
   const [brandFilter, setBrandFilter] = useState('');
+  const [brands, setBrands] = useState<string[]>([]);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const debouncedSearchInput = useDebounce(searchInput, 350);
 
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ProductListItem | null>(null);
 
-  const load = useCallback(async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      const res = await listProducts({
-        status: statusFilter || undefined,
-        brand: brandFilter || undefined,
-        search: search || undefined,
-        limit: 50,
-      });
-      setItems(res.items);
-    } catch (e) {
-      const err = e as ApiError;
-      setError(err.message ?? 'Failed to load products');
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter, brandFilter, search]);
+  useEffect(() => {
+    listBrands()
+      .then(setBrands)
+      .catch(() => setBrands([]));
+  }, []);
+
+  const load = useCallback(
+    async (searchOverride?: string) => {
+      setError(null);
+      setLoading(true);
+      try {
+        const res = await listProducts({
+          status: statusFilter || undefined,
+          brand: brandFilter || undefined,
+          search: (searchOverride ?? debouncedSearchInput) || undefined,
+          limit: 50,
+        });
+        setItems(res.items);
+      } catch (e) {
+        const err = e as ApiError;
+        setError(err.message ?? 'Failed to load products');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [statusFilter, brandFilter, debouncedSearchInput],
+  );
 
   useEffect(() => {
     load();
   }, [load]);
 
-  /* Search submit on Enter */
+  /* Search submit — immediate trigger, bypassing the debounce wait */
+  function triggerImmediateSearch() {
+    setSearch(searchInput);
+    load(searchInput);
+  }
+
   function handleSearchKey(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') setSearch(searchInput);
+    if (e.key === 'Enter') triggerImmediateSearch();
   }
 
   async function handlePublish(id: string) {
@@ -147,6 +173,18 @@ export default function ProductsClient() {
     } finally {
       setActionLoadingId(null);
     }
+  }
+
+  async function handleSoftDelete(id: string) {
+    await softDeleteProduct(id);
+    setDeleteTarget(null);
+    await load();
+  }
+
+  async function handleHardDelete(id: string) {
+    await hardDeleteProduct(id);
+    setDeleteTarget(null);
+    await load();
   }
 
   const columns: Column<ProductRow>[] = [
@@ -219,6 +257,14 @@ export default function ProductsClient() {
               Archive
             </button>
           )}
+          <button
+            className="dash-btn-ghost dash-btn-danger"
+            disabled={actionLoadingId === row.id}
+            onClick={() => setDeleteTarget(row)}
+            data-trace-id={`PG-DASHBOARD-CAT-001::EL-BTN-delete-product@${row.id}`}
+          >
+            Delete
+          </button>
         </div>
       ),
     },
@@ -226,6 +272,16 @@ export default function ProductsClient() {
 
   return (
     <>
+      {deleteTarget && (
+        <DeleteChoiceDialog
+          productName={deleteTarget.name}
+          onSoftDelete={() => handleSoftDelete(deleteTarget.id)}
+          onHardDelete={() => handleHardDelete(deleteTarget.id)}
+          onCancel={() => setDeleteTarget(null)}
+          traceIdPrefix="PG-DASHBOARD-CAT-001::EL-MODAL-delete-product-confirm"
+        />
+      )}
+
       {/* Header */}
       <div className="dash-page-header" data-trace-id="PG-DASHBOARD-CAT-001::EL-REGION-products-page-header">
         <h1 className="dash-page-title">Products</h1>
@@ -252,13 +308,19 @@ export default function ProductsClient() {
             </option>
           ))}
         </select>
-        <input
-          className="dash-input"
-          placeholder="Brand"
+        <select
+          className="dash-select"
           value={brandFilter}
           onChange={(e) => setBrandFilter(e.target.value)}
-          data-trace-id="PG-DASHBOARD-CAT-001::EL-INPUT-brand-filter"
-        />
+          data-trace-id="PG-DASHBOARD-CAT-001::EL-SELECT-brand-filter"
+        >
+          <option value="">All brands</option>
+          {brands.map((b) => (
+            <option key={b} value={b}>
+              {b}
+            </option>
+          ))}
+        </select>
         <input
           className="dash-input dash-input-search"
           placeholder="Search products…"
@@ -269,7 +331,7 @@ export default function ProductsClient() {
         />
         <button
           className="dash-btn-secondary"
-          onClick={() => setSearch(searchInput)}
+          onClick={triggerImmediateSearch}
           data-trace-id="PG-DASHBOARD-CAT-001::EL-BTN-search-products"
         >
           Search
@@ -296,7 +358,7 @@ export default function ProductsClient() {
           <button
             className="dash-btn-secondary"
             style={{ marginTop: 12 }}
-            onClick={load}
+            onClick={() => load()}
             data-trace-id="PG-DASHBOARD-CAT-001::EL-BTN-retry-load-products"
           >
             Retry

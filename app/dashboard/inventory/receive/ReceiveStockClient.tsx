@@ -7,19 +7,11 @@ import { listWarehouses, receiveStock } from '@/lib/inventory/api';
 import type { WarehouseRow } from '@/lib/inventory/api';
 import { apiFetch } from '@/lib/api/client';
 import type { ApiError } from '@/lib/api/client';
+import { useDebounce } from '@/lib/hooks/useDebounce';
 
 interface VariantOption {
   variantId: string;
   label: string;
-}
-
-function useDebounce<T>(value: T, ms: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), ms);
-    return () => clearTimeout(t);
-  }, [value, ms]);
-  return debounced;
 }
 
 export default function ReceiveStockClient() {

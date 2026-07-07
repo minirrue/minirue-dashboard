@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createProduct, listCategories } from '@/lib/catalog/api';
+import { createProduct, listCategories, listBrands } from '@/lib/catalog/api';
 import type { Category, Gender } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
 
@@ -73,12 +73,18 @@ export default function NewProductPage() {
 
   const [categories, setCategories] = useState<Array<Category & { depth: number }>>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [brands, setBrands] = useState<string[]>([]);
+  const [brandsLoading, setBrandsLoading] = useState(true);
 
   useEffect(() => {
     listCategories()
       .then((res) => setCategories(flattenCategories(res.items)))
       .catch(() => setCategories([]))
       .finally(() => setCategoriesLoading(false));
+    listBrands()
+      .then(setBrands)
+      .catch(() => setBrands([]))
+      .finally(() => setBrandsLoading(false));
   }, []);
 
   function set<K extends keyof FormValues>(key: K, value: FormValues[K]) {
@@ -168,15 +174,23 @@ export default function NewProductPage() {
           <label className="dash-label" htmlFor="brand">
             Brand <span className="dash-required">*</span>
           </label>
-          <input
+          <select
             id="brand"
-            className={`dash-input${errors.brand ? ' dash-input-error' : ''}`}
+            className={`dash-select${errors.brand ? ' dash-input-error' : ''}`}
             value={values.brand}
             onChange={(e) => set('brand', e.target.value)}
-            placeholder="e.g. MiniRue"
-            disabled={submitting}
-            data-trace-id="PG-DASHBOARD-CAT-002::EL-INPUT-product-brand"
-          />
+            disabled={submitting || brandsLoading}
+            data-trace-id="PG-DASHBOARD-CAT-002::EL-SELECT-product-brand"
+          >
+            <option value="" disabled>
+              {brandsLoading ? 'Loading brands…' : 'Select brand…'}
+            </option>
+            {brands.map((b) => (
+              <option key={b} value={b}>
+                {b}
+              </option>
+            ))}
+          </select>
           {errors.brand && <p className="dash-field-error">{errors.brand}</p>}
         </div>
 

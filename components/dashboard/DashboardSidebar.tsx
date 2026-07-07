@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { canAccessDashboardRoute } from '@/lib/auth/roles';
-import RoleBadge from './RoleBadge';
+import UserMenu from './UserMenu';
 import { Sparkle } from '../primitives';
 
 /* ── Icon helpers (inline SVG to avoid external deps) ── */
@@ -128,10 +129,16 @@ export interface DashboardSidebarProps {
   activePath?: string;
   /** Signed-in staff role from `/auth/me` */
   userRole?: string;
+  /** User display name for the footer identity menu */
+  userName?: string;
   /** Mobile drawer open state */
   mobileDrawerOpen?: boolean;
   /** Mobile drawer close callback */
   onMobileDrawerClose?: () => void;
+  /** Desktop collapsed (icon-rail) state — lifted to DashboardShell */
+  collapsed?: boolean;
+  /** Toggle callback for the desktop collapse control */
+  onToggleCollapsed?: () => void;
 }
 
 const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
@@ -183,8 +190,11 @@ const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
 export default function DashboardSidebar({
   activePath = '/overview',
   userRole,
+  userName,
   mobileDrawerOpen,
   onMobileDrawerClose,
+  collapsed = false,
+  onToggleCollapsed,
 }: DashboardSidebarProps) {
   const visibleGroups = NAV_ITEMS.map((group) => ({
     ...group,
@@ -200,7 +210,7 @@ export default function DashboardSidebar({
           <div className="dash-sidebar-section">{group.section}</div>
           <div className="dash-sidebar-group-items">
             {group.items.map((item) => (
-              <a
+              <Link
                 key={item.href}
                 href={item.href}
                 className="dash-sidebar-link"
@@ -212,7 +222,7 @@ export default function DashboardSidebar({
               >
                 <span className="dash-sidebar-link-icon">{item.icon}</span>
                 <span className="dash-sidebar-link-label">{item.label}</span>
-              </a>
+              </Link>
             ))}
           </div>
         </section>
@@ -220,13 +230,28 @@ export default function DashboardSidebar({
     </nav>
   );
 
-  const renderBrand = () => (
+  const renderBrand = (showCollapseToggle: boolean) => (
     <div className="dash-sidebar-brand">
-      <div className="dash-sidebar-logo">
-        MiniRue
-        <span className="dash-sidebar-logo-mark" aria-hidden="true">
-          <Sparkle size={9} />
-        </span>
+      <div className="dash-sidebar-brand-row">
+        <div className="dash-sidebar-logo">
+          MiniRue
+          <span className="dash-sidebar-logo-mark" aria-hidden="true">
+            <Sparkle size={9} />
+          </span>
+        </div>
+        {showCollapseToggle && (
+          <button
+            type="button"
+            className="dash-sidebar-collapse-btn"
+            onClick={onToggleCollapsed}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-expanded={!collapsed}
+          >
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              {collapsed ? <polyline points="9 18 15 12 9 6" /> : <polyline points="15 18 9 12 15 6" />}
+            </svg>
+          </button>
+        )}
       </div>
       <div className="dash-sidebar-subtitle">Atelier dashboard</div>
     </div>
@@ -234,34 +259,25 @@ export default function DashboardSidebar({
 
   const renderFooter = () => (
     <div className="dash-sidebar-footer">
-      <div className="dash-sidebar-footer-link">Storefront</div>
-      <div className="dash-sidebar-footer-user">
-        <div className="dash-sidebar-footer-avatar" aria-hidden="true">
-          MR
-        </div>
-        <div className="dash-sidebar-footer-copy">
-          {userRole ? <RoleBadge role={userRole} size="compact" /> : null}
-          <span className="dash-sidebar-footer-version">MiniRue Admin v0.1</span>
-        </div>
-      </div>
+      <UserMenu userName={userName} userRole={userRole} />
     </div>
   );
 
   return (
     <>
-      {/* Desktop sidebar — unchanged */}
-      <aside className="dash-sidebar">
-        {renderBrand()}
+      {/* Desktop sidebar */}
+      <aside className="dash-sidebar" data-collapsed={collapsed ? 'true' : undefined}>
+        {renderBrand(true)}
         {renderNav()}
         {renderFooter()}
       </aside>
 
-      {/* Mobile slide-out drawer */}
+      {/* Mobile slide-out drawer — untouched by the collapse feature */}
       <aside
         className="dash-mobile-drawer"
         data-open={mobileDrawerOpen ? 'true' : undefined}
       >
-        {renderBrand()}
+        {renderBrand(false)}
         {renderNav()}
         {renderFooter()}
       </aside>

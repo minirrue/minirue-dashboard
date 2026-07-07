@@ -199,6 +199,28 @@ export async function archiveProduct(id: string): Promise<Product> {
   return getProduct(id);
 }
 
+export async function softDeleteProduct(id: string): Promise<void> {
+  await apiFetch(`${ADMIN}/products/${id}/delete-soft`, { method: 'POST', auth: true });
+}
+
+export async function hardDeleteProduct(id: string): Promise<void> {
+  await apiFetch(`${ADMIN}/products/${id}`, { method: 'DELETE', auth: true });
+}
+
+export async function softDeleteVariant(productId: string, variantId: string): Promise<void> {
+  await apiFetch(`${ADMIN}/products/${productId}/variants/${variantId}/delete-soft`, {
+    method: 'POST',
+    auth: true,
+  });
+}
+
+export async function hardDeleteVariant(productId: string, variantId: string): Promise<void> {
+  await apiFetch(`${ADMIN}/products/${productId}/variants/${variantId}`, {
+    method: 'DELETE',
+    auth: true,
+  });
+}
+
 export async function createProduct(
   data: {
     name: string;
@@ -222,6 +244,10 @@ export async function createProduct(
 export async function listCategories(): Promise<{ items: Category[] }> {
   const res = await apiFetch<{ data: Category[] }>('/catalog/categories', { auth: true });
   return { items: res.data };
+}
+
+export async function listBrands(): Promise<string[]> {
+  return apiFetch<string[]>(`${ADMIN}/brands`, { auth: true });
 }
 
 export async function createCategory(data: {

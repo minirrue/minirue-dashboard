@@ -154,32 +154,6 @@
     background: var(--mr-dash-surface);
   }
 
-  .dash-sidebar-footer-link {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 10px 10px;
-    border-radius: var(--mr-radius-md);
-    color: var(--mr-fg-3);
-    font-size: 12px;
-    transition:
-      background var(--mr-dur-fast) var(--mr-ease-snappy),
-      color var(--mr-dur-fast) var(--mr-ease-snappy);
-  }
-
-  .dash-sidebar-footer-link:hover {
-    background: var(--mr-dash-sub);
-    color: var(--mr-fg);
-  }
-
-  .dash-sidebar-footer-user {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 0 10px;
-  }
-
   .dash-sidebar-footer-avatar {
     width: 30px;
     height: 30px;
@@ -194,16 +168,121 @@
     font-size: 13px;
   }
 
-  .dash-sidebar-footer-copy {
+  /* ── Sidebar brand row (logo + desktop collapse toggle) ── */
+  .dash-sidebar-brand-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .dash-sidebar-collapse-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    border: 1px solid var(--mr-dash-hair);
+    border-radius: var(--mr-radius-sm);
+    background: var(--mr-dash-surface);
+    color: var(--mr-fg-3);
+    cursor: pointer;
+    transition: background var(--mr-dur-fast) var(--mr-ease-snappy), color var(--mr-dur-fast) var(--mr-ease-snappy);
+  }
+
+  .dash-sidebar-collapse-btn:hover {
+    background: var(--mr-dash-sub);
+    color: var(--mr-fg);
+  }
+
+  /* ── Unified identity popover — anchored to the sidebar footer, opens above the trigger ── */
+  .dash-user-menu-wrap {
+    position: relative;
+    width: 100%;
+  }
+
+  .dash-user-menu-trigger {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 6px 8px;
+    border: none;
+    border-radius: var(--mr-radius-md);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+    transition: background var(--mr-dur-fast) var(--mr-ease-snappy);
+  }
+
+  .dash-user-menu-trigger:hover {
+    background: var(--mr-dash-sub);
+  }
+
+  .dash-user-menu-copy {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    gap: 3px;
     min-width: 0;
+    flex: 1;
   }
 
-  .dash-sidebar-footer-version {
-    font-size: 11px;
+  .dash-user-menu-name {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--mr-fg);
+  }
+
+  .dash-user-menu-chevron {
+    flex-shrink: 0;
     color: var(--mr-fg-4);
+  }
+
+  .dash-user-menu-popover {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    margin-bottom: 8px;
+    padding: 6px;
+    background: var(--mr-dash-surface);
+    border: 1px solid var(--mr-dash-hair);
+    border-radius: var(--mr-radius-md);
+    box-shadow: var(--mr-shadow-md);
+    z-index: 45;
+  }
+
+  .dash-user-menu-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    border-radius: var(--mr-radius-sm);
+    background: transparent;
+    color: var(--mr-fg-3);
+    font-size: 13px;
+    font-family: var(--mr-font-ui);
+    cursor: pointer;
+    transition: background var(--mr-dur-fast) var(--mr-ease-snappy), color var(--mr-dur-fast) var(--mr-ease-snappy);
+  }
+
+  .dash-user-menu-item:hover:not(:disabled) {
+    background: var(--mr-dash-sub);
+    color: var(--mr-fg);
+  }
+
+  .dash-user-menu-item:disabled {
+    opacity: 0.6;
+    cursor: default;
   }
 
   .dash-main {
@@ -214,6 +293,40 @@
     flex-direction: column;
     min-height: 100vh;
     background: var(--mr-dash-bg);
+  }
+
+  /* ── Desktop icon-only rail (collapsed) ──
+     Driven from DashboardShell state, not a CSS sibling selector — see the
+     comment in DashboardShell.tsx for why. */
+  .dash-sidebar[data-collapsed="true"] {
+    width: 64px;
+  }
+
+  .dash-sidebar[data-collapsed="true"] .dash-sidebar-link-label,
+  .dash-sidebar[data-collapsed="true"] .dash-sidebar-subtitle,
+  .dash-sidebar[data-collapsed="true"] .dash-user-menu-copy,
+  .dash-sidebar[data-collapsed="true"] .dash-user-menu-chevron {
+    display: none;
+  }
+
+  .dash-sidebar[data-collapsed="true"] .dash-sidebar-brand-row {
+    justify-content: center;
+  }
+
+  .dash-sidebar[data-collapsed="true"] .dash-sidebar-group-items {
+    align-items: center;
+  }
+
+  .dash-sidebar[data-collapsed="true"] .dash-sidebar-link {
+    justify-content: center;
+  }
+
+  .dash-sidebar[data-collapsed="true"] .dash-sidebar-section {
+    display: none;
+  }
+
+  .dash-main[data-sidebar-collapsed="true"] {
+    margin-left: 64px;
   }
 
   .dash-topbar {
@@ -1795,6 +1908,13 @@
   max-width: 560px;
 }
 @media (max-width: 640px) {
+  .dash-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .dash-filters > * {
+    width: 100%;
+  }
   .dash-field-row {
     flex-direction: column;
   }

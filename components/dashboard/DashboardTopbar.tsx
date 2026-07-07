@@ -1,11 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import RoleBadge from './RoleBadge';
+import Link from 'next/link';
 import NotificationDrawer from './NotificationDrawer';
-import ErrorBanner from './ErrorBanner';
-import { useLogout } from '@/lib/hooks/use-auth';
 
 export interface BreadcrumbItem {
   label: string;
@@ -24,19 +21,8 @@ export interface DashboardTopbarProps {
   onToggleDrawer?: () => void;
 }
 
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((s) => s[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
-
 export default function DashboardTopbar({
   breadcrumbs = [{ label: 'Overview' }],
-  userName = 'Admin',
-  userRole,
   eyebrow,
   title,
   onToggleDrawer,
@@ -44,11 +30,8 @@ export default function DashboardTopbar({
   const resolvedTitle = title ?? breadcrumbs[breadcrumbs.length - 1]?.label ?? 'Overview';
   const resolvedEyebrow = eyebrow ?? breadcrumbs[0]?.label ?? 'Overview';
   const [notifOpen, setNotifOpen] = useState(false);
-  const [logoutError, setLogoutError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
-  const router = useRouter();
-  const logoutMutation = useLogout();
 
   /* Mobile detection (same breakpoint as sidebar: 760px) */
   useEffect(() => {
@@ -59,29 +42,8 @@ export default function DashboardTopbar({
     return () => mq.removeEventListener('change', handler);
   }, []);
 
-  const handleLogout = () => {
-    setLogoutError(null);
-    logoutMutation.mutate(undefined, {
-      onSuccess: () => {
-        router.push('/login');
-      },
-      onError: (err: unknown) => {
-        const message =
-          err instanceof Error ? err.message : 'Sign out failed. Please try again.';
-        setLogoutError(message);
-      },
-    });
-  };
-
   return (
     <>
-    {logoutError && (
-      <ErrorBanner
-        message={logoutError}
-        onDismiss={() => setLogoutError(null)}
-        traceId="PG-DASHBOARD-IAM-002::EL-REGION-logout-error-banner"
-      />
-    )}
     <header className="dash-topbar">
       <div className="dash-topbar-copy">
         <div className="dash-topbar-eyebrow">{resolvedEyebrow}</div>
@@ -95,10 +57,12 @@ export default function DashboardTopbar({
                   {i > 0 && <span className="dash-breadcrumb-sep">/</span>}
                   {isLast ? (
                     <span className="dash-breadcrumb-current">{crumb.label}</span>
-                  ) : (
-                    <a className="dash-breadcrumb-link" href={crumb.href}>
+                  ) : crumb.href ? (
+                    <Link className="dash-breadcrumb-link" href={crumb.href}>
                       {crumb.label}
-                    </a>
+                    </Link>
+                  ) : (
+                    <span className="dash-breadcrumb-link">{crumb.label}</span>
                   )}
                 </React.Fragment>
               );
@@ -156,42 +120,6 @@ export default function DashboardTopbar({
           </svg>
           <span className="dash-notif-dot" aria-hidden="true" />
         </button>
-
-        <div className="dash-user-menu" data-trace-id="PG-DASHBOARD-IAM-002::EL-REGION-user-menu">
-          <RoleBadge role={userRole} />
-          <div className="dash-user-meta">
-            <div className="dash-user-name" title={userName}>
-              {userName}
-            </div>
-            {userRole ? <div className="dash-user-role-label">Signed in</div> : null}
-          </div>
-          <div className="dash-avatar" title={userName} aria-label={`Signed in as ${userName}`}>
-            <span>{getInitials(userName)}</span>
-          </div>
-          <button
-            className="dash-sidebar-link"
-            onClick={handleLogout}
-            disabled={logoutMutation.isPending}
-            data-trace-id="PG-DASHBOARD-IAM-002::EL-BTN-sign-out"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 4px',
-              marginTop: 4,
-              border: 'none',
-              background: 'transparent',
-              cursor: logoutMutation.isPending ? 'default' : 'pointer',
-              color: 'var(--dash-fg-3)',
-              fontSize: 'var(--dash-text-xs)',
-              fontFamily: 'var(--dash-font-ui)',
-              opacity: logoutMutation.isPending ? 0.6 : 1,
-            }}
-            aria-label="Sign out"
-          >
-            {logoutMutation.isPending ? 'Signing out\u2026' : 'Sign out'}
-          </button>
-        </div>
       </div>
     </header>
     <NotificationDrawer open={notifOpen} onClose={() => setNotifOpen(false)} />

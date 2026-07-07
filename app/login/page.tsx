@@ -34,9 +34,14 @@ export default function LoginPage() {
       } else {
         setError('Something went wrong. Please try again.');
       }
-    } finally {
       setLoading(false);
     }
+    // No `finally` here: on the success path router.push() has already been
+    // called and this component is about to unmount via navigation, so we
+    // deliberately leave `loading` at true — that keeps the full-viewport
+    // overlay below visible continuously until the dashboard's own skeleton
+    // takes over, closing the visual gap where the button used to flash back
+    // to "Sign in" for a render tick.
   }
 
   return (
@@ -50,6 +55,51 @@ export default function LoginPage() {
         fontFamily: "'Inter Tight', sans-serif",
       }}
     >
+      <style>{`
+        @keyframes mr-login-spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+      {loading && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'var(--mr-cream-200)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 16,
+            zIndex: 50,
+          }}
+        >
+          <span
+            aria-hidden="true"
+            style={{
+              display: 'inline-block',
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              border: '3px solid var(--mr-ink-200, rgba(0,0,0,0.12))',
+              borderTopColor: 'currentColor',
+              color: 'var(--mr-ink-900)',
+              animation: 'mr-login-spin 700ms linear infinite',
+            }}
+          />
+          <div
+            style={{
+              fontFamily: "'Jost', sans-serif",
+              fontSize: 12,
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              color: 'var(--mr-ink-500)',
+            }}
+          >
+            Signing you in…
+          </div>
+        </div>
+      )}
       <div
         style={{
           background: 'var(--mr-dash-surface)',
@@ -189,7 +239,10 @@ export default function LoginPage() {
             disabled={loading}
             data-trace-id="PG-DASHBOARD-IAM-001::EL-BTN-sign-in"
             style={{
-              display: 'block',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
               width: '100%',
               height: 48,
               background: loading ? 'var(--mr-ink-700)' : 'var(--mr-ink-900)',
@@ -204,6 +257,20 @@ export default function LoginPage() {
               transition: 'background 200ms',
             }}
           >
+            {loading && (
+              <span
+                aria-hidden="true"
+                style={{
+                  display: 'inline-block',
+                  width: 14,
+                  height: 14,
+                  borderRadius: '50%',
+                  border: '2px solid rgba(255,255,255,0.35)',
+                  borderTopColor: 'currentColor',
+                  animation: 'mr-login-spin 700ms linear infinite',
+                }}
+              />
+            )}
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>

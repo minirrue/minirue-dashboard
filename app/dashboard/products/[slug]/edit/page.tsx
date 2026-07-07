@@ -9,11 +9,15 @@ import {
   publishProduct,
   archiveProduct,
   listCategories,
+  listBrands,
+  softDeleteProduct,
+  hardDeleteProduct,
 } from '@/lib/catalog/api';
 import type { Product, Category, Gender, ProductVariant, ProductMedia } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
 import StatusBadge from '@/components/dashboard/StatusBadge';
 import type { StatusKind } from '@/components/dashboard/StatusBadge';
+import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
 import VariantsSection from './VariantsSection';
 import MediaSection from './MediaSection';
 
@@ -112,6 +116,8 @@ export default function EditProductPage() {
 
   const [categories, setCategories] = useState<Array<Category & { depth: number }>>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [brands, setBrands] = useState<string[]>([]);
+  const [brandsLoading, setBrandsLoading] = useState(true);
 
   const [values, setValues] = useState<FormValues>({
     name: '',
@@ -130,6 +136,7 @@ export default function EditProductPage() {
   const [publishing, setPublishing] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [media, setMedia] = useState<ProductMedia[]>([]);
@@ -162,6 +169,14 @@ export default function EditProductPage() {
       .then((res) => setCategories(flattenCategories(res.items)))
       .catch(() => setCategories([]))
       .finally(() => setCategoriesLoading(false));
+  }, []);
+
+  /* Load brands */
+  useEffect(() => {
+    listBrands()
+      .then(setBrands)
+      .catch(() => setBrands([]))
+      .finally(() => setBrandsLoading(false));
   }, []);
 
   function setField<K extends keyof FormValues>(key: K, value: FormValues[K]) {
@@ -235,6 +250,18 @@ export default function EditProductPage() {
     }
   }
 
+  async function handleSoftDelete() {
+    await softDeleteProduct(id);
+    setShowDeleteDialog(false);
+    router.push('/products');
+  }
+
+  async function handleHardDelete() {
+    await hardDeleteProduct(id);
+    setShowDeleteDialog(false);
+    router.push('/products');
+  }
+
   if (loading) {
     return (
       <>
@@ -275,6 +302,16 @@ export default function EditProductPage() {
         />
       )}
 
+      {showDeleteDialog && (
+        <DeleteChoiceDialog
+          productName={product.name}
+          onSoftDelete={handleSoftDelete}
+          onHardDelete={handleHardDelete}
+          onCancel={() => setShowDeleteDialog(false)}
+          traceIdPrefix="PG-DASHBOARD-CAT-003::EL-MODAL-delete-product-confirm"
+        />
+      )}
+
       <div className="dash-page-header" data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-edit-product-page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <h1 className="dash-page-title">{product.name}</h1>
@@ -303,6 +340,14 @@ export default function EditProductPage() {
               Archive
             </button>
           )}
+          <button
+            className="dash-btn-ghost dash-btn-danger"
+            disabled={publishing || archiving}
+            onClick={() => setShowDeleteDialog(true)}
+            data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-delete-product-edit"
+          >
+            Delete
+          </button>
           <Link
             href="/products"
             className="dash-btn-ghost"
@@ -350,14 +395,26 @@ export default function EditProductPage() {
           <label className="dash-label" htmlFor="brand">
             Brand <span className="dash-required">*</span>
           </label>
-          <input
+          <select
             id="brand"
-            className={`dash-input${errors.brand ? ' dash-input-error' : ''}`}
+            className={`dash-select${errors.brand ? ' dash-input-error' : ''}`}
             value={values.brand}
             onChange={(e) => setField('brand', e.target.value)}
-            disabled={saving}
-            data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-edit-product-brand"
-          />
+            disabled={saving || brandsLoading}
+            data-trace-id="PG-DASHBOARD-CAT-003::EL-SELECT-edit-product-brand"
+          >
+            <option value="" disabled>
+              {brandsLoading ? 'Loading brands…' : 'Select brand…'}
+            </option>
+            {values.brand && !brands.includes(values.brand) && (
+              <option value={values.brand}>{values.brand}</option>
+            )}
+            {brands.map((b) => (
+              <option key={b} value={b}>
+                {b}
+              </option>
+            ))}
+          </select>
           {errors.brand && <p className="dash-field-error">{errors.brand}</p>}
         </div>
 
