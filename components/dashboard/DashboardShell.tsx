@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import DashboardSidebar from './DashboardSidebar';
 import DashboardTopbar, { type BreadcrumbItem } from './DashboardTopbar';
 import MagneticCursor from './MagneticCursor';
@@ -30,10 +30,19 @@ export function DashboardShell({
   shellEyebrow,
   shellTitle,
 }: DashboardShellProps) {
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const toggleDrawer = () => setMobileDrawerOpen((v) => !v);
+  const closeDrawer = () => setMobileDrawerOpen(false);
+
   return (
     <div className="dash-shell">
       <MagneticCursor />
-      <DashboardSidebar activePath={activePath} userRole={userRole} />
+      <DashboardSidebar
+        activePath={activePath}
+        userRole={userRole}
+        mobileDrawerOpen={mobileDrawerOpen}
+        onMobileDrawerClose={closeDrawer}
+      />
       <main className="dash-main">
         <DashboardTopbar
           breadcrumbs={breadcrumbs}
@@ -41,6 +50,7 @@ export function DashboardShell({
           userRole={userRole}
           eyebrow={shellEyebrow}
           title={shellTitle}
+          onToggleDrawer={toggleDrawer}
         />
         <div className="dash-content">
           <div className="dash-content-inner">{children}</div>

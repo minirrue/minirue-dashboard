@@ -128,6 +128,10 @@ export interface DashboardSidebarProps {
   activePath?: string;
   /** Signed-in staff role from `/auth/me` */
   userRole?: string;
+  /** Mobile drawer open state */
+  mobileDrawerOpen?: boolean;
+  /** Mobile drawer close callback */
+  onMobileDrawerClose?: () => void;
 }
 
 const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
@@ -176,7 +180,12 @@ const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
   },
 ];
 
-export default function DashboardSidebar({ activePath = '/overview', userRole }: DashboardSidebarProps) {
+export default function DashboardSidebar({
+  activePath = '/overview',
+  userRole,
+  mobileDrawerOpen,
+  onMobileDrawerClose,
+}: DashboardSidebarProps) {
   const visibleGroups = NAV_ITEMS.map((group) => ({
     ...group,
     items: userRole
@@ -184,55 +193,87 @@ export default function DashboardSidebar({ activePath = '/overview', userRole }:
       : group.items,
   })).filter((group) => group.items.length > 0);
 
+  const renderNav = () => (
+    <nav className="dash-sidebar-nav" onClick={onMobileDrawerClose}>
+      {visibleGroups.map((group) => (
+        <section className="dash-sidebar-group" key={group.section} aria-label={group.section}>
+          <div className="dash-sidebar-section">{group.section}</div>
+          <div className="dash-sidebar-group-items">
+            {group.items.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className="dash-sidebar-link"
+                data-active={
+                  activePath === item.href || (item.href !== '/overview' && activePath.startsWith(`${item.href}/`))
+                    ? 'true'
+                    : undefined
+                }
+              >
+                <span className="dash-sidebar-link-icon">{item.icon}</span>
+                <span className="dash-sidebar-link-label">{item.label}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+      ))}
+    </nav>
+  );
+
+  const renderBrand = () => (
+    <div className="dash-sidebar-brand">
+      <div className="dash-sidebar-logo">
+        MiniRue
+        <span className="dash-sidebar-logo-mark" aria-hidden="true">
+          <Sparkle size={9} />
+        </span>
+      </div>
+      <div className="dash-sidebar-subtitle">Atelier dashboard</div>
+    </div>
+  );
+
+  const renderFooter = () => (
+    <div className="dash-sidebar-footer">
+      <div className="dash-sidebar-footer-link">Storefront</div>
+      <div className="dash-sidebar-footer-user">
+        <div className="dash-sidebar-footer-avatar" aria-hidden="true">
+          MR
+        </div>
+        <div className="dash-sidebar-footer-copy">
+          {userRole ? <RoleBadge role={userRole} size="compact" /> : null}
+          <span className="dash-sidebar-footer-version">MiniRue Admin v0.1</span>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <aside className="dash-sidebar">
-      <div className="dash-sidebar-brand">
-        <div className="dash-sidebar-logo">
-          MiniRue
-          <span className="dash-sidebar-logo-mark" aria-hidden="true">
-            <Sparkle size={9} />
-          </span>
-        </div>
-        <div className="dash-sidebar-subtitle">Atelier dashboard</div>
-      </div>
+    <>
+      {/* Desktop sidebar — unchanged */}
+      <aside className="dash-sidebar">
+        {renderBrand()}
+        {renderNav()}
+        {renderFooter()}
+      </aside>
 
-      <nav className="dash-sidebar-nav">
-        {visibleGroups.map((group) => (
-          <section className="dash-sidebar-group" key={group.section} aria-label={group.section}>
-            <div className="dash-sidebar-section">{group.section}</div>
-            <div className="dash-sidebar-group-items">
-              {group.items.map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  className="dash-sidebar-link"
-                  data-active={
-                    activePath === item.href || (item.href !== '/overview' && activePath.startsWith(`${item.href}/`))
-                      ? 'true'
-                      : undefined
-                  }
-                >
-                  <span className="dash-sidebar-link-icon">{item.icon}</span>
-                  <span className="dash-sidebar-link-label">{item.label}</span>
-                </a>
-              ))}
-            </div>
-          </section>
-        ))}
-      </nav>
+      {/* Mobile slide-out drawer */}
+      <aside
+        className="dash-mobile-drawer"
+        data-open={mobileDrawerOpen ? 'true' : undefined}
+      >
+        {renderBrand()}
+        {renderNav()}
+        {renderFooter()}
+      </aside>
 
-      <div className="dash-sidebar-footer">
-        <div className="dash-sidebar-footer-link">Storefront</div>
-        <div className="dash-sidebar-footer-user">
-          <div className="dash-sidebar-footer-avatar" aria-hidden="true">
-            MR
-          </div>
-          <div className="dash-sidebar-footer-copy">
-            {userRole ? <RoleBadge role={userRole} size="compact" /> : null}
-            <span className="dash-sidebar-footer-version">MiniRue Admin v0.1</span>
-          </div>
-        </div>
-      </div>
-    </aside>
+      {/* Mobile backdrop */}
+      {mobileDrawerOpen && (
+        <div
+          className="dash-mobile-backdrop"
+          onClick={onMobileDrawerClose}
+          aria-hidden="true"
+        />
+      )}
+    </>
   );
 }
