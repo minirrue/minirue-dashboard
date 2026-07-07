@@ -1,10 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
-import { createVariant, updateVariant, softDeleteVariant, hardDeleteVariant } from '@/lib/catalog/api';
-import type { ProductVariant, BottleType } from '@/lib/catalog/types';
+import {
+  createVariant,
+  updateVariant,
+  softDeleteVariant,
+  hardDeleteVariant,
+  createProductMedia,
+} from '@/lib/catalog/api';
+import type { ProductVariant, BottleType, ProductMedia } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
 import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
+import GalleryPickerModal from '@/components/dashboard/GalleryPickerModal';
+import type { GalleryItem } from '@/lib/gallery/types';
 
 interface VariantFormValues {
   sku: string;
@@ -52,9 +60,26 @@ interface Props {
   productId: string;
   variants: ProductVariant[];
   onVariantsChange: (variants: ProductVariant[]) => void;
+  // Added for the Gallery module (specs/006-gallery-module, US3): lets this
+  // section link a gallery photo to a specific variant row, and lets the
+  // parent page track which variant is selected for the variant-filtered
+  // photo display (T031) — both share the same product-edit page state, no
+  // duplicate fetch.
+  media: ProductMedia[];
+  onMediaChange: (media: ProductMedia[]) => void;
+  selectedVariantId: string | null;
+  onSelectVariant: (variantId: string | null) => void;
 }
 
-export default function VariantsSection({ productId, variants, onVariantsChange }: Props) {
+export default function VariantsSection({
+  productId,
+  variants,
+  onVariantsChange,
+  media,
+  onMediaChange,
+  selectedVariantId,
+  onSelectVariant,
+}: Props) {
   const [showForm, setShowForm] = useState(false);
   const [formValues, setFormValues] = useState<VariantFormValues>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<VariantFormErrors>({});
@@ -66,6 +91,24 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editSubmitError, setEditSubmitError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProductVariant | null>(null);
+  const [pickerVariantId, setPickerVariantId] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  async function handleLinkGalleryItem(variantId: string, item: GalleryItem) {
+    setPickerVariantId(null);
+    setLinkError(null);
+    try {
+      const asset = await createProductMedia(productId, {
+        galleryItemId: item.id,
+        variantId,
+        sortOrder: media.filter((m) => m.variantId === variantId).length,
+      });
+      onMediaChange([...media, asset]);
+    } catch (e) {
+      const err = e as ApiError;
+      setLinkError(err.message ?? 'Failed to link gallery photo to variant.');
+    }
+  }
 
   function setField<K extends keyof VariantFormValues>(key: K, value: VariantFormValues[K]) {
     setFormValues((prev) => ({ ...prev, [key]: value }));
@@ -185,6 +228,12 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
           traceIdPrefix={`PG-DASHBOARD-CAT-003::EL-MODAL-delete-variant-confirm@${deleteTarget.id}`}
         />
       )}
+      {pickerVariantId && (
+        <GalleryPickerModal
+          onSelect={(item) => handleLinkGalleryItem(pickerVariantId, item)}
+          onClose={() => setPickerVariantId(null)}
+        />
+      )}
       <div className="dash-section-header">
         <h2 className="dash-section-title">Variants</h2>
         {!showForm && (
@@ -215,17 +264,44 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
                 <th>Size (ml)</th>
                 <th>Bottle</th>
                 <th style={{ textAlign: 'right' }}>Price</th>
+                <th>Photos</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {variants.map((v) => (
+              {variants.map((v) => {
+                const variantPhotoCount = media.filter((m) => m.variantId === v.id).length;
+                const isSelected = selectedVariantId === v.id;
+                return (
                 <React.Fragment key={v.id}>
-                  <tr data-trace-id={`PG-DASHBOARD-CAT-003::EL-ROW-variant-row@${v.id}`}>
+                  <tr
+                    data-trace-id={`PG-DASHBOARD-CAT-003::EL-ROW-variant-row@${v.id}`}
+                    data-active={isSelected ? 'true' : undefined}
+                  >
                     <td>{v.sku}</td>
                     <td>{v.sizeMl}</td>
                     <td style={{ textTransform: 'capitalize' }}>{v.bottleType}</td>
                     <td style={{ textAlign: 'right' }}>{formatPrice(v.priceAmount, v.currency)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className={isSelected ? 'dash-btn-primary' : 'dash-btn-ghost'}
+                        onClick={() => onSelectVariant(isSelected ? null : v.id)}
+                        data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-view-variant-photos@${v.id}`}
+                      >
+                        {variantPhotoCount > 0
+                          ? `${variantPhotoCount} photo${variantPhotoCount === 1 ? '' : 's'}`
+                          : 'No photos'}
+                      </button>
+                      <button
+                        type="button"
+                        className="dash-btn-ghost"
+                        onClick={() => setPickerVariantId(v.id)}
+                        data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-link-variant-photo@${v.id}`}
+                      >
+                        + Link Photo
+                      </button>
+                    </td>
                     <td>
                       <button
                         type="button"
@@ -247,7 +323,7 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
                   </tr>
                   {editingId === v.id && (
                     <tr>
-                      <td colSpan={5} style={{ background: 'var(--mr-dash-sub)', padding: '12px 14px' }}>
+                      <td colSpan={6} style={{ background: 'var(--mr-dash-sub)', padding: '12px 14px' }}>
                         <form
                           className="dash-inline-form"
                           onSubmit={(e) => handleEditSave(e, v)}
@@ -365,11 +441,14 @@ export default function VariantsSection({ productId, variants, onVariantsChange 
                     </tr>
                   )}
                 </React.Fragment>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
+
+      {linkError && <p className="dash-inline-error">{linkError}</p>}
 
       {/* Add variant form */}
       {showForm && (

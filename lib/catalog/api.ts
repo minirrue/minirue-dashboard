@@ -29,6 +29,11 @@ interface BackendMedia {
   id: string;
   productId: string;
   cloudinaryPublicId: string;
+  galleryItemId?: string | null;
+  // Added for the Gallery module (specs/006-gallery-module, US3): NULL means
+  // this row is a general product-level image, not scoped to a variant.
+  variantId?: string | null;
+  url?: string | null;
   width: number | null;
   height: number | null;
   altText: string | null;
@@ -92,6 +97,9 @@ function mapMedia(m: BackendMedia): ProductMedia {
   return {
     id: m.id,
     cloudinaryPublicId: m.cloudinaryPublicId,
+    galleryItemId: m.galleryItemId ?? null,
+    variantId: m.variantId ?? null,
+    url: m.url ?? null,
     width: m.width,
     height: m.height,
     altText: m.altText,
@@ -367,19 +375,33 @@ export function cloudinaryPreviewUrl(publicId: string, w = 200, h = 250): string
 export async function createProductMedia(
   productId: string,
   data: {
-    cloudinaryPublicId: string;
+    cloudinaryPublicId?: string;
+    galleryItemId?: string;
+    // Added for the Gallery module (specs/006-gallery-module, US3): when
+    // set, scopes this media row to a single product variant rather than
+    // the whole product.
+    variantId?: string;
     altText?: string;
     sortOrder?: number;
   },
 ): Promise<ProductMedia> {
+  // Mutually exclusive per contracts/gallery-routes.md — pass exactly one.
+  const body: Record<string, unknown> = {
+    alt_text: data.altText?.trim() || undefined,
+    sort_order: data.sortOrder ?? 0,
+  };
+  if (data.galleryItemId) {
+    body.gallery_item_id = data.galleryItemId;
+  } else {
+    body.cloudinary_public_id = data.cloudinaryPublicId?.trim();
+  }
+  if (data.variantId) {
+    body.variant_id = data.variantId;
+  }
   const raw = await apiFetch<BackendMedia>(`${ADMIN}/products/${productId}/media`, {
     method: 'POST',
     auth: true,
-    body: JSON.stringify({
-      cloudinary_public_id: data.cloudinaryPublicId.trim(),
-      alt_text: data.altText?.trim() || undefined,
-      sort_order: data.sortOrder ?? 0,
-    }),
+    body: JSON.stringify(body),
   });
   return mapMedia(raw);
 }

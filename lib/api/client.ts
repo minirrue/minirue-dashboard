@@ -56,3 +56,32 @@ export async function apiFetch<T>(
   if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as T;
   return res.json() as Promise<T>;
 }
+
+/**
+ * Multipart upload variant of {@link apiFetch} — deliberately does NOT set a
+ * `Content-Type` header (the browser sets `multipart/form-data; boundary=…`
+ * itself from the `FormData` body). Always sends the auth token; gallery
+ * uploads (and any future file-upload endpoint) require an authenticated
+ * caller.
+ */
+export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+  const headers = new Headers();
+  const token = getAccessToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    body: formData,
+    headers,
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    let body: Record<string, unknown> = {};
+    try { body = (await res.json()) as Record<string, unknown>; } catch { /* ignore */ }
+    throw { status: res.status, message: (body['message'] as string) ?? res.statusText, error: body['error'] as string | undefined } as ApiError;
+  }
+
+  if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as T;
+  return res.json() as Promise<T>;
+}

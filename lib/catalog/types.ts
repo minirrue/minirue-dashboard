@@ -27,6 +27,17 @@ export interface ProductVariant {
 export interface ProductMedia {
   id: string;
   cloudinaryPublicId: string;
+  // Added for the Gallery module (specs/006-gallery-module, US2): set when
+  // this media row was selected from Gallery rather than pasted in as a
+  // Cloudinary public ID. `url` is the resolved gallery URL, only present on
+  // the response right after creation (see lib/catalog/api.ts).
+  galleryItemId: string | null;
+  // Added for the Gallery module (specs/006-gallery-module, US3): when set,
+  // this row is scoped to a single product variant; NULL = general
+  // product-level image, shown as the fallback for variants with no
+  // photos of their own (spec Acceptance Scenario 3).
+  variantId: string | null;
+  url?: string | null;
   width: number | null;
   height: number | null;
   altText: string | null;

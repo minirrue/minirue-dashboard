@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -12,6 +12,7 @@ import {
   listBrands,
   softDeleteProduct,
   hardDeleteProduct,
+  cloudinaryPreviewUrl,
 } from '@/lib/catalog/api';
 import type { Product, Category, Gender, ProductVariant, ProductMedia } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
@@ -41,6 +42,14 @@ function validate(values: FormValues): FormErrors {
   if (!values.name.trim()) errors.name = 'Product name is required.';
   if (!values.brand.trim()) errors.brand = 'Brand is required.';
   return errors;
+}
+
+/** Resolves the best available preview URL for a media row — the freshly
+ * resolved Gallery URL if present, else the legacy Cloudinary derivation
+ * (mirrors MediaSection.tsx's previewUrl helper). */
+function mediaPreviewUrl(m: ProductMedia): string {
+  if (m.url) return m.url;
+  return cloudinaryPreviewUrl(m.cloudinaryPublicId);
 }
 
 function flattenCategories(categories: Category[], depth = 0): Array<Category & { depth: number }> {
@@ -140,6 +149,24 @@ export default function EditProductPage() {
 
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [media, setMedia] = useState<ProductMedia[]>([]);
+  // Added for the Gallery module (specs/006-gallery-module, US3): which
+  // variant's photos are currently being viewed. null = no variant selected,
+  // show general (non-variant-specific) images only.
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+
+  // Pure client-side filter of the already-fetched `media` array — no new
+  // network request on variant switch (spec SC-003: under 1 second, no
+  // full-page reload). Falls back to general (variantId === null) images
+  // when the selected variant has none of its own (Acceptance Scenario 3).
+  const displayedMedia = useMemo(() => {
+    if (!selectedVariantId) {
+      return media.filter((m) => m.variantId === null);
+    }
+    const variantMedia = media.filter((m) => m.variantId === selectedVariantId);
+    return variantMedia.length > 0
+      ? variantMedia
+      : media.filter((m) => m.variantId === null);
+  }, [media, selectedVariantId]);
 
   /* Load product */
   useEffect(() => {
@@ -528,7 +555,56 @@ export default function EditProductPage() {
         productId={id}
         variants={variants}
         onVariantsChange={setVariants}
+        media={media}
+        onMediaChange={setMedia}
+        selectedVariantId={selectedVariantId}
+        onSelectVariant={setSelectedVariantId}
       />
+
+      {/* Variant-filtered photo display (specs/006-gallery-module, US3, T031) —
+          pure client-side filter of `media`, already loaded above; switching
+          variants never triggers a new fetch. */}
+      <section
+        className="dash-form-section"
+        style={{ marginTop: 24 }}
+        data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-variant-photos"
+      >
+        <h2 className="dash-section-title">
+          {selectedVariantId
+            ? `Photos for ${variants.find((v) => v.id === selectedVariantId)?.sku ?? 'selected variant'}`
+            : 'General product photos'}
+        </h2>
+        {displayedMedia.length === 0 ? (
+          <p className="dash-help-text">No photos to show for this selection.</p>
+        ) : (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+              gap: 16,
+            }}
+            data-trace-id="PG-DASHBOARD-CAT-003::EL-GRID-variant-photos"
+          >
+            {displayedMedia.map((m) => (
+              <figure key={m.id} style={{ margin: 0 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={mediaPreviewUrl(m)}
+                  alt={m.altText ?? ''}
+                  data-trace-id={`PG-DASHBOARD-CAT-003::EL-IMG-variant-photo@${m.id}`}
+                  style={{
+                    width: '100%',
+                    aspectRatio: '4/5',
+                    objectFit: 'cover',
+                    borderRadius: 'var(--mr-radius-sm)',
+                    border: '1px solid var(--mr-dash-hair)',
+                  }}
+                />
+              </figure>
+            ))}
+          </div>
+        )}
+      </section>
     </>
   );
 }

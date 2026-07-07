@@ -1,12 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   cloudinaryPreviewUrl,
   createProductMedia,
 } from '@/lib/catalog/api';
 import type { ProductMedia } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
+import GalleryPickerModal, {
+  uploadDeviceFileToGallery,
+} from '@/components/dashboard/GalleryPickerModal';
+import type { GalleryItem } from '@/lib/gallery/types';
 
 interface Props {
   productId: string;
@@ -14,34 +18,52 @@ interface Props {
   onMediaChange: (media: ProductMedia[]) => void;
 }
 
-export default function MediaSection({ productId, media, onMediaChange }: Props) {
-  const [publicId, setPublicId] = useState('');
-  const [altText, setAltText] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+/** Resolves the best available preview URL for a media row — the freshly
+ * resolved Gallery URL if present, else the legacy Cloudinary derivation. */
+function previewUrl(m: ProductMedia): string {
+  if (m.url) return m.url;
+  return cloudinaryPreviewUrl(m.cloudinaryPublicId);
+}
 
-  async function handleAdd(e: React.FormEvent) {
-    e.preventDefault();
-    if (!publicId.trim()) {
-      setError('Cloudinary public ID is required.');
-      return;
-    }
+export default function MediaSection({ productId, media, onMediaChange }: Props) {
+  const [mode, setMode] = useState<'device' | 'gallery'>('device');
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleDeviceUpload(file: File) {
     setError(null);
-    setSubmitting(true);
+    setUploading(true);
     try {
+      // Device uploads still land in the user's own gallery — not
+      // gallery-invisible — per spec Story 2, Acceptance Scenario 3.
+      const item: GalleryItem = await uploadDeviceFileToGallery(file);
       const asset = await createProductMedia(productId, {
-        cloudinaryPublicId: publicId.trim(),
-        altText: altText.trim() || undefined,
+        galleryItemId: item.id,
         sortOrder: media.length,
       });
       onMediaChange([...media, asset]);
-      setPublicId('');
-      setAltText('');
     } catch (e) {
       const err = e as ApiError;
-      setError(err.message || 'Failed to add image.');
+      setError(err.message || 'Failed to upload image.');
     } finally {
-      setSubmitting(false);
+      setUploading(false);
+    }
+  }
+
+  async function handleGallerySelect(item: GalleryItem) {
+    setPickerOpen(false);
+    setError(null);
+    try {
+      const asset = await createProductMedia(productId, {
+        galleryItemId: item.id,
+        sortOrder: media.length,
+      });
+      onMediaChange([...media, asset]);
+    } catch (e) {
+      const err = e as ApiError;
+      setError(err.message || 'Failed to link gallery photo.');
     }
   }
 
@@ -54,10 +76,13 @@ export default function MediaSection({ productId, media, onMediaChange }: Props)
       <h2 className="dash-card-title" style={{ marginTop: 0 }}>
         Product images
       </h2>
-      <p className="dash-help-text" style={{ marginBottom: 20 }}>
-        Images are served via Cloudinary. Paste the public ID from your media library
-        (e.g. <code>products/rose-noir-01</code>).
-      </p>
+
+      {pickerOpen && (
+        <GalleryPickerModal
+          onSelect={handleGallerySelect}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
 
       {media.length > 0 && (
         <div
@@ -71,7 +96,7 @@ export default function MediaSection({ productId, media, onMediaChange }: Props)
           {media.map((m) => (
             <figure key={m.id} style={{ margin: 0 }}>
               <img
-                src={cloudinaryPreviewUrl(m.cloudinaryPublicId)}
+                src={previewUrl(m)}
                 alt={m.altText ?? ''}
                 data-trace-id={`PG-DASHBOARD-CAT-003::EL-IMG-product-image@${m.id}`}
                 style={{
@@ -86,55 +111,78 @@ export default function MediaSection({ productId, media, onMediaChange }: Props)
                 className="dash-help-text"
                 style={{ marginTop: 6, fontSize: 11, wordBreak: 'break-all' }}
               >
-                {m.cloudinaryPublicId}
+                {m.galleryItemId ? 'From Gallery' : m.cloudinaryPublicId}
               </figcaption>
             </figure>
           ))}
         </div>
       )}
 
-      <form onSubmit={handleAdd} noValidate>
-        <div className="dash-field-row">
-          <div className="dash-field">
-            <label className="dash-label" htmlFor="media-public-id">
-              Cloudinary public ID
-            </label>
-            <input
-              id="media-public-id"
-              className="dash-input"
-              value={publicId}
-              onChange={(e) => setPublicId(e.target.value)}
-              placeholder="folder/image-name"
-              disabled={submitting}
-              data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-media-public-id"
-            />
-          </div>
-          <div className="dash-field">
-            <label className="dash-label" htmlFor="media-alt">
-              Alt text
-            </label>
-            <input
-              id="media-alt"
-              className="dash-input"
-              value={altText}
-              onChange={(e) => setAltText(e.target.value)}
-              disabled={submitting}
-              data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-media-alt-text"
-            />
-          </div>
-        </div>
-        {error && <p className="dash-inline-error">{error}</p>}
-        <div className="dash-form-actions">
+      <div
+        className="dash-toggle-group"
+        role="tablist"
+        style={{ display: 'flex', gap: 8, marginBottom: 16 }}
+        data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-media-source-toggle"
+      >
+        <button
+          type="button"
+          className={mode === 'device' ? 'dash-btn-primary' : 'dash-btn-ghost'}
+          onClick={() => setMode('device')}
+          data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-media-mode-device"
+        >
+          Upload from this device
+        </button>
+        <button
+          type="button"
+          className={mode === 'gallery' ? 'dash-btn-primary' : 'dash-btn-ghost'}
+          onClick={() => setMode('gallery')}
+          data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-media-mode-gallery"
+        >
+          Choose from Gallery
+        </button>
+      </div>
+
+      {mode === 'device' ? (
+        <div data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-media-device-upload">
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/heic,image/heif,image/webp,video/mp4,video/quicktime"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleDeviceUpload(file);
+              e.target.value = '';
+            }}
+            data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-media-device-file"
+          />
           <button
-            type="submit"
-            className="dash-btn-primary"
-            disabled={submitting}
-            data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-add-image"
+            type="button"
+            className="dash-btn-secondary"
+            disabled={uploading}
+            onClick={() => inputRef.current?.click()}
+            data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-media-device-browse"
           >
-            {submitting ? 'Adding…' : 'Add image'}
+            {uploading ? 'Uploading…' : 'Choose file to upload'}
+          </button>
+          <p className="dash-help-text" style={{ marginTop: 8 }}>
+            Uploaded photos are also saved to your Gallery.
+          </p>
+        </div>
+      ) : (
+        <div data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-media-gallery-pick">
+          <button
+            type="button"
+            className="dash-btn-secondary"
+            onClick={() => setPickerOpen(true)}
+            data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-media-open-gallery-picker"
+          >
+            Browse Gallery
           </button>
         </div>
-      </form>
+      )}
+
+      {error && <p className="dash-inline-error">{error}</p>}
     </section>
   );
 }

@@ -4,8 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createProduct, listCategories, listBrands } from '@/lib/catalog/api';
-import type { Category, Gender } from '@/lib/catalog/types';
+import type { Category, Gender, ProductMedia } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
+import MediaSection from '../[slug]/edit/MediaSection';
 
 /* ── Validation ── */
 interface FormValues {
@@ -76,6 +77,12 @@ export default function NewProductPage() {
   const [brands, setBrands] = useState<string[]>([]);
   const [brandsLoading, setBrandsLoading] = useState(true);
 
+  // Once the product is created, images can be attached before moving on to
+  // the full edit screen (spec Story 2 — device uploads via this form still
+  // create a real gallery item, never gallery-invisible).
+  const [createdProductId, setCreatedProductId] = useState<string | null>(null);
+  const [media, setMedia] = useState<ProductMedia[]>([]);
+
   useEffect(() => {
     listCategories()
       .then((res) => setCategories(flattenCategories(res.items)))
@@ -125,12 +132,38 @@ export default function NewProductPage() {
         },
         idempotencyKey,
       );
-      router.push(`/products/${product.id}/edit`);
+      setCreatedProductId(product.id);
+      setSubmitting(false);
     } catch (e) {
       const err = e as ApiError;
       setSubmitError(err.message ?? 'Something went wrong. Please try again.');
       setSubmitting(false);
     }
+  }
+
+  if (createdProductId) {
+    return (
+      <>
+        <div
+          className="dash-page-header"
+          data-trace-id="PG-DASHBOARD-CAT-002::EL-REGION-new-product-images-header"
+        >
+          <h1 className="dash-page-title">Add images</h1>
+          <button
+            type="button"
+            className="dash-btn-primary"
+            onClick={() => router.push(`/products/${createdProductId}/edit`)}
+            data-trace-id="PG-DASHBOARD-CAT-002::EL-BTN-continue-to-edit"
+          >
+            Continue
+          </button>
+        </div>
+        <p className="dash-help-text" style={{ marginBottom: 16 }}>
+          Product created. Add photos now, or continue and add them later from the edit screen.
+        </p>
+        <MediaSection productId={createdProductId} media={media} onMediaChange={setMedia} />
+      </>
+    );
   }
 
   return (

@@ -26,6 +26,10 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   '/collab/products': COLLAB_ROLES,
   '/collab/brand': COLLAB_ROLES,
   '/collab/analytics': COLLAB_ROLES,
+  // Gallery is per-account (either a staff/admin user or a collaborator, per
+  // gallery-routes.md) — the same /dashboard/gallery screen and backend
+  // routes serve both caller types, each auto-scoped to their own folders.
+  '/gallery': [...STAFF_ROLES, ...COLLAB_ROLES],
 };
 
 export const DASHBOARD_NAV_PATHS = Object.keys(DASHBOARD_ROUTE_ACCESS).sort(
