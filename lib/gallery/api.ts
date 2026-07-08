@@ -45,11 +45,24 @@ export async function listItems(folderId: string): Promise<GalleryItem[]> {
   return res.data;
 }
 
-export async function uploadItem(folderId: string, file: File): Promise<GalleryItem> {
+export async function uploadItem(
+  folderId: string,
+  file: File,
+  altText?: string,
+): Promise<GalleryItem> {
   const formData = new FormData();
   formData.append('folderId', folderId);
   formData.append('file', file);
+  if (altText) formData.append('altText', altText);
   return apiUpload<GalleryItem>(`${BASE}/items`, formData);
+}
+
+export async function updateItemAltText(id: string, altText: string): Promise<GalleryItem> {
+  return apiFetch<GalleryItem>(`${BASE}/items/${id}`, {
+    method: 'PATCH',
+    auth: true,
+    body: JSON.stringify({ altText }),
+  });
 }
 
 export async function deleteItem(id: string): Promise<void> {

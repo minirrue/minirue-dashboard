@@ -22,5 +22,6 @@ export interface GalleryItem {
   width: number | null;
   height: number | null;
   durationSeconds: number | null;
+  altText: string | null;
   createdAt: string;
 }

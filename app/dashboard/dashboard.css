@@ -2379,6 +2379,24 @@
   background: transparent;
   cursor: pointer;
 }
+.dash-gallery-item-alt-btn {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-top: 1px solid var(--mr-dash-hair);
+  background: transparent;
+  color: var(--mr-fg-3);
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dash-gallery-item-alt-btn:hover {
+  color: var(--mr-fg-1);
+}
 .dash-gallery-preview-overlay {
   position: fixed;
   inset: 0;

@@ -8,6 +8,7 @@ import {
   listFolders,
   listItems,
   renameFolder,
+  updateItemAltText,
   uploadItem,
 } from '@/lib/gallery/api';
 import type { GalleryFolder, GalleryItem } from '@/lib/gallery/types';
@@ -306,15 +307,95 @@ function ItemPreviewModal({
   );
 }
 
+/* ── SEO alt text — inline-editable, doubles as the image's actual alt
+   attribute both here and (once linked) on the product's mediaAssets row. ── */
+function AltTextField({
+  item,
+  onSave,
+}: {
+  item: GalleryItem;
+  onSave: (altText: string) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(item.altText ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!value.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await onSave(value.trim());
+      setEditing(false);
+    } catch (e) {
+      const err = e as ApiError;
+      setError(err.message ?? 'Failed to save name.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <form
+        className="dash-inline-form"
+        onSubmit={handleSubmit}
+        data-trace-id={`${TRACE}::EL-FORM-gallery-item-alt-text@${item.id}`}
+      >
+        <input
+          className="dash-input"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="e.g. Creed Aventus 100ml front view"
+          disabled={busy}
+          autoFocus
+          data-trace-id={`${TRACE}::EL-INPUT-gallery-item-alt-text@${item.id}`}
+        />
+        <button type="submit" className="dash-btn-primary" disabled={busy}>
+          Save
+        </button>
+        <button
+          type="button"
+          className="dash-btn-ghost"
+          onClick={() => {
+            setEditing(false);
+            setValue(item.altText ?? '');
+            setError(null);
+          }}
+          disabled={busy}
+        >
+          Cancel
+        </button>
+        {error && <p className="dash-field-error">{error}</p>}
+      </form>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="dash-gallery-item-alt-btn"
+      onClick={() => setEditing(true)}
+      data-trace-id={`${TRACE}::EL-BTN-edit-gallery-item-alt-text@${item.id}`}
+    >
+      {item.altText || 'Add name / alt text'}
+    </button>
+  );
+}
+
 /* ── Item grid ── */
 function ItemGrid({
   items,
   onDelete,
   onPreview,
+  onRenameAlt,
 }: {
   items: GalleryItem[];
   onDelete: (id: string) => Promise<void>;
   onPreview: (item: GalleryItem) => void;
+  onRenameAlt: (id: string, altText: string) => Promise<void>;
 }) {
   if (items.length === 0) {
     return <p className="dash-help-text">No items in this folder yet.</p>;
@@ -338,9 +419,10 @@ function ItemGrid({
               <video src={item.url} className="dash-gallery-item-media" muted />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={item.url} alt="" className="dash-gallery-item-media" />
+              <img src={item.url} alt={item.altText ?? ''} className="dash-gallery-item-media" />
             )}
           </button>
+          <AltTextField item={item} onSave={(altText) => onRenameAlt(item.id, altText)} />
           <div className="dash-gallery-item-meta">
             <span>{formatDate(item.createdAt)}</span>
             <button
@@ -447,6 +529,11 @@ export default function GalleryClient() {
       setSelectedFolder(null);
       setItems([]);
     }
+  }
+
+  async function handleRenameItemAlt(id: string, altText: string) {
+    const updated = await updateItemAltText(id, altText);
+    setItems((prev) => prev.map((item) => (item.id === id ? updated : item)));
   }
 
   async function handleDeleteItem(id: string) {
@@ -567,7 +654,12 @@ export default function GalleryClient() {
               ) : itemsError ? (
                 <p className="dash-inline-error">{itemsError}</p>
               ) : (
-                <ItemGrid items={items} onDelete={handleDeleteItem} onPreview={setPreviewItem} />
+                <ItemGrid
+                  items={items}
+                  onDelete={handleDeleteItem}
+                  onPreview={setPreviewItem}
+                  onRenameAlt={handleRenameItemAlt}
+                />
               )}
             </>
           )}
