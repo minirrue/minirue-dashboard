@@ -28,6 +28,10 @@
   }
 
   .dash-sidebar-brand {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
     padding: 20px 24px 18px;
     border-bottom: 1px solid var(--mr-dash-hair);
   }
@@ -315,12 +319,14 @@
   }
 
   /* No eyebrow/title/breadcrumb block anymore — just the mobile menu
-     toggle + notification bell, right-aligned in a much shorter bar. */
+     toggle + notification bell, right-aligned in a much shorter bar.
+     Desktop has its own notification bell in the sidebar brand row now
+     (DashboardSidebar), so this whole bar is desktop-hidden — it only
+     re-appears inside the mobile media query below, where the sidebar
+     itself is hidden and this is the only way to reach the drawer
+     toggle + notifications. */
   .dash-topbar--minimal {
-    min-height: 0;
-    padding: 14px 36px;
-    justify-content: flex-end;
-    align-items: center;
+    display: none;
   }
 
   .dash-topbar-actions {
@@ -695,6 +701,14 @@
       flex-direction: column;
       align-items: stretch;
       padding: 18px 20px;
+    }
+
+    .dash-topbar--minimal {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
     }
 
     .dash-user-menu {

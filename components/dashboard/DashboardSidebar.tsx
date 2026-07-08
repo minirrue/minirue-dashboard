@@ -7,6 +7,7 @@ import UserMenu from './UserMenu';
 import { Sparkle } from '../primitives';
 import { CHANGELOG } from '@/lib/changelog';
 import { hasUnreadChangelog } from '@/lib/changelog-read-state';
+import NotificationDrawer from './NotificationDrawer';
 
 /* ── Icon helpers (inline SVG to avoid external deps) ── */
 
@@ -254,6 +255,13 @@ export default function DashboardSidebar({
     setShowInfoDot(hasUnreadChangelog(latestId));
   }, [activePath]);
 
+  // Notification bell moved here from the topbar — the topbar is now
+  // desktop-hidden entirely (it duplicated context already shown in the
+  // sidebar), so this is its only home on desktop. Mobile keeps its own
+  // copy in the slim mobile-only bar (DashboardTopbar) since the sidebar
+  // itself is hidden there.
+  const [notifOpen, setNotifOpen] = React.useState(false);
+
   const renderNav = () => (
     <nav className="dash-sidebar-nav" onClick={onMobileDrawerClose}>
       {visibleGroups.map((group) => (
@@ -288,15 +296,30 @@ export default function DashboardSidebar({
     </nav>
   );
 
-  const renderBrand = () => (
+  const renderBrand = (showNotifButton = false) => (
     <div className="dash-sidebar-brand">
-      <div className="dash-sidebar-logo">
-        MiniRue
-        <span className="dash-sidebar-logo-mark" aria-hidden="true">
-          <Sparkle size={9} />
-        </span>
+      <div>
+        <div className="dash-sidebar-logo">
+          MiniRue
+          <span className="dash-sidebar-logo-mark" aria-hidden="true">
+            <Sparkle size={9} />
+          </span>
+        </div>
+        <div className="dash-sidebar-subtitle">Atelier dashboard</div>
       </div>
-      <div className="dash-sidebar-subtitle">Atelier dashboard</div>
+      {showNotifButton && (
+        <button
+          type="button"
+          className="dash-notif-btn"
+          onClick={() => setNotifOpen(true)}
+          aria-label="Open notifications"
+        >
+          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 9a6 6 0 0 1 12 0v5l2 3H4l2-3V9zM10 19a2 2 0 0 0 4 0" />
+          </svg>
+          <span className="dash-notif-dot" aria-hidden="true" />
+        </button>
+      )}
     </div>
   );
 
@@ -310,10 +333,11 @@ export default function DashboardSidebar({
     <>
       {/* Desktop sidebar */}
       <aside className="dash-sidebar">
-        {renderBrand()}
+        {renderBrand(true)}
         {renderNav()}
         {renderFooter()}
       </aside>
+      <NotificationDrawer open={notifOpen} onClose={() => setNotifOpen(false)} />
 
       {/* Mobile slide-out drawer */}
       <aside
