@@ -90,12 +90,11 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
   const pathSegments = activePath.split('/').filter(Boolean);
   const isCollaboratorArea = pathSegments[0] === 'collab';
   const shellEyebrow = isCollaboratorArea ? 'Partner workspace' : 'MiniRue dashboard';
-  const shellTitle =
-    pathSegments.length <= 1
-      ? isCollaboratorArea
-        ? 'Workspace'
-        : 'Overview'
-      : titleFromSegment(pathSegments[pathSegments.length - 1] ?? 'overview');
+  // Every page's title is its own last path segment (Products, Categories,
+  // Settings, Info, ...) — was previously hardcoded to 'Overview' (or
+  // 'Workspace' for collab) for ANY single-segment path, so every top-level
+  // page showed the wrong topbar title, not just the actual Overview page.
+  const shellTitle = titleFromSegment(pathSegments[pathSegments.length - 1] ?? 'overview');
 
   return (
     <DashboardShell

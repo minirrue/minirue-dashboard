@@ -44,8 +44,9 @@ function SkeletonCard() {
 }
 
 function RevenueChart({ points }: { points: RevenuePoint[] }) {
-  const max = Math.max(...points.map((p) => p.total_cents), 1);
-  const visible = points.slice(-30);
+  const safePoints = Array.isArray(points) ? points : [];
+  const max = Math.max(...safePoints.map((p) => p.total_cents || 0), 1);
+  const visible = safePoints.slice(-30);
 
   return (
     <div className="dash-card" style={{ padding: '16px 20px' }}>
@@ -77,7 +78,8 @@ function RevenueChart({ points }: { points: RevenuePoint[] }) {
   );
 }
 
-function TopProductsTable({ products }: { products: TopProduct[] }) {
+function TopProductsTable({ products: rawProducts }: { products: TopProduct[] }) {
+  const products = Array.isArray(rawProducts) ? rawProducts : [];
   if (products.length === 0) {
     return (
       <div className="dash-card">
@@ -118,10 +120,10 @@ function TopProductsTable({ products }: { products: TopProduct[] }) {
 
 function OrdersFunnelPanel({ funnel }: { funnel: OrdersFunnel }) {
   const steps = [
-    { label: 'Carts created', value: funnel.carts_created },
-    { label: 'Orders placed', value: funnel.orders_placed },
-    { label: 'Orders paid', value: funnel.orders_paid },
-    { label: 'Orders fulfilled', value: funnel.orders_fulfilled },
+    { label: 'Carts created', value: funnel.carts_created || 0 },
+    { label: 'Orders placed', value: funnel.orders_placed || 0 },
+    { label: 'Orders paid', value: funnel.orders_paid || 0 },
+    { label: 'Orders fulfilled', value: funnel.orders_fulfilled || 0 },
   ];
   const max = Math.max(...steps.map((s) => s.value), 1);
 
@@ -145,7 +147,7 @@ function OrdersFunnelPanel({ funnel }: { funnel: OrdersFunnel }) {
         ))}
       </div>
       <p style={{ marginTop: 14, fontSize: 12, color: 'var(--mr-fg-4)' }}>
-        Cart → paid: {funnel.conversion_to_paid.toFixed(1)}% · Paid → fulfilled: {funnel.conversion_to_fulfilled.toFixed(1)}%
+        Cart → paid: {(funnel.conversion_to_paid || 0).toFixed(1)}% · Paid → fulfilled: {(funnel.conversion_to_fulfilled || 0).toFixed(1)}%
       </p>
     </div>
   );
@@ -182,8 +184,8 @@ export default function AnalyticsClient() {
 
   useEffect(() => { load(); }, [load]);
 
-  const totalOrders = overview
-    ? Object.values(overview.orders).reduce((a, b) => a + b, 0)
+  const totalOrders = overview?.orders
+    ? Object.values(overview.orders).reduce((a, b) => a + (b || 0), 0)
     : 0;
 
   return (
@@ -202,10 +204,10 @@ export default function AnalyticsClient() {
           </div>
         ) : overview ? (
           <>
-            <StatCard title="Revenue Today" value={egpShort(overview.revenue.today_cents)} sub={`This week: ${egpShort(overview.revenue.week_cents)}`} />
-            <StatCard title="Revenue This Month" value={egpShort(overview.revenue.month_cents)} />
-            <StatCard title="Total Orders" value={totalOrders.toLocaleString()} sub={`${overview.orders.delivered_count} delivered`} />
-            <StatCard title="New Customers (Week)" value={overview.customers.new_week.toLocaleString()} sub={`${overview.customers.total_active} total active`} />
+            <StatCard title="Revenue Today" value={egpShort(overview.revenue?.today_cents || 0)} sub={`This week: ${egpShort(overview.revenue?.week_cents || 0)}`} />
+            <StatCard title="Revenue This Month" value={egpShort(overview.revenue?.month_cents || 0)} />
+            <StatCard title="Total Orders" value={totalOrders.toLocaleString()} sub={`${overview.orders?.delivered_count || 0} delivered`} />
+            <StatCard title="New Customers (Week)" value={(overview.customers?.new_week || 0).toLocaleString()} sub={`${overview.customers?.total_active || 0} total active`} />
           </>
         ) : null}
       </div>

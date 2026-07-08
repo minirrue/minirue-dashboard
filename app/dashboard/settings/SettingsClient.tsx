@@ -4,7 +4,6 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { apiGetSettings, apiUpdateSettings } from '@/lib/api/settings';
 import type { StoreSettings } from '@/lib/api/settings';
 import type { ApiError } from '@/lib/api/client';
-import SettingsTabs from './SettingsTabs';
 
 function Skeleton() {
   return (
@@ -131,8 +130,6 @@ export default function SettingsClient() {
       <div className="dash-page-header">
         <h1 className="dash-page-title">Settings</h1>
       </div>
-
-      <SettingsTabs />
 
       <form onSubmit={handleSubmit}>
         <div className="dash-form-card">

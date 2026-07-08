@@ -48,6 +48,16 @@ function IconSettings() {
   );
 }
 
+function IconInfo() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <line x1="12" y1="16" x2="12" y2="11" />
+      <line x1="12" y1="8" x2="12.01" y2="8" />
+    </svg>
+  );
+}
+
 function IconBarChart() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -195,6 +205,7 @@ const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
     section: 'System',
     items: [
       { label: 'Settings', href: '/settings', icon: <IconSettings /> },
+      { label: 'Info', href: '/info', icon: <IconInfo /> },
     ],
   },
 ];

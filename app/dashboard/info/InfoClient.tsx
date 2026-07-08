@@ -2,7 +2,6 @@
 
 import { CHANGELOG } from '@/lib/changelog';
 import packageJson from '@/package.json';
-import SettingsTabs from '../SettingsTabs';
 
 const TRACE = 'PG-DASHBOARD-SET-002';
 
@@ -34,8 +33,6 @@ export default function InfoClient() {
       <div className="dash-page-header" data-trace-id={`${TRACE}::EL-REGION-info-page-header`}>
         <h1 className="dash-page-title">Info</h1>
       </div>
-
-      <SettingsTabs />
 
       <div className="dash-card" style={{ marginBottom: 20 }} data-trace-id={`${TRACE}::EL-REGION-info-intro`}>
         <p className="dash-help-text" style={{ margin: 0 }}>

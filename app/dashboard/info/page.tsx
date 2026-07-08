@@ -4,6 +4,6 @@ export const metadata = {
   title: 'Info — MiniRue Admin',
 };
 
-export default function SettingsInfoPage() {
+export default function InfoPage() {
   return <InfoClient />;
 }

@@ -19,6 +19,7 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   '/analytics': [Role.OWNER, Role.STAFF, Role.DEV],
   '/loyalty': [Role.ADMIN, Role.OWNER, Role.DEV],
   '/settings': [Role.ADMIN, Role.OWNER, Role.DEV],
+  '/info': STAFF_ROLES,
   '/storefront-appearance': [Role.ADMIN, Role.OWNER, Role.DEV],
   '/collaborators': [Role.ADMIN, Role.OWNER],
   '/collab': COLLAB_ROLES,
