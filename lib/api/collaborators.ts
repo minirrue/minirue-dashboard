@@ -1,7 +1,7 @@
 import { apiFetch } from './client';
 
 export type CollaboratorModule = 'ORDERS' | 'PRODUCTS' | 'ANALYTICS';
-export type CollaboratorStatus = 'PENDING_ACTIVATION' | 'ACTIVE' | 'SUSPENDED';
+export type CollaboratorStatus = 'PENDING_ACTIVATION' | 'ACTIVE' | 'SUSPENDED' | 'ARCHIVED';
 
 export interface CollaboratorListItem {
   id: string;
@@ -95,6 +95,38 @@ export async function apiSuspendCollaborator(id: string): Promise<void> {
 
 export async function apiReactivateCollaborator(id: string): Promise<void> {
   await apiFetch(`/admin/collaborators/${id}/reactivate`, { method: 'POST', auth: true });
+}
+
+export async function apiArchiveCollaborator(id: string): Promise<void> {
+  await apiFetch(`/admin/collaborators/${id}/archive`, { method: 'POST', auth: true });
+}
+
+export interface CollaboratorDeleteImpact {
+  productCount: number;
+  mediaCount: number;
+  galleryFolderCount: number;
+  galleryItemCount: number;
+  orderReferenceCount: number;
+}
+
+export async function apiGetCollaboratorDeleteImpact(
+  id: string,
+): Promise<CollaboratorDeleteImpact> {
+  return apiFetch<CollaboratorDeleteImpact>(`/admin/collaborators/${id}/delete-impact`, {
+    auth: true,
+  });
+}
+
+export async function apiSoftDeleteCollaborator(id: string): Promise<void> {
+  await apiFetch(`/admin/collaborators/${id}/delete-soft`, { method: 'POST', auth: true });
+}
+
+export async function apiRestoreCollaborator(id: string): Promise<void> {
+  await apiFetch(`/admin/collaborators/${id}/restore`, { method: 'POST', auth: true });
+}
+
+export async function apiHardDeleteCollaborator(id: string): Promise<void> {
+  await apiFetch(`/admin/collaborators/${id}`, { method: 'DELETE', auth: true });
 }
 
 export async function apiUpdateCollaboratorSettings(

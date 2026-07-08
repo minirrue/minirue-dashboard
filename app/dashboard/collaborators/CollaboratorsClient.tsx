@@ -254,6 +254,8 @@ export default function CollaboratorsClient() {
 
           <option value="SUSPENDED">Suspended</option>
 
+          <option value="ARCHIVED">Archived</option>
+
         </select>
 
       </div>

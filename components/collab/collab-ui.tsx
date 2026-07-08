@@ -24,12 +24,14 @@ const COLLABORATOR_STATUS_ATTR: Record<CollaboratorStatus, string> = {
   PENDING_ACTIVATION: 'pending',
   ACTIVE: 'confirmed',
   SUSPENDED: 'cancelled',
+  ARCHIVED: 'cancelled',
 };
 
 const COLLABORATOR_STATUS_LABEL: Record<CollaboratorStatus, string> = {
   PENDING_ACTIVATION: 'Pending activation',
   ACTIVE: 'Active',
   SUSPENDED: 'Suspended',
+  ARCHIVED: 'Archived',
 };
 
 export function CollaboratorStatusBadge({ status }: { status: CollaboratorStatus }) {

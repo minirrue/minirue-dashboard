@@ -9,15 +9,21 @@ import {
   CollabLoadingBlock,
 } from '@/components/collab/collab-ui';
 import {
+  apiArchiveCollaborator,
   apiGetCollaborator,
+  apiGetCollaboratorDeleteImpact,
+  apiHardDeleteCollaborator,
   apiReactivateCollaborator,
+  apiSoftDeleteCollaborator,
   apiSuspendCollaborator,
   apiUpdateCollaborator,
   apiUpdateCollaboratorSettings,
+  type CollaboratorDeleteImpact,
   type CollaboratorDetail,
   type CollaboratorModule,
   type FulfillmentMode,
 } from '@/lib/api/collaborators';
+import { useRouter } from 'next/navigation';
 import type { ApiError } from '@/lib/api/client';
 
 const MODULE_OPTIONS: Array<{ value: CollaboratorModule; label: string }> = [
@@ -28,6 +34,7 @@ const MODULE_OPTIONS: Array<{ value: CollaboratorModule; label: string }> = [
 
 export default function CollaboratorDetailClient() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
   const [collab, setCollab] = useState<CollaboratorDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,6 +54,12 @@ export default function CollaboratorDetailClient() {
   const [navLink, setNavLink] = useState(false);
   const [commissionPct, setCommissionPct] = useState('20');
   const [fulfillmentMode, setFulfillmentMode] = useState<FulfillmentMode>('MINIRUE_SHIPS');
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteImpact, setDeleteImpact] = useState<CollaboratorDeleteImpact | null>(null);
+  const [deleteImpactError, setDeleteImpactError] = useState<string | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -172,6 +185,67 @@ export default function CollaboratorDetailClient() {
     }
   }
 
+  async function handleArchive() {
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      await apiArchiveCollaborator(id);
+      const data = await apiGetCollaborator(id);
+      setCollab(data);
+    } catch (e) {
+      const err = e as ApiError;
+      setActionError(
+        err.status === 409 ? 'This collaborator is already archived.' : err.message || 'Failed to archive',
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function openDeleteDialog() {
+    setDeleteDialogOpen(true);
+    setDeleteError(null);
+    setDeleteImpact(null);
+    setDeleteImpactError(null);
+    try {
+      const impact = await apiGetCollaboratorDeleteImpact(id);
+      setDeleteImpact(impact);
+    } catch (e) {
+      const err = e as ApiError;
+      setDeleteImpactError(err.message || 'Failed to load delete impact');
+    }
+  }
+
+  async function handleSoftDelete() {
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      await apiSoftDeleteCollaborator(id);
+      router.push('/collaborators');
+    } catch (e) {
+      const err = e as ApiError;
+      setDeleteError(err.message || 'Failed to soft-delete');
+      setDeleteBusy(false);
+    }
+  }
+
+  async function handleHardDelete() {
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      await apiHardDeleteCollaborator(id);
+      router.push('/collaborators');
+    } catch (e) {
+      const err = e as ApiError;
+      setDeleteError(
+        err.status === 409
+          ? err.message ?? 'This collaborator has real order history — use soft delete instead.'
+          : err.message || 'Failed to delete',
+      );
+      setDeleteBusy(false);
+    }
+  }
+
   if (loading) {
     return <CollabLoadingBlock traceId="PG-DASHBOARD-COLLAB-008::EL-REGION-detail-loading" />;
   }
@@ -233,7 +307,7 @@ export default function CollaboratorDetailClient() {
             >
               Suspend
             </button>
-          ) : collab.status === 'SUSPENDED' ? (
+          ) : collab.status === 'SUSPENDED' || collab.status === 'ARCHIVED' ? (
             <button
               type="button"
               className="dash-btn-ok"
@@ -244,6 +318,26 @@ export default function CollaboratorDetailClient() {
               Reactivate
             </button>
           ) : null}
+          {collab.status !== 'ARCHIVED' ? (
+            <button
+              type="button"
+              className="dash-btn-ghost dash-btn-muted"
+              disabled={actionLoading || saving}
+              onClick={() => void handleArchive()}
+              data-trace-id="PG-DASHBOARD-COLLAB-008::EL-BTN-detail-archive"
+            >
+              Archive
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="dash-btn-ghost dash-btn-danger"
+            disabled={actionLoading || saving}
+            onClick={() => void openDeleteDialog()}
+            data-trace-id="PG-DASHBOARD-COLLAB-008::EL-BTN-detail-delete"
+          >
+            Delete
+          </button>
           <Link
             href="/collaborators"
             className="dash-btn-ghost"
@@ -437,6 +531,92 @@ export default function CollaboratorDetailClient() {
         </div>
       </form>
       </div>
+
+      {deleteDialogOpen && (
+        <div
+          className="dash-gallery-preview-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Delete collaborator"
+          data-trace-id="PG-DASHBOARD-COLLAB-008::EL-MODAL-delete-collaborator"
+        >
+          <div
+            className="dash-card"
+            style={{ maxWidth: 480, width: '90%', textAlign: 'left' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="dash-section-title" style={{ marginBottom: 12 }}>
+              Delete {collab.brandName}?
+            </h2>
+
+            {deleteImpactError ? (
+              <p className="dash-inline-error">{deleteImpactError}</p>
+            ) : !deleteImpact ? (
+              <p className="dash-help-text">Checking what this would affect…</p>
+            ) : (
+              <>
+                <p className="dash-help-text" style={{ marginBottom: 8 }}>
+                  Choosing <strong>Delete everything</strong> will permanently erase:
+                </p>
+                <ul style={{ margin: '0 0 12px', paddingLeft: 20, fontSize: 13, color: 'var(--mr-fg-2)' }}>
+                  <li>{deleteImpact.productCount} product(s)</li>
+                  <li>{deleteImpact.mediaCount} product photo(s)</li>
+                  <li>{deleteImpact.galleryFolderCount} gallery folder(s)</li>
+                  <li>{deleteImpact.galleryItemCount} gallery photo/video(s)</li>
+                </ul>
+                {deleteImpact.orderReferenceCount > 0 ? (
+                  <p className="dash-inline-error" style={{ marginBottom: 12 }}>
+                    {deleteImpact.orderReferenceCount} order(s) reference this collaborator's
+                    products — permanent delete is blocked. Use soft delete instead, which hides
+                    everything without erasing your order history.
+                  </p>
+                ) : (
+                  <p className="dash-inline-error" style={{ marginBottom: 12 }}>
+                    This cannot be undone — there is no trace-back once erased.
+                  </p>
+                )}
+                <p className="dash-help-text" style={{ marginBottom: 12 }}>
+                  Or choose <strong>Soft delete</strong> instead — the collaborator disappears
+                  from your lists but every product, photo, and order stays intact, and this can
+                  be reversed later.
+                </p>
+              </>
+            )}
+
+            {deleteError ? <p className="dash-inline-error">{deleteError}</p> : null}
+
+            <div className="dash-form-actions" style={{ marginTop: 8 }}>
+              <button
+                type="button"
+                className="dash-btn-secondary"
+                disabled={deleteBusy}
+                onClick={() => void handleSoftDelete()}
+                data-trace-id="PG-DASHBOARD-COLLAB-008::EL-BTN-confirm-soft-delete"
+              >
+                {deleteBusy ? 'Working…' : 'Soft delete'}
+              </button>
+              <button
+                type="button"
+                className="dash-btn-danger"
+                disabled={deleteBusy || !deleteImpact || deleteImpact.orderReferenceCount > 0}
+                onClick={() => void handleHardDelete()}
+                data-trace-id="PG-DASHBOARD-COLLAB-008::EL-BTN-confirm-hard-delete"
+              >
+                {deleteBusy ? 'Working…' : 'Delete everything'}
+              </button>
+              <button
+                type="button"
+                className="dash-btn-ghost"
+                disabled={deleteBusy}
+                onClick={() => setDeleteDialogOpen(false)}
+                data-trace-id="PG-DASHBOARD-COLLAB-008::EL-BTN-cancel-delete"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
