@@ -365,7 +365,6 @@ export default function GalleryClient() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [selectedFolder, setSelectedFolder] = useState<GalleryFolder | null>(null);
-  const [subfolders, setSubfolders] = useState<GalleryFolder[]>([]);
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(false);
   const [itemsError, setItemsError] = useState<string | null>(null);
@@ -399,11 +398,7 @@ export default function GalleryClient() {
     setItemsLoading(true);
     setItemsError(null);
     try {
-      const [children, folderItems] = await Promise.all([
-        listFolders(folder.id),
-        listItems(folder.id),
-      ]);
-      setSubfolders(children);
+      const folderItems = await listItems(folder.id);
       setItems(folderItems);
     } catch (e) {
       const err = e as ApiError;
@@ -427,17 +422,10 @@ export default function GalleryClient() {
     setAdding(true);
     setAddError(null);
     try {
-      await createFolder({
-        name: newFolderName.trim(),
-        parentId: selectedFolder?.id,
-      });
+      await createFolder({ name: newFolderName.trim() });
       setNewFolderName('');
       setShowAddForm(false);
-      if (selectedFolder) {
-        await loadFolderContents(selectedFolder);
-      } else {
-        await loadFolders();
-      }
+      await loadFolders();
     } catch (e) {
       const err = e as ApiError;
       setAddError(err.message ?? 'Failed to create folder.');
@@ -458,18 +446,7 @@ export default function GalleryClient() {
     if (selectedFolder?.id === id) {
       setSelectedFolder(null);
       setItems([]);
-      setSubfolders([]);
     }
-  }
-
-  async function handleRenameSubfolder(id: string, name: string) {
-    await renameFolder(id, name);
-    if (selectedFolder) await loadFolderContents(selectedFolder);
-  }
-
-  async function handleDeleteSubfolder(id: string) {
-    await deleteFolder(id);
-    if (selectedFolder) await loadFolderContents(selectedFolder);
   }
 
   async function handleDeleteItem(id: string) {
@@ -489,9 +466,6 @@ export default function GalleryClient() {
     setFolders((prev) =>
       prev.map((f) => (f.id === item.folderId ? { ...f, itemCount: f.itemCount + 1 } : f)),
     );
-    setSubfolders((prev) =>
-      prev.map((f) => (f.id === item.folderId ? { ...f, itemCount: f.itemCount + 1 } : f)),
-    );
   }
 
   return (
@@ -505,7 +479,7 @@ export default function GalleryClient() {
             onClick={() => setShowAddForm(true)}
             data-trace-id={`${TRACE}::EL-BTN-show-add-folder-form`}
           >
-            New Folder{selectedFolder ? ` in "${selectedFolder.name}"` : ''}
+            New Folder
           </button>
         )}
       </div>
@@ -586,19 +560,6 @@ export default function GalleryClient() {
               <h2 className="dash-section-title">{selectedFolder.name}</h2>
 
               <UploadDropzone folderId={selectedFolder.id} onUploaded={handleItemUploaded} />
-
-              {subfolders.length > 0 && (
-                <>
-                  <h3 className="dash-section-subtitle">Subfolders</h3>
-                  <FolderList
-                    folders={subfolders}
-                    selectedId={null}
-                    onSelect={handleSelectFolder}
-                    onRename={handleRenameSubfolder}
-                    onDelete={handleDeleteSubfolder}
-                  />
-                </>
-              )}
 
               <h3 className="dash-section-subtitle">Items</h3>
               {itemsLoading ? (
