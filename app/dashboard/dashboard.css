@@ -156,6 +156,21 @@
     flex-shrink: 0;
   }
 
+  .dash-sidebar-link-badge {
+    margin-left: auto;
+    flex-shrink: 0;
+    padding: 1px 6px;
+    border-radius: var(--mr-radius-pill);
+    background: var(--mr-crimson-50, rgba(200, 40, 40, 0.1));
+    color: var(--mr-crimson-600, var(--mr-crimson-500));
+    border: 1px solid var(--mr-crimson-500);
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+
   .dash-sidebar-footer {
     gap: 12px;
     padding: 12px 16px 16px;
@@ -297,6 +312,15 @@
     gap: 24px;
     animation: mr-fade-up 0.4s var(--mr-ease-out) both;
     animation-delay: 60ms;
+  }
+
+  /* No eyebrow/title/breadcrumb block anymore — just the mobile menu
+     toggle + notification bell, right-aligned in a much shorter bar. */
+  .dash-topbar--minimal {
+    min-height: 0;
+    padding: 14px 36px;
+    justify-content: flex-end;
+    align-items: center;
   }
 
   .dash-topbar-actions {

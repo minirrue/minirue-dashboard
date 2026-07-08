@@ -144,6 +144,9 @@ export interface NavItem {
   label: string;
   href: string;
   icon: React.ReactNode;
+  /** Shows a "Maintenance" badge next to the label — screens flagged as
+   * not yet reliable/complete, still visible/usable but under active work. */
+  maintenance?: boolean;
 }
 
 export interface DashboardSidebarProps {
@@ -179,7 +182,7 @@ const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
       { label: 'Orders', href: '/orders', icon: <IconShoppingBag /> },
       { label: 'Customers', href: '/customers', icon: <IconUsers /> },
       { label: 'Collaborators', href: '/collaborators', icon: <IconUsers /> },
-      { label: 'Storefront', href: '/storefront-appearance', icon: <IconPalette /> },
+      { label: 'Storefront', href: '/storefront-appearance', icon: <IconPalette />, maintenance: true },
     ],
   },
   {
@@ -191,22 +194,22 @@ const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
   {
     section: 'Operations',
     items: [
-      { label: 'Fulfillment', href: '/fulfillment', icon: <IconTruck /> },
-      { label: 'Refunds', href: '/refunds', icon: <IconRefreshCcw /> },
-      { label: 'Inventory', href: '/inventory', icon: <IconPackage /> },
+      { label: 'Fulfillment', href: '/fulfillment', icon: <IconTruck />, maintenance: true },
+      { label: 'Refunds', href: '/refunds', icon: <IconRefreshCcw />, maintenance: true },
+      { label: 'Inventory', href: '/inventory', icon: <IconPackage />, maintenance: true },
     ],
   },
   {
     section: 'Insights',
     items: [
-      { label: 'Analytics', href: '/analytics', icon: <IconTrendingUp /> },
-      { label: 'Loyalty', href: '/loyalty', icon: <IconStar /> },
+      { label: 'Analytics', href: '/analytics', icon: <IconTrendingUp />, maintenance: true },
+      { label: 'Loyalty', href: '/loyalty', icon: <IconStar />, maintenance: true },
     ],
   },
   {
     section: 'System',
     items: [
-      { label: 'Settings', href: '/settings', icon: <IconSettings /> },
+      { label: 'Settings', href: '/settings', icon: <IconSettings />, maintenance: true },
       { label: 'Info', href: '/info', icon: <IconInfo /> },
     ],
   },
@@ -271,6 +274,9 @@ export default function DashboardSidebar({
               >
                 <span className="dash-sidebar-link-icon">{item.icon}</span>
                 <span className="dash-sidebar-link-label">{item.label}</span>
+                {item.maintenance && (
+                  <span className="dash-sidebar-link-badge">Maintenance</span>
+                )}
                 {item.href === '/info' && showInfoDot && (
                   <span className="dash-sidebar-link-dot" aria-label="New updates" />
                 )}

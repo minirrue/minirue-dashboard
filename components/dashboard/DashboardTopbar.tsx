@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
+import { useState } from 'react';
 import NotificationDrawer from './NotificationDrawer';
 
+// Kept for compatibility with existing callers passing breadcrumbs/eyebrow/
+// title — those props are no longer rendered (see below) but callers don't
+// need to be touched just to drop values that are now ignored.
 export interface BreadcrumbItem {
   label: string;
   href?: string;
@@ -21,52 +23,17 @@ export interface DashboardTopbarProps {
   onToggleDrawer?: () => void;
 }
 
-export default function DashboardTopbar({
-  breadcrumbs = [{ label: 'Overview' }],
-  eyebrow,
-  title,
-  onToggleDrawer,
-}: DashboardTopbarProps) {
-  const resolvedEyebrow = eyebrow ?? breadcrumbs[0]?.label ?? 'Overview';
+export default function DashboardTopbar({ onToggleDrawer }: DashboardTopbarProps) {
   const [notifOpen, setNotifOpen] = useState(false);
 
-  // The topbar used to also render its own <h1>{title}</h1> — every page's
-  // own content already renders its own on-page title (e.g. ProductsClient's
-  // "Products" <h1>), so this duplicated literally every single page's
-  // heading once the topbar started showing the real per-page title instead
-  // of a hardcoded 'Overview'. The eyebrow (app/section context) and the
-  // breadcrumb trail (for nested detail pages) still earn their place here;
-  // the redundant title text does not.
+  // The topbar previously also showed an "eyebrow" (app/section label) and
+  // breadcrumb trail on the left. That whole block is removed per explicit
+  // request — the sidebar already identifies the current section, and the
+  // per-page content has its own heading — so this bar now only ever holds
+  // the mobile menu toggle and the notification bell, right-aligned.
   return (
     <>
-    <header className="dash-topbar">
-      <div className="dash-topbar-copy">
-        <div className="dash-topbar-eyebrow">{resolvedEyebrow}</div>
-        <div className="dash-topbar-heading">
-          {breadcrumbs.length > 1 && (
-            <nav className="dash-breadcrumb" aria-label="Breadcrumb">
-              {breadcrumbs.map((crumb, i) => {
-                const isLast = i === breadcrumbs.length - 1;
-                return (
-                  <React.Fragment key={`${crumb.label}-${i}`}>
-                    {i > 0 && <span className="dash-breadcrumb-sep">/</span>}
-                    {isLast ? (
-                      <span className="dash-breadcrumb-current">{crumb.label}</span>
-                    ) : crumb.href ? (
-                      <Link className="dash-breadcrumb-link" href={crumb.href}>
-                        {crumb.label}
-                      </Link>
-                    ) : (
-                      <span className="dash-breadcrumb-link">{crumb.label}</span>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </nav>
-          )}
-        </div>
-      </div>
-
+    <header className="dash-topbar dash-topbar--minimal">
       <div className="dash-topbar-actions">
         <button
           className="dash-hamburger-btn"
