@@ -11,6 +11,7 @@ import GalleryPickerModal, {
   uploadDeviceFileToGallery,
 } from '@/components/dashboard/GalleryPickerModal';
 import type { GalleryItem } from '@/lib/gallery/types';
+import { ImagePreviewModal } from '@/components/dashboard/ImagePreviewModal';
 
 interface Props {
   productId: string;
@@ -30,6 +31,7 @@ export default function MediaSection({ productId, media, onMediaChange }: Props)
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [previewMedia, setPreviewMedia] = useState<ProductMedia | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleDeviceUpload(file: File) {
@@ -95,18 +97,26 @@ export default function MediaSection({ productId, media, onMediaChange }: Props)
         >
           {media.map((m) => (
             <figure key={m.id} style={{ margin: 0 }}>
-              <img
-                src={previewUrl(m)}
-                alt={m.altText ?? ''}
-                data-trace-id={`PG-DASHBOARD-CAT-003::EL-IMG-product-image@${m.id}`}
-                style={{
-                  width: '100%',
-                  aspectRatio: '4/5',
-                  objectFit: 'cover',
-                  borderRadius: 'var(--mr-radius-sm)',
-                  border: '1px solid var(--mr-dash-hair)',
-                }}
-              />
+              <button
+                type="button"
+                onClick={() => setPreviewMedia(m)}
+                aria-label="View full size"
+                data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-enlarge-product-image@${m.id}`}
+                style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+              >
+                <img
+                  src={previewUrl(m)}
+                  alt={m.altText ?? ''}
+                  data-trace-id={`PG-DASHBOARD-CAT-003::EL-IMG-product-image@${m.id}`}
+                  style={{
+                    width: '100%',
+                    aspectRatio: '4/5',
+                    objectFit: 'cover',
+                    borderRadius: 'var(--mr-radius-sm)',
+                    border: '1px solid var(--mr-dash-hair)',
+                  }}
+                />
+              </button>
               <figcaption
                 className="dash-help-text"
                 style={{ marginTop: 6, fontSize: 11, wordBreak: 'break-all' }}
@@ -183,6 +193,14 @@ export default function MediaSection({ productId, media, onMediaChange }: Props)
       )}
 
       {error && <p className="dash-inline-error">{error}</p>}
+
+      {previewMedia && (
+        <ImagePreviewModal
+          src={previewUrl(previewMedia)}
+          alt={previewMedia.altText ?? ''}
+          onClose={() => setPreviewMedia(null)}
+        />
+      )}
     </section>
   );
 }

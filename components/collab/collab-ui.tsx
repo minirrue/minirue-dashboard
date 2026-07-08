@@ -232,8 +232,14 @@ export function formatEgp(amount: string | number | null | undefined): string {
   }).format(n);
 }
 
+/**
+ * `title` is intentionally NOT rendered as a heading here — the dashboard
+ * topbar already shows this collab page's real title (DashboardLayoutClient
+ * derives it from the route itself), so an `<h1>` repeating it on every
+ * collab page was a pure duplicate of the same text at the very top of the
+ * page. `subtitle`/`action` still carry real, non-duplicate content.
+ */
 export function CollabPageHeader({
-  title,
   subtitle,
   action,
   traceId,
@@ -243,10 +249,10 @@ export function CollabPageHeader({
   action?: ReactNode;
   traceId?: string;
 }) {
+  if (!subtitle && !action) return null;
   return (
     <div className="dash-page-header" data-trace-id={traceId}>
       <div>
-        <h1 className="dash-page-title">{title}</h1>
         {subtitle ? (
           typeof subtitle === 'string' ? (
             <p className="dash-page-subtitle">{subtitle}</p>

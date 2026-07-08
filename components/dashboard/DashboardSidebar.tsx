@@ -217,11 +217,17 @@ export default function DashboardSidebar({
   mobileDrawerOpen,
   onMobileDrawerClose,
 }: DashboardSidebarProps) {
+  // While userRole hasn't resolved yet (every page refresh briefly has it
+  // undefined before useUser() loads), fall back to NO items rather than
+  // every item unfiltered — the previous fallback showed the full nav
+  // (including role-gated sections like Partner/Collaborators) for one
+  // frame, then yanked sections away once the real role arrived, reading
+  // as a visible glitch on every refresh.
   const visibleGroups = NAV_ITEMS.map((group) => ({
     ...group,
     items: userRole
       ? group.items.filter((item) => canAccessDashboardRoute(userRole, item.href))
-      : group.items,
+      : [],
   })).filter((group) => group.items.length > 0);
 
   // An item only prefix-matches child routes (e.g. /collab/products under

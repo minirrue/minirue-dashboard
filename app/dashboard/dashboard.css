@@ -2462,6 +2462,14 @@
   background: transparent;
   cursor: pointer;
 }
+.dash-enlargeable-image-btn {
+  display: inline-block;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
+}
 .dash-gallery-item-alt-btn {
   display: block;
   width: 100%;

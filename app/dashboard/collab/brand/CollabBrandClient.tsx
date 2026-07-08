@@ -14,6 +14,8 @@ import {
 
 } from '@/components/collab/collab-ui';
 
+import { EnlargeableImage } from '@/components/dashboard/ImagePreviewModal';
+
 import {
 
   apiCollabGetBrand,
@@ -47,6 +49,8 @@ export default function CollabBrandClient() {
   const [saving, setSaving] = useState(false);
 
   const [logoUploading, setLogoUploading] = useState(false);
+
+  const [logoPreviewOpen, setLogoPreviewOpen] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -213,7 +217,7 @@ export default function CollabBrandClient() {
 
             {brand?.logoUrl ? (
 
-              <img
+              <EnlargeableImage
 
                 src={brand.logoUrl}
 
@@ -221,9 +225,13 @@ export default function CollabBrandClient() {
 
                 className="collab-brand-logo"
 
-                width={80}
+                previewOpen={logoPreviewOpen}
 
-                height={80}
+                onOpenPreview={() => setLogoPreviewOpen(true)}
+
+                onClosePreview={() => setLogoPreviewOpen(false)}
+
+                traceId="PG-DASHBOARD-COLLAB-003::EL-BTN-enlarge-brand-logo"
 
               />
 
