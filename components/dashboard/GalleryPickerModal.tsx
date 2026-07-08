@@ -12,26 +12,31 @@ import type { ApiError } from '@/lib/api/client';
 
 const TRACE = 'CMP-DASHBOARD-GALLERY-PICKER';
 
-/**
- * Name of the auto-created folder used by the product form's "Upload from
- * this device" path (specs/006-gallery-module, US2, Acceptance Scenario 3) —
- * uploads via the product form must still create a real, gallery-visible
- * item rather than being gallery-invisible.
- */
+/** Fallback folder name only used when no product name is available yet
+ * (e.g. uploading a photo before the product's own name field is filled
+ * in) — every real per-product upload uses the product's own name instead,
+ * per explicit request: direct product-image uploads must land in a folder
+ * named exactly after the product, not a generic shared bucket. */
 const DEFAULT_UPLOAD_FOLDER_NAME = 'Product Photos';
 
 /**
- * Finds (or creates) the caller's default "Product Photos" top-level folder,
- * then uploads `file` into it and returns the resulting GalleryItem. Used by
- * the "Upload from this device" path on the product new/edit screens so
- * device uploads still land in the user's own gallery (never
- * gallery-invisible), per spec Story 2.
+ * Finds (or creates) a top-level gallery folder named exactly after
+ * `productName` (falling back to the generic default only when no product
+ * name is available), then uploads `file` into it and returns the resulting
+ * GalleryItem. Used by the "Upload from this device" path on the product
+ * new/edit screens so device uploads still land in the user's own gallery
+ * (never gallery-invisible), per spec Story 2 — now organized per-product
+ * rather than all dumped into one shared folder.
  */
-export async function uploadDeviceFileToGallery(file: File): Promise<GalleryItem> {
+export async function uploadDeviceFileToGallery(
+  file: File,
+  productName?: string,
+): Promise<GalleryItem> {
+  const folderName = productName?.trim() || DEFAULT_UPLOAD_FOLDER_NAME;
   const topLevel = await listFolders();
-  let folder = topLevel.find((f) => f.name === DEFAULT_UPLOAD_FOLDER_NAME);
+  let folder = topLevel.find((f) => f.name === folderName);
   if (!folder) {
-    folder = await createFolder({ name: DEFAULT_UPLOAD_FOLDER_NAME });
+    folder = await createFolder({ name: folderName });
   }
   return uploadItem(folder.id, file);
 }

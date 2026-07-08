@@ -87,3 +87,8 @@ export async function apiAdminAdjustTier(
     body: JSON.stringify(input),
   });
 }
+
+/** GDPR-anonymize + delete this customer's account (admin-triggered). */
+export async function apiAdminDeleteCustomer(userId: string): Promise<void> {
+  await apiFetch<void>(`/customers/${userId}`, { method: 'DELETE', auth: true });
+}

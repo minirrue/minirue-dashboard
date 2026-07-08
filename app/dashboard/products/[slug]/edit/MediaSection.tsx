@@ -15,6 +15,7 @@ import { ImagePreviewModal } from '@/components/dashboard/ImagePreviewModal';
 
 interface Props {
   productId: string;
+  productName: string;
   media: ProductMedia[];
   onMediaChange: (media: ProductMedia[]) => void;
 }
@@ -26,7 +27,7 @@ function previewUrl(m: ProductMedia): string {
   return cloudinaryPreviewUrl(m.cloudinaryPublicId);
 }
 
-export default function MediaSection({ productId, media, onMediaChange }: Props) {
+export default function MediaSection({ productId, productName, media, onMediaChange }: Props) {
   const [mode, setMode] = useState<'device' | 'gallery'>('device');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +41,8 @@ export default function MediaSection({ productId, media, onMediaChange }: Props)
     try {
       // Device uploads still land in the user's own gallery — not
       // gallery-invisible — per spec Story 2, Acceptance Scenario 3.
-      const item: GalleryItem = await uploadDeviceFileToGallery(file);
+      // Folder is named exactly after this product, not a shared bucket.
+      const item: GalleryItem = await uploadDeviceFileToGallery(file, productName);
       const asset = await createProductMedia(productId, {
         galleryItemId: item.id,
         sortOrder: media.length,

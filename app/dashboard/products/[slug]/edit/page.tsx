@@ -549,7 +549,7 @@ export default function EditProductPage() {
         </div>
       </form>
 
-      <MediaSection productId={id} media={media} onMediaChange={setMedia} />
+      <MediaSection productId={id} productName={values.name} media={media} onMediaChange={setMedia} />
 
       <VariantsSection
         productId={id}

@@ -26,7 +26,11 @@ export default function LoginPage() {
       if (!navigator.onLine || apiErr.status === 0) {
         setError('Unable to connect. Check your connection.');
       } else if (apiErr.status === 401) {
-        setError('Email or password is incorrect.');
+        // Backend already distinguishes "wrong password" from "account
+        // suspended" (real message: "Your partner account has been
+        // suspended. Contact MiniRue support.") — surfacing it directly
+        // instead of a hardcoded generic string that hid it.
+        setError(apiErr.message || 'Email or password is incorrect.');
       } else if (apiErr.status === 403) {
         setError('This account does not have admin access.');
       } else if (apiErr.status === 429) {

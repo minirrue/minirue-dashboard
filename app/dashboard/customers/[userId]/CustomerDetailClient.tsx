@@ -2,8 +2,10 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   apiAdminAdjustTier,
+  apiAdminDeleteCustomer,
   apiAdminGetCustomer,
   type CustomerDetail,
   type TierLevel,
@@ -43,6 +45,7 @@ function Skeleton() {
 }
 
 export default function CustomerDetailClient({ userId }: { userId: string }) {
+  const router = useRouter();
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +53,9 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,6 +93,18 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
     }
   };
 
+  const handleDelete = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await apiAdminDeleteCustomer(userId);
+      router.push('/customers');
+    } catch (e) {
+      setDeleteError((e as ApiError).message ?? 'Failed to delete customer');
+      setDeleting(false);
+    }
+  };
+
   return (
     <>
       <div className="dash-page-header">
@@ -98,7 +116,61 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
             {customer ? displayName(customer) : 'Customer'}
           </h1>
         </div>
+        {customer && (
+          <button
+            type="button"
+            className="dash-btn-danger"
+            onClick={() => setDeleteConfirmOpen(true)}
+            data-trace-id="PG-DASHBOARD-ACCT-002::EL-BTN-delete-customer"
+          >
+            Delete account
+          </button>
+        )}
       </div>
+
+      {deleteConfirmOpen && (
+        <div
+          className="dash-gallery-preview-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Delete customer account"
+        >
+          <div
+            className="dash-card"
+            style={{ maxWidth: 440, width: '90%', textAlign: 'left' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="dash-section-title" style={{ marginBottom: 12 }}>
+              Delete this customer's account?
+            </h2>
+            <p className="dash-help-text" style={{ marginBottom: 12 }}>
+              This anonymizes their personal data (name, email, addresses) per GDPR — their past
+              orders stay on record for accounting, but their account can no longer sign in. This
+              cannot be undone.
+            </p>
+            {deleteError && <p className="dash-inline-error">{deleteError}</p>}
+            <div className="dash-form-actions" style={{ marginTop: 8 }}>
+              <button
+                type="button"
+                className="dash-btn-danger"
+                disabled={deleting}
+                onClick={() => void handleDelete()}
+                data-trace-id="PG-DASHBOARD-ACCT-002::EL-BTN-confirm-delete-customer"
+              >
+                {deleting ? 'Deleting…' : 'Delete account'}
+              </button>
+              <button
+                type="button"
+                className="dash-btn-ghost"
+                disabled={deleting}
+                onClick={() => setDeleteConfirmOpen(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <Skeleton />

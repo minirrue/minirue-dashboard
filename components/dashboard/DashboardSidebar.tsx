@@ -8,6 +8,7 @@ import { Sparkle } from '../primitives';
 import { CHANGELOG } from '@/lib/changelog';
 import { hasUnreadChangelog } from '@/lib/changelog-read-state';
 import NotificationDrawer from './NotificationDrawer';
+import { apiCollabOverview, type CollabModule } from '@/lib/api/collab-portal';
 
 /* ── Icon helpers (inline SVG to avoid external deps) ── */
 
@@ -82,6 +83,18 @@ function IconUsers() {
   );
 }
 
+function IconHandshake() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 17l-1.5-1.5a2.12 2.12 0 0 1 0-3l4.5-4.5a2.12 2.12 0 0 1 3 0L19 10" />
+      <path d="M8.5 15.5 4 20l-2-2 6.5-6.5a2.12 2.12 0 0 1 3 0L13 13" />
+      <path d="m17 10 2.5-2.5a2.12 2.12 0 0 1 3 0L24 9" />
+      <path d="m13 13 2 2" />
+      <path d="m11 15 2 2" />
+    </svg>
+  );
+}
+
 function IconTrendingUp() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -148,6 +161,10 @@ export interface NavItem {
   /** Shows a "Maintenance" badge next to the label — screens flagged as
    * not yet reliable/complete, still visible/usable but under active work. */
   maintenance?: boolean;
+  /** When set, this item is only shown to a COLLAB caller who has this
+   * module actually granted (collaborator_module_grants) — real RBAC gating
+   * instead of always showing the tab and letting the click 404/error. */
+  requiresCollabModule?: 'ORDERS' | 'PRODUCTS' | 'ANALYTICS';
 }
 
 export interface DashboardSidebarProps {
@@ -168,10 +185,10 @@ const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
     section: 'Partner',
     items: [
       { label: 'Workspace', href: '/collab/workspace', icon: <IconBarChart /> },
-      { label: 'My orders', href: '/collab/orders', icon: <IconShoppingBag /> },
-      { label: 'My products', href: '/collab/products', icon: <IconPackage /> },
+      { label: 'My orders', href: '/collab/orders', icon: <IconShoppingBag />, requiresCollabModule: 'ORDERS' },
+      { label: 'My products', href: '/collab/products', icon: <IconPackage />, requiresCollabModule: 'PRODUCTS' },
       { label: 'Brand profile', href: '/collab/brand', icon: <IconPalette /> },
-      { label: 'My analytics', href: '/collab/analytics', icon: <IconTrendingUp /> },
+      { label: 'My analytics', href: '/collab/analytics', icon: <IconTrendingUp />, requiresCollabModule: 'ANALYTICS' },
     ],
   },
   {
@@ -182,7 +199,7 @@ const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
       { label: 'Categories', href: '/categories', icon: <IconGrid /> },
       { label: 'Orders', href: '/orders', icon: <IconShoppingBag /> },
       { label: 'Customers', href: '/customers', icon: <IconUsers /> },
-      { label: 'Collaborators', href: '/collaborators', icon: <IconUsers /> },
+      { label: 'Collaborators', href: '/collaborators', icon: <IconHandshake /> },
       { label: 'Storefront', href: '/storefront-appearance', icon: <IconPalette />, maintenance: true },
     ],
   },
@@ -229,10 +246,47 @@ export default function DashboardSidebar({
   // (including role-gated sections like Partner/Collaborators) for one
   // frame, then yanked sections away once the real role arrived, reading
   // as a visible glitch on every refresh.
+  //
+  // Separately: a COLLAB caller's Partner nav items were previously gated
+  // only by ROLE (any COLLAB sees every Partner tab), never by which
+  // modules an admin actually granted them — so removing a collaborator's
+  // ANALYTICS module still left "My analytics" visible; clicking it hit the
+  // real backend guard and surfaced a raw "Module not available for your
+  // account: ANALYTICS" error instead of the tab simply not existing. Real
+  // RBAC gating: fetch the caller's granted modules once and hide (not
+  // show-then-error) any tab whose `requiresCollabModule` isn't granted.
+  const [collabModules, setCollabModules] = React.useState<CollabModule[] | null>(null);
+  React.useEffect(() => {
+    if (userRole !== 'COLLAB') {
+      setCollabModules(null);
+      return;
+    }
+    let cancelled = false;
+    apiCollabOverview()
+      .then((ov) => {
+        if (!cancelled) setCollabModules(ov.modules);
+      })
+      .catch(() => {
+        if (!cancelled) setCollabModules([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userRole]);
+
   const visibleGroups = NAV_ITEMS.map((group) => ({
     ...group,
     items: userRole
-      ? group.items.filter((item) => canAccessDashboardRoute(userRole, item.href))
+      ? group.items.filter((item) => {
+          if (!canAccessDashboardRoute(userRole, item.href)) return false;
+          if (item.requiresCollabModule) {
+            // Still resolving (collabModules === null) — hide rather than
+            // flash the tab and yank it away once modules load.
+            if (collabModules === null) return false;
+            return collabModules.includes(item.requiresCollabModule);
+          }
+          return true;
+        })
       : [],
   })).filter((group) => group.items.length > 0);
 

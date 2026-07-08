@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import RoleBadge from './RoleBadge';
 import ErrorBanner from './ErrorBanner';
 import { useLogout } from '@/lib/hooks/use-auth';
-import { getInitials } from '@/lib/utils/getInitials';
 import packageJson from '@/package.json';
 
 export interface UserMenuProps {
@@ -69,15 +68,17 @@ export default function UserMenu({ userName = 'Admin', userRole }: UserMenuProps
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label={userName}
+        title={userName}
         data-trace-id="PG-DASHBOARD-IAM-002::EL-REGION-user-menu"
       >
         <span className="dash-sidebar-footer-avatar" aria-hidden="true">
-          {getInitials(userName)}
+          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
         </span>
         <span className="dash-user-menu-copy">
-          <span className="dash-user-menu-name" title={userName}>
-            {userName}
-          </span>
           {userRole ? <RoleBadge role={userRole} size="compact" /> : null}
         </span>
         <svg

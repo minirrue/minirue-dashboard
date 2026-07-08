@@ -25,10 +25,14 @@ export function isRole(value: unknown): value is Role {
 export function roleLabel(role: Role): string {
   const labels: Record<Role, string> = {
     [Role.DEV]: 'Developer',
-    [Role.OWNER]: 'Owner',
+    // OWNER is the real top-level account role, but "Admin" is the label
+    // non-technical users actually recognize — explicit rename, not a bug.
+    [Role.OWNER]: 'Admin',
     [Role.ADMIN]: 'Administrator',
     [Role.STAFF]: 'Staff',
-    [Role.COLLAB]: 'Partner',
+    // "Partner" read as unclear/unfamiliar to non-technical users — renamed
+    // to match the role's own enum name.
+    [Role.COLLAB]: 'Collab',
     [Role.CUSTOMER]: 'Customer',
   };
   return labels[role];

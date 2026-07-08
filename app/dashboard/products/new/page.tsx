@@ -161,7 +161,7 @@ export default function NewProductPage() {
         <p className="dash-help-text" style={{ marginBottom: 16 }}>
           Product created. Add photos now, or continue and add them later from the edit screen.
         </p>
-        <MediaSection productId={createdProductId} media={media} onMediaChange={setMedia} />
+        <MediaSection productId={createdProductId} productName={values.name} media={media} onMediaChange={setMedia} />
       </>
     );
   }
