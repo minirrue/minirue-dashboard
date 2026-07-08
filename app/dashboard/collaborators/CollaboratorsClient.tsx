@@ -96,7 +96,7 @@ const COLUMNS: Column<CollaboratorListItem>[] = [
 
     key: 'modules',
 
-    label: 'Modules',
+    label: 'Access',
 
     render: (row) => <CollaboratorModuleChips modules={row.modules} />,
 

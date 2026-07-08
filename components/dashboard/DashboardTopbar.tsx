@@ -27,17 +27,22 @@ export default function DashboardTopbar({
   title,
   onToggleDrawer,
 }: DashboardTopbarProps) {
-  const resolvedTitle = title ?? breadcrumbs[breadcrumbs.length - 1]?.label ?? 'Overview';
   const resolvedEyebrow = eyebrow ?? breadcrumbs[0]?.label ?? 'Overview';
   const [notifOpen, setNotifOpen] = useState(false);
 
+  // The topbar used to also render its own <h1>{title}</h1> — every page's
+  // own content already renders its own on-page title (e.g. ProductsClient's
+  // "Products" <h1>), so this duplicated literally every single page's
+  // heading once the topbar started showing the real per-page title instead
+  // of a hardcoded 'Overview'. The eyebrow (app/section context) and the
+  // breadcrumb trail (for nested detail pages) still earn their place here;
+  // the redundant title text does not.
   return (
     <>
     <header className="dash-topbar">
       <div className="dash-topbar-copy">
         <div className="dash-topbar-eyebrow">{resolvedEyebrow}</div>
         <div className="dash-topbar-heading">
-          <h1 className="dash-topbar-title">{resolvedTitle}</h1>
           {breadcrumbs.length > 1 && (
             <nav className="dash-breadcrumb" aria-label="Breadcrumb">
               {breadcrumbs.map((crumb, i) => {

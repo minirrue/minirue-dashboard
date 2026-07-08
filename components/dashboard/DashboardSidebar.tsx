@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { canAccessDashboardRoute } from '@/lib/auth/roles';
 import UserMenu from './UserMenu';
 import { Sparkle } from '../primitives';
+import { CHANGELOG } from '@/lib/changelog';
+import { hasUnreadChangelog } from '@/lib/changelog-read-state';
 
 /* ── Icon helpers (inline SVG to avoid external deps) ── */
 
@@ -239,6 +241,16 @@ export default function DashboardSidebar({
   const hasNestedSibling = (href: string) =>
     allHrefs.some((h) => h !== href && h.startsWith(`${href}/`));
 
+  // Red dot on the Info nav item when there's an unread changelog entry —
+  // read via localStorage only after mount (matches SSR's first render so
+  // there's no hydration mismatch), cleared once the admin actually visits
+  // /info (InfoClient marks it read there).
+  const [showInfoDot, setShowInfoDot] = React.useState(false);
+  React.useEffect(() => {
+    const latestId = Math.max(...CHANGELOG.map((e) => e.id), 0);
+    setShowInfoDot(hasUnreadChangelog(latestId));
+  }, [activePath]);
+
   const renderNav = () => (
     <nav className="dash-sidebar-nav" onClick={onMobileDrawerClose}>
       {visibleGroups.map((group) => (
@@ -259,6 +271,9 @@ export default function DashboardSidebar({
               >
                 <span className="dash-sidebar-link-icon">{item.icon}</span>
                 <span className="dash-sidebar-link-label">{item.label}</span>
+                {item.href === '/info' && showInfoDot && (
+                  <span className="dash-sidebar-link-dot" aria-label="New updates" />
+                )}
               </Link>
             ))}
           </div>

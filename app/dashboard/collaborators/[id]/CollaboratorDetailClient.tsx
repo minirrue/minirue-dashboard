@@ -291,7 +291,7 @@ export default function CollaboratorDetailClient() {
           />
         </div>
         <div className="dash-field">
-          <p className="dash-label">Modules</p>
+          <p className="dash-label">Access</p>
           <div className="dash-checkbox-grid">
             {MODULE_OPTIONS.map((opt) => (
               <label key={opt.value} className="dash-checkbox-label">

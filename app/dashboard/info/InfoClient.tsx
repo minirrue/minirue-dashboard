@@ -1,13 +1,20 @@
 'use client';
 
+import { useEffect } from 'react';
 import { CHANGELOG } from '@/lib/changelog';
+import { markChangelogSeen } from '@/lib/changelog-read-state';
 import packageJson from '@/package.json';
 
 const TRACE = 'PG-DASHBOARD-SET-002';
 
 function groupByDate(): { date: string; entries: typeof CHANGELOG }[] {
+  // Sort by id descending FIRST (id is the real recency key — always
+  // increases, never tie-broken ambiguously by same-day entries the way a
+  // plain date string comparison would be), then group already-sorted
+  // entries by date so each date group is itself newest-first too.
+  const sorted = [...CHANGELOG].sort((a, b) => b.id - a.id);
   const groups = new Map<string, typeof CHANGELOG>();
-  for (const entry of CHANGELOG) {
+  for (const entry of sorted) {
     const existing = groups.get(entry.date);
     if (existing) existing.push(entry);
     else groups.set(entry.date, [entry]);
@@ -27,6 +34,13 @@ function formatDate(iso: string): string {
 
 export default function InfoClient() {
   const groups = groupByDate();
+  const latestId = Math.max(...CHANGELOG.map((e) => e.id), 0);
+
+  // Visiting this page marks every entry as read — the sidebar's red dot
+  // clears the moment the admin actually looks at Info, not before.
+  useEffect(() => {
+    markChangelogSeen(latestId);
+  }, [latestId]);
 
   return (
     <>
@@ -38,8 +52,8 @@ export default function InfoClient() {
         <p className="dash-help-text" style={{ margin: 0 }}>
           A running list of what's been fixed or added to your dashboard, written in plain
           language — no technical terms. You're currently on version{' '}
-          <strong>{packageJson.version}</strong>. Try out anything below yourself to see it
-          working.
+          <strong>{packageJson.version}</strong>. Newest changes are always listed first. Try
+          out anything below yourself to see it working.
         </p>
       </div>
 
@@ -53,13 +67,16 @@ export default function InfoClient() {
             style={{ padding: 0, overflow: 'hidden' }}
             data-trace-id={`${TRACE}::EL-LIST-info-entries@${group.date}`}
           >
-            {group.entries.map((entry, i) => (
+            {group.entries.map((entry) => (
               <div
-                key={i}
+                key={entry.id}
                 className="dash-info-entry"
-                data-trace-id={`${TRACE}::EL-ITEM-info-entry@${group.date}-${i}`}
+                data-trace-id={`${TRACE}::EL-ITEM-info-entry@${entry.id}`}
               >
-                <span className="dash-info-entry-area">{entry.area}</span>
+                <div className="dash-info-entry-head">
+                  <span className="dash-info-entry-number">#{entry.id}</span>
+                  <span className="dash-info-entry-area">{entry.area}</span>
+                </div>
                 <p className="dash-info-entry-summary">{entry.summary}</p>
               </div>
             ))}
