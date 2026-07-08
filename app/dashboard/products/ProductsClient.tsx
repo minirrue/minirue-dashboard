@@ -285,13 +285,22 @@ export default function ProductsClient() {
       {/* Header */}
       <div className="dash-page-header" data-trace-id="PG-DASHBOARD-CAT-001::EL-REGION-products-page-header">
         <h1 className="dash-page-title">Products</h1>
-        <Link
-          href="/products/new"
-          className="dash-btn-primary"
-          data-trace-id="PG-DASHBOARD-CAT-001::EL-LINK-new-product"
-        >
-          New Product
-        </Link>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Link
+            href="/products/brands"
+            className="dash-btn-secondary"
+            data-trace-id="PG-DASHBOARD-CAT-001::EL-LINK-manage-brands"
+          >
+            Brands
+          </Link>
+          <Link
+            href="/products/new"
+            className="dash-btn-primary"
+            data-trace-id="PG-DASHBOARD-CAT-001::EL-LINK-new-product"
+          >
+            New Product
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}

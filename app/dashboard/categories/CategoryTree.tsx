@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { updateCategory } from '@/lib/catalog/api';
+import { updateCategory, deleteCategory } from '@/lib/catalog/api';
 import type { Category } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
 
@@ -27,9 +27,10 @@ interface CategoryRowProps {
   category: Category;
   depth: number;
   onUpdated: (updated: Category) => void;
+  onDeleted: () => void;
 }
 
-function CategoryRow({ category, depth, onUpdated }: CategoryRowProps) {
+function CategoryRow({ category, depth, onUpdated, onDeleted }: CategoryRowProps) {
   const [expanded, setExpanded] = useState(depth === 0);
   const [editing, setEditing] = useState(false);
   const [values, setValues] = useState<EditValues>({
@@ -40,6 +41,8 @@ function CategoryRow({ category, depth, onUpdated }: CategoryRowProps) {
   const [errors, setErrors] = useState<EditErrors>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const hasChildren = (category.children ?? []).length > 0;
   const childCount = category.children?.length ?? 0;
@@ -76,6 +79,24 @@ function CategoryRow({ category, depth, onUpdated }: CategoryRowProps) {
     }
   }
 
+  async function handleDelete() {
+    setDeleteError(null);
+    setDeleting(true);
+    try {
+      await deleteCategory(category.id);
+      onDeleted();
+    } catch (e) {
+      const err = e as ApiError;
+      setDeleteError(
+        err.status === 409
+          ? err.message ?? 'This category has subcategories or products assigned — remove them first.'
+          : err.message ?? 'Delete failed.',
+      );
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <>
       <tr className="dash-cat-row" data-trace-id={`PG-DASHBOARD-CAT-004::EL-ROW-category-row@${category.id}`}>
@@ -104,17 +125,29 @@ function CategoryRow({ category, depth, onUpdated }: CategoryRowProps) {
           {childCount > 0 ? childCount : <span style={{ color: 'var(--mr-fg-4)' }}>—</span>}
         </td>
         <td>
-          <button
-            type="button"
-            className="dash-btn-ghost"
-            onClick={() => {
-              setEditing((v) => !v);
-              setSaveError(null);
-            }}
-            data-trace-id={`PG-DASHBOARD-CAT-004::EL-BTN-edit-category@${category.id}`}
-          >
-            {editing ? 'Cancel' : 'Edit'}
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              type="button"
+              className="dash-btn-ghost"
+              onClick={() => {
+                setEditing((v) => !v);
+                setSaveError(null);
+              }}
+              data-trace-id={`PG-DASHBOARD-CAT-004::EL-BTN-edit-category@${category.id}`}
+            >
+              {editing ? 'Cancel' : 'Edit'}
+            </button>
+            <button
+              type="button"
+              className="dash-btn-ghost dash-btn-danger"
+              onClick={handleDelete}
+              disabled={deleting}
+              data-trace-id={`PG-DASHBOARD-CAT-004::EL-BTN-delete-category@${category.id}`}
+            >
+              {deleting ? 'Deleting…' : 'Delete'}
+            </button>
+          </div>
+          {deleteError && <p className="dash-field-error">{deleteError}</p>}
         </td>
       </tr>
 
@@ -204,6 +237,7 @@ function CategoryRow({ category, depth, onUpdated }: CategoryRowProps) {
             category={child}
             depth={depth + 1}
             onUpdated={onUpdated}
+            onDeleted={onDeleted}
           />
         ))}
     </>
@@ -213,9 +247,10 @@ function CategoryRow({ category, depth, onUpdated }: CategoryRowProps) {
 interface Props {
   categories: Category[];
   onCategoryUpdated: (updated: Category) => void;
+  onCategoryDeleted: () => void;
 }
 
-export default function CategoryTree({ categories, onCategoryUpdated }: Props) {
+export default function CategoryTree({ categories, onCategoryUpdated, onCategoryDeleted }: Props) {
   if (categories.length === 0) {
     return (
       <p className="dash-help-text" style={{ padding: '20px 0' }}>
@@ -246,6 +281,7 @@ export default function CategoryTree({ categories, onCategoryUpdated }: Props) {
               category={cat}
               depth={0}
               onUpdated={onCategoryUpdated}
+              onDeleted={onCategoryDeleted}
             />
           ))}
         </tbody>

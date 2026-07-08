@@ -31,3 +31,11 @@ Every shipped change must cite `minirue-dashboard@{version} ({short-hash})` in t
 message — see `apps/minirue-obsidian/_main/_templates/RULEBOOK.md` §28. Bump `package.json`
 version at minor/patch grain per §28's rule (patch for a single fix, minor for a feature batch,
 once per batch — not per commit).
+
+## Non-technical changelog (Settings → Info tab)
+Every shipped fix/feature ALSO adds one entry to `lib/changelog.ts` (`CHANGELOG` array, newest
+first) — this powers the "Info" tab under Settings, which is how non-technical admin users see
+and self-verify what changed, without reading commit messages or code. Write each `summary` for
+a store owner, never dev-speak (e.g. "Fixed product photos showing up broken" not "resolved
+gallery URL resolution in serializeProduct"). This is a durable convention, not optional — do
+not skip it even for small fixes.

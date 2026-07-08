@@ -25,7 +25,7 @@ const BRIEFS: Record<RoleType, RoleBrief> = {
   [Role.COLLAB]: {
     headline: 'Partner workspace',
     description: 'Manage your brand profile, products, and orders scoped to your collaborator account.',
-    primaryAction: { label: 'Open workspace', href: '/collab' },
+    primaryAction: { label: 'Open workspace', href: '/collab/workspace' },
   },
   [Role.DEV]: {
     headline: 'Developer session',
@@ -57,6 +57,7 @@ export function routeSectionLabel(path: string): string {
     '/loyalty': 'Loyalty',
     '/collaborators': 'Collaborators',
     '/collab': 'Partner workspace',
+    '/collab/workspace': 'Partner workspace',
     '/collab/orders': 'Partner orders',
     '/collab/products': 'Partner products',
     '/collab/brand': 'Brand profile',

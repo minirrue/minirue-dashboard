@@ -6,6 +6,7 @@ import RoleBadge from './RoleBadge';
 import ErrorBanner from './ErrorBanner';
 import { useLogout } from '@/lib/hooks/use-auth';
 import { getInitials } from '@/lib/utils/getInitials';
+import packageJson from '@/package.json';
 
 export interface UserMenuProps {
   userName?: string;
@@ -107,6 +108,12 @@ export default function UserMenu({ userName = 'Admin', userRole }: UserMenuProps
           >
             {logoutMutation.isPending ? 'Signing out…' : 'Sign out'}
           </button>
+          <div
+            className="dash-user-menu-version"
+            data-trace-id="PG-DASHBOARD-IAM-002::EL-REGION-app-version"
+          >
+            v{packageJson.version}
+          </div>
         </div>
       )}
     </div>

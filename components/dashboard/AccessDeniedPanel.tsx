@@ -55,9 +55,9 @@ export default function AccessDeniedPanel({ role, attemptedPath }: AccessDeniedP
         >
           Go to my dashboard
         </Link>
-        {role === Role.STAFF && canAccessDashboardRoute(role, '/collab') ? (
+        {role === Role.STAFF && canAccessDashboardRoute(role, '/collab/workspace') ? (
           <Link
-            href="/collab"
+            href="/collab/workspace"
             className="dash-btn-secondary"
             data-trace-id="PG-DASHBOARD-IAM-003::EL-LINK-partner-workspace"
           >

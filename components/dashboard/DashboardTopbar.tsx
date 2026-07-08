@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import NotificationDrawer from './NotificationDrawer';
 
@@ -30,17 +30,6 @@ export default function DashboardTopbar({
   const resolvedTitle = title ?? breadcrumbs[breadcrumbs.length - 1]?.label ?? 'Overview';
   const resolvedEyebrow = eyebrow ?? breadcrumbs[0]?.label ?? 'Overview';
   const [notifOpen, setNotifOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [searchExpanded, setSearchExpanded] = useState(false);
-
-  /* Mobile detection (same breakpoint as sidebar: 760px) */
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 760px)');
-    const handler = (e: MediaQueryListEvent | MediaQueryList) => setIsMobile(e.matches);
-    handler(mq);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
 
   return (
     <>
@@ -49,25 +38,27 @@ export default function DashboardTopbar({
         <div className="dash-topbar-eyebrow">{resolvedEyebrow}</div>
         <div className="dash-topbar-heading">
           <h1 className="dash-topbar-title">{resolvedTitle}</h1>
-          <nav className="dash-breadcrumb" aria-label="Breadcrumb">
-            {breadcrumbs.map((crumb, i) => {
-              const isLast = i === breadcrumbs.length - 1;
-              return (
-                <React.Fragment key={`${crumb.label}-${i}`}>
-                  {i > 0 && <span className="dash-breadcrumb-sep">/</span>}
-                  {isLast ? (
-                    <span className="dash-breadcrumb-current">{crumb.label}</span>
-                  ) : crumb.href ? (
-                    <Link className="dash-breadcrumb-link" href={crumb.href}>
-                      {crumb.label}
-                    </Link>
-                  ) : (
-                    <span className="dash-breadcrumb-link">{crumb.label}</span>
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </nav>
+          {breadcrumbs.length > 1 && (
+            <nav className="dash-breadcrumb" aria-label="Breadcrumb">
+              {breadcrumbs.map((crumb, i) => {
+                const isLast = i === breadcrumbs.length - 1;
+                return (
+                  <React.Fragment key={`${crumb.label}-${i}`}>
+                    {i > 0 && <span className="dash-breadcrumb-sep">/</span>}
+                    {isLast ? (
+                      <span className="dash-breadcrumb-current">{crumb.label}</span>
+                    ) : crumb.href ? (
+                      <Link className="dash-breadcrumb-link" href={crumb.href}>
+                        {crumb.label}
+                      </Link>
+                    ) : (
+                      <span className="dash-breadcrumb-link">{crumb.label}</span>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </nav>
+          )}
         </div>
       </div>
 
@@ -83,32 +74,6 @@ export default function DashboardTopbar({
             <line x1="3" y1="18" x2="21" y2="18" />
           </svg>
         </button>
-        {isMobile && !searchExpanded ? (
-          <button
-            className="dash-topbar-search-icon-btn"
-            onClick={() => setSearchExpanded(true)}
-            aria-label="Open search"
-          >
-            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="7" />
-              <path d="M20 20l-3.5-3.5" />
-            </svg>
-          </button>
-        ) : (
-          <label className={`dash-topbar-search${isMobile ? ' dash-topbar-search--mobile' : ''}`}>
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="7" />
-              <path d="M20 20l-3.5-3.5" />
-            </svg>
-            <input
-              type="search"
-              placeholder="Search orders, products…"
-              aria-label="Search"
-              autoFocus={isMobile && searchExpanded}
-              onBlur={() => { if (isMobile) setSearchExpanded(false); }}
-            />
-          </label>
-        )}
 
         <button
           className="dash-notif-btn"

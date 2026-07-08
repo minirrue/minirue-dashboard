@@ -1,5 +1,5 @@
-import CollabOverviewClient from './CollabOverviewClient';
+import { redirect } from 'next/navigation';
 
 export default function CollabHomePage() {
-  return <CollabOverviewClient />;
+  redirect('/collab/workspace');
 }

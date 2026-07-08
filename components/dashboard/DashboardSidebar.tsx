@@ -151,7 +151,7 @@ const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
   {
     section: 'Partner',
     items: [
-      { label: 'Workspace', href: '/collab', icon: <IconBarChart /> },
+      { label: 'Workspace', href: '/collab/workspace', icon: <IconBarChart /> },
       { label: 'My orders', href: '/collab/orders', icon: <IconShoppingBag /> },
       { label: 'My products', href: '/collab/products', icon: <IconPackage /> },
       { label: 'Brand profile', href: '/collab/brand', icon: <IconPalette /> },
@@ -213,6 +213,15 @@ export default function DashboardSidebar({
       : group.items,
   })).filter((group) => group.items.length > 0);
 
+  // An item only prefix-matches child routes (e.g. /collab/products under
+  // Workspace's /collab) when no OTHER visible nav item is itself nested
+  // under it — otherwise a parent-shaped href like /collab lights up for
+  // every one of its siblings' subpages too. Was hardcoded to a single
+  // '/overview' exception before, which missed '/collab' the same way.
+  const allHrefs = visibleGroups.flatMap((group) => group.items.map((i) => i.href));
+  const hasNestedSibling = (href: string) =>
+    allHrefs.some((h) => h !== href && h.startsWith(`${href}/`));
+
   const renderNav = () => (
     <nav className="dash-sidebar-nav" onClick={onMobileDrawerClose}>
       {visibleGroups.map((group) => (
@@ -225,7 +234,8 @@ export default function DashboardSidebar({
                 href={item.href}
                 className="dash-sidebar-link"
                 data-active={
-                  activePath === item.href || (item.href !== '/overview' && activePath.startsWith(`${item.href}/`))
+                  activePath === item.href ||
+                  (!hasNestedSibling(item.href) && activePath.startsWith(`${item.href}/`))
                     ? 'true'
                     : undefined
                 }

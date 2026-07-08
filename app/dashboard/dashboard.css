@@ -256,6 +256,13 @@
     cursor: default;
   }
 
+  .dash-user-menu-version {
+    padding: 6px 10px 2px;
+    font-size: 10px;
+    color: var(--mr-fg-4);
+    text-align: center;
+  }
+
   .dash-main {
     flex: 1;
     min-width: 0;
@@ -1312,6 +1319,54 @@
   margin: 0;
 }
 
+/* ── Settings tabs ── */
+.dash-settings-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--mr-dash-hair);
+  margin-bottom: 20px;
+}
+.dash-settings-tab {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--mr-fg-3);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.dash-settings-tab:hover {
+  color: var(--mr-fg-1);
+}
+.dash-settings-tab[data-active="true"] {
+  color: var(--mr-ink-900);
+  border-bottom-color: var(--mr-ink-900);
+}
+
+/* ── Info / changelog entries ── */
+.dash-info-entry {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--mr-dash-hair);
+}
+.dash-info-entry:last-child {
+  border-bottom: none;
+}
+.dash-info-entry-area {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mr-gold-600, var(--mr-fg-3));
+  margin-bottom: 4px;
+}
+.dash-info-entry-summary {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--mr-fg-1);
+}
+
 /* ── Inline error ── */
 .dash-inline-error {
   font-size: 13px;
@@ -1829,6 +1884,33 @@
   color: var(--mr-fg-3);
   background: var(--mr-dash-sub);
 }
+.collab-brand-logo-wrap {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+}
+.collab-brand-logo-uploading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: var(--mr-radius-md);
+}
+@keyframes collab-brand-logo-spin {
+  to { transform: rotate(360deg); }
+}
+.collab-brand-logo-spinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 3px solid var(--mr-ink-200, rgba(0, 0, 0, 0.12));
+  border-top-color: var(--mr-ink-900);
+  animation: collab-brand-logo-spin 700ms linear infinite;
+}
 .collab-slug-code {
   font-size: 12px;
   color: var(--mr-fg-2);
@@ -1846,11 +1928,16 @@
 }
 @media (max-width: 640px) {
   .dash-filters {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
     align-items: stretch;
   }
-  .dash-filters > * {
-    width: 100%;
+  .dash-filters > .dash-input-search {
+    grid-column: 1 / -1;
+  }
+  .dash-filters > .dash-btn-secondary {
+    grid-column: 1 / -1;
   }
   .dash-field-row {
     flex-direction: column;

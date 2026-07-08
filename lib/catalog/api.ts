@@ -258,6 +258,37 @@ export async function listBrands(): Promise<string[]> {
   return apiFetch<string[]>(`${ADMIN}/brands`, { auth: true });
 }
 
+export interface ManagedBrand {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+export async function listManagedBrands(): Promise<ManagedBrand[]> {
+  const res = await apiFetch<{ data: ManagedBrand[] }>(`${ADMIN}/brands/managed`, { auth: true });
+  return res.data;
+}
+
+export async function createBrand(name: string): Promise<ManagedBrand> {
+  return apiFetch<ManagedBrand>(`${ADMIN}/brands/managed`, {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify({ name }),
+  });
+}
+
+export async function renameBrand(id: string, name: string): Promise<ManagedBrand> {
+  return apiFetch<ManagedBrand>(`${ADMIN}/brands/managed/${id}`, {
+    method: 'PATCH',
+    auth: true,
+    body: JSON.stringify({ name }),
+  });
+}
+
+export async function deleteBrand(id: string): Promise<void> {
+  await apiFetch<void>(`${ADMIN}/brands/managed/${id}`, { method: 'DELETE', auth: true });
+}
+
 export async function createCategory(data: {
   name: string;
   slug: string;
@@ -290,6 +321,10 @@ export async function updateCategory(
       ...(data.sortOrder !== undefined ? { sort_order: data.sortOrder } : {}),
     }),
   });
+}
+
+export async function deleteCategory(id: string): Promise<void> {
+  await apiFetch<void>(`${ADMIN}/categories/${id}`, { method: 'DELETE', auth: true });
 }
 
 export async function createVariant(

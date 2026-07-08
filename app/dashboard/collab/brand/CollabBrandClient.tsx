@@ -46,6 +46,8 @@ export default function CollabBrandClient() {
 
   const [saving, setSaving] = useState(false);
 
+  const [logoUploading, setLogoUploading] = useState(false);
+
   const fileRef = useRef<HTMLInputElement>(null);
 
 
@@ -116,6 +118,8 @@ export default function CollabBrandClient() {
 
     setError(null);
 
+    setLogoUploading(true);
+
     const buf = await file.arrayBuffer();
 
     const bytes = new Uint8Array(buf);
@@ -137,6 +141,10 @@ export default function CollabBrandClient() {
       const apiErr = err as ApiError;
 
       setError(apiErr.message || 'Logo upload failed');
+
+    } finally {
+
+      setLogoUploading(false);
 
     }
 
@@ -201,31 +209,48 @@ export default function CollabBrandClient() {
           data-trace-id="PG-DASHBOARD-COLLAB-003::EL-REGION-brand-logo-display"
         >
 
-          {brand?.logoUrl ? (
+          <div className="collab-brand-logo-wrap">
 
-            <img
+            {brand?.logoUrl ? (
 
-              src={brand.logoUrl}
+              <img
 
-              alt={displayName ? `${displayName} logo` : 'Brand logo'}
+                src={brand.logoUrl}
 
-              className="collab-brand-logo"
+                alt={displayName ? `${displayName} logo` : 'Brand logo'}
 
-              width={80}
+                className="collab-brand-logo"
 
-              height={80}
+                width={80}
 
-            />
+                height={80}
 
-          ) : (
+              />
 
-            <div className="collab-brand-logo collab-brand-logo--placeholder" aria-hidden>
+            ) : (
 
-              {displayName.charAt(0).toUpperCase() || '?'}
+              <div className="collab-brand-logo collab-brand-logo--placeholder" aria-hidden>
 
-            </div>
+                {displayName.charAt(0).toUpperCase() || '?'}
 
-          )}
+              </div>
+
+            )}
+
+            {logoUploading && (
+
+              <div
+                className="collab-brand-logo-uploading"
+                role="status"
+                aria-label="Uploading logo"
+                data-trace-id="PG-DASHBOARD-COLLAB-003::EL-REGION-brand-logo-uploading"
+              >
+                <span aria-hidden="true" className="collab-brand-logo-spinner" />
+              </div>
+
+            )}
+
+          </div>
 
           <div>
 
@@ -237,11 +262,13 @@ export default function CollabBrandClient() {
 
               onClick={() => fileRef.current?.click()}
 
+              disabled={logoUploading}
+
               data-trace-id="PG-DASHBOARD-COLLAB-003::EL-BTN-brand-upload-logo"
 
             >
 
-              Upload logo
+              {logoUploading ? 'Uploading…' : 'Upload logo'}
 
             </button>
 

@@ -9,7 +9,7 @@ import {
   publishProduct,
   archiveProduct,
   listCategories,
-  listBrands,
+  listManagedBrands,
   softDeleteProduct,
   hardDeleteProduct,
   cloudinaryPreviewUrl,
@@ -200,8 +200,8 @@ export default function EditProductPage() {
 
   /* Load brands */
   useEffect(() => {
-    listBrands()
-      .then(setBrands)
+    listManagedBrands()
+      .then((res) => setBrands(res.map((b) => b.name)))
       .catch(() => setBrands([]))
       .finally(() => setBrandsLoading(false));
   }, []);
@@ -563,48 +563,50 @@ export default function EditProductPage() {
 
       {/* Variant-filtered photo display (specs/006-gallery-module, US3, T031) —
           pure client-side filter of `media`, already loaded above; switching
-          variants never triggers a new fetch. */}
-      <section
-        className="dash-form-section"
-        style={{ marginTop: 24 }}
-        data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-variant-photos"
-      >
-        <h2 className="dash-section-title">
-          {selectedVariantId
-            ? `Photos for ${variants.find((v) => v.id === selectedVariantId)?.sku ?? 'selected variant'}`
-            : 'General product photos'}
-        </h2>
-        {displayedMedia.length === 0 ? (
-          <p className="dash-help-text">No photos to show for this selection.</p>
-        ) : (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-              gap: 16,
-            }}
-            data-trace-id="PG-DASHBOARD-CAT-003::EL-GRID-variant-photos"
-          >
-            {displayedMedia.map((m) => (
-              <figure key={m.id} style={{ margin: 0 }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={mediaPreviewUrl(m)}
-                  alt={m.altText ?? ''}
-                  data-trace-id={`PG-DASHBOARD-CAT-003::EL-IMG-variant-photo@${m.id}`}
-                  style={{
-                    width: '100%',
-                    aspectRatio: '4/5',
-                    objectFit: 'cover',
-                    borderRadius: 'var(--mr-radius-sm)',
-                    border: '1px solid var(--mr-dash-hair)',
-                  }}
-                />
-              </figure>
-            ))}
-          </div>
-        )}
-      </section>
+          variants never triggers a new fetch. Only rendered when a variant is
+          selected — with no variant selected this would show the exact same
+          image set as "Product images" above, a pure duplicate. */}
+      {selectedVariantId && (
+        <section
+          className="dash-form-section"
+          style={{ marginTop: 24 }}
+          data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-variant-photos"
+        >
+          <h2 className="dash-section-title">
+            {`Photos for ${variants.find((v) => v.id === selectedVariantId)?.sku ?? 'selected variant'}`}
+          </h2>
+          {displayedMedia.length === 0 ? (
+            <p className="dash-help-text">No photos to show for this selection.</p>
+          ) : (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+                gap: 16,
+              }}
+              data-trace-id="PG-DASHBOARD-CAT-003::EL-GRID-variant-photos"
+            >
+              {displayedMedia.map((m) => (
+                <figure key={m.id} style={{ margin: 0 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={mediaPreviewUrl(m)}
+                    alt={m.altText ?? ''}
+                    data-trace-id={`PG-DASHBOARD-CAT-003::EL-IMG-variant-photo@${m.id}`}
+                    style={{
+                      width: '100%',
+                      aspectRatio: '4/5',
+                      objectFit: 'cover',
+                      borderRadius: 'var(--mr-radius-sm)',
+                      border: '1px solid var(--mr-dash-hair)',
+                    }}
+                  />
+                </figure>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </>
   );
 }

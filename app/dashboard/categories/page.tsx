@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { listCategories, createCategory } from '@/lib/catalog/api';
+import { listCategories, createCategory, deleteCategory } from '@/lib/catalog/api';
 import type { Category } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
 import CategoryTree from './CategoryTree';
@@ -306,7 +306,11 @@ export default function CategoriesPage() {
           </button>
         </div>
       ) : (
-        <CategoryTree categories={categories} onCategoryUpdated={handleCategoryUpdated} />
+        <CategoryTree
+          categories={categories}
+          onCategoryUpdated={handleCategoryUpdated}
+          onCategoryDeleted={load}
+        />
       )}
     </>
   );

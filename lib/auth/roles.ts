@@ -22,6 +22,7 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   '/storefront-appearance': [Role.ADMIN, Role.OWNER, Role.DEV],
   '/collaborators': [Role.ADMIN, Role.OWNER],
   '/collab': COLLAB_ROLES,
+  '/collab/workspace': COLLAB_ROLES,
   '/collab/orders': COLLAB_ROLES,
   '/collab/products': COLLAB_ROLES,
   '/collab/brand': COLLAB_ROLES,
@@ -59,7 +60,7 @@ export function canAccessDashboardRoute(role: string, path: string): boolean {
 export function firstAccessibleDashboardRoute(role: string): string {
   if (!isStaffRole(role)) return '/login';
   for (const href of [
-    '/collab',
+    '/collab/workspace',
     '/overview',
     '/orders',
     '/fulfillment',

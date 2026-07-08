@@ -7,6 +7,7 @@ import AccessDeniedPanel from '@/components/dashboard/AccessDeniedPanel';
 import { getAccessToken } from '@/lib/auth/tokens';
 import {
   canAccessDashboardRoute,
+  firstAccessibleDashboardRoute,
   isStaffRole,
   normalizeDashboardPath,
 } from '@/lib/auth/roles';
@@ -58,7 +59,7 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
       user.role === Role.STAFF &&
       (pathname === '/collaborators' || pathname?.startsWith('/collaborators/'))
     ) {
-      router.replace('/collab');
+      router.replace('/collab/workspace');
     }
   }, [isLoading, mounted, pathname, router, user]);
 
@@ -68,6 +69,19 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
       router.replace('/login');
     }
   }, [isError, isLoading, mounted, router, user]);
+
+  // '/overview' is the universal post-login landing path, but a COLLAB
+  // (or any role without staff-console access) doesn't have permission
+  // there — without this, they'd land on /overview and see AccessDeniedPanel
+  // immediately after signing in, instead of going straight to their own
+  // workspace. Only redirects from the default landing spot; a deliberate
+  // deep link to a route the role can't reach still shows the denial panel.
+  useEffect(() => {
+    if (!mounted || isLoading || !user) return;
+    if (pathname === '/overview' && !canAccessDashboardRoute(user.role, '/overview')) {
+      router.replace(firstAccessibleDashboardRoute(user.role));
+    }
+  }, [isLoading, mounted, pathname, router, user]);
 
   const userName = user?.name?.trim() || user?.email?.split('@')[0] || 'Admin';
   const accessDenied =

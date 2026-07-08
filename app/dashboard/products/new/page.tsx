@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createProduct, listCategories, listBrands } from '@/lib/catalog/api';
+import { createProduct, listCategories, listManagedBrands } from '@/lib/catalog/api';
 import type { Category, Gender, ProductMedia } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
 import MediaSection from '../[slug]/edit/MediaSection';
@@ -88,8 +88,8 @@ export default function NewProductPage() {
       .then((res) => setCategories(flattenCategories(res.items)))
       .catch(() => setCategories([]))
       .finally(() => setCategoriesLoading(false));
-    listBrands()
-      .then(setBrands)
+    listManagedBrands()
+      .then((res) => setBrands(res.map((b) => b.name)))
       .catch(() => setBrands([]))
       .finally(() => setBrandsLoading(false));
   }, []);
