@@ -1,0 +1,27 @@
+# story-sync.allowlist.txt — RULEBOOK §29
+#
+# Routes intentionally exempt from story-sync-check's MISSING/STALE gate. One surface token per
+# line, exact match against "{app} {METHOD|PAGE} {path}". Blank lines and lines starting with #
+# are ignored.
+#
+# Adding a line here is a conscious, reviewable diff — never a silent bypass. Do not add a route
+# here just to make a failing check pass; add the story instead, unless the route genuinely has
+# no story to cite.
+
+# ================================================================================================
+# PERMANENT — intentionally storyless (2026-07-09 full backfill pass, RULEBOOK §29 completed).
+# The original 201-route backfill debt from §29's adoption day is now fully paid down (every route
+# either got a citing story or is one of the genuine permanent exceptions below). Started at 201,
+# now 3: dev-only internal tooling and an unauthenticated webhook, neither of which represents a
+# real user-facing product capability that a story should describe.
+# ================================================================================================
+
+# Dev-only component-preview sandbox (app/_internal/preview) — internal tooling, not a real
+# user-facing feature; no persona would ever have a story that says "as an X, I want to preview
+# components."
+minirue-dashboard PAGE /_internal/preview
+minirue-frontend PAGE /_internal/preview
+
+# Unauthenticated payment-gateway webhook (HMAC-verified in-handler, no JWT guard) — a
+# machine-to-machine integration endpoint, not a user-facing route any persona interacts with.
+minirue-backend POST /v1/webhooks/payments/gateway

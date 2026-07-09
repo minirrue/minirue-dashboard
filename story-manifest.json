@@ -1,0 +1,341 @@
+[
+  {
+    "id": "US-ADMIN-ACCT-005",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/customers"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-ACCT-006",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/customers/:param"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-ANL-001",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/analytics"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-BRAND-005",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/storefront-appearance"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-CAT-004",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/products",
+      "minirue-dashboard PAGE /dashboard/products/new"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-CAT-005",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/products/:param/edit"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-CAT-007",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/categories"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-CAT-011",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/products/brands"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-COLLAB-001",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/collaborators"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-COLLAB-002",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/collaborators/new"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-COLLAB-003",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/collaborators/:param"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-COLLAB-004",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/collaborators/:param/scopes"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-GAL-001",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/gallery"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-IAM-006",
+    "routes": [
+      "minirue-dashboard PAGE /login",
+      "minirue-dashboard PAGE /dashboard",
+      "minirue-dashboard PAGE /"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-LOY-002",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/loyalty"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-OPS-001",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/inventory",
+      "minirue-dashboard PAGE /dashboard/inventory/warehouses",
+      "minirue-dashboard PAGE /dashboard/inventory/movements"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-OPS-002",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/inventory/receive"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-OPS-003",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/fulfillment"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-OPS-004",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/refunds"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-ORD-004",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/orders",
+      "minirue-dashboard PAGE /dashboard/orders/:param"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-PUB-001",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/collaborators/review"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-SET-003",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/settings"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-ADMIN-SET-004",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/info"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-COLLABORATOR-BRAND-003",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/collab/brand"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-COLLABORATOR-CAT-010",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/collab/products/new"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-COLLABORATOR-CAT-011",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/collab/products/:param/edit"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-COLLABORATOR-COLLAB-008",
+    "routes": [
+      "minirue-dashboard PAGE /collab/activate"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-COLLABORATOR-WS-001",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/collab",
+      "minirue-dashboard PAGE /dashboard/collab/workspace"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-COLLABORATOR-WS-002",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/collab/profile"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-COLLABORATOR-WS-003",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/collab/products",
+      "minirue-dashboard PAGE /dashboard/collab/products/new",
+      "minirue-dashboard PAGE /dashboard/collab/products/:param/edit"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-COLLABORATOR-WS-004",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/collab/orders"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-COLLABORATOR-WS-005",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/collab/analytics"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "US-SUPPORT-SUP-002",
+    "routes": [
+      "minirue-dashboard PAGE /dashboard/messages"
+    ],
+    "surfaces": [
+      "minirue-dashboard"
+    ],
+    "status": "draft"
+  }
+]

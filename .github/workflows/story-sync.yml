@@ -1,0 +1,32 @@
+# story-sync.code-repo.yml — RULEBOOK §29, vendored INTO each code repo's .github/workflows/.
+#
+# Triggers on EVERY push to this repo, not just pull requests — a commit landing directly on
+# `main` (this vault's default push target, PLAYBOOK "What you must never do here") is checked
+# exactly the same as one going through a PR. Runs this repo's own vendored
+# scripts/story-sync-selfcheck.mjs against its own committed story-manifest.json — no cross-repo
+# checkout, no {project}-us clone needed. Copy this file as-is into
+# `.github/workflows/story-sync.yml`; only the `node-version`/package-manager lines may need to
+# match this repo's real toolchain (see that repo's own CI/build workflow for the real version).
+
+name: Story Sync Check
+
+on:
+  push:
+    branches: ["**"]
+
+jobs:
+  story-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run story-sync-selfcheck
+        run: node scripts/story-sync-selfcheck.mjs
