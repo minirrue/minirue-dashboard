@@ -51,3 +51,34 @@ export async function apiMe(): Promise<MeResponse> {
   const me = await apiFetch<MeResponse>('/auth/me', { auth: true });
   return parseAuthUser(me);
 }
+
+export async function apiUpdateMyProfile(name: string): Promise<MeResponse> {
+  const me = await apiFetch<MeResponse>('/auth/me', {
+    method: 'PATCH',
+    auth: true,
+    body: JSON.stringify({ name }),
+  });
+  return parseAuthUser(me);
+}
+
+export async function apiUploadMyAvatar(file: File): Promise<MeResponse> {
+  const dataBase64 = await fileToBase64(file);
+  const me = await apiFetch<MeResponse>('/auth/me/avatar', {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify({ mimeType: file.type, dataBase64 }),
+  });
+  return parseAuthUser(me);
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(',')[1] ?? '');
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}

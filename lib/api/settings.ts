@@ -58,3 +58,17 @@ export async function apiGetSettings(): Promise<StoreSettings> {
 export async function apiUpdateSettings(data: Partial<StoreSettings>): Promise<StoreSettings> {
   return apiFetch('/settings', { method: 'PATCH', auth: true, body: JSON.stringify(data) });
 }
+
+export async function apiUploadBrandLogo(file: File): Promise<StoreSettings> {
+  const dataBase64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+  return apiFetch('/settings/logo', {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify({ mimeType: file.type, dataBase64 }),
+  });
+}

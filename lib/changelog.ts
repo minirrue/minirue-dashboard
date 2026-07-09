@@ -202,4 +202,11 @@ export const CHANGELOG: ChangelogEntry[] = [
     summary:
       'The announcement bar at the very top of the storefront now always starts visible on a fresh page load — it was staying hidden on refresh once a visitor had scrolled past it, instead of resetting.',
   },
+  {
+    id: 27,
+    date: '2026-07-09',
+    area: 'Settings',
+    summary:
+      'Settings now has a Profile section at the top — upload your own avatar, edit your display name, see your role badge, and upload the store brand logo directly (no more pasting an image URL by hand).',
+  },
 ];

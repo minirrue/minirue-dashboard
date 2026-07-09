@@ -9,6 +9,7 @@ export interface UserProfile {
   role: Role;
   email: string;
   name?: string;
+  avatarUrl?: string | null;
 }
 
 export interface TokenPair {

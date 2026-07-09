@@ -25,7 +25,7 @@ export function assertCanonicalRole(role: unknown): asserts role is Role {
   }
 }
 
-export function parseAuthUser(user: { userId: string; role: unknown; email: string; name?: string }): UserProfile {
+export function parseAuthUser(user: { userId: string; role: unknown; email: string; name?: string; avatarUrl?: string | null }): UserProfile {
   assertCanonicalRole(user.role);
   if (!isStaffRole(user.role)) {
     clearTokens();
@@ -36,5 +36,6 @@ export function parseAuthUser(user: { userId: string; role: unknown; email: stri
     role: user.role,
     email: user.email,
     name: user.name,
+    avatarUrl: user.avatarUrl,
   };
 }
