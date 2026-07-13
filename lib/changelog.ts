@@ -209,4 +209,32 @@ export const CHANGELOG: ChangelogEntry[] = [
     summary:
       'Settings now has a Profile section at the top — upload your own avatar, edit your display name, see your role badge, and upload the store brand logo directly (no more pasting an image URL by hand).',
   },
+  {
+    id: 28,
+    date: '2026-07-13',
+    area: 'Products',
+    summary:
+      'Your own brands now always show up in the brand filter on the Products page, even brands that don\u2019t have any products yet (the MiniRue house brand included). The MiniRue brand and any collaborator brand are also now protected from being renamed or deleted by accident.',
+  },
+  {
+    id: 29,
+    date: '2026-07-13',
+    area: 'Dashboard',
+    summary:
+      'Removed the small circle that trailed the mouse pointer around the dashboard — the pointer now behaves normally everywhere.',
+  },
+  {
+    id: 30,
+    date: '2026-07-13',
+    area: 'Customers',
+    summary:
+      'On a customer’s page you can now see their full order history, block or unblock their account, edit every detail (email, names, phone, avatar, email-verified), and add, edit, set-default, or delete their saved addresses — all from the dashboard.',
+  },
+  {
+    id: 31,
+    date: '2026-07-13',
+    area: 'Collaborators',
+    summary:
+      'Collaborator brand pages now show up correctly on the storefront with their products, and a new “Brand page visible on storefront” toggle in a collaborator’s Trust & publishing settings lets you hide or show their page (previously the page was always on with no control).',
+  },
 ];

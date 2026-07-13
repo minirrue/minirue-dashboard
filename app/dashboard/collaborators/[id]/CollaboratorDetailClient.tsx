@@ -52,6 +52,7 @@ export default function CollaboratorDetailClient() {
   const [autoPublish, setAutoPublish] = useState(false);
   const [homeFeature, setHomeFeature] = useState(false);
   const [navLink, setNavLink] = useState(false);
+  const [storefrontVisible, setStorefrontVisible] = useState(false);
   const [commissionPct, setCommissionPct] = useState('20');
   const [fulfillmentMode, setFulfillmentMode] = useState<FulfillmentMode>('MINIRUE_SHIPS');
 
@@ -75,6 +76,7 @@ export default function CollaboratorDetailClient() {
           setAutoPublish(data.autoPublishProducts ?? false);
           setHomeFeature(data.storefrontHomeFeature ?? false);
           setNavLink(data.storefrontNavLink ?? false);
+          setStorefrontVisible(data.storefrontVisible ?? false);
           if (data.commissionRate != null) {
             const pct = Number.parseFloat(data.commissionRate) * 100;
             if (!Number.isNaN(pct)) setCommissionPct(String(Math.round(pct * 100) / 100));
@@ -140,6 +142,7 @@ export default function CollaboratorDetailClient() {
         autoPublishProducts: autoPublish,
         storefrontHomeFeature: homeFeature,
         storefrontNavLink: navLink,
+        storefrontVisible,
         commissionRate: (pct / 100).toFixed(4),
         fulfillmentMode,
       });
@@ -443,9 +446,19 @@ export default function CollaboratorDetailClient() {
         <h2 className="dash-card-title" style={{ marginTop: 24 }}>
           Storefront placement
         </h2>
+        <label className="dash-checkbox-label">
+          <input
+            type="checkbox"
+            className="dash-checkbox"
+            checked={storefrontVisible}
+            onChange={(e) => setStorefrontVisible(e.target.checked)}
+            disabled={settingsSaving}
+            data-trace-id="PG-DASHBOARD-COLLAB-008::EL-CHECK-detail-storefront-visible"
+          />
+          Brand page visible on storefront (<code className="collab-slug-code">/brands/{collab.brandSlug}</code>)
+        </label>
         <p className="dash-help-text">
-          Brand page (always on):{' '}
-          <code className="collab-slug-code">/brands/{collab.brandSlug}</code>
+          When off, the brand page and its products are hidden from shoppers.
         </p>
         <label className="dash-checkbox-label">
           <input

@@ -18,6 +18,7 @@ export interface CollaboratorSettings {
   autoPublishProducts: boolean;
   storefrontHomeFeature: boolean;
   storefrontNavLink: boolean;
+  storefrontVisible: boolean;
   commissionRate: string | null;
   fulfillmentMode: FulfillmentMode;
 }
@@ -28,6 +29,7 @@ export interface CollaboratorDetail extends CollaboratorListItem {
   autoPublishProducts?: boolean;
   storefrontHomeFeature?: boolean;
   storefrontNavLink?: boolean;
+  storefrontVisible?: boolean;
   commissionRate?: string | null;
   fulfillmentMode?: FulfillmentMode;
 }
