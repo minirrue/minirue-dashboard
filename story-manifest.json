@@ -111,16 +111,6 @@
     "status": "active"
   },
   {
-    "id": "US-ADMIN-COLLAB-004",
-    "routes": [
-      "minirue-dashboard PAGE /dashboard/collaborators/:param/scopes"
-    ],
-    "surfaces": [
-      "minirue-dashboard"
-    ],
-    "status": "active"
-  },
-  {
     "id": "US-ADMIN-GAL-001",
     "routes": [
       "minirue-dashboard PAGE /dashboard/gallery"

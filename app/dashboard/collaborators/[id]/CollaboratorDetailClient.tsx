@@ -284,13 +284,6 @@ export default function CollaboratorDetailClient() {
           </div>
         </div>
         <div className="collab-action-row" style={{ marginTop: 0 }}>
-          <Link
-            href={`/dashboard/collaborators/${id}/scopes`}
-            className="dash-btn-secondary"
-            data-trace-id="PG-DASHBOARD-COLLAB-008::EL-LINK-detail-scopes"
-          >
-            Scopes
-          </Link>
           {!autoPublish ? (
             <Link
               href="/collaborators/review"

@@ -12,10 +12,11 @@ import {
   listProducts,
   publishProduct,
   archiveProduct,
-  listBrands,
+  listManagedBrands,
   softDeleteProduct,
   hardDeleteProduct,
 } from '@/lib/catalog/api';
+import type { ManagedBrand } from '@/lib/catalog/api';
 import type { ApiError } from '@/lib/api/client';
 import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
 import { useDebounce } from '@/lib/hooks/useDebounce';
@@ -96,7 +97,7 @@ export default function ProductsClient() {
 
   const [statusFilter, setStatusFilter] = useState<'' | ProductStatus>('');
   const [brandFilter, setBrandFilter] = useState('');
-  const [brands, setBrands] = useState<string[]>([]);
+  const [brands, setBrands] = useState<ManagedBrand[]>([]);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const debouncedSearchInput = useDebounce(searchInput, 350);
@@ -106,7 +107,7 @@ export default function ProductsClient() {
   const [deleteTarget, setDeleteTarget] = useState<ProductListItem | null>(null);
 
   useEffect(() => {
-    listBrands()
+    listManagedBrands()
       .then(setBrands)
       .catch(() => setBrands([]));
   }, []);
@@ -325,8 +326,8 @@ export default function ProductsClient() {
         >
           <option value="">All brands</option>
           {brands.map((b) => (
-            <option key={b} value={b}>
-              {b}
+            <option key={b.id} value={b.name}>
+              {b.name}
             </option>
           ))}
         </select>
