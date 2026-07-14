@@ -1,61 +1,23 @@
 import { apiFetch } from './client';
-
-export type OrderStatus = 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
-
-export interface ProductSnapshot {
-  name: string;
-  brand: string;
-  sizeMl: number;
-  bottleType: string;
-  sku: string;
-}
-
-export interface OrderItem {
-  id: string;
-  variantId: string;
-  productSnapshot: ProductSnapshot;
-  qty: number;
-  unitPriceAmount: string;
-  unitPriceCurrency: string;
-  lineTotalAmount: string;
-}
-
-export interface OrderStatusHistoryEntry {
-  id: string;
-  fromStatus: string | null;
-  toStatus: string;
-  actorUserId: string | null;
-  reason: string | null;
-  createdAt: string;
-}
-
-export interface ShippingAddressSnapshot {
-  fullName: string;
-  line1: string;
-  line2?: string;
-  city: string;
-  governorate: string;
-  postalCode?: string;
-  phone: string;
-}
-
-export interface Order {
-  id: string;
-  orderNumber: string;
-  userId: string;
-  status: OrderStatus;
-  subtotalAmount: string;
-  subtotalCurrency: string;
-  shippingAmount: string;
-  totalAmount: string;
-  totalCurrency: string;
-  shippingAddressSnapshot: ShippingAddressSnapshot;
-  notes: string | null;
-  items: OrderItem[];
-  statusHistory?: OrderStatusHistoryEntry[];
-  createdAt: string;
-  updatedAt: string;
-}
+// Canonical Order contract now lives in @minirue/contracts
+// (packages/contracts/src/orders.ts) — was byte-for-byte identical between
+// frontend and dashboard already, just declared twice.
+import type {
+  OrderStatus,
+  ProductSnapshot,
+  OrderItem,
+  OrderStatusHistoryEntry,
+  ShippingAddressSnapshot,
+  Order,
+} from '@minirue/contracts';
+export type {
+  OrderStatus,
+  ProductSnapshot,
+  OrderItem,
+  OrderStatusHistoryEntry,
+  ShippingAddressSnapshot,
+  Order,
+};
 
 export interface OrdersListResponse {
   data: Order[];

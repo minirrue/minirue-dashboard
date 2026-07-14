@@ -10,12 +10,11 @@ import { defineConfig } from '@playwright/test';
  * would have been a no-op, which is how a falsified acceptance row slipped through §19
  * verification.
  *
- * Until the dashboard has its own e2e suite, this config is intentionally minimal: it does
- * NOT spin up a webServer (the dashboard is a separate Next.js app on a different port and
- * we do not want to silently boot a second dev server). The real auth e2e suite for both
- * apps lives at `apps/minirue-frontend/e2e/auth/` and is run from the frontend repo. When
- * the dashboard grows its own e2e/ directory, replace this stub with a proper config that
- * points `testDir` at it and `webServer.url` at the dashboard's port.
+ * 2026-07-14 CI audit fix: `baseURL` was still `http://localhost:3000`, the FRONTEND's dev
+ * port, with no `webServer` block at all — `npx playwright test` would run against whatever
+ * happened to be listening on 3000 (or nothing). The dashboard's own dev port is 3001 (see
+ * `e2e/smoke.spec.ts`'s note and the frontend's `playwright.config.ts`, which owns 3000). This
+ * now boots the dashboard's own dev server on 3001 before tests run.
  */
 export default defineConfig({
   testDir: './e2e',
@@ -25,7 +24,14 @@ export default defineConfig({
   reporter: 'list',
 
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: 'http://localhost:3001',
     trace: 'on-first-retry',
+  },
+
+  webServer: {
+    command: 'npm run dev -- -p 3001',
+    url: 'http://localhost:3001',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
   },
 });

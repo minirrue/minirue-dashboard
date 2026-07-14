@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 32,
+    date: '2026-07-14',
+    area: 'Behind the scenes',
+    summary:
+      'Nothing changes in how the dashboard looks or works today — this was internal upkeep: automatic checks now run on every update before it ships (so problems get caught earlier), and shared product/order data types are now kept in one place instead of copied between apps.',
+  },
+  {
     id: 1,
     date: '2026-07-08',
     area: 'Products',

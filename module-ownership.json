@@ -1,0 +1,17 @@
+[
+  { "module": "insights-analytics", "paths": ["app/dashboard/analytics/**", "lib/api/analytics.ts"] },
+  { "module": "catalog", "paths": ["app/dashboard/categories/**", "app/dashboard/products/**", "lib/hooks/use-catalog.ts"] },
+  { "module": "brand-presence", "paths": ["app/dashboard/products/brands/**", "app/dashboard/storefront-appearance/**"] },
+  { "module": "collaborator-workspace", "paths": ["app/dashboard/collab/**", "lib/api/collab-portal.ts"] },
+  { "module": "collaborator-management", "paths": ["app/dashboard/collaborators/**", "lib/api/collaborators.ts"] },
+  { "module": "approval-publication", "paths": ["app/dashboard/collaborators/review/**"] },
+  { "module": "customer-accounts", "paths": ["app/dashboard/customers/**", "lib/api/customers.ts"] },
+  { "module": "orders", "paths": ["app/dashboard/orders/**", "app/dashboard/fulfillment/**", "lib/api/orders.ts", "lib/api/fulfillment.ts"] },
+  { "module": "gallery", "paths": ["app/dashboard/gallery/**"] },
+  { "module": "platform-settings", "paths": ["app/dashboard/settings/**", "app/dashboard/info/**", "lib/api/settings.ts"] },
+  { "module": "store-operations", "paths": ["app/dashboard/inventory/**"] },
+  { "module": "loyalty", "paths": ["app/dashboard/loyalty/**", "lib/api/loyalty.ts"] },
+  { "module": "customer-support", "paths": ["app/dashboard/messages/**"] },
+  { "module": "payments", "paths": ["app/dashboard/refunds/**", "lib/api/payments.ts", "lib/api/refunds.ts"] },
+  { "module": "identity-access", "paths": ["lib/api/auth.ts", "lib/auth/**"] }
+]

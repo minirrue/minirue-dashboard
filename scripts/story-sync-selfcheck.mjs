@@ -2,7 +2,7 @@
 // story-sync-selfcheck.mjs — RULEBOOK §29, vendored INTO each code repo (not run from {project}-us).
 //
 // This is the root-kill: it diffs THIS repo's own real routes against THIS repo's own committed
-// story-manifest.json (emitted by {project}-us's generate-vault.ts and committed alongside code).
+// story-manifest.json (emitted by {project}-us's generate-manifests.mjs (derived from markdown story frontmatter) and committed alongside code).
 // No cross-repo checkout is required to verify — the story's shadow travels with the code. Copy
 // this file (and keep it in sync) into each code repo's scripts/ dir; wire it into that repo's
 // package.json + pre-push hook + CI workflow (see _main/_templates/ci/story-sync.code-repo.yml and
@@ -169,7 +169,7 @@ function enumeratePageRoutes() {
 const manifestPath = path.join(repoRoot, "story-manifest.json");
 if (!fs.existsSync(manifestPath)) {
   console.error(`story-sync-selfcheck FAILED: no story-manifest.json at repo root. Run {project}-us's ` +
-    `generate-vault.ts to emit it (RULEBOOK §29), then commit it alongside this repo's code.`);
+    `generate-manifests.mjs to emit it (RULEBOOK §29), then commit it alongside this repo's code.`);
   process.exit(1);
 }
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));

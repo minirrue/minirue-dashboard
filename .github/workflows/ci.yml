@@ -1,0 +1,42 @@
+# ci.yml — quality gate for minirue-dashboard.
+#
+# Runs on every push to every branch (matches story-sync.yml's trigger style — a commit
+# landing directly on `main` is checked exactly the same as one going through a PR). Fails
+# the job on any nonzero exit from typecheck, lint, or test.
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # seal-guard.mjs (§31) diffs against @{upstream}/HEAD~1 — needs real commit history,
+          # not the default shallow clone.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Seal guard (RULEBOOK §31)
+        if: hashFiles('scripts/seal-guard.mjs') != ''
+        run: node scripts/seal-guard.mjs
