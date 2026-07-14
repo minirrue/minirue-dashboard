@@ -28,6 +28,13 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Nothing changes in how the dashboard looks or works today — this was internal upkeep: automatic checks now run on every update before it ships (so problems get caught earlier), and shared product/order data types are now kept in one place instead of copied between apps.',
   },
   {
+    id: 33,
+    date: '2026-07-14',
+    area: 'Behind the scenes',
+    summary:
+      'We moved the shared product and order data definitions back inside each app (instead of one shared package). This keeps the live site deploying reliably — the previous shared-package setup could stop the public store and dashboard from going live.',
+  },
+  {
     id: 1,
     date: '2026-07-08',
     area: 'Products',

@@ -19,9 +19,7 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"],
-      "@minirue/contracts": ["../../packages/contracts/src/index.ts"],
-      "@minirue/contracts/*": ["../../packages/contracts/src/*"]
+      "@/*": ["./*"]
     }
   },
   "include": [

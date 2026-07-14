@@ -1,6 +1,6 @@
 {
   "name": "minirue-dashboard",
-  "version": "0.11.1",
+  "version": "0.11.2",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
@@ -13,7 +13,6 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@minirue/contracts": "*",
     "@tanstack/react-query": "^5.45.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
