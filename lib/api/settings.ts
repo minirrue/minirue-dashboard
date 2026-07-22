@@ -22,7 +22,8 @@ export interface StoreSettings {
   currency: string;
   locale: string;
   shippingZones: ShippingZone[];
-  taxRules: TaxRule[];
+  /** Absent on a store that has never had tax rules configured. */
+  taxRules?: TaxRule[];
   brand: BrandConfig;
   maintenanceMode: boolean;
   storefront?: StorefrontSettings;

@@ -220,7 +220,10 @@ function settingsToForm(s: StoreSettings): SettingsForm {
   return {
     currency: s.currency,
     locale: s.locale,
-    vatPct: String(s.taxRules.find((r) => r.country === 'EG')?.vatPct ?? 14),
+    // Optional-chained: a store with no tax rules yet (a fresh database) returns
+    // settings with no taxRules key at all, and an unguarded .find() there took
+    // the whole Settings page down with "Cannot read properties of undefined".
+    vatPct: String(s.taxRules?.find((r) => r.country === 'EG')?.vatPct ?? 14),
     brand: {
       storeName: s.brand.storeName,
       contactEmail: s.brand.contactEmail,
@@ -284,9 +287,24 @@ export default function SettingsClient() {
           contactPhone: form.brand.contactPhone || null,
           logoUrl: form.brand.logoUrl || null,
         },
-        taxRules: raw.taxRules.map((r) =>
-          r.country === 'EG' ? { ...r, vatPct: parseFloat(form.vatPct) || r.vatPct } : r,
-        ),
+        // A fresh store has no tax rules at all. Mapping over an empty/absent
+        // list would silently save no VAT rule and lose what the admin typed,
+        // so create the EG rule when it is missing rather than dropping it.
+        taxRules: (() => {
+          const existing = raw.taxRules ?? [];
+          const vatPct = parseFloat(form.vatPct);
+          if (!existing.some((r) => r.country === 'EG')) {
+            return [
+              ...existing,
+              { country: 'EG', vatPct: Number.isFinite(vatPct) ? vatPct : 14 },
+            ];
+          }
+          return existing.map((r) =>
+            r.country === 'EG'
+              ? { ...r, vatPct: Number.isFinite(vatPct) ? vatPct : r.vatPct }
+              : r,
+          );
+        })(),
       };
       const updated = await apiUpdateSettings(patch);
       setRaw(updated);
