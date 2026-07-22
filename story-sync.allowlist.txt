@@ -25,3 +25,17 @@ minirue-frontend PAGE /_internal/preview
 # Unauthenticated payment-gateway webhook (HMAC-verified in-handler, no JWT guard) — a
 # machine-to-machine integration endpoint, not a user-facing route any persona interacts with.
 minirue-backend POST /v1/webhooks/payments/gateway
+
+# ================================================================================================
+# 2026-07-22 — Global variants screen, specs/2026-07-22-global-variants-design.md
+#
+# Allowlisted because the story vault this page would cite no longer exists in this repo:
+# apps/minirue-obsidian was emptied on 2026-07-22 and the "vault is upstream of code" standard
+# was dropped by the project owner. There is no {project}-us story to write, so the MISSING gate
+# has no way to be satisfied for any route added from this date forward.
+#
+# This is a stopgap, not a verdict. If story-sync is meant to keep running, it needs a source of
+# truth that still exists; if it is not, the workflow and this file should be removed outright.
+# Flagging rather than deciding — that call belongs to the project owner.
+# ================================================================================================
+minirue-dashboard PAGE /dashboard/products/global-variants
