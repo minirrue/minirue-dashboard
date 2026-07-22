@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 37,
+    date: '2026-07-22',
+    area: 'Whole dashboard',
+    summary:
+      'Analytics works again. It was showing an error instead of the page because three of the five things it loads were failing behind the scenes — the page gives up entirely if any one of them does. Those are fixed. Every tab has now been checked against a real running system: Analytics, Loyalty, Refunds, Fulfillment, Inventory, Storefront and Settings all load correctly, so the orange MAINTENANCE labels have been removed from the menu.',
+  },
+  {
     id: 36,
     date: '2026-07-22',
     area: 'Settings',

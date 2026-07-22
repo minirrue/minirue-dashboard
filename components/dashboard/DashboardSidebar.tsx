@@ -201,7 +201,7 @@ const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
       { label: 'Orders', href: '/orders', icon: <IconShoppingBag /> },
       { label: 'Customers', href: '/customers', icon: <IconUsers /> },
       { label: 'Collaborators', href: '/collaborators', icon: <IconHandshake /> },
-      { label: 'Storefront', href: '/storefront-appearance', icon: <IconPalette />, maintenance: true },
+      { label: 'Storefront', href: '/storefront-appearance', icon: <IconPalette /> },
     ],
   },
   {
@@ -213,16 +213,16 @@ const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
   {
     section: 'Operations',
     items: [
-      { label: 'Fulfillment', href: '/fulfillment', icon: <IconTruck />, maintenance: true },
-      { label: 'Refunds', href: '/refunds', icon: <IconRefreshCcw />, maintenance: true },
-      { label: 'Inventory', href: '/inventory', icon: <IconPackage />, maintenance: true },
+      { label: 'Fulfillment', href: '/fulfillment', icon: <IconTruck /> },
+      { label: 'Refunds', href: '/refunds', icon: <IconRefreshCcw /> },
+      { label: 'Inventory', href: '/inventory', icon: <IconPackage /> },
     ],
   },
   {
     section: 'Insights',
     items: [
-      { label: 'Analytics', href: '/analytics', icon: <IconTrendingUp />, maintenance: true },
-      { label: 'Loyalty', href: '/loyalty', icon: <IconStar />, maintenance: true },
+      { label: 'Analytics', href: '/analytics', icon: <IconTrendingUp /> },
+      { label: 'Loyalty', href: '/loyalty', icon: <IconStar /> },
     ],
   },
   {
