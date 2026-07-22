@@ -10,10 +10,33 @@
 - Zod 4 (validation)
 - Jest + Testing Library (unit), Playwright (`test:e2e`)
 
+## ADDING A PAGE? Add its rewrite too — or it 404s in production
+
+Pages live under `app/dashboard/…` but are served at clean URLs with the `/dashboard` prefix
+stripped. That mapping is a **hand-maintained list** in `next.config.ts` `rewrites()` — there is
+no wildcard. A page with no entry builds fine, appears in `next build` output, and returns
+**404 on the live site**.
+
+So every new page is two edits, not one:
+
+1. `app/dashboard/products/global-variants/page.tsx` — the page.
+2. `next.config.ts` — `{ source: "/products/global-variants", destination: "/dashboard/products/global-variants" }`.
+
+Internal `<Link href>` values use the clean URL (`/products/brands`), never the `app/` path.
+The `redirects()` block above `rewrites()` sends `/dashboard/:path*` → `/:path*` permanently, so
+linking to the `app/` path causes a redirect hop, not a working link.
+
+This was missed once already (Global variants, 2026-07-22) — the page shipped and 404'd.
+
 ## Deploy target
 Admin/collaborator dashboard — internal-facing, not indexed by search engines. See
 `package.json`/`Dockerfile` for build/deploy specifics (container-based deploy: `Dockerfile`,
 `.dockerignore` present at repo root).
+
+**There is no deploy workflow in this repo.** `.github/workflows/` has only `ci.yml` and
+`story-sync.yml`. Pushing to `main` runs checks and stops — it does NOT deploy. Only
+`minirue-backend` has a `deploy.yml` (a Dokploy webhook). Anything shipped here reaches the
+live dashboard by some other route; do not assume a push went live.
 
 ## Directory conventions
 | Path | Contents |

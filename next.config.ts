@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
       { source: "/products", destination: "/dashboard/products" },
       { source: "/products/new", destination: "/dashboard/products/new" },
       { source: "/products/brands", destination: "/dashboard/products/brands" },
+      { source: "/products/global-variants", destination: "/dashboard/products/global-variants" },
       { source: "/products/:slug/edit", destination: "/dashboard/products/:slug/edit" },
       { source: "/categories", destination: "/dashboard/categories" },
       { source: "/orders", destination: "/dashboard/orders" },
