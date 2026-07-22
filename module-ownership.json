@@ -13,7 +13,9 @@
       "app/dashboard/products/**",
       "app/dashboard/products/global-variants/**",
       "lib/hooks/use-catalog.ts",
-      "lib/catalog/**"
+      "lib/catalog/**",
+      "app/dashboard/products/option-lists/**",
+      "components/dashboard/ProductClassification.tsx"
     ]
   },
   {

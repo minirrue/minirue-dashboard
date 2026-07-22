@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 35,
+    date: '2026-07-22',
+    area: 'Products',
+    summary:
+      'Products are now organised as Category, then Brand, then the product itself — the same three steps for perfume, cosmetics, or anything you add later. Two new pages: "Option lists" is where you control every dropdown on the product form (EDP, EDT, Parfum, Hair Mist, Gender, Fragrance family — add, rename or delete any of them, and create brand new lists like Shade). "Global variants" is now per brand: set up a size like 50ml once and add it to any product of that brand in one click, with each product keeping its own price. Deleting anywhere now asks whether you want it hidden but recoverable, or gone for good.',
+  },
+  {
     id: 34,
     date: '2026-07-22',
     area: 'Products',

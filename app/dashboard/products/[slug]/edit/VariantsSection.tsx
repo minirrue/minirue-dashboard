@@ -7,8 +7,9 @@ import {
   softDeleteVariant,
   hardDeleteVariant,
   createProductMedia,
-  listVariantTypes,
-  type VariantTypeRecord,
+  listBrandGlobalVariants,
+  applyGlobalVariant,
+  type BrandGlobalVariant,
 } from '@/lib/catalog/api';
 import type { ProductVariant, ProductMedia } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
@@ -19,7 +20,6 @@ import type { GalleryItem } from '@/lib/gallery/types';
 interface VariantFormValues {
   sku: string;
   sizeMl: string;
-  variantTypeId: string;
   priceAmount: string;
   currency: string;
 }
@@ -27,23 +27,7 @@ interface VariantFormValues {
 interface VariantFormErrors {
   sku?: string;
   sizeMl?: string;
-  variantTypeId?: string;
   priceAmount?: string;
-}
-
-/**
- * Active types, plus the row's own type when that type has been retired.
- * Without the second half, opening the edit form on a variant whose type was
- * deactivated would show a blank select and silently rewrite the variant to
- * whatever the admin picked next.
- */
-function variantTypeOptions(
-  active: VariantTypeRecord[],
-  currentId: string,
-  currentName: string,
-): Array<{ id: string; name: string }> {
-  if (!currentId || active.some((t) => t.id === currentId)) return active;
-  return [...active, { id: currentId, name: `${currentName} (retired)` }];
 }
 
 function validateVariant(v: VariantFormValues): VariantFormErrors {
@@ -51,7 +35,6 @@ function validateVariant(v: VariantFormValues): VariantFormErrors {
   if (!v.sku.trim()) errors.sku = 'SKU is required.';
   const size = Number(v.sizeMl);
   if (!v.sizeMl || isNaN(size) || size <= 0) errors.sizeMl = 'Valid size is required.';
-  if (!v.variantTypeId) errors.variantTypeId = 'Variant type is required.';
   const price = Number(v.priceAmount);
   if (!v.priceAmount || isNaN(price) || price < 0) errors.priceAmount = 'Valid price is required.';
   return errors;
@@ -60,13 +43,14 @@ function validateVariant(v: VariantFormValues): VariantFormErrors {
 const EMPTY_FORM: VariantFormValues = {
   sku: '',
   sizeMl: '',
-  variantTypeId: '',
   priceAmount: '',
   currency: 'EGP',
 };
 
 interface Props {
   productId: string;
+  /** Level 2 of the tree — decides which shared variants are on offer here. */
+  brandId: string;
   variants: ProductVariant[];
   onVariantsChange: (variants: ProductVariant[]) => void;
   // Added for the Gallery module (specs/006-gallery-module, US3): lets this
@@ -82,6 +66,7 @@ interface Props {
 
 export default function VariantsSection({
   productId,
+  brandId,
   variants,
   onVariantsChange,
   media,
@@ -103,28 +88,53 @@ export default function VariantsSection({
   const [pickerVariantId, setPickerVariantId] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
 
-  // The vocabulary was a hardcoded four-item array until
-  // specs/2026-07-22-global-variants. Fetched once per mount: it is small,
-  // rarely changes, and every variant row on the page reads the same list.
-  const [variantTypes, setVariantTypes] = useState<VariantTypeRecord[]>([]);
-  const [variantTypesError, setVariantTypesError] = useState<string | null>(null);
+  // The brand's reusable variants, offered as one-click additions beside the
+  // custom ones. Replaces the concentration dropdown that used to sit on each
+  // variant row -- concentration describes the ITEM and lives in its option
+  // lists now (specs 2026-07-22-product-tree).
+  const [globals, setGlobals] = useState<BrandGlobalVariant[]>([]);
+  const [globalsError, setGlobalsError] = useState<string | null>(null);
+  const [applying, setApplying] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!brandId) return;
     let cancelled = false;
-    listVariantTypes()
-      .then((types) => {
-        if (!cancelled) setVariantTypes(types);
+    listBrandGlobalVariants(brandId)
+      .then((rows) => {
+        if (!cancelled) setGlobals(rows.filter((g) => g.isActive));
       })
       .catch(() => {
         if (!cancelled)
-          setVariantTypesError(
-            'Could not load variant types. Add them under Products → Global variants.',
+          setGlobalsError(
+            'Could not load this brand\'s shared variants.',
           );
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [brandId]);
+
+  /**
+   * Copies a brand variant onto this item. The SKU is generated from the
+   * label because SKUs are unique across every variant in the system and so
+   * can never be inherited; the admin can edit it afterwards like any other.
+   */
+  async function handleApplyGlobal(g: BrandGlobalVariant) {
+    setApplying(g.id);
+    setGlobalsError(null);
+    try {
+      const suffix = g.label.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+      const variant = await applyGlobalVariant(productId, g.id, {
+        sku: `${productId.slice(0, 8).toUpperCase()}-${suffix}`,
+      });
+      onVariantsChange([...variants, variant]);
+    } catch (e) {
+      const err = e as ApiError;
+      setGlobalsError(err.message ?? 'Could not add that variant.');
+    } finally {
+      setApplying(null);
+    }
+  }
 
   async function handleLinkGalleryItem(variantId: string, item: GalleryItem) {
     setPickerVariantId(null);
@@ -162,7 +172,6 @@ export default function VariantsSection({
       const variant = await createVariant(productId, {
         sku: formValues.sku.trim(),
         sizeMl: Number(formValues.sizeMl),
-        variantTypeId: formValues.variantTypeId,
         priceAmount: Number(formValues.priceAmount),
         currency: formValues.currency.trim() || 'USD',
       });
@@ -189,7 +198,6 @@ export default function VariantsSection({
     setEditValues({
       sku: v.sku,
       sizeMl: String(v.sizeMl),
-      variantTypeId: v.variantTypeId,
       priceAmount: String(v.priceAmount),
       currency: v.currency,
     });
@@ -216,7 +224,6 @@ export default function VariantsSection({
     try {
       const updated = await updateVariant(productId, v.id, {
         sizeMl: Number(editValues.sizeMl),
-        variantTypeId: editValues.variantTypeId,
         priceAmount: Number(editValues.priceAmount),
         currency: editValues.currency.trim() || 'USD',
       });
@@ -312,7 +319,7 @@ export default function VariantsSection({
                   >
                     <td>{v.sku}</td>
                     <td>{v.sizeMl}</td>
-                    <td>{v.variantTypeName}</td>
+                    <td>{v.sourceGlobalVariantId ? 'Shared' : 'Custom'}</td>
                     <td style={{ textAlign: 'right' }}>{formatPrice(v.priceAmount, v.currency)}</td>
                     <td>
                       <button
@@ -390,30 +397,6 @@ export default function VariantsSection({
                               />
                               {editErrors.sizeMl && <p className="dash-field-error">{editErrors.sizeMl}</p>}
                             </div>
-                            <div className="dash-field">
-                              <label className="dash-label" htmlFor={`edit-variant-type-${v.id}`}>
-                                Variant Type <span className="dash-required">*</span>
-                              </label>
-                              <select
-                                id={`edit-variant-type-${v.id}`}
-                                className={`dash-select${editErrors.variantTypeId ? ' dash-input-error' : ''}`}
-                                value={editValues.variantTypeId}
-                                onChange={(e) => editSetField('variantTypeId', e.target.value)}
-                                disabled={editSubmitting}
-                                data-trace-id={`PG-DASHBOARD-CAT-003::EL-SELECT-edit-variant-type@${v.id}`}
-                              >
-                                <option value="">Select type…</option>
-                                {/* The row's own type is appended when it has
-                                    been retired, so editing a variant that uses
-                                    a retired type does not silently reassign it. */}
-                                {variantTypeOptions(variantTypes, v.variantTypeId, v.variantTypeName).map((o) => (
-                                  <option key={o.id} value={o.id}>
-                                    {o.name}
-                                  </option>
-                                ))}
-                              </select>
-                              {editErrors.variantTypeId && <p className="dash-field-error">{editErrors.variantTypeId}</p>}
-                            </div>
                           </div>
                           <div className="dash-field-row">
                             <div className="dash-field">
@@ -485,10 +468,35 @@ export default function VariantsSection({
       )}
 
       {linkError && <p className="dash-inline-error">{linkError}</p>}
-      {variantTypesError && (
-        <p className="dash-inline-error" data-trace-id="PG-DASHBOARD-CAT-003::EL-TEXT-variant-types-error">
-          {variantTypesError}
+      {globalsError && (
+        <p className="dash-inline-error" data-trace-id="PG-DASHBOARD-CAT-003::EL-TEXT-global-variants-error">
+          {globalsError}
         </p>
+      )}
+
+      {/* One-click additions from the brand. Applying copies the definition
+          onto this item, so its price and SKU stay its own. */}
+      {globals.length > 0 && (
+        <div
+          className="dash-field"
+          data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-apply-global-variants"
+        >
+          <p className="dash-label">Add from {'{'}this brand{'}'}</p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {globals.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                className="dash-btn-secondary"
+                onClick={() => handleApplyGlobal(g)}
+                disabled={applying !== null}
+                data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-apply-global@${g.id}`}
+              >
+                {applying === g.id ? 'Adding…' : `+ ${g.label}`}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Add variant form */}
@@ -531,27 +539,6 @@ export default function VariantsSection({
                 data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-add-variant-size"
               />
               {formErrors.sizeMl && <p className="dash-field-error">{formErrors.sizeMl}</p>}
-            </div>
-            <div className="dash-field">
-              <label className="dash-label" htmlFor="var-bottle">
-                Variant Type <span className="dash-required">*</span>
-              </label>
-              <select
-                id="var-type"
-                className={`dash-select${formErrors.variantTypeId ? ' dash-input-error' : ''}`}
-                value={formValues.variantTypeId}
-                onChange={(e) => setField('variantTypeId', e.target.value)}
-                disabled={submitting}
-                data-trace-id="PG-DASHBOARD-CAT-003::EL-SELECT-add-variant-type"
-              >
-                <option value="">Select type…</option>
-                {variantTypes.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-              {formErrors.variantTypeId && <p className="dash-field-error">{formErrors.variantTypeId}</p>}
             </div>
           </div>
           <div className="dash-field-row">

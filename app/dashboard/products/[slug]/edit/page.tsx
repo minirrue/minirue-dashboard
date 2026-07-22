@@ -14,7 +14,10 @@ import {
   hardDeleteProduct,
   cloudinaryPreviewUrl,
 } from '@/lib/catalog/api';
-import type { Product, Category, Gender, ProductVariant, ProductMedia } from '@/lib/catalog/types';
+import type { Product, ProductVariant, ProductMedia } from '@/lib/catalog/types';
+import ProductClassification, {
+  type ClassificationValue,
+} from '@/components/dashboard/ProductClassification';
 import type { ApiError } from '@/lib/api/client';
 import StatusBadge from '@/components/dashboard/StatusBadge';
 import type { StatusKind } from '@/components/dashboard/StatusBadge';
@@ -26,22 +29,23 @@ import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 /* ── Types ── */
 interface FormValues {
   name: string;
-  brand: string;
   description: string;
-  fragranceFamily: string;
-  gender: Gender | '';
-  categoryIds: string[];
+  /** Where the item sits in the tree, plus its option-list picks. */
+  classification: ClassificationValue;
 }
 
 interface FormErrors {
   name?: string;
-  brand?: string;
+  categoryId?: string;
+  brandId?: string;
 }
 
 function validate(values: FormValues): FormErrors {
   const errors: FormErrors = {};
   if (!values.name.trim()) errors.name = 'Product name is required.';
-  if (!values.brand.trim()) errors.brand = 'Brand is required.';
+  if (!values.classification.categoryId)
+    errors.categoryId = 'Category is required.';
+  if (!values.classification.brandId) errors.brandId = 'Brand is required.';
   return errors;
 }
 
@@ -52,20 +56,6 @@ function mediaPreviewUrl(m: ProductMedia): string {
   if (m.url) return m.url;
   return cloudinaryPreviewUrl(m.cloudinaryPublicId);
 }
-
-function flattenCategories(categories: Category[], depth = 0): Array<Category & { depth: number }> {
-  return categories.flatMap((cat) => [
-    { ...cat, depth },
-    ...flattenCategories(cat.children ?? [], depth + 1),
-  ]);
-}
-
-const GENDER_OPTIONS: Array<{ value: Gender | ''; label: string }> = [
-  { value: '', label: 'Select gender…' },
-  { value: 'men', label: 'Men' },
-  { value: 'women', label: 'Women' },
-  { value: 'unisex', label: 'Unisex' },
-];
 
 /* ── Skeleton loader ── */
 function EditSkeleton() {
@@ -124,18 +114,10 @@ export default function EditProductPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [categories, setCategories] = useState<Array<Category & { depth: number }>>([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const [brands, setBrands] = useState<string[]>([]);
-  const [brandsLoading, setBrandsLoading] = useState(true);
-
   const [values, setValues] = useState<FormValues>({
     name: '',
-    brand: '',
     description: '',
-    fragranceFamily: '',
-    gender: '',
-    categoryIds: [],
+    classification: { categoryId: '', brandId: '', attributes: {} },
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -178,11 +160,15 @@ export default function EditProductPage() {
         setProduct(p);
         setValues({
           name: p.name,
-          brand: p.brand,
           description: p.description ?? '',
-          fragranceFamily: p.fragranceFamily ?? '',
-          gender: p.gender ?? '',
-          categoryIds: p.categories.map((c) => c.id),
+          classification: {
+            categoryId: p.categoryId,
+            brandId: p.brandId,
+            // The server sends resolved names for display; the form needs ids.
+            attributes: Object.fromEntries(
+              (p.attributes ?? []).map((a) => [a.attributeId, a.optionId]),
+            ),
+          },
         });
         setVariants(p.variants);
         setMedia(p.media ?? []);
@@ -191,36 +177,11 @@ export default function EditProductPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  /* Load categories */
-  useEffect(() => {
-    listCategories()
-      .then((res) => setCategories(flattenCategories(res.items)))
-      .catch(() => setCategories([]))
-      .finally(() => setCategoriesLoading(false));
-  }, []);
-
-  /* Load brands */
-  useEffect(() => {
-    listManagedBrands()
-      .then((res) => setBrands(res.map((b) => b.name)))
-      .catch(() => setBrands([]))
-      .finally(() => setBrandsLoading(false));
-  }, []);
-
   function setField<K extends keyof FormValues>(key: K, value: FormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: value }));
     if (errors[key as keyof FormErrors]) {
       setErrors((prev) => ({ ...prev, [key]: undefined }));
     }
-  }
-
-  function toggleCategory(catId: string) {
-    setValues((prev) => ({
-      ...prev,
-      categoryIds: prev.categoryIds.includes(catId)
-        ? prev.categoryIds.filter((c) => c !== catId)
-        : [...prev.categoryIds, catId],
-    }));
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -235,11 +196,10 @@ export default function EditProductPage() {
     try {
       const updated = await updateProduct(id, {
         name: values.name.trim(),
-        brand: values.brand.trim(),
         description: values.description.trim() || undefined,
-        fragranceFamily: values.fragranceFamily.trim() || undefined,
-        gender: values.gender || undefined,
-        categoryIds: values.categoryIds,
+        brandId: values.classification.brandId,
+        categoryId: values.classification.categoryId,
+        attributes: values.classification.attributes,
       });
       setProduct(updated);
       setSavedAt(new Date());
@@ -418,34 +378,6 @@ export default function EditProductPage() {
           {errors.name && <p className="dash-field-error">{errors.name}</p>}
         </div>
 
-        {/* Brand */}
-        <div className="dash-field">
-          <label className="dash-label" htmlFor="brand">
-            Brand <span className="dash-required">*</span>
-          </label>
-          <select
-            id="brand"
-            className={`dash-select${errors.brand ? ' dash-input-error' : ''}`}
-            value={values.brand}
-            onChange={(e) => setField('brand', e.target.value)}
-            disabled={saving || brandsLoading}
-            data-trace-id="PG-DASHBOARD-CAT-003::EL-SELECT-edit-product-brand"
-          >
-            <option value="" disabled>
-              {brandsLoading ? 'Loading brands…' : 'Select brand…'}
-            </option>
-            {values.brand && !brands.includes(values.brand) && (
-              <option value={values.brand}>{values.brand}</option>
-            )}
-            {brands.map((b) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
-          </select>
-          {errors.brand && <p className="dash-field-error">{errors.brand}</p>}
-        </div>
-
         {/* Description */}
         <div className="dash-field">
           <label className="dash-label" htmlFor="description">
@@ -462,74 +394,24 @@ export default function EditProductPage() {
           />
         </div>
 
-        {/* Fragrance Family + Gender */}
-        <div className="dash-field-row">
-          <div className="dash-field">
-            <label className="dash-label" htmlFor="fragranceFamily">
-              Fragrance Family
-            </label>
-            <input
-              id="fragranceFamily"
-              className="dash-input"
-              value={values.fragranceFamily}
-              onChange={(e) => setField('fragranceFamily', e.target.value)}
-              disabled={saving}
-              data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-edit-fragrance-family"
-            />
-          </div>
-          <div className="dash-field">
-            <label className="dash-label" htmlFor="gender">
-              Gender
-            </label>
-            <select
-              id="gender"
-              className="dash-select"
-              value={values.gender}
-              onChange={(e) => setField('gender', e.target.value as Gender | '')}
-              disabled={saving}
-              data-trace-id="PG-DASHBOARD-CAT-003::EL-SELECT-edit-product-gender"
-            >
-              {GENDER_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Categories */}
-        <div className="dash-field">
-          <p className="dash-label">Categories</p>
-          {categoriesLoading ? (
-            <span className="dash-skeleton" style={{ width: 160, display: 'inline-block' }} />
-          ) : categories.length === 0 ? (
-            <p className="dash-help-text">No categories available.</p>
-          ) : (
-            <div
-              className="dash-checkbox-grid"
-              data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-edit-category-checklist"
-            >
-              {categories.map((cat) => (
-                <label
-                  key={cat.id}
-                  className="dash-checkbox-label"
-                  style={{ paddingLeft: cat.depth * 16 }}
-                >
-                  <input
-                    type="checkbox"
-                    className="dash-checkbox"
-                    checked={values.categoryIds.includes(cat.id)}
-                    onChange={() => toggleCategory(cat.id)}
-                    disabled={saving}
-                    data-trace-id={`PG-DASHBOARD-CAT-003::EL-CHECK-edit-category-option@${cat.id}`}
-                  />
-                  {cat.name}
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Category -> Brand, then whatever option lists that category uses.
+            Replaces the old free-text brand select, the hardcoded gender list
+            and the multi-select category checkboxes — an item sits in exactly
+            one category now (specs 2026-07-22-product-tree). */}
+        <ProductClassification
+          value={values.classification}
+          onChange={(next) => {
+            setValues((prev) => ({ ...prev, classification: next }));
+            setErrors((prev) => ({
+              ...prev,
+              categoryId: undefined,
+              brandId: undefined,
+            }));
+          }}
+          disabled={saving}
+          errors={{ categoryId: errors.categoryId, brandId: errors.brandId }}
+          tracePrefix="PG-DASHBOARD-CAT-003"
+        />
 
         {saveError && <p className="dash-inline-error">{saveError}</p>}
 
@@ -554,6 +436,7 @@ export default function EditProductPage() {
 
       <VariantsSection
         productId={id}
+        brandId={values.classification.brandId}
         variants={variants}
         onVariantsChange={setVariants}
         media={media}

@@ -1,7 +1,6 @@
 import { apiFetch } from '@/lib/api/client';
 import type {
   Category,
-  Gender,
   Product,
   ProductListItem,
   ProductMedia,
@@ -12,12 +11,22 @@ import type {
 export type { ProductListItem, ProductStatus } from './types';
 
 /** A row of the admin-managed variant-type vocabulary ("Global variants"). */
-export interface VariantTypeRecord {
-  id: string;
-  name: string;
-  sortOrder: number;
-  isActive: boolean;
-}
+export type {
+  AttributeRecord,
+  AttributeOptionRecord,
+  ProductAttributeValue,
+  BrandGlobalVariant,
+  TreeCategoryNode,
+  TreeBrandNode,
+} from './types';
+
+import type {
+  AttributeRecord as AttributeRecordDto,
+  AttributeOptionRecord as AttributeOptionRecordDto,
+  ProductAttributeValue as ProductAttributeValueDto,
+  BrandGlobalVariant as BrandGlobalVariantDto,
+  TreeCategoryNode as TreeCategoryNodeDto,
+} from './types';
 
 const ADMIN = '/catalog/admin';
 
@@ -26,8 +35,7 @@ interface BackendVariant {
   productId: string;
   sku: string;
   sizeMl: number;
-  variantTypeId: string;
-  variantTypeName: string | null;
+  sourceGlobalVariantId: string | null;
   priceAmount: string;
   priceCurrency: string;
   isActive: boolean;
@@ -52,14 +60,15 @@ interface BackendProduct {
   id: string;
   slug: string;
   name: string;
-  brand: string;
+  brandId: string;
+  brandName: string | null;
+  categoryId: string;
+  categoryName: string | null;
   description?: string | null;
-  fragranceFamily?: string | null;
-  gender?: Gender;
   publishedState: string;
   variants: BackendVariant[];
   media?: BackendMedia[];
-  categories?: Category[];
+  attributes?: ProductAttributeValueDto[];
   createdAt: string;
   updatedAt?: string;
 }
@@ -74,7 +83,8 @@ function mapListItem(p: BackendProduct): ProductListItem {
     id: p.id,
     slug: p.slug,
     name: p.name,
-    brand: p.brand,
+    brandId: p.brandId,
+    brandName: p.brandName ?? '',
     status: p.publishedState as ProductStatus,
     variantCount: p.variants?.length ?? 0,
     basePrice: priceMin ?? 0,
@@ -93,8 +103,7 @@ function mapVariant(v: BackendVariant): ProductVariant {
     sku: v.sku,
     size: v.sizeMl,
     sizeMl: v.sizeMl,
-    variantTypeId: v.variantTypeId,
-    variantTypeName: v.variantTypeName ?? '',
+    sourceGlobalVariantId: v.sourceGlobalVariantId ?? null,
     price,
     priceAmount: price,
     currency: v.priceCurrency,
@@ -121,52 +130,44 @@ function mapProduct(p: BackendProduct): Product {
   return {
     ...list,
     description: p.description ?? '',
-    fragranceFamily: p.fragranceFamily ?? null,
-    gender: (p.gender ?? 'unisex') as Gender,
-    categoryId: p.categories?.[0]?.id ?? null,
-    category: p.categories?.[0] ?? null,
-    categories: p.categories ?? [],
+    categoryId: p.categoryId,
+    categoryName: p.categoryName ?? '',
+    attributes: p.attributes ?? [],
     variants: (p.variants ?? []).map(mapVariant),
     media: (p.media ?? []).map(mapMedia),
     updatedAt: p.updatedAt ?? p.createdAt,
   };
 }
 
-function toCreateProductBody(data: {
+/** specs/2026-07-22-product-tree: brand and category are FKs, gender and
+ *  fragrance family are option-list picks inside `attributes`. */
+export interface ProductWriteInput {
   name: string;
-  brand?: string;
-  categoryIds?: string[];
+  brandId: string;
+  categoryId: string;
   description?: string;
-  fragranceFamily?: string;
-  gender?: string;
-}) {
+  /** attribute id -> chosen option id */
+  attributes?: Record<string, string>;
+}
+
+function toCreateProductBody(data: ProductWriteInput) {
   return {
     name: data.name,
-    brand: data.brand,
+    brand_id: data.brandId,
+    category_id: data.categoryId,
     description: data.description ?? null,
-    fragrance_family: data.fragranceFamily ?? null,
-    gender: data.gender || 'unisex',
-    category_ids: data.categoryIds,
+    attributes: data.attributes ?? {},
   };
 }
 
-function toUpdateProductBody(
-  data: Partial<{
-    name: string;
-    brand: string;
-    description?: string;
-    fragranceFamily?: string;
-    gender?: string;
-    categoryIds?: string[];
-  }>,
-) {
+function toUpdateProductBody(data: Partial<ProductWriteInput>) {
   const body: Record<string, unknown> = {};
   if (data.name !== undefined) body.name = data.name;
-  if (data.brand !== undefined) body.brand = data.brand;
-  if (data.description !== undefined) body.description = data.description ?? null;
-  if (data.fragranceFamily !== undefined) body.fragrance_family = data.fragranceFamily ?? null;
-  if (data.gender !== undefined) body.gender = data.gender;
-  if (data.categoryIds !== undefined) body.category_ids = data.categoryIds;
+  if (data.brandId !== undefined) body.brand_id = data.brandId;
+  if (data.categoryId !== undefined) body.category_id = data.categoryId;
+  if (data.description !== undefined)
+    body.description = data.description ?? null;
+  if (data.attributes !== undefined) body.attributes = data.attributes;
   return body;
 }
 
@@ -228,14 +229,7 @@ export async function hardDeleteVariant(productId: string, variantId: string): P
 }
 
 export async function createProduct(
-  data: {
-    name: string;
-    brand?: string;
-    categoryIds?: string[];
-    description?: string;
-    fragranceFamily?: string;
-    gender?: string;
-  },
+  data: ProductWriteInput,
   idempotencyKey: string,
 ): Promise<Product> {
   const created = await apiFetch<{ id: string }>(`${ADMIN}/products`, {
@@ -263,53 +257,192 @@ export interface ManagedBrand {
 }
 
 // ---------------------------------------------------------------------------
-// Variant types — the "Global variants" admin screen
-// (specs 2026-07-22-global-variants)
+// Option lists, brand global variants, and the tree
+// (specs 2026-07-22-product-tree)
+//
+// Replaces the variant-type client. Delete always takes an explicit mode; the
+// caller must choose, exactly as the product delete dialog already makes you.
 // ---------------------------------------------------------------------------
 
-/** Active types only — what the variant picker on the product form shows. */
-export async function listVariantTypes(): Promise<VariantTypeRecord[]> {
-  const res = await apiFetch<{ data: VariantTypeRecord[] }>('/catalog/variant-types');
-  return res.data;
-}
+export type DeleteMode = 'soft' | 'hard';
 
-/** Includes retired rows, active first — the admin management screen. */
-export async function listAdminVariantTypes(): Promise<VariantTypeRecord[]> {
-  const res = await apiFetch<{ data: VariantTypeRecord[] }>(`${ADMIN}/variant-types`, {
+/** Category → Brand → item counts, for the navigation tree. */
+export async function loadTree(): Promise<TreeCategoryNodeDto[]> {
+  const res = await apiFetch<{ data: TreeCategoryNodeDto[] }>(`${ADMIN}/tree`, {
     auth: true,
   });
   return res.data;
 }
 
-export async function createVariantType(
-  name: string,
-  sortOrder?: number,
-): Promise<VariantTypeRecord> {
-  return apiFetch<VariantTypeRecord>(`${ADMIN}/variant-types`, {
+/** Active lists only — what the product form offers. */
+export async function listAttributes(
+  categoryId?: string,
+): Promise<AttributeRecordDto[]> {
+  const qs = categoryId ? `?categoryId=${encodeURIComponent(categoryId)}` : '';
+  const res = await apiFetch<{ data: AttributeRecordDto[] }>(
+    `/catalog/attributes${qs}`,
+  );
+  return res.data;
+}
+
+/** Includes deleted rows, active first — the management screen. */
+export async function listAdminAttributes(
+  categoryId?: string,
+): Promise<AttributeRecordDto[]> {
+  const qs = categoryId ? `?categoryId=${encodeURIComponent(categoryId)}` : '';
+  const res = await apiFetch<{ data: AttributeRecordDto[] }>(
+    `${ADMIN}/attributes${qs}`,
+    { auth: true },
+  );
+  return res.data;
+}
+
+export async function createAttribute(data: {
+  name: string;
+  categoryId?: string | null;
+  sortOrder?: number;
+}): Promise<AttributeRecordDto> {
+  return apiFetch<AttributeRecordDto>(`${ADMIN}/attributes`, {
     method: 'POST',
     auth: true,
-    body: JSON.stringify(sortOrder === undefined ? { name } : { name, sortOrder }),
+    body: JSON.stringify(data),
   });
 }
 
-export async function updateVariantType(
+export async function updateAttribute(
   id: string,
   patch: { name?: string; sortOrder?: number; isActive?: boolean },
-): Promise<VariantTypeRecord> {
-  return apiFetch<VariantTypeRecord>(`${ADMIN}/variant-types/${id}`, {
+): Promise<AttributeRecordDto> {
+  return apiFetch<AttributeRecordDto>(`${ADMIN}/attributes/${id}`, {
     method: 'PATCH',
     auth: true,
     body: JSON.stringify(patch),
   });
 }
 
-/** Soft delete — the type leaves the picker, existing variants keep it. */
-export async function deactivateVariantType(id: string): Promise<void> {
-  await apiFetch<void>(`${ADMIN}/variant-types/${id}`, {
+export async function deleteAttribute(
+  id: string,
+  mode: DeleteMode,
+): Promise<void> {
+  await apiFetch<void>(`${ADMIN}/attributes/${id}?mode=${mode}`, {
     method: 'DELETE',
     auth: true,
   });
 }
+
+export async function listAttributeOptions(
+  attributeId: string,
+): Promise<AttributeOptionRecordDto[]> {
+  const res = await apiFetch<{ data: AttributeOptionRecordDto[] }>(
+    `${ADMIN}/attributes/${attributeId}/options`,
+    { auth: true },
+  );
+  return res.data;
+}
+
+export async function createAttributeOption(
+  attributeId: string,
+  data: { name: string; sortOrder?: number },
+): Promise<AttributeOptionRecordDto> {
+  return apiFetch<AttributeOptionRecordDto>(
+    `${ADMIN}/attributes/${attributeId}/options`,
+    { method: 'POST', auth: true, body: JSON.stringify(data) },
+  );
+}
+
+export async function updateAttributeOption(
+  optionId: string,
+  patch: { name?: string; sortOrder?: number; isActive?: boolean },
+): Promise<AttributeOptionRecordDto> {
+  return apiFetch<AttributeOptionRecordDto>(
+    `${ADMIN}/attribute-options/${optionId}`,
+    { method: 'PATCH', auth: true, body: JSON.stringify(patch) },
+  );
+}
+
+export async function deleteAttributeOption(
+  optionId: string,
+  mode: DeleteMode,
+): Promise<void> {
+  await apiFetch<void>(`${ADMIN}/attribute-options/${optionId}?mode=${mode}`, {
+    method: 'DELETE',
+    auth: true,
+  });
+}
+
+export async function listBrandGlobalVariants(
+  brandId: string,
+): Promise<BrandGlobalVariantDto[]> {
+  const res = await apiFetch<{ data: BrandGlobalVariantDto[] }>(
+    `${ADMIN}/brands/${brandId}/global-variants`,
+    { auth: true },
+  );
+  return res.data;
+}
+
+export async function createBrandGlobalVariant(
+  brandId: string,
+  data: {
+    label: string;
+    sizeMl?: number | null;
+    defaultPriceAmount?: string | null;
+    sortOrder?: number;
+  },
+): Promise<BrandGlobalVariantDto> {
+  return apiFetch<BrandGlobalVariantDto>(
+    `${ADMIN}/brands/${brandId}/global-variants`,
+    { method: 'POST', auth: true, body: JSON.stringify(data) },
+  );
+}
+
+export async function updateBrandGlobalVariant(
+  id: string,
+  patch: {
+    label?: string;
+    sizeMl?: number | null;
+    defaultPriceAmount?: string | null;
+    sortOrder?: number;
+    isActive?: boolean;
+  },
+): Promise<BrandGlobalVariantDto> {
+  return apiFetch<BrandGlobalVariantDto>(`${ADMIN}/global-variants/${id}`, {
+    method: 'PATCH',
+    auth: true,
+    body: JSON.stringify(patch),
+  });
+}
+
+export async function deleteBrandGlobalVariant(
+  id: string,
+  mode: DeleteMode,
+): Promise<void> {
+  await apiFetch<void>(`${ADMIN}/global-variants/${id}?mode=${mode}`, {
+    method: 'DELETE',
+    auth: true,
+  });
+}
+
+/**
+ * Copies a brand global onto one item. SKU is always required — it is unique
+ * across every variant, so it can never come from a shared definition.
+ */
+export async function applyGlobalVariant(
+  productId: string,
+  globalVariantId: string,
+  data: {
+    sku: string;
+    size_ml?: number;
+    price_amount?: string;
+    price_currency?: string;
+  },
+): Promise<ProductVariant> {
+  const raw = await apiFetch<BackendVariant>(
+    `${ADMIN}/products/${productId}/variants/apply-global/${globalVariantId}`,
+    { method: 'POST', auth: true, body: JSON.stringify(data) },
+  );
+  return mapVariant(raw);
+}
+
 
 export async function listManagedBrands(): Promise<ManagedBrand[]> {
   const res = await apiFetch<{ data: ManagedBrand[] }>(`${ADMIN}/brands/managed`, { auth: true });
@@ -379,7 +512,6 @@ export async function createVariant(
   data: {
     sku: string;
     sizeMl: number;
-    variantTypeId: string;
     priceAmount: number;
     currency: string;
   },
@@ -390,7 +522,6 @@ export async function createVariant(
     body: JSON.stringify({
       sku: data.sku,
       size_ml: data.sizeMl,
-      variant_type_id: data.variantTypeId,
       price_amount: data.priceAmount.toFixed(4),
       price_currency: data.currency || 'EGP',
     }),
@@ -403,16 +534,12 @@ export async function updateVariant(
   variantId: string,
   data: {
     sizeMl?: number;
-    variantTypeId?: string;
     priceAmount?: number;
     currency?: string;
   },
 ): Promise<ProductVariant> {
   const body: Record<string, unknown> = {};
   if (data.sizeMl !== undefined) body.size_ml = data.sizeMl;
-  if (data.variantTypeId !== undefined) {
-    body.variant_type_id = data.variantTypeId;
-  }
   if (data.priceAmount !== undefined) body.price_amount = data.priceAmount.toFixed(4);
   if (data.currency !== undefined) body.price_currency = data.currency;
   const raw = await apiFetch<BackendVariant>(
@@ -429,14 +556,7 @@ export async function getProduct(id: string): Promise<Product> {
 
 export async function updateProduct(
   id: string,
-  data: Partial<{
-    name: string;
-    brand: string;
-    description?: string;
-    fragranceFamily?: string;
-    gender?: string;
-    categoryIds?: string[];
-  }>,
+  data: Partial<ProductWriteInput>,
 ): Promise<Product> {
   await apiFetch(`${ADMIN}/products/${id}`, {
     method: 'PATCH',

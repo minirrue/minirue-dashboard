@@ -39,3 +39,4 @@ minirue-backend POST /v1/webhooks/payments/gateway
 # Flagging rather than deciding — that call belongs to the project owner.
 # ================================================================================================
 minirue-dashboard PAGE /dashboard/products/global-variants
+minirue-dashboard PAGE /dashboard/products/option-lists
