@@ -10,7 +10,14 @@ import type {
 } from './types';
 
 export type { ProductListItem, ProductStatus } from './types';
-export type BottleType = 'EDP' | 'EDT' | 'Parfum' | 'Hair Mist';
+
+/** A row of the admin-managed variant-type vocabulary ("Global variants"). */
+export interface VariantTypeRecord {
+  id: string;
+  name: string;
+  sortOrder: number;
+  isActive: boolean;
+}
 
 const ADMIN = '/catalog/admin';
 
@@ -19,7 +26,8 @@ interface BackendVariant {
   productId: string;
   sku: string;
   sizeMl: number;
-  bottleType: string;
+  variantTypeId: string;
+  variantTypeName: string | null;
   priceAmount: string;
   priceCurrency: string;
   isActive: boolean;
@@ -85,7 +93,8 @@ function mapVariant(v: BackendVariant): ProductVariant {
     sku: v.sku,
     size: v.sizeMl,
     sizeMl: v.sizeMl,
-    bottleType: v.bottleType as ProductVariant['bottleType'],
+    variantTypeId: v.variantTypeId,
+    variantTypeName: v.variantTypeName ?? '',
     price,
     priceAmount: price,
     currency: v.priceCurrency,
@@ -160,17 +169,6 @@ function toUpdateProductBody(
   if (data.categoryIds !== undefined) body.category_ids = data.categoryIds;
   return body;
 }
-
-const BOTTLE_TYPE_MAP: Record<string, BottleType> = {
-  spray: 'EDP',
-  splash: 'EDT',
-  travel: 'Parfum',
-  refill: 'Hair Mist',
-  EDP: 'EDP',
-  EDT: 'EDT',
-  Parfum: 'Parfum',
-  'Hair Mist': 'Hair Mist',
-};
 
 export async function listProducts(params?: {
   page?: number;
@@ -264,6 +262,55 @@ export interface ManagedBrand {
   createdAt: string;
 }
 
+// ---------------------------------------------------------------------------
+// Variant types — the "Global variants" admin screen
+// (specs 2026-07-22-global-variants)
+// ---------------------------------------------------------------------------
+
+/** Active types only — what the variant picker on the product form shows. */
+export async function listVariantTypes(): Promise<VariantTypeRecord[]> {
+  const res = await apiFetch<{ data: VariantTypeRecord[] }>('/catalog/variant-types');
+  return res.data;
+}
+
+/** Includes retired rows, active first — the admin management screen. */
+export async function listAdminVariantTypes(): Promise<VariantTypeRecord[]> {
+  const res = await apiFetch<{ data: VariantTypeRecord[] }>(`${ADMIN}/variant-types`, {
+    auth: true,
+  });
+  return res.data;
+}
+
+export async function createVariantType(
+  name: string,
+  sortOrder?: number,
+): Promise<VariantTypeRecord> {
+  return apiFetch<VariantTypeRecord>(`${ADMIN}/variant-types`, {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify(sortOrder === undefined ? { name } : { name, sortOrder }),
+  });
+}
+
+export async function updateVariantType(
+  id: string,
+  patch: { name?: string; sortOrder?: number; isActive?: boolean },
+): Promise<VariantTypeRecord> {
+  return apiFetch<VariantTypeRecord>(`${ADMIN}/variant-types/${id}`, {
+    method: 'PATCH',
+    auth: true,
+    body: JSON.stringify(patch),
+  });
+}
+
+/** Soft delete — the type leaves the picker, existing variants keep it. */
+export async function deactivateVariantType(id: string): Promise<void> {
+  await apiFetch<void>(`${ADMIN}/variant-types/${id}`, {
+    method: 'DELETE',
+    auth: true,
+  });
+}
+
 export async function listManagedBrands(): Promise<ManagedBrand[]> {
   const res = await apiFetch<{ data: ManagedBrand[] }>(`${ADMIN}/brands/managed`, { auth: true });
   return res.data;
@@ -332,19 +379,18 @@ export async function createVariant(
   data: {
     sku: string;
     sizeMl: number;
-    bottleType: string;
+    variantTypeId: string;
     priceAmount: number;
     currency: string;
   },
 ): Promise<ProductVariant> {
-  const bottle = BOTTLE_TYPE_MAP[data.bottleType] ?? 'EDP';
   const raw = await apiFetch<BackendVariant>(`${ADMIN}/products/${productId}/variants`, {
     method: 'POST',
     auth: true,
     body: JSON.stringify({
       sku: data.sku,
       size_ml: data.sizeMl,
-      bottle_type: bottle,
+      variant_type_id: data.variantTypeId,
       price_amount: data.priceAmount.toFixed(4),
       price_currency: data.currency || 'EGP',
     }),
@@ -357,15 +403,15 @@ export async function updateVariant(
   variantId: string,
   data: {
     sizeMl?: number;
-    bottleType?: string;
+    variantTypeId?: string;
     priceAmount?: number;
     currency?: string;
   },
 ): Promise<ProductVariant> {
   const body: Record<string, unknown> = {};
   if (data.sizeMl !== undefined) body.size_ml = data.sizeMl;
-  if (data.bottleType !== undefined) {
-    body.bottle_type = BOTTLE_TYPE_MAP[data.bottleType] ?? 'EDP';
+  if (data.variantTypeId !== undefined) {
+    body.variant_type_id = data.variantTypeId;
   }
   if (data.priceAmount !== undefined) body.price_amount = data.priceAmount.toFixed(4);
   if (data.currency !== undefined) body.price_currency = data.currency;

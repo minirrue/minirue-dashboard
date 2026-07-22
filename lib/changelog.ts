@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 34,
+    date: '2026-07-22',
+    area: 'Products',
+    summary:
+      'Product types (EDP, EDT, Parfum, Hair Mist and any others you want) are now yours to manage under Products → Global variants. You can add a new one, rename an existing one, or retire one you no longer sell. Renaming updates it everywhere at once. Retiring hides it when adding new products, but any product already using it keeps showing it, and nothing in past orders changes. Each product can still have as many of its own variants as it needs.',
+  },
+  {
     id: 32,
     date: '2026-07-14',
     area: 'Behind the scenes',

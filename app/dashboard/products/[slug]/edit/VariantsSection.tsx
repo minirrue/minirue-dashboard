@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   createVariant,
   updateVariant,
   softDeleteVariant,
   hardDeleteVariant,
   createProductMedia,
+  listVariantTypes,
+  type VariantTypeRecord,
 } from '@/lib/catalog/api';
-import type { ProductVariant, BottleType, ProductMedia } from '@/lib/catalog/types';
+import type { ProductVariant, ProductMedia } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
 import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
 import GalleryPickerModal from '@/components/dashboard/GalleryPickerModal';
@@ -17,7 +19,7 @@ import type { GalleryItem } from '@/lib/gallery/types';
 interface VariantFormValues {
   sku: string;
   sizeMl: string;
-  bottleType: BottleType | '';
+  variantTypeId: string;
   priceAmount: string;
   currency: string;
 }
@@ -25,8 +27,23 @@ interface VariantFormValues {
 interface VariantFormErrors {
   sku?: string;
   sizeMl?: string;
-  bottleType?: string;
+  variantTypeId?: string;
   priceAmount?: string;
+}
+
+/**
+ * Active types, plus the row's own type when that type has been retired.
+ * Without the second half, opening the edit form on a variant whose type was
+ * deactivated would show a blank select and silently rewrite the variant to
+ * whatever the admin picked next.
+ */
+function variantTypeOptions(
+  active: VariantTypeRecord[],
+  currentId: string,
+  currentName: string,
+): Array<{ id: string; name: string }> {
+  if (!currentId || active.some((t) => t.id === currentId)) return active;
+  return [...active, { id: currentId, name: `${currentName} (retired)` }];
 }
 
 function validateVariant(v: VariantFormValues): VariantFormErrors {
@@ -34,24 +51,16 @@ function validateVariant(v: VariantFormValues): VariantFormErrors {
   if (!v.sku.trim()) errors.sku = 'SKU is required.';
   const size = Number(v.sizeMl);
   if (!v.sizeMl || isNaN(size) || size <= 0) errors.sizeMl = 'Valid size is required.';
-  if (!v.bottleType) errors.bottleType = 'Bottle type is required.';
+  if (!v.variantTypeId) errors.variantTypeId = 'Variant type is required.';
   const price = Number(v.priceAmount);
   if (!v.priceAmount || isNaN(price) || price < 0) errors.priceAmount = 'Valid price is required.';
   return errors;
 }
 
-const BOTTLE_OPTIONS: Array<{ value: BottleType | ''; label: string }> = [
-  { value: '', label: 'Select type…' },
-  { value: 'EDP', label: 'EDP' },
-  { value: 'EDT', label: 'EDT' },
-  { value: 'Parfum', label: 'Parfum' },
-  { value: 'Hair Mist', label: 'Hair Mist' },
-];
-
 const EMPTY_FORM: VariantFormValues = {
   sku: '',
   sizeMl: '',
-  bottleType: '',
+  variantTypeId: '',
   priceAmount: '',
   currency: 'EGP',
 };
@@ -94,6 +103,29 @@ export default function VariantsSection({
   const [pickerVariantId, setPickerVariantId] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
 
+  // The vocabulary was a hardcoded four-item array until
+  // specs/2026-07-22-global-variants. Fetched once per mount: it is small,
+  // rarely changes, and every variant row on the page reads the same list.
+  const [variantTypes, setVariantTypes] = useState<VariantTypeRecord[]>([]);
+  const [variantTypesError, setVariantTypesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    listVariantTypes()
+      .then((types) => {
+        if (!cancelled) setVariantTypes(types);
+      })
+      .catch(() => {
+        if (!cancelled)
+          setVariantTypesError(
+            'Could not load variant types. Add them under Products → Global variants.',
+          );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   async function handleLinkGalleryItem(variantId: string, item: GalleryItem) {
     setPickerVariantId(null);
     setLinkError(null);
@@ -130,7 +162,7 @@ export default function VariantsSection({
       const variant = await createVariant(productId, {
         sku: formValues.sku.trim(),
         sizeMl: Number(formValues.sizeMl),
-        bottleType: formValues.bottleType as BottleType,
+        variantTypeId: formValues.variantTypeId,
         priceAmount: Number(formValues.priceAmount),
         currency: formValues.currency.trim() || 'USD',
       });
@@ -157,7 +189,7 @@ export default function VariantsSection({
     setEditValues({
       sku: v.sku,
       sizeMl: String(v.sizeMl),
-      bottleType: v.bottleType as BottleType,
+      variantTypeId: v.variantTypeId,
       priceAmount: String(v.priceAmount),
       currency: v.currency,
     });
@@ -184,7 +216,7 @@ export default function VariantsSection({
     try {
       const updated = await updateVariant(productId, v.id, {
         sizeMl: Number(editValues.sizeMl),
-        bottleType: editValues.bottleType as BottleType,
+        variantTypeId: editValues.variantTypeId,
         priceAmount: Number(editValues.priceAmount),
         currency: editValues.currency.trim() || 'USD',
       });
@@ -280,7 +312,7 @@ export default function VariantsSection({
                   >
                     <td>{v.sku}</td>
                     <td>{v.sizeMl}</td>
-                    <td style={{ textTransform: 'capitalize' }}>{v.bottleType}</td>
+                    <td>{v.variantTypeName}</td>
                     <td style={{ textAlign: 'right' }}>{formatPrice(v.priceAmount, v.currency)}</td>
                     <td>
                       <button
@@ -359,24 +391,28 @@ export default function VariantsSection({
                               {editErrors.sizeMl && <p className="dash-field-error">{editErrors.sizeMl}</p>}
                             </div>
                             <div className="dash-field">
-                              <label className="dash-label" htmlFor={`edit-bottle-${v.id}`}>
-                                Bottle Type <span className="dash-required">*</span>
+                              <label className="dash-label" htmlFor={`edit-variant-type-${v.id}`}>
+                                Variant Type <span className="dash-required">*</span>
                               </label>
                               <select
-                                id={`edit-bottle-${v.id}`}
-                                className={`dash-select${editErrors.bottleType ? ' dash-input-error' : ''}`}
-                                value={editValues.bottleType}
-                                onChange={(e) => editSetField('bottleType', e.target.value as BottleType | '')}
+                                id={`edit-variant-type-${v.id}`}
+                                className={`dash-select${editErrors.variantTypeId ? ' dash-input-error' : ''}`}
+                                value={editValues.variantTypeId}
+                                onChange={(e) => editSetField('variantTypeId', e.target.value)}
                                 disabled={editSubmitting}
-                                data-trace-id={`PG-DASHBOARD-CAT-003::EL-SELECT-edit-variant-bottle-type@${v.id}`}
+                                data-trace-id={`PG-DASHBOARD-CAT-003::EL-SELECT-edit-variant-type@${v.id}`}
                               >
-                                {BOTTLE_OPTIONS.map((o) => (
-                                  <option key={o.value} value={o.value}>
-                                    {o.label}
+                                <option value="">Select type…</option>
+                                {/* The row's own type is appended when it has
+                                    been retired, so editing a variant that uses
+                                    a retired type does not silently reassign it. */}
+                                {variantTypeOptions(variantTypes, v.variantTypeId, v.variantTypeName).map((o) => (
+                                  <option key={o.id} value={o.id}>
+                                    {o.name}
                                   </option>
                                 ))}
                               </select>
-                              {editErrors.bottleType && <p className="dash-field-error">{editErrors.bottleType}</p>}
+                              {editErrors.variantTypeId && <p className="dash-field-error">{editErrors.variantTypeId}</p>}
                             </div>
                           </div>
                           <div className="dash-field-row">
@@ -449,6 +485,11 @@ export default function VariantsSection({
       )}
 
       {linkError && <p className="dash-inline-error">{linkError}</p>}
+      {variantTypesError && (
+        <p className="dash-inline-error" data-trace-id="PG-DASHBOARD-CAT-003::EL-TEXT-variant-types-error">
+          {variantTypesError}
+        </p>
+      )}
 
       {/* Add variant form */}
       {showForm && (
@@ -493,23 +534,24 @@ export default function VariantsSection({
             </div>
             <div className="dash-field">
               <label className="dash-label" htmlFor="var-bottle">
-                Bottle Type <span className="dash-required">*</span>
+                Variant Type <span className="dash-required">*</span>
               </label>
               <select
-                id="var-bottle"
-                className={`dash-select${formErrors.bottleType ? ' dash-input-error' : ''}`}
-                value={formValues.bottleType}
-                onChange={(e) => setField('bottleType', e.target.value as BottleType | '')}
+                id="var-type"
+                className={`dash-select${formErrors.variantTypeId ? ' dash-input-error' : ''}`}
+                value={formValues.variantTypeId}
+                onChange={(e) => setField('variantTypeId', e.target.value)}
                 disabled={submitting}
-                data-trace-id="PG-DASHBOARD-CAT-003::EL-SELECT-add-variant-bottle-type"
+                data-trace-id="PG-DASHBOARD-CAT-003::EL-SELECT-add-variant-type"
               >
-                {BOTTLE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
+                <option value="">Select type…</option>
+                {variantTypes.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
                   </option>
                 ))}
               </select>
-              {formErrors.bottleType && <p className="dash-field-error">{formErrors.bottleType}</p>}
+              {formErrors.variantTypeId && <p className="dash-field-error">{formErrors.variantTypeId}</p>}
             </div>
           </div>
           <div className="dash-field-row">

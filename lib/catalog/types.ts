@@ -1,5 +1,4 @@
 export type ProductStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED' | 'PUBLISHED';
-export type BottleType = 'EDP' | 'EDT' | 'Parfum' | 'Hair Mist' | 'spray' | 'splash' | 'travel' | 'refill';
 export type Gender = 'MASCULINE' | 'FEMININE' | 'UNISEX' | 'men' | 'women' | 'unisex';
 
 export interface Category {
@@ -17,7 +16,9 @@ export interface ProductVariant {
   sku: string;
   size: number;
   sizeMl: number;
-  bottleType: BottleType;
+  variantTypeId: string;
+  /** Resolved name from the variant_types vocabulary; '' when unresolved. */
+  variantTypeName: string;
   price: number;
   priceAmount: number;
   currency: string;

@@ -20,6 +20,7 @@ import type { ManagedBrand } from '@/lib/catalog/api';
 import type { ApiError } from '@/lib/api/client';
 import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
 import { useDebounce } from '@/lib/hooks/useDebounce';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 /* ── Row type for table ── */
 interface ProductRow extends ProductListItem {
@@ -134,7 +135,7 @@ export default function ProductsClient() {
     [statusFilter, brandFilter, debouncedSearchInput],
   );
 
-  useEffect(() => {
+  useMountedEffect(() => {
     load();
   }, [load]);
 
@@ -287,6 +288,13 @@ export default function ProductsClient() {
       <div className="dash-page-header" data-trace-id="PG-DASHBOARD-CAT-001::EL-REGION-products-page-header">
         <h1 className="dash-page-title">Products</h1>
         <div style={{ display: 'flex', gap: 8 }}>
+          <Link
+            href="/products/global-variants"
+            className="dash-btn-secondary"
+            data-trace-id="PG-DASHBOARD-CAT-001::EL-LINK-global-variants"
+          >
+            Global variants
+          </Link>
           <Link
             href="/products/brands"
             className="dash-btn-secondary"
