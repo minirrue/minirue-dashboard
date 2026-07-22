@@ -159,7 +159,10 @@ export default function CollaboratorsClient() {
 
       });
 
-      setItems(res.items);
+      // Guarded: a response missing this key set state to undefined and the
+      // next .map()/.reduce() blanked the whole tab. Same bug as Settings
+      // and Loyalty had.
+      setItems(Array.isArray(res?.items) ? res.items : []);
 
     } catch (e) {
 

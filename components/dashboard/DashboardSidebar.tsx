@@ -228,7 +228,7 @@ const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
   {
     section: 'System',
     items: [
-      { label: 'Settings', href: '/settings', icon: <IconSettings />, maintenance: true },
+      { label: 'Settings', href: '/settings', icon: <IconSettings /> },
       { label: 'Info', href: '/info', icon: <IconInfo /> },
     ],
   },

@@ -7,6 +7,10 @@
 
 export const Role = {
   DEV: 'DEV',
+  // One capability nobody else has: erasing the shop's data
+  // (specs 2026-07-22-platform-reset). Not granted by inheritance — the
+  // backend guard matches exactly, so an ADMIN or OWNER is refused.
+  SUPERADMIN: 'SUPERADMIN',
   OWNER: 'OWNER',
   ADMIN: 'ADMIN',
   STAFF: 'STAFF',
@@ -25,6 +29,7 @@ export function isRole(value: unknown): value is Role {
 export function roleLabel(role: Role): string {
   const labels: Record<Role, string> = {
     [Role.DEV]: 'Developer',
+    [Role.SUPERADMIN]: 'Super Admin',
     // OWNER is the real top-level account role, but "Admin" is the label
     // non-technical users actually recognize — explicit rename, not a bug.
     [Role.OWNER]: 'Admin',

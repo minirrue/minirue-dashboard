@@ -93,7 +93,10 @@ export default function WarehousesClient() {
     setError(null);
     try {
       const res = await listWarehouses();
-      setItems(res.data);
+      // Guarded: a response missing this key set state to undefined and the
+      // next .map()/.reduce() blanked the whole tab. Same bug as Settings
+      // and Loyalty had.
+      setItems(Array.isArray(res?.data) ? res.data : []);
     } catch (e) {
       const err = e as ApiError;
       setError(err.message ?? 'Failed to load warehouses');

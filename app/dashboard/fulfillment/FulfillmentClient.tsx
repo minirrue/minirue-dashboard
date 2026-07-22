@@ -137,7 +137,10 @@ export default function FulfillmentClient() {
         status: status ? (status as ShipmentStatus) : undefined,
         limit: 100,
       });
-      setShipments(res.data);
+      // Guarded: a response missing this key set state to undefined and the
+      // next .map()/.reduce() blanked the whole tab. Same bug as Settings
+      // and Loyalty had.
+      setShipments(Array.isArray(res?.data) ? res.data : []);
     } catch (e) {
       setError((e as ApiError).message ?? 'Failed to load shipments');
     } finally {

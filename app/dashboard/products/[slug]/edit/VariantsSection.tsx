@@ -301,7 +301,7 @@ export default function VariantsSection({
               <tr>
                 <th>SKU</th>
                 <th>Size (ml)</th>
-                <th>Bottle</th>
+                <th>Source</th>
                 <th style={{ textAlign: 'right' }}>Price</th>
                 <th>Photos</th>
                 <th>Actions</th>

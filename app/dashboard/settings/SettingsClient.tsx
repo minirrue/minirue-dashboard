@@ -8,6 +8,7 @@ import { useUser } from '@/lib/hooks/use-auth';
 import { apiUpdateMyProfile, apiUploadMyAvatar } from '@/lib/api/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import RoleBadge from '@/components/dashboard/RoleBadge';
+import DataResetPanel from '@/components/dashboard/DataResetPanel';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => void }) {
@@ -388,6 +389,11 @@ export default function SettingsClient() {
           </div>
         </div>
       </form>
+
+      {/* Renders nothing unless the signed-in account is a super admin AND the
+          environment allows a reset — the panel asks the server and hides
+          itself on a 403 (specs 2026-07-22-platform-reset). */}
+      <DataResetPanel />
     </>
   );
 }

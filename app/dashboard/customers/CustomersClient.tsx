@@ -135,7 +135,10 @@ export default function CustomersClient() {
     setError(null);
     try {
       const res = await apiAdminListCustomers({ limit: 200, tier });
-      setAllCustomers(res.data);
+      // Guarded: a response missing this key set state to undefined and the
+      // next .map()/.reduce() blanked the whole tab. Same bug as Settings
+      // and Loyalty had.
+      setAllCustomers(Array.isArray(res?.data) ? res.data : []);
     } catch (e) {
       setError((e as ApiError).message ?? 'Failed to load customers');
     } finally {

@@ -140,7 +140,10 @@ export default function MovementsClient() {
     setError(null);
     try {
       const res = await listMovements({ movementType: typeFilter || undefined, limit: 100 });
-      setItems(res.data);
+      // Guarded: a response missing this key set state to undefined and the
+      // next .map()/.reduce() blanked the whole tab. Same bug as Settings
+      // and Loyalty had.
+      setItems(Array.isArray(res?.data) ? res.data : []);
     } catch (e) {
       const err = e as ApiError;
       setError(err.message ?? 'Failed to load movement history');

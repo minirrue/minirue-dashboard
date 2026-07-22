@@ -40,7 +40,10 @@ export default function ReceiveStockClient() {
 
   useEffect(() => {
     listWarehouses().then((res) => {
-      setWarehouses(res.data);
+      // Guarded: a response missing this key set state to undefined and the
+      // next .map()/.reduce() blanked the whole tab. Same bug as Settings
+      // and Loyalty had.
+      setWarehouses(Array.isArray(res?.data) ? res.data : []);
       if (res.data.length > 0) setWarehouseId(res.data[0].id);
     }).catch(() => {});
   }, []);

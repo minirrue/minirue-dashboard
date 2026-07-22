@@ -66,17 +66,12 @@ function OptionRow({
   }
 
   async function handleDelete(mode: 'soft' | 'hard') {
-    try {
-      await deleteAttributeOption(option.id, mode);
-      setConfirmDelete(false);
-      if (mode === 'hard') onDeleted(option.id);
-      else onUpdated({ ...option, isActive: false });
-    } catch (e) {
-      // A hard delete on an option products still use comes back as a 409 with
-      // the count. Surfacing it beats a silent failure.
-      setError((e as ApiError).message ?? 'Delete failed.');
-      throw e;
-    }
+    // The dialog shows its own error, so nothing is set here — showing it in
+    // both places printed the same sentence twice on screen.
+    await deleteAttributeOption(option.id, mode);
+    setConfirmDelete(false);
+    if (mode === 'hard') onDeleted(option.id);
+    else onUpdated({ ...option, isActive: false });
   }
 
   return (
@@ -160,6 +155,7 @@ function OptionRow({
           onHardDelete={() => handleDelete('hard')}
           onCancel={() => setConfirmDelete(false)}
           traceIdPrefix={`${TRACE}::EL-MODAL-delete-option@${option.id}`}
+          hardDeleteNote="Also cleared from any product that had picked it — the products themselves stay."
         />
       )}
     </li>
@@ -220,15 +216,10 @@ function AttributeCard({
   }
 
   async function handleDeleteList(mode: 'soft' | 'hard') {
-    try {
-      await deleteAttribute(attribute.id, mode);
-      setConfirmDelete(false);
-      if (mode === 'hard') onDeleted(attribute.id);
-      else onUpdated({ ...attribute, isActive: false });
-    } catch (e) {
-      setError((e as ApiError).message ?? 'Delete failed.');
-      throw e;
-    }
+    await deleteAttribute(attribute.id, mode);
+    setConfirmDelete(false);
+    if (mode === 'hard') onDeleted(attribute.id);
+    else onUpdated({ ...attribute, isActive: false });
   }
 
   return (
@@ -326,6 +317,7 @@ function AttributeCard({
           onHardDelete={() => handleDeleteList('hard')}
           onCancel={() => setConfirmDelete(false)}
           traceIdPrefix={`${TRACE}::EL-MODAL-delete-attribute@${attribute.id}`}
+          hardDeleteNote="The whole list and all its values go, and every product that used it loses that answer. The products themselves stay."
         />
       )}
     </section>

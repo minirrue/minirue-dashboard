@@ -77,12 +77,19 @@ export default function ProductClassification({
   // Re-fetch whenever the category changes: a list scoped to Cosmetics must
   // not appear on a Perfume item.
   useEffect(() => {
-    if (!value.categoryId) {
-      setAttributes([]);
-      setOptionsByAttribute({});
-      return;
-    }
     let cancelled = false;
+    if (!value.categoryId) {
+      // Cleared in a microtask rather than straight away, so the reset does not
+      // set state during the effect's own commit.
+      void Promise.resolve().then(() => {
+        if (cancelled) return;
+        setAttributes([]);
+        setOptionsByAttribute({});
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
     listAttributes(value.categoryId)
       .then(async (attrs) => {
         if (cancelled) return;

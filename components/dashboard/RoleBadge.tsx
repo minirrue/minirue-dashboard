@@ -7,6 +7,9 @@ export interface RoleBadgeProps {
 }
 
 const ROLE_TONE: Record<Role, 'owner' | 'admin' | 'staff' | 'dev' | 'customer'> = {
+  // Shares the owner tone deliberately: it is an owner-level account, and a
+  // colour of its own would advertise the reset capability on every screen.
+  SUPERADMIN: 'owner',
   OWNER: 'owner',
   ADMIN: 'admin',
   STAFF: 'staff',

@@ -80,7 +80,10 @@ export default function CategoriesPage() {
     setLoading(true);
     try {
       const res = await listCategories();
-      setCategories(res.items);
+      // Guarded: a response missing this key set state to undefined and the
+      // next .map()/.reduce() blanked the whole tab. Same bug as Settings
+      // and Loyalty had.
+      setCategories(Array.isArray(res?.items) ? res.items : []);
     } catch (e) {
       const err = e as ApiError;
       setLoadError(err.message ?? 'Failed to load categories.');

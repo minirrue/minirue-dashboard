@@ -102,7 +102,10 @@ export default function LoyaltyClient() {
     setError(null);
     try {
       const res = await apiAdminListLoyaltyAccounts({ limit: 100 });
-      setAccounts(res.data);
+      // A response with no data key set accounts to undefined, and the
+      // reduce() below then took the whole page down with "Cannot read
+      // properties of undefined" — same shape of bug as the Settings crash.
+      setAccounts(Array.isArray(res?.data) ? res.data : []);
     } catch (e) {
       setError((e as ApiError).message ?? 'Failed to load loyalty data');
     } finally {

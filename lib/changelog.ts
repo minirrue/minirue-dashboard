@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 36,
+    date: '2026-07-22',
+    area: 'Settings',
+    summary:
+      'Settings works again — it was showing an error instead of the page on a shop with no tax rules saved yet, and saving would have quietly thrown away the VAT number you typed. Several other tabs had the same weakness and are now protected. A new Super Admin account type can erase shop data from Settings: it shows you exactly what will go and how much of it, you tick only what you want, and you type the shop name to confirm. Sign-in accounts are never removed, so everyone can still log in afterwards. Deleting an option or a whole list now also clears it from any product using it, instead of refusing.',
+  },
+  {
     id: 35,
     date: '2026-07-22',
     area: 'Products',

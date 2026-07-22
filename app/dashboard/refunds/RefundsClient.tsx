@@ -137,7 +137,10 @@ export default function RefundsClient() {
         status: status ? (status as RefundStatus) : undefined,
         limit: 100,
       });
-      setRefunds(res.data);
+      // Guarded: a response missing this key set state to undefined and the
+      // next .map()/.reduce() blanked the whole tab. Same bug as Settings
+      // and Loyalty had.
+      setRefunds(Array.isArray(res?.data) ? res.data : []);
     } catch (e) {
       setError((e as ApiError).message ?? 'Failed to load refunds');
     } finally {

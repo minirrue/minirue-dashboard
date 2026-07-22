@@ -1,14 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
 import type { ApiError } from '@/lib/api/client';
 
 export interface DeleteChoiceDialogProps {
+  /** What is being deleted, shown in the question. */
   productName: string;
   onSoftDelete: () => Promise<void>;
   onHardDelete: () => Promise<void>;
   onCancel: () => void;
   traceIdPrefix?: string;
+  /**
+   * What hard delete actually does here. Products say "blocked if past orders
+   * reference it"; option lists say "also cleared from the products using it".
+   * Left as the product wording by default so existing callers are unchanged.
+   */
+  hardDeleteNote?: string;
 }
 
 export default function DeleteChoiceDialog({
@@ -17,7 +25,15 @@ export default function DeleteChoiceDialog({
   onHardDelete,
   onCancel,
   traceIdPrefix = 'EL-MODAL-delete-choice',
+  hardDeleteNote = 'Will be blocked if past orders reference this product.',
 }: DeleteChoiceDialogProps) {
+  // "Are we on the client yet?" without setting state inside an effect, which
+  // forces a second render pass (react-hooks/set-state-in-effect).
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const [busy, setBusy] = useState<'soft' | 'hard' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,7 +63,14 @@ export default function DeleteChoiceDialog({
     }
   }
 
-  return (
+  // Rendered into <body>. The overlay is position:fixed, and .dash-card sets a
+  // transform, which makes the card a containing block -- the backdrop was
+  // covering only the card it was rendered inside instead of the page. The
+  // frontend notes call this out explicitly: never put a transform on a parent
+  // of position:fixed children.
+  if (!mounted) return null;
+
+  return createPortal(
     <div className="dash-dialog-overlay">
       <div className="dash-dialog" data-trace-id={traceIdPrefix}>
         <p className="dash-dialog-message">
@@ -63,8 +86,8 @@ export default function DeleteChoiceDialog({
           </div>
           <div>
             <p className="dash-help-text" style={{ margin: 0 }}>
-              <strong>Hard delete:</strong> permanently erases this record, cannot be undone.
-              Will be blocked if past orders reference this product.
+              <strong>Hard delete:</strong> permanently erases this record, cannot be undone.{' '}
+              {hardDeleteNote}
             </p>
           </div>
         </div>
@@ -101,6 +124,7 @@ export default function DeleteChoiceDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

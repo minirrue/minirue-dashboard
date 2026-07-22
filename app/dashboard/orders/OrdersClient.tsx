@@ -146,7 +146,10 @@ export default function OrdersClient() {
         status: status ? (status as OrderStatus) : undefined,
         limit: 100,
       });
-      setOrders(res.data);
+      // Guarded: a response missing this key set state to undefined and the
+      // next .map()/.reduce() blanked the whole tab. Same bug as Settings
+      // and Loyalty had.
+      setOrders(Array.isArray(res?.data) ? res.data : []);
     } catch (e) {
       const err = e as ApiError;
       setError(err.message ?? 'Failed to load orders');

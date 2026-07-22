@@ -1,6 +1,12 @@
 import { Role, isRole, type Role as RoleType } from './role';
 
-const STAFF_ROLES: RoleType[] = [Role.DEV, Role.OWNER, Role.ADMIN, Role.STAFF];
+const STAFF_ROLES: RoleType[] = [
+  Role.DEV,
+  Role.SUPERADMIN,
+  Role.OWNER,
+  Role.ADMIN,
+  Role.STAFF,
+];
 const COLLAB_ROLES: RoleType[] = [Role.COLLAB, Role.DEV];
 
 /**
@@ -8,20 +14,20 @@ const COLLAB_ROLES: RoleType[] = [Role.COLLAB, Role.DEV];
  * See `knowledge/specs/005-shared-enums-types/data-model.md` RBAC matrix.
  */
 export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
-  '/overview': [Role.ADMIN, Role.OWNER, Role.STAFF, Role.DEV],
-  '/products': [Role.ADMIN, Role.OWNER, Role.DEV],
-  '/categories': [Role.ADMIN, Role.OWNER, Role.DEV],
-  '/orders': [Role.ADMIN, Role.OWNER, Role.STAFF, Role.DEV],
-  '/customers': [Role.ADMIN, Role.OWNER, Role.DEV],
-  '/fulfillment': [Role.ADMIN, Role.OWNER, Role.STAFF, Role.DEV],
-  '/refunds': [Role.ADMIN, Role.OWNER, Role.DEV],
-  '/inventory': [Role.ADMIN, Role.OWNER, Role.DEV],
-  '/analytics': [Role.OWNER, Role.STAFF, Role.DEV],
-  '/loyalty': [Role.ADMIN, Role.OWNER, Role.DEV],
-  '/settings': [Role.ADMIN, Role.OWNER, Role.DEV],
+  '/overview': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.STAFF, Role.DEV],
+  '/products': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.DEV],
+  '/categories': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.DEV],
+  '/orders': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.STAFF, Role.DEV],
+  '/customers': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.DEV],
+  '/fulfillment': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.STAFF, Role.DEV],
+  '/refunds': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.DEV],
+  '/inventory': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.DEV],
+  '/analytics': [Role.OWNER, Role.SUPERADMIN, Role.STAFF, Role.DEV],
+  '/loyalty': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.DEV],
+  '/settings': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.DEV],
   '/info': STAFF_ROLES,
-  '/storefront-appearance': [Role.ADMIN, Role.OWNER, Role.DEV],
-  '/collaborators': [Role.ADMIN, Role.OWNER],
+  '/storefront-appearance': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.DEV],
+  '/collaborators': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN],
   '/collab': COLLAB_ROLES,
   '/collab/workspace': COLLAB_ROLES,
   '/collab/orders': COLLAB_ROLES,

@@ -7,6 +7,12 @@ export interface RoleBrief {
 }
 
 const BRIEFS: Record<RoleType, RoleBrief> = {
+  [Role.SUPERADMIN]: {
+    headline: 'Store overview',
+    description:
+      'Everything an admin can do, plus the data reset under Settings. Use that one with care — it cannot be undone.',
+    primaryAction: { label: 'View analytics', href: '/analytics' },
+  },
   [Role.OWNER]: {
     headline: 'Store overview',
     description: 'Revenue, customer growth, and order flow at a glance. You have full access across catalog, operations, and settings.',

@@ -10,9 +10,18 @@ import {
 describe('role vocabulary', () => {
   it('exposes the canonical backend members', () => {
     expect(ROLE_VALUES).toEqual(
-      expect.arrayContaining([Role.CUSTOMER, Role.STAFF, Role.ADMIN, Role.OWNER, Role.DEV]),
+      expect.arrayContaining([
+        Role.CUSTOMER,
+        Role.STAFF,
+        Role.ADMIN,
+        Role.OWNER,
+        Role.SUPERADMIN,
+        Role.DEV,
+      ]),
     );
-    expect(ROLE_VALUES).toHaveLength(6);
+    // SUPERADMIN added 2026-07-22 for the data reset — it must mirror the
+    // backend enum exactly, so this count is deliberately strict.
+    expect(ROLE_VALUES).toHaveLength(7);
   });
 
   it('rejects non-canonical role strings', () => {
