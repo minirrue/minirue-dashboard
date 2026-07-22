@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, {useState, useCallback } from 'react';
 import Link from 'next/link';
 import { apiAdminListShipments, apiUpdateShipmentStatus } from '@/lib/api/fulfillment';
 import type { AdminShipmentRow, ShipmentStatus } from '@/lib/api/fulfillment';
 import type { ApiError } from '@/lib/api/client';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—';
@@ -144,7 +145,7 @@ export default function FulfillmentClient() {
     }
   }, []);
 
-  useEffect(() => { load(statusFilter || undefined); }, [load, statusFilter]);
+  useMountedEffect(() => { load(statusFilter || undefined); }, [load, statusFilter]);
 
   const handleUpdate = useCallback(async (id: string, status: ShipmentStatus) => {
     setUpdateError(null);

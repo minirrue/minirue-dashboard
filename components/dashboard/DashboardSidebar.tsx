@@ -9,6 +9,7 @@ import { CHANGELOG } from '@/lib/changelog';
 import { hasUnreadChangelog } from '@/lib/changelog-read-state';
 import NotificationDrawer from './NotificationDrawer';
 import { apiCollabOverview, type CollabModule } from '@/lib/api/collab-portal';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 /* ── Icon helpers (inline SVG to avoid external deps) ── */
 
@@ -256,7 +257,7 @@ export default function DashboardSidebar({
   // RBAC gating: fetch the caller's granted modules once and hide (not
   // show-then-error) any tab whose `requiresCollabModule` isn't granted.
   const [collabModules, setCollabModules] = React.useState<CollabModule[] | null>(null);
-  React.useEffect(() => {
+  useMountedEffect(() => {
     if (userRole !== 'COLLAB') {
       setCollabModules(null);
       return;
@@ -304,7 +305,7 @@ export default function DashboardSidebar({
   // there's no hydration mismatch), cleared once the admin actually visits
   // /info (InfoClient marks it read there).
   const [showInfoDot, setShowInfoDot] = React.useState(false);
-  React.useEffect(() => {
+  useMountedEffect(() => {
     const latestId = Math.max(...CHANGELOG.map((e) => e.id), 0);
     setShowInfoDot(hasUnreadChangelog(latestId));
   }, [activePath]);

@@ -8,6 +8,7 @@ import type { WarehouseRow } from '@/lib/inventory/api';
 import { apiFetch } from '@/lib/api/client';
 import type { ApiError } from '@/lib/api/client';
 import { useDebounce } from '@/lib/hooks/useDebounce';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 interface VariantOption {
   variantId: string;
@@ -44,7 +45,7 @@ export default function ReceiveStockClient() {
     }).catch(() => {});
   }, []);
 
-  useEffect(() => {
+  useMountedEffect(() => {
     if (!debouncedSearch || debouncedSearch.length < 2) {
       setVariantOptions([]);
       setShowDropdown(false);

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import {useState, type ReactNode } from 'react';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 type ClientOnlyProps = {
   children: ReactNode;
@@ -12,7 +13,7 @@ type ClientOnlyProps = {
 export default function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
+  useMountedEffect(() => {
     setMounted(true);
   }, []);
 

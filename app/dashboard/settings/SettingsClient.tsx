@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, {useState, useCallback, useRef } from 'react';
 import { apiGetSettings, apiUpdateSettings, apiUploadBrandLogo } from '@/lib/api/settings';
 import type { StoreSettings } from '@/lib/api/settings';
 import type { ApiError } from '@/lib/api/client';
@@ -8,6 +8,7 @@ import { useUser } from '@/lib/hooks/use-auth';
 import { apiUpdateMyProfile, apiUploadMyAvatar } from '@/lib/api/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import RoleBadge from '@/components/dashboard/RoleBadge';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => void }) {
   const { data: user, isLoading } = useUser();
@@ -21,7 +22,7 @@ function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => void }) {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  useMountedEffect(() => {
     if (user?.name) setName(user.name);
   }, [user?.name]);
 
@@ -257,7 +258,7 @@ export default function SettingsClient() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useMountedEffect(() => { load(); }, [load]);
 
   const setField = (field: keyof Omit<SettingsForm, 'brand'>) => (
     e: React.ChangeEvent<HTMLInputElement>,

@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, {useState, useCallback } from 'react';
 import { apiAdminListLoyaltyAccounts, apiAdminManualAdjust } from '@/lib/api/loyalty';
 import type { LoyaltyAccountDto } from '@/lib/api/loyalty';
 import type { ApiError } from '@/lib/api/client';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 function SkeletonRows() {
   return (
@@ -109,7 +110,7 @@ export default function LoyaltyClient() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useMountedEffect(() => { load(); }, [load]);
 
   const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
   const totalEarned = accounts.reduce((s, a) => s + a.lifetimeEarned, 0);

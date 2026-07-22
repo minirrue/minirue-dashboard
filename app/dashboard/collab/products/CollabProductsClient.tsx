@@ -4,7 +4,7 @@
 
 import Link from 'next/link';
 
-import { useEffect, useState } from 'react';
+import {useState } from 'react';
 
 import {
 
@@ -27,6 +27,7 @@ import {
 import { apiCollabGetBrand, apiCollabProducts } from '@/lib/api/collab-portal';
 
 import type { ApiError } from '@/lib/api/client';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 
 
@@ -58,7 +59,7 @@ export default function CollabProductsClient() {
 
 
 
-  useEffect(() => {
+  useMountedEffect(() => {
 
     let cancelled = false;
 

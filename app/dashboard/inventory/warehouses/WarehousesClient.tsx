@@ -11,13 +11,14 @@
  * [TBD] Active toggle (enable/disable warehouse) — no PATCH endpoint defined.
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, {useState, useCallback } from 'react';
 import Link from 'next/link';
 import DashboardTable from '@/components/dashboard/DashboardTable';
 import type { Column } from '@/components/dashboard/DashboardTable';
 import { listWarehouses, createWarehouse } from '@/lib/inventory/api';
 import type { WarehouseRow } from '@/lib/inventory/api';
 import type { ApiError } from '@/lib/api/client';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 /* ── Skeleton ── */
 function SkeletonRows({ count = 4 }: { count?: number }) {
@@ -101,7 +102,7 @@ export default function WarehousesClient() {
     }
   }, []);
 
-  useEffect(() => {
+  useMountedEffect(() => {
     load();
   }, [load]);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, {useCallback, useState } from 'react';
 import {
   createFolder,
   listFolders,
@@ -9,6 +9,7 @@ import {
 } from '@/lib/gallery/api';
 import type { GalleryFolder, GalleryItem } from '@/lib/gallery/types';
 import type { ApiError } from '@/lib/api/client';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 const TRACE = 'CMP-DASHBOARD-GALLERY-PICKER';
 
@@ -69,7 +70,7 @@ export default function GalleryPickerModal({ onSelect, onClose }: GalleryPickerM
     }
   }, []);
 
-  useEffect(() => {
+  useMountedEffect(() => {
     loadFolders();
   }, [loadFolders]);
 

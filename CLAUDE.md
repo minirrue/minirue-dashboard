@@ -26,11 +26,10 @@ Admin/collaborator dashboard — internal-facing, not indexed by search engines.
 | `lib/hooks/` | React Query hooks (`use-catalog`, `use-orders`, `use-cart`, `use-client-query`) |
 | `lib/auth/` | Token/session/role handling |
 
-## Shipping citation (RULEBOOK §28)
+## Shipping citation
 Every shipped change must cite `minirue-dashboard@{version} ({short-hash})` in the commit
-message — see `apps/minirue-obsidian/_main/_templates/RULEBOOK.md` §28. Bump `package.json`
-version at minor/patch grain per §28's rule (patch for a single fix, minor for a feature batch,
-once per batch — not per commit).
+message. Bump `package.json` version at minor/patch grain — patch for a single fix, minor for a
+feature batch, once per batch, not per commit.
 
 ## Non-technical changelog (Settings → Info tab)
 Every shipped fix/feature ALSO adds one entry to `lib/changelog.ts` (`CHANGELOG` array, newest

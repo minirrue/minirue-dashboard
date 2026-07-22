@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, {useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import DashboardTable from '@/components/dashboard/DashboardTable';
 import type { Column } from '@/components/dashboard/DashboardTable';
@@ -8,6 +8,7 @@ import { apiAdminListOrders, apiAdminTransitionStatus } from '@/lib/api/orders';
 import type { Order, OrderStatus } from '@/lib/api/orders';
 import type { ApiError } from '@/lib/api/client';
 import { ORDER_TRANSITIONS, formatOrderStatus } from '@/lib/orders/transitions';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 function formatAmount(amount: string, currency: string): string {
   return `${currency} ${parseFloat(amount).toLocaleString('en-EG', { minimumFractionDigits: 2 })}`;
@@ -154,7 +155,7 @@ export default function OrdersClient() {
     }
   }, []);
 
-  useEffect(() => {
+  useMountedEffect(() => {
     load(statusFilter || undefined);
   }, [load, statusFilter]);
 

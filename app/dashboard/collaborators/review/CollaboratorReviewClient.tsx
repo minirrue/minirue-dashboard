@@ -2,7 +2,7 @@
 
 
 
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import {FormEvent, useCallback, useState } from 'react';
 
 import Link from 'next/link';
 
@@ -31,6 +31,7 @@ import {
 } from '@/lib/api/collaborators';
 
 import type { ApiError } from '@/lib/api/client';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 
 
@@ -78,7 +79,7 @@ export default function CollaboratorReviewClient() {
 
 
 
-  useEffect(() => {
+  useMountedEffect(() => {
 
     void load();
 

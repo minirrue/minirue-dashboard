@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, {useState, useCallback } from 'react';
 import Link from 'next/link';
 import DashboardTable from '@/components/dashboard/DashboardTable';
 import type { Column } from '@/components/dashboard/DashboardTable';
 import { listMovements } from '@/lib/inventory/api';
 import type { MovementRow, MovementType } from '@/lib/inventory/api';
 import type { ApiError } from '@/lib/api/client';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 function SkeletonRows({ count = 10 }: { count?: number }) {
   return (
@@ -148,7 +149,7 @@ export default function MovementsClient() {
     }
   }, [typeFilter]);
 
-  useEffect(() => { load(); }, [load]);
+  useMountedEffect(() => { load(); }, [load]);
 
   return (
     <>

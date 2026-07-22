@@ -13,6 +13,7 @@ import {
 } from '@/lib/gallery/api';
 import type { GalleryFolder, GalleryItem } from '@/lib/gallery/types';
 import type { ApiError } from '@/lib/api/client';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 const TRACE = 'PG-DASHBOARD-GAL-001';
 
@@ -472,7 +473,7 @@ export default function GalleryClient() {
     }
   }, []);
 
-  useEffect(() => {
+  useMountedEffect(() => {
     loadFolders();
   }, [loadFolders]);
 

@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, {useState, useCallback } from 'react';
 import Link from 'next/link';
 import DashboardTable from '@/components/dashboard/DashboardTable';
 import type { Column } from '@/components/dashboard/DashboardTable';
 import { listStockAdmin, stockStatus } from '@/lib/inventory/api';
 import type { StockAdminRow, StockStatus } from '@/lib/inventory/api';
 import type { ApiError } from '@/lib/api/client';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 /* ── Skeleton ── */
 function SkeletonRows({ count = 8 }: { count?: number }) {
@@ -144,7 +145,7 @@ export default function StockOverviewClient() {
     }
   }, []);
 
-  useEffect(() => {
+  useMountedEffect(() => {
     load();
   }, [load]);
 

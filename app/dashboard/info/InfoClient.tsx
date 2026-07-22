@@ -50,8 +50,8 @@ export default function InfoClient() {
 
       <div className="dash-card" style={{ marginBottom: 20 }} data-trace-id={`${TRACE}::EL-REGION-info-intro`}>
         <p className="dash-help-text" style={{ margin: 0 }}>
-          A running list of what's been fixed or added to your dashboard, written in plain
-          language — no technical terms. You're currently on version{' '}
+          A running list of what&apos;s been fixed or added to your dashboard, written in plain
+          language — no technical terms. You&apos;re currently on version{' '}
           <strong>{packageJson.version}</strong>. Newest changes are always listed first. Try
           out anything below yourself to see it working.
         </p>

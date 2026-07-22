@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, {useState, useCallback } from 'react';
 import Link from 'next/link';
 import { apiAdminGetOrder, apiAdminTransitionStatus, apiAdminCancelOrder } from '@/lib/api/orders';
 import type { Order, OrderStatus, OrderItem } from '@/lib/api/orders';
 import { apiAdminListOrderPayments, apiAdminVerifyInstapay, apiAdminRejectInstapay } from '@/lib/api/payments';
 import type { AdminPaymentAttempt } from '@/lib/api/payments';
 import type { ApiError } from '@/lib/api/client';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 /* ── Helpers ── */
 function formatAmount(amount: string, currency: string): string {
@@ -120,7 +121,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
     }
   }, [id]);
 
-  useEffect(() => { load(); }, [load]);
+  useMountedEffect(() => { load(); }, [load]);
 
   const runAction = async (fn: () => Promise<Order>) => {
     setBusy(true);

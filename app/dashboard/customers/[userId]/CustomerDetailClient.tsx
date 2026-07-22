@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, {useCallback, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -23,6 +23,7 @@ import {
 } from '@/lib/api/customers';
 import type { Order } from '@/lib/api/orders';
 import type { ApiError } from '@/lib/api/client';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 const TIER_OPTIONS: TierLevel[] = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM'];
 const ADDRESS_LABELS: CustomerAddressInput['label'][] = ['HOME', 'WORK', 'OTHER'];
@@ -173,11 +174,11 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
     }
   }, [userId]);
 
-  useEffect(() => {
+  useMountedEffect(() => {
     load();
   }, [load]);
 
-  useEffect(() => {
+  useMountedEffect(() => {
     if (customer) {
       void loadOrders();
     }
@@ -409,7 +410,7 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="dash-section-title" style={{ marginBottom: 12 }}>
-              Delete this customer's account?
+              Delete this customer&apos;s account?
             </h2>
             <p className="dash-help-text" style={{ marginBottom: 12 }}>
               This anonymizes their personal data (name, email, addresses) per GDPR — their past

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, {useState, useCallback } from 'react';
 import {
   apiGetAnalyticsOverview,
   apiGetRevenueSeries,
@@ -9,6 +9,7 @@ import {
 } from '@/lib/api/analytics';
 import type { AnalyticsOverview, RevenuePoint, TopProduct, OrdersFunnel } from '@/lib/api/analytics';
 import type { ApiError } from '@/lib/api/client';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 function egp(cents: number): string {
   return `EGP ${(cents / 100).toLocaleString('en-EG', { minimumFractionDigits: 2 })}`;
@@ -182,7 +183,7 @@ export default function AnalyticsClient() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useMountedEffect(() => { load(); }, [load]);
 
   const totalOrders = overview?.orders
     ? Object.values(overview.orders).reduce((a, b) => a + (b || 0), 0)

@@ -10,7 +10,7 @@ export default function AnalyticsError({
   return (
     <div className="dash-card" style={{ padding: 32, textAlign: 'center' }}>
       <p className="dash-inline-error" style={{ display: 'inline-block' }}>
-        Analytics couldn't load right now.
+        Analytics couldn&apos;t load right now.
       </p>
       <p className="dash-help-text" style={{ marginTop: 8 }}>
         {error.message || 'Something went wrong.'}

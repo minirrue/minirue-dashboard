@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, {useState, useCallback } from 'react';
 import { listCategories, createCategory, deleteCategory } from '@/lib/catalog/api';
 import type { Category } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
 import CategoryTree from './CategoryTree';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 /* ── Slug generation ── */
 function slugify(name: string): string {
@@ -88,7 +89,7 @@ export default function CategoriesPage() {
     }
   }, []);
 
-  useEffect(() => {
+  useMountedEffect(() => {
     load();
   }, [load]);
 

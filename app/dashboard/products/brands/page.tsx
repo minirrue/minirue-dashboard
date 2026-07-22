@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, {useState, useCallback } from 'react';
 import Link from 'next/link';
 import {
   listManagedBrands,
@@ -10,6 +10,7 @@ import {
   type ManagedBrand,
 } from '@/lib/catalog/api';
 import type { ApiError } from '@/lib/api/client';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 const TRACE = 'PG-DASHBOARD-CAT-005';
 
@@ -155,7 +156,7 @@ export default function BrandsPage() {
     }
   }, []);
 
-  useEffect(() => {
+  useMountedEffect(() => {
     load();
   }, [load]);
 

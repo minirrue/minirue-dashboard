@@ -21,6 +21,7 @@ import type { StatusKind } from '@/components/dashboard/StatusBadge';
 import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
 import VariantsSection from './VariantsSection';
 import MediaSection from './MediaSection';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 /* ── Types ── */
 interface FormValues {
@@ -169,7 +170,7 @@ export default function EditProductPage() {
   }, [media, selectedVariantId]);
 
   /* Load product */
-  useEffect(() => {
+  useMountedEffect(() => {
     setLoading(true);
     setLoadError(null);
     getProduct(id)

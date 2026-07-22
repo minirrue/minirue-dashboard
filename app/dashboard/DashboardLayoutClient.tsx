@@ -13,6 +13,7 @@ import {
 } from '@/lib/auth/roles';
 import { Role } from '@/lib/auth/role';
 import { useUser } from '@/lib/hooks/use-auth';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 function DashboardContentSkeleton() {
   return (
@@ -41,7 +42,7 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
   const { data: user, isLoading, isError } = useUser();
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
+  useMountedEffect(() => {
     setMounted(true);
   }, []);
 

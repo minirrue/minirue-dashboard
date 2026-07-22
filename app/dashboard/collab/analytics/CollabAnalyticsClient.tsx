@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import {useMemo, useState } from 'react';
 
 import CollabAccessDenied from '@/components/collab/access-denied';
 
@@ -17,6 +17,7 @@ import {
 import { apiCollabAnalytics, apiCollabOverview } from '@/lib/api/collab-portal';
 
 import type { ApiError } from '@/lib/api/client';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 type Period = '7d' | '30d' | '90d';
 
@@ -34,7 +35,7 @@ export default function CollabAnalyticsClient() {
   const [analytics, setAnalytics] = useState<AnalyticsPayload | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  useMountedEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);

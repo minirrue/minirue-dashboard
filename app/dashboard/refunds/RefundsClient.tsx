@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, {useState, useCallback } from 'react';
 import Link from 'next/link';
 import {
   apiAdminListRefunds,
@@ -9,6 +9,7 @@ import {
 } from '@/lib/api/refunds';
 import type { RefundTicketDto, RefundStatus, RefundMethod } from '@/lib/api/refunds';
 import type { ApiError } from '@/lib/api/client';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 function egp(cents: number): string {
   return `EGP ${(cents / 100).toLocaleString('en-EG', { minimumFractionDigits: 2 })}`;
@@ -144,7 +145,7 @@ export default function RefundsClient() {
     }
   }, []);
 
-  useEffect(() => { load(statusFilter || undefined); }, [load, statusFilter]);
+  useMountedEffect(() => { load(statusFilter || undefined); }, [load, statusFilter]);
 
   const handleAction = useCallback(async (
     id: string,

@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, {useCallback, useState } from 'react';
 import { apiGetSettings, apiUpdateSettings } from '@/lib/api/settings';
 import type { HeroSlideConfig, StorefrontSettings, StoreSettings } from '@/lib/api/settings';
 import type { ApiError } from '@/lib/api/client';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 function emptySlide(id: number): HeroSlideConfig {
   return {
@@ -62,7 +63,7 @@ export default function StorefrontAppearanceClient() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useMountedEffect(() => { load(); }, [load]);
 
   const updateSlide = (index: number, patch: Partial<HeroSlideConfig>) => {
     if (!form) return;

@@ -572,7 +572,7 @@ export default function CollaboratorDetailClient() {
                 </ul>
                 {deleteImpact.orderReferenceCount > 0 ? (
                   <p className="dash-inline-error" style={{ marginBottom: 12 }}>
-                    {deleteImpact.orderReferenceCount} order(s) reference this collaborator's
+                    {deleteImpact.orderReferenceCount} order(s) reference this collaborator&apos;s
                     products — permanent delete is blocked. Use soft delete instead, which hides
                     everything without erasing your order history.
                   </p>
