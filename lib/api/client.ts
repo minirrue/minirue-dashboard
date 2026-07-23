@@ -24,7 +24,12 @@ export async function apiFetch<T>(
 
   const res = await fetch(`${BASE}${path}`, { ...fetchInit, headers, credentials: 'include' });
 
-  if (res.status === 401 && !_isRetry) {
+  // A 401 on an authenticated call means the access token died — refresh and
+  // retry. A 401 on an unauthenticated call (login, register, password reset)
+  // means the backend rejected what was sent, so its own message has to reach
+  // the user. Treating both alike is what made every mistyped password on the
+  // login screen read "Session expired".
+  if (res.status === 401 && auth && !_isRetry) {
     const { getRefreshToken } = await import('@/lib/auth/tokens');
     const refreshToken = getRefreshToken();
     if (refreshToken) {

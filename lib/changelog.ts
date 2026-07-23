@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 41,
+    date: '2026-07-23',
+    area: 'Sign in',
+    summary:
+      'Typing a wrong email or password on the sign-in screen said "Session expired", which made it look like the dashboard was broken rather than that the details were wrong. It now says exactly what the problem is. Signing in with the wrong details also no longer signs you out of a session you already had open.',
+  },
+  {
     id: 40,
     date: '2026-07-23',
     area: 'Products',
