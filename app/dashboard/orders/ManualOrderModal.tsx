@@ -1,6 +1,13 @@
 'use client';
 
-import React, { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { listProducts, getProduct } from '@/lib/catalog/api';
 import type { ProductListItem } from '@/lib/catalog/types';
@@ -23,6 +30,16 @@ export function sumLinesMinor(
 ): number {
   return lines.reduce((sum, l) => sum + l.unitPriceMinor * l.qty, 0);
 }
+
+/** Pounds typed by the admin -> integer piastres. null when the field is not a usable number. */
+export function poundsToMinor(input: string): number | null {
+  if (input.trim() === '') return null;
+  const value = Number(input);
+  if (!Number.isFinite(value) || value < 0) return null;
+  return Math.round(value * 100);
+}
+
+const ALLOWED_RECEIPT_TYPES = new Set(['image/png', 'image/jpeg']);
 
 export function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -78,6 +95,25 @@ export default function ManualOrderModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const firstFieldRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
+  useEffect(() => {
+    if (firstFieldRef.current) {
+      firstFieldRef.current.focus();
+    } else {
+      dialogRef.current?.focus();
+    }
+  }, []);
+
   useMountedEffect(() => {
     // listProducts returns { items, total } — not { data }.
     listProducts({ status: 'PUBLISHED', limit: 100 })
@@ -108,7 +144,7 @@ export default function ManualOrderModal({
 
   const addLine = () => {
     const v = variants.find((x) => x.id === variantId);
-    if (!v || qty < 1) return;
+    if (!v || !Number.isFinite(qty) || qty < 1) return;
     setLines((prev) => [
       ...prev.filter((l) => l.variantId !== v.id),
       { variantId: v.id, label: v.label, unitPriceMinor: v.priceMinor, qty },
@@ -120,12 +156,28 @@ export default function ManualOrderModal({
   const totalMinor = subtotalMinor + shippingMinor;
 
   const canSubmit =
-    lines.length > 0 && fullName.trim().length >= 2 && phone.trim().length >= 6;
+    lines.length > 0 &&
+    fullName.trim().length >= 2 &&
+    phone.trim().length >= 6 &&
+    Number.isFinite(shippingMinor) &&
+    lines.every(
+      (l) => Number.isFinite(l.unitPriceMinor) && Number.isFinite(l.qty) && l.qty >= 1,
+    );
 
   const handleReceipt = async (file: File | undefined) => {
     if (!file) return;
+    if (!ALLOWED_RECEIPT_TYPES.has(file.type)) {
+      setError('Receipt must be a PNG or JPEG image');
+      return;
+    }
     setReceiptName(file.name);
-    setReceiptDataUrl(await fileToDataUrl(file));
+    try {
+      setReceiptDataUrl(await fileToDataUrl(file));
+    } catch {
+      setReceiptName('');
+      setReceiptDataUrl(null);
+      setError('Could not read that receipt file — try again');
+    }
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -178,7 +230,9 @@ export default function ManualOrderModal({
       aria-label="New manual order"
     >
       <div
+        ref={dialogRef}
         className="dash-dialog"
+        tabIndex={-1}
         style={{ maxWidth: 720, width: '90%', maxHeight: '90vh', overflowY: 'auto' }}
       >
         <div className="dash-section-header">
@@ -195,6 +249,7 @@ export default function ManualOrderModal({
               <label className="dash-field">
                 <span className="dash-label">Full name</span>
                 <input
+                  ref={firstFieldRef}
                   className="dash-input"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
@@ -264,7 +319,10 @@ export default function ManualOrderModal({
                   type="number"
                   min={1}
                   value={qty}
-                  onChange={(e) => setQty(Math.max(1, Number(e.target.value)))}
+                  onChange={(e) => {
+                    const n = Math.round(Number(e.target.value));
+                    if (Number.isFinite(n)) setQty(Math.max(1, n));
+                  }}
                 />
               </label>
             </div>
@@ -301,20 +359,17 @@ export default function ManualOrderModal({
                             step="0.01"
                             style={{ width: 110, textAlign: 'right' }}
                             value={(l.unitPriceMinor / 100).toFixed(2)}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const minor = poundsToMinor(e.target.value);
+                              if (minor === null) return;
                               setLines((prev) =>
                                 prev.map((x) =>
                                   x.variantId === l.variantId
-                                    ? {
-                                        ...x,
-                                        unitPriceMinor: Math.round(
-                                          Number(e.target.value) * 100,
-                                        ),
-                                      }
+                                    ? { ...x, unitPriceMinor: minor }
                                     : x,
                                 ),
-                              )
-                            }
+                              );
+                            }}
                           />
                         </td>
                         <td style={{ textAlign: 'right' }}>{l.qty}</td>
@@ -367,9 +422,10 @@ export default function ManualOrderModal({
                   min={0}
                   step="0.01"
                   value={(shippingMinor / 100).toFixed(2)}
-                  onChange={(e) =>
-                    setShippingMinor(Math.round(Number(e.target.value) * 100))
-                  }
+                  onChange={(e) => {
+                    const minor = poundsToMinor(e.target.value);
+                    if (minor !== null) setShippingMinor(minor);
+                  }}
                 />
               </label>
               <label

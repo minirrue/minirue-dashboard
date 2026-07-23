@@ -1,4 +1,4 @@
-import { sumLinesMinor } from '@/app/dashboard/orders/ManualOrderModal';
+import { sumLinesMinor, poundsToMinor } from '@/app/dashboard/orders/ManualOrderModal';
 
 describe('sumLinesMinor', () => {
   it('multiplies unit price by quantity across lines', () => {
@@ -12,5 +12,19 @@ describe('sumLinesMinor', () => {
 
   it('is zero for an empty basket', () => {
     expect(sumLinesMinor([])).toBe(0);
+  });
+});
+
+describe('poundsToMinor', () => {
+  it('converts pounds typed by the admin to integer piastres', () => {
+    expect(poundsToMinor('125.00')).toBe(12500);
+    expect(poundsToMinor('0')).toBe(0);
+  });
+
+  it('returns null for input that is not a usable non-negative number', () => {
+    expect(poundsToMinor('')).toBeNull();
+    expect(poundsToMinor('-')).toBeNull();
+    expect(poundsToMinor('abc')).toBeNull();
+    expect(poundsToMinor('-5')).toBeNull();
   });
 });
