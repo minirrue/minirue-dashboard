@@ -22,7 +22,13 @@ interface BasketLine {
   variantId: string;
   label: string;
   unitPriceMinor: number;
+  /** Raw text of the unit-price input — may temporarily disagree with unitPriceMinor while unparseable. */
+  unitPriceText: string;
   qty: number;
+}
+
+function formatMinor(minor: number): string {
+  return (minor / 100).toFixed(2);
 }
 
 export function sumLinesMinor(
@@ -39,7 +45,7 @@ export function poundsToMinor(input: string): number | null {
   return Math.round(value * 100);
 }
 
-const ALLOWED_RECEIPT_TYPES = new Set(['image/png', 'image/jpeg']);
+const ALLOWED_RECEIPT_TYPES = new Set(['image/png', 'image/jpeg', 'image/jpg']);
 
 export function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -90,6 +96,7 @@ export default function ManualOrderModal({
   const [receiptDataUrl, setReceiptDataUrl] = useState<string | null>(null);
   const [receiptName, setReceiptName] = useState('');
   const [shippingMinor, setShippingMinor] = useState(SHIPPING_DEFAULT_MINOR);
+  const [shippingText, setShippingText] = useState(formatMinor(SHIPPING_DEFAULT_MINOR));
   const [notes, setNotes] = useState('');
 
   const [saving, setSaving] = useState(false);
@@ -147,7 +154,13 @@ export default function ManualOrderModal({
     if (!v || !Number.isFinite(qty) || qty < 1) return;
     setLines((prev) => [
       ...prev.filter((l) => l.variantId !== v.id),
-      { variantId: v.id, label: v.label, unitPriceMinor: v.priceMinor, qty },
+      {
+        variantId: v.id,
+        label: v.label,
+        unitPriceMinor: v.priceMinor,
+        unitPriceText: formatMinor(v.priceMinor),
+        qty,
+      },
     ]);
     setQty(1);
   };
@@ -160,8 +173,13 @@ export default function ManualOrderModal({
     fullName.trim().length >= 2 &&
     phone.trim().length >= 6 &&
     Number.isFinite(shippingMinor) &&
+    poundsToMinor(shippingText) !== null &&
     lines.every(
-      (l) => Number.isFinite(l.unitPriceMinor) && Number.isFinite(l.qty) && l.qty >= 1,
+      (l) =>
+        Number.isFinite(l.unitPriceMinor) &&
+        Number.isFinite(l.qty) &&
+        l.qty >= 1 &&
+        poundsToMinor(l.unitPriceText) !== null,
     );
 
   const handleReceipt = async (file: File | undefined) => {
@@ -358,19 +376,36 @@ export default function ManualOrderModal({
                             min={0}
                             step="0.01"
                             style={{ width: 110, textAlign: 'right' }}
-                            value={(l.unitPriceMinor / 100).toFixed(2)}
+                            value={l.unitPriceText}
                             onChange={(e) => {
-                              const minor = poundsToMinor(e.target.value);
-                              if (minor === null) return;
+                              const text = e.target.value;
+                              const minor = poundsToMinor(text);
                               setLines((prev) =>
                                 prev.map((x) =>
                                   x.variantId === l.variantId
-                                    ? { ...x, unitPriceMinor: minor }
+                                    ? {
+                                        ...x,
+                                        unitPriceText: text,
+                                        ...(minor !== null ? { unitPriceMinor: minor } : {}),
+                                      }
+                                    : x,
+                                ),
+                              );
+                            }}
+                            onBlur={() => {
+                              if (poundsToMinor(l.unitPriceText) !== null) return;
+                              setLines((prev) =>
+                                prev.map((x) =>
+                                  x.variantId === l.variantId
+                                    ? { ...x, unitPriceText: formatMinor(x.unitPriceMinor) }
                                     : x,
                                 ),
                               );
                             }}
                           />
+                          {poundsToMinor(l.unitPriceText) === null && (
+                            <p className="dash-inline-error">Enter a valid price</p>
+                          )}
                         </td>
                         <td style={{ textAlign: 'right' }}>{l.qty}</td>
                         <td style={{ textAlign: 'right' }}>
@@ -421,12 +456,21 @@ export default function ManualOrderModal({
                   type="number"
                   min={0}
                   step="0.01"
-                  value={(shippingMinor / 100).toFixed(2)}
+                  value={shippingText}
                   onChange={(e) => {
-                    const minor = poundsToMinor(e.target.value);
+                    const text = e.target.value;
+                    setShippingText(text);
+                    const minor = poundsToMinor(text);
                     if (minor !== null) setShippingMinor(minor);
                   }}
+                  onBlur={() => {
+                    if (poundsToMinor(shippingText) !== null) return;
+                    setShippingText(formatMinor(shippingMinor));
+                  }}
                 />
+                {poundsToMinor(shippingText) === null && (
+                  <p className="dash-inline-error">Enter a valid amount</p>
+                )}
               </label>
               <label
                 className="dash-field"
