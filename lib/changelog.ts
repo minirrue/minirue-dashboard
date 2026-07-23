@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 39,
+    date: '2026-07-23',
+    area: 'Settings',
+    summary:
+      'You can now create the super admin account from Settings — no database work needed. Enter the email and a password for the new account, then retype your own password to confirm, and it is ready to sign in with. If that email already has an account it is upgraded instead of creating a second one. A super admin can do everything you can, plus erase shop data from the same page; sign-in accounts are never removed by that.',
+  },
+  {
     id: 38,
     date: '2026-07-23',
     area: 'Products',

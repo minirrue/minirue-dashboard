@@ -9,6 +9,7 @@ import { apiUpdateMyProfile, apiUploadMyAvatar } from '@/lib/api/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import RoleBadge from '@/components/dashboard/RoleBadge';
 import DataResetPanel from '@/components/dashboard/DataResetPanel';
+import SuperAdminPanel from '@/components/dashboard/SuperAdminPanel';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => void }) {
@@ -389,6 +390,9 @@ export default function SettingsClient() {
           </div>
         </div>
       </form>
+
+      {/* Owner-and-above only; hides itself on a 403 like the panel below. */}
+      <SuperAdminPanel />
 
       {/* Renders nothing unless the signed-in account is a super admin AND the
           environment allows a reset — the panel asks the server and hides

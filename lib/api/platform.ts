@@ -56,3 +56,39 @@ export async function runReset(
   });
   return res.data;
 }
+
+// ---------------------------------------------------------------------------
+// Super admin accounts
+// ---------------------------------------------------------------------------
+
+export interface SuperAdminSummary {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+export async function listSuperAdmins(): Promise<SuperAdminSummary[]> {
+  const res = await apiFetch<{ data: SuperAdminSummary[] }>(
+    '/platform/super-admins',
+    { auth: true },
+  );
+  return Array.isArray(res?.data) ? res.data : [];
+}
+
+/**
+ * Creates the account, or promotes an existing one with that email.
+ * `confirmPassword` is the CALLER's own password — the server refuses without
+ * it, so an unattended session cannot mint an account that erases the shop.
+ */
+export async function createSuperAdmin(data: {
+  email: string;
+  password: string;
+  name?: string;
+  confirmPassword: string;
+}): Promise<SuperAdminSummary> {
+  const res = await apiFetch<{ data: SuperAdminSummary }>(
+    '/platform/super-admins',
+    { method: 'POST', auth: true, body: JSON.stringify(data) },
+  );
+  return res.data;
+}
