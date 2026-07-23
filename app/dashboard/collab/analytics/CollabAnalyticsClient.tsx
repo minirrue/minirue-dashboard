@@ -172,6 +172,7 @@ export default function CollabAnalyticsClient() {
           <div className="collab-table-heading">
             <h2 className="dash-card-title">Daily breakdown</h2>
           </div>
+          <div className="dash-table-wrap">
           <table className="dash-table">
             <thead>
               <tr>
@@ -193,6 +194,7 @@ export default function CollabAnalyticsClient() {
               ))}
             </tbody>
           </table>
+          </div>
         </CollabTableCard>
       )}
     </>

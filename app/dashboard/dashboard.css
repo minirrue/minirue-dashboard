@@ -1109,6 +1109,27 @@
   flex: 1 1 220px;
 }
 
+/* ── Tab strip (e.g. storefront-appearance's Home page / Navbar / Footer /
+   Announcement pane switcher) — unlike .dash-filters, tabs must never wrap
+   or drop to a grid: every tab has to stay reachable, so narrow viewports
+   get a horizontally-scrollable single row instead. ── */
+.dash-tabstrip {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  align-items: center;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.dash-tabstrip::-webkit-scrollbar {
+  display: none;
+}
+.dash-tabstrip > button {
+  flex: 0 0 auto;
+}
+
 /* ── Buttons ── */
 .dash-btn-primary {
   display: inline-flex;
@@ -2479,12 +2500,19 @@
   }
 }
 
+@media (max-width: 480px) {
+  .dash-metric-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* ── Recent orders header ── */
 .dash-panel-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
   padding: 18px 22px;
   border-bottom: 1px solid var(--mr-dash-hair);
 }

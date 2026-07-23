@@ -25,8 +25,8 @@ export default function SectionCard({
 
   return (
     <div className="dash-form-card" style={{ marginBottom: 16, opacity: section.enabled ? 1 : 0.6 }}>
-      <div className="dash-row-actions" style={{ marginBottom: 12, alignItems: 'center' }}>
-        <div style={{ flex: 1 }}>
+      <div className="dash-row-actions" style={{ marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 160px', minWidth: 0 }}>
           <strong>{SECTION_LABELS[section.type]}</strong>
           <span style={{ marginLeft: 10, fontSize: 12, color: 'var(--mr-fg-4)' }}>
             {index + 1} of {total}
@@ -38,7 +38,7 @@ export default function SectionCard({
             </span>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
             <input
               type="checkbox"

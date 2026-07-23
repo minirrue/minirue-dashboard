@@ -126,6 +126,8 @@ export default function CollabOrdersClient() {
 
         <CollabTableCard traceId="PG-DASHBOARD-COLLAB-005::EL-TABLE-orders-table">
 
+          <div className="dash-table-wrap">
+
           <table className="dash-table">
 
             <thead>
@@ -188,6 +190,8 @@ export default function CollabOrdersClient() {
             </tbody>
 
           </table>
+
+          </div>
 
         </CollabTableCard>
 

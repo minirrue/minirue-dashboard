@@ -195,7 +195,7 @@ export default function StorefrontAppearanceClient() {
         </button>
       </div>
 
-      <div className="dash-filters">
+      <div className="dash-tabstrip">
         {(['page', 'navbar', 'footer', 'announcement'] as Tab[]).map((t) => (
           <button
             key={t}
