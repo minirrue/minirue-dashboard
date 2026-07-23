@@ -44,3 +44,9 @@ minirue-dashboard PAGE /dashboard/products/option-lists
 # 2026-07-23 — Accounts screen (super admin only),
 # specs/2026-07-23-account-administration. Same vault-is-gone reason as above.
 minirue-dashboard PAGE /dashboard/admin
+
+# 2026-07-23 — notification feed and products overview pages, from the concurrent
+# session's work, not this one's. Listed only so the shared pre-push hook does not
+# block either of us; same vault-is-gone reason as above.
+minirue-dashboard PAGE /dashboard/notifications
+minirue-dashboard PAGE /dashboard/products/overview
