@@ -2,10 +2,68 @@
 
 import React, { useState } from 'react';
 import type { CollabShowcaseSection, CollabShowcaseTab } from '@/lib/api/storefront';
+import { apiGetCollaborator, apiListCollaborators } from '@/lib/api/collaborators';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import EntityPicker, { MultiProductPicker, moveInList, useEntityOptions } from '../pickers/EntityPicker';
 
 export function blankTab(collaboratorId: string): CollabShowcaseTab {
   return { collaboratorId, label: null, productIds: [], limit: 4 };
+}
+
+/** Why a collaborator won't show up on the storefront, or null if it will. */
+type IneligibleReason = 'inactive' | 'hidden';
+
+interface CollabEligibility {
+  active: boolean;
+  visible: boolean;
+}
+
+/**
+ * Storefront-visibility signal for the "won't appear" warnings below.
+ * `apiListCollaborators` only returns collaborators that already have a
+ * brand profile (the list query inner-joins on one), so brand-profile
+ * presence is implied for anything in this map. Status comes straight off
+ * that list; `storefrontVisible` isn't in the list payload, so it's filled
+ * in with one detail fetch per collaborator. If either fetch fails, that
+ * collaborator is simply left out of the map — no eligibility claim is made
+ * for it, so no warning (true or false) gets shown. specs/2026-07-24-collab-showcase-eligibility-warning
+ */
+function useCollabEligibility(): {
+  eligibility: Map<string, CollabEligibility>;
+} {
+  const [eligibility, setEligibility] = useState<Map<string, CollabEligibility>>(new Map());
+
+  useMountedEffect(() => {
+    void (async () => {
+      try {
+        const list = await apiListCollaborators({ limit: 100 });
+        const details = await Promise.allSettled(
+          list.items.map((item) => apiGetCollaborator(item.id)),
+        );
+        const map = new Map<string, CollabEligibility>();
+        list.items.forEach((item, i) => {
+          const detail = details[i];
+          if (detail.status !== 'fulfilled') return;
+          map.set(item.id, {
+            active: item.status === 'ACTIVE',
+            visible: detail.value.storefrontVisible ?? false,
+          });
+        });
+        setEligibility(map);
+      } catch {
+        // Fail safe: no eligibility data means no annotations, not false ones.
+      }
+    })();
+  }, []);
+
+  return { eligibility };
+}
+
+function ineligibleReason(info: CollabEligibility | undefined): IneligibleReason | null {
+  if (!info) return null;
+  if (!info.active) return 'inactive';
+  if (!info.visible) return 'hidden';
+  return null;
 }
 
 export default function CollabShowcaseEditor({
@@ -16,6 +74,7 @@ export default function CollabShowcaseEditor({
   onChange: (next: CollabShowcaseSection) => void;
 }) {
   const { options } = useEntityOptions('collaborator');
+  const { eligibility } = useCollabEligibility();
   const [pending, setPending] = useState('');
 
   const patchTab = (index: number, patch: Partial<CollabShowcaseTab>) =>
@@ -25,6 +84,22 @@ export default function CollabShowcaseEditor({
     });
 
   const nameFor = (id: string) => options.find((o) => o.id === id)?.label ?? id;
+
+  const warningFor = (id: string): string | null => {
+    const reason = ineligibleReason(eligibility.get(id));
+    if (!reason) return null;
+    const name = nameFor(id);
+    if (reason === 'inactive') {
+      return `${name} is not an active collaborator, so they won't appear on the storefront.`;
+    }
+    return `${name} won't appear on the storefront yet — turn on "Visible on storefront" on their collaborator profile (Collaborators → ${name}). If that's already on, they also need a brand profile set up.`;
+  };
+
+  // Section-level note only fires when every tab is a *known* non-starter —
+  // an unloaded/unknown eligibility (no map entry) never counts as ineligible.
+  const allTabsKnownIneligible =
+    section.tabs.length > 0 &&
+    section.tabs.every((tab) => ineligibleReason(eligibility.get(tab.collaboratorId)) !== null);
 
   return (
     <div className="dash-form-section">
@@ -87,6 +162,12 @@ export default function CollabShowcaseEditor({
             </label>
           </div>
 
+          {warningFor(tab.collaboratorId) && (
+            <p className="dash-inline-error" style={{ marginBottom: 10 }}>
+              {warningFor(tab.collaboratorId)}
+            </p>
+          )}
+
           <MultiProductPicker
             value={tab.productIds}
             onChange={(productIds) => patchTab(index, { productIds })}
@@ -113,9 +194,13 @@ export default function CollabShowcaseEditor({
           <option value="">Add a collaborator tab…</option>
           {options
             .filter((o) => !section.tabs.some((t) => t.collaboratorId === o.id))
-            .map((o) => (
-              <option key={o.id} value={o.id}>{o.label}</option>
-            ))}
+            .map((o) => {
+              const reason = ineligibleReason(eligibility.get(o.id));
+              const suffix = reason === 'inactive' ? ' — inactive' : reason === 'hidden' ? ' — not visible yet' : '';
+              return (
+                <option key={o.id} value={o.id}>{o.label}{suffix}</option>
+              );
+            })}
         </select>
       </div>
 
@@ -128,6 +213,13 @@ export default function CollabShowcaseEditor({
       {section.tabs.length === 0 && (
         <p style={{ fontSize: 13, color: 'var(--mr-fg-4)', marginTop: 8 }}>
           No collaborators added — this section will not appear on the storefront.
+        </p>
+      )}
+
+      {allTabsKnownIneligible && (
+        <p className="dash-inline-error" style={{ marginTop: 8 }}>
+          None of the collaborators in this showcase will appear on the storefront yet — this
+          whole section stays hidden until at least one is active and visible.
         </p>
       )}
     </div>
