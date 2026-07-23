@@ -200,6 +200,8 @@ export default function CollaboratorReviewClient() {
 
         <CollabTableCard>
 
+          <div className="dash-table-wrap">
+
           <table className="dash-table">
 
             <thead>
@@ -291,6 +293,8 @@ export default function CollaboratorReviewClient() {
             </tbody>
 
           </table>
+
+          </div>
 
         </CollabTableCard>
 

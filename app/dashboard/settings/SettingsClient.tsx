@@ -128,13 +128,14 @@ function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => void }) {
         <div style={{ flex: 1, minWidth: 220 }}>
           <div className="dash-field" style={{ marginBottom: 12 }}>
             <label className="dash-label">Your name</label>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <input
                 type="text"
                 className="dash-input"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={120}
+                style={{ flex: '1 1 140px', minWidth: 0 }}
               />
               <button
                 type="button"
