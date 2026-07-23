@@ -50,6 +50,7 @@ function layoutWithUnfinishedPickers(): StorefrontLayout {
       legalLine: '',
       secondaryLine: '',
     },
+    pages: [],
   };
 }
 

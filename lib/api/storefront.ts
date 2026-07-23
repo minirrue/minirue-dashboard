@@ -159,6 +159,17 @@ export interface AnnouncementConfig {
   background: string | null;
 }
 
+export interface StorefrontPage {
+  id: string;
+  /** url-safe, e.g. "privacy" -> /pages/privacy */
+  slug: string;
+  title: string;
+  /** Markdown */
+  body: string;
+  /** hidden pages 404 on the storefront */
+  enabled: boolean;
+}
+
 export interface StorefrontLayout {
   version: 2;
   announcement: AnnouncementConfig;
@@ -166,6 +177,7 @@ export interface StorefrontLayout {
   sections: StorefrontSection[];
   navbar: NavbarConfig;
   footer: FooterConfig;
+  pages: StorefrontPage[];
 }
 
 let idCounter = 0;
@@ -245,6 +257,24 @@ export function newSection(type: SectionType, order: number): StorefrontSection 
   }
 }
 
+export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export function newPage(): StorefrontPage {
+  return { id: newId('page'), slug: '', title: '', body: '', enabled: true };
+}
+
+/**
+ * Lowercases, replaces runs of anything that isn't a-z/0-9 with a single
+ * hyphen, and strips leading/trailing hyphens — matches the backend's
+ * `^[a-z0-9]+(?:-[a-z0-9]+)*$` slug regex.
+ */
+export function slugify(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 function isBlank(value: string | null | undefined): boolean {
   return value == null || value.trim() === '';
 }
@@ -320,6 +350,10 @@ export function normalizeStorefrontLayoutForSave(layout: StorefrontLayout): Norm
     ...next.navbar,
     items: cleanNavList(next.navbar.items),
   };
+
+  next.pages = next.pages.filter(
+    (page) => !isBlank(page.title) && SLUG_PATTERN.test(page.slug),
+  );
 
   return { layout: next, droppedNavItemCount };
 }

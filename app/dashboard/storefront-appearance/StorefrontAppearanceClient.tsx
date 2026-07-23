@@ -29,6 +29,7 @@ import JournalEditor from './editors/JournalEditor';
 import CollabShowcaseEditor from './editors/CollabShowcaseEditor';
 import NavbarEditor from './editors/NavbarEditor';
 import FooterEditor from './editors/FooterEditor';
+import PagesEditor from './PagesEditor';
 
 const SECTION_TYPES: SectionType[] = [
   'hero',
@@ -38,7 +39,7 @@ const SECTION_TYPES: SectionType[] = [
   'journal',
 ];
 
-type Tab = 'page' | 'navbar' | 'footer' | 'announcement';
+type Tab = 'page' | 'navbar' | 'footer' | 'announcement' | 'pages';
 
 export default function StorefrontAppearanceClient() {
   const [layout, setLayout] = useState<StorefrontLayout | null>(null);
@@ -196,7 +197,7 @@ export default function StorefrontAppearanceClient() {
       </div>
 
       <div className="dash-tabstrip">
-        {(['page', 'navbar', 'footer', 'announcement'] as Tab[]).map((t) => (
+        {(['page', 'navbar', 'footer', 'announcement', 'pages'] as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
@@ -271,6 +272,10 @@ export default function StorefrontAppearanceClient() {
 
       {tab === 'footer' && (
         <FooterEditor footer={layout.footer} onChange={(footer) => patch({ footer })} />
+      )}
+
+      {tab === 'pages' && (
+        <PagesEditor pages={layout.pages} onChange={(pages) => patch({ pages })} />
       )}
 
       {tab === 'announcement' && (

@@ -21,6 +21,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 62,
+    date: '2026-07-24',
+    area: 'Storefront',
+    summary:
+      'Added a Pages tab under Storefront for editing Terms, Privacy, Shipping, Returns and any other standalone page. Type a title and the web address (slug) fills in automatically until you edit it yourself, write the page content using simple Markdown formatting, and use the checkbox to show or hide it on the live site.',
+  },
+  {
+    id: 61,
+    date: '2026-07-24',
+    area: 'Products',
+    summary:
+      'The whole product area now lives in one place called Catalogue, with a single menu item. Inside it you switch between Overview, Products, Categories, Brands and Global variants using the tabs at the top, and the web address always shows where you are (for example /catalogue/brands). Old bookmarks like /products or /categories still work — they take you to the right tab. The Global variants page was also rebuilt: it is now just about the fields themselves — you create a field like "Size", pick which categories use it, and rename or delete it. There are no value lists to manage there any more, because values are typed on each product now. It also no longer shows a confusing error next to "none yet" — a failed load gives you a "Try again" button.',
+  },
+  {
     id: 60,
     date: '2026-07-24',
     area: 'Products',

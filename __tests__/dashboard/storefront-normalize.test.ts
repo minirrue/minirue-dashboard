@@ -23,6 +23,7 @@ function baseLayout(): StorefrontLayout {
       legalLine: '',
       secondaryLine: '',
     },
+    pages: [],
   };
 }
 
