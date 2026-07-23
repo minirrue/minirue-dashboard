@@ -100,8 +100,11 @@ function CategoryRow({ category, depth, onUpdated, onDeleted }: CategoryRowProps
   return (
     <>
       <tr className="dash-cat-row" data-trace-id={`PG-DASHBOARD-CAT-004::EL-ROW-category-row@${category.id}`}>
-        <td style={{ paddingLeft: 14 + depth * 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Indent is capped with a viewport-scaled step (min(20px, 4vw)) so a
+            deeply nested row still leaves room for its own name on a 320px
+            screen instead of marching the text off the right edge. */}
+        <td style={{ paddingLeft: `calc(14px + ${depth} * min(20px, 4vw))`, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
             {hasChildren ? (
               <button
                 type="button"
@@ -113,9 +116,9 @@ function CategoryRow({ category, depth, onUpdated, onDeleted }: CategoryRowProps
                 {expanded ? '▾' : '▸'}
               </button>
             ) : (
-              <span style={{ display: 'inline-block', width: 18 }} />
+              <span style={{ display: 'inline-block', width: 18, flexShrink: 0 }} />
             )}
-            {category.name}
+            <span style={{ minWidth: 0, overflowWrap: 'break-word' }}>{category.name}</span>
           </div>
         </td>
         <td>
@@ -125,7 +128,7 @@ function CategoryRow({ category, depth, onUpdated, onDeleted }: CategoryRowProps
           {childCount > 0 ? childCount : <span style={{ color: 'var(--mr-fg-4)' }}>—</span>}
         </td>
         <td>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               type="button"
               className="dash-btn-ghost"
@@ -265,27 +268,29 @@ export default function CategoryTree({ categories, onCategoryUpdated, onCategory
       style={{ padding: 0, overflow: 'hidden' }}
       data-trace-id="PG-DASHBOARD-CAT-004::EL-TABLE-categories-tree"
     >
-      <table className="dash-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Slug</th>
-            <th style={{ textAlign: 'right' }}>Children</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {categories.map((cat) => (
-            <CategoryRow
-              key={cat.id}
-              category={cat}
-              depth={0}
-              onUpdated={onCategoryUpdated}
-              onDeleted={onCategoryDeleted}
-            />
-          ))}
-        </tbody>
-      </table>
+      <div className="dash-table-wrap">
+        <table className="dash-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Slug</th>
+              <th style={{ textAlign: 'right' }}>Children</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {categories.map((cat) => (
+              <CategoryRow
+                key={cat.id}
+                category={cat}
+                depth={0}
+                onUpdated={onCategoryUpdated}
+                onDeleted={onCategoryDeleted}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

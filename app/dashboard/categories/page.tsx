@@ -279,26 +279,28 @@ export default function CategoriesPage() {
           style={{ padding: 0, overflow: 'hidden' }}
           data-trace-id="PG-DASHBOARD-CAT-004::EL-REGION-categories-tree-skeleton"
         >
-          <table className="dash-table">
-            <thead>
-              <tr>
-                {['Name', 'Slug', 'Children', 'Actions'].map((h) => (
-                  <th key={h}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i}>
-                  {Array.from({ length: 4 }).map((__, j) => (
-                    <td key={j}>
-                      <span className="dash-skeleton" style={{ width: j === 2 ? 30 : '70%' }} />
-                    </td>
+          <div className="dash-table-wrap">
+            <table className="dash-table">
+              <thead>
+                <tr>
+                  {['Name', 'Slug', 'Children', 'Actions'].map((h) => (
+                    <th key={h}>{h}</th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i}>
+                    {Array.from({ length: 4 }).map((__, j) => (
+                      <td key={j}>
+                        <span className="dash-skeleton" style={{ width: j === 2 ? 30 : '70%' }} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : loadError ? (
         <div className="dash-card" data-trace-id="PG-DASHBOARD-CAT-004::EL-REGION-categories-load-error">

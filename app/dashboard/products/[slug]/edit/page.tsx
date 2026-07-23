@@ -302,7 +302,7 @@ export default function EditProductPage() {
             <StatusBadge status={statusKind} />
           </span>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {product.status !== 'PUBLISHED' && (
             <button
               className="dash-btn-ok"

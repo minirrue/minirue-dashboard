@@ -133,7 +133,7 @@ export default function MediaSection({ productId, productName, media, onMediaCha
       <div
         className="dash-toggle-group"
         role="tablist"
-        style={{ display: 'flex', gap: 8, marginBottom: 16 }}
+        style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}
         data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-media-source-toggle"
       >
         <button

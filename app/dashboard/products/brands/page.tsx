@@ -107,7 +107,7 @@ function BrandRow({
     <tr data-trace-id={`${TRACE}::EL-ROW-brand@${brand.id}`}>
       <td>{brand.name}</td>
       <td>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <button
             type="button"
             className="dash-btn-ghost"
@@ -275,19 +275,21 @@ export default function BrandsPage() {
           style={{ padding: 0, overflow: 'hidden' }}
           data-trace-id={`${TRACE}::EL-TABLE-brands`}
         >
-          <table className="dash-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {brands.map((b) => (
-                <BrandRow key={b.id} brand={b} onRenamed={handleRenamed} onDeleted={load} />
-              ))}
-            </tbody>
-          </table>
+          <div className="dash-table-wrap">
+            <table className="dash-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {brands.map((b) => (
+                  <BrandRow key={b.id} brand={b} onRenamed={handleRenamed} onDeleted={load} />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </>
