@@ -210,7 +210,7 @@ export default function ProductsClient() {
       sortable: true,
       render: (row) => (
         <Link
-          href={`/products/${row.id}/edit`}
+          href={`/catalogue/products/${row.id}/edit`}
           className="dash-link"
           data-trace-id={`PG-DASHBOARD-CAT-001::EL-LINK-product-name@${row.id}`}
         >
@@ -247,7 +247,7 @@ export default function ProductsClient() {
       render: (row) => (
         <div className="dash-row-actions">
           <Link
-            href={`/products/${row.id}/edit`}
+            href={`/catalogue/products/${row.id}/edit`}
             className="dash-btn-ghost"
             data-trace-id={`PG-DASHBOARD-CAT-001::EL-LINK-edit-product@${row.id}`}
           >
@@ -303,7 +303,7 @@ export default function ProductsClient() {
       <div className="dash-page-header" data-trace-id="PG-DASHBOARD-CAT-001::EL-REGION-products-page-header">
         <h1 className="dash-page-title">Products</h1>
         <Link
-          href="/products/new"
+          href="/catalogue/products/new"
           className="dash-btn-primary"
           data-trace-id="PG-DASHBOARD-CAT-001::EL-LINK-new-product"
         >

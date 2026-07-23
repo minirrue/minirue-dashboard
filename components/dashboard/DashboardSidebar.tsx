@@ -23,17 +23,6 @@ function IconPackage() {
   );
 }
 
-function IconGrid() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="7" />
-      <rect x="14" y="3" width="7" height="7" />
-      <rect x="3" y="14" width="7" height="7" />
-      <rect x="14" y="14" width="7" height="7" />
-    </svg>
-  );
-}
-
 function IconShoppingBag() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -217,12 +206,11 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
     section: 'Store',
     items: [
       { label: 'Overview', href: '/overview', icon: <IconBarChart /> },
-      // Lands on the catalogue map, not the raw product list — the map orients
-      // you (categories, brands, what each asks) before the list. The list is
-      // one tab away. normalizeDashboardPath folds /products/overview back to
-      // /products, so this item still highlights on every catalogue screen.
-      { label: 'Catalogue', href: '/products/overview', icon: <IconPackage /> },
-      { label: 'Categories', href: '/categories', icon: <IconGrid /> },
+      // One Catalogue entry lands on the map at /catalogue; Products, Categories,
+      // Brands and Global variants are its slash sub-tabs (the hallway), so they
+      // are no longer separate sidebar items. normalizeDashboardPath folds every
+      // /catalogue/* path to /catalogue, so this stays highlighted throughout.
+      { label: 'Catalogue', href: '/catalogue', icon: <IconPackage /> },
       { label: 'Orders', href: '/orders', icon: <IconShoppingBag /> },
       { label: 'Customers', href: '/customers', icon: <IconUsers /> },
       { label: 'Collaborators', href: '/collaborators', icon: <IconHandshake /> },

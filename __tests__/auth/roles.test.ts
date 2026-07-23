@@ -58,20 +58,20 @@ describe('dashboard RBAC routes', () => {
 
   it('allows staff operations for STAFF but not catalog admin', () => {
     expect(canAccessDashboardRoute(Role.STAFF, '/orders')).toBe(true);
-    expect(canAccessDashboardRoute(Role.STAFF, '/products')).toBe(false);
+    expect(canAccessDashboardRoute(Role.STAFF, '/catalogue')).toBe(false);
   });
 
   it('gives support staff the customer-facing screens only', () => {
     for (const allowed of ['/overview', '/orders', '/fulfillment', '/analytics']) {
       expect(canAccessDashboardRoute(Role.STAFF, allowed)).toBe(true);
     }
-    for (const denied of ['/products', '/settings', '/customers', '/admin']) {
+    for (const denied of ['/catalogue', '/settings', '/customers', '/admin']) {
       expect(canAccessDashboardRoute(Role.STAFF, denied)).toBe(false);
     }
   });
 
   it('gives ADMIN the shop but not account administration', () => {
-    for (const allowed of ['/products', '/settings', '/analytics', '/collaborators']) {
+    for (const allowed of ['/catalogue', '/settings', '/analytics', '/collaborators']) {
       expect(canAccessDashboardRoute(Role.ADMIN, allowed)).toBe(true);
     }
     expect(canAccessDashboardRoute(Role.ADMIN, '/admin')).toBe(false);
@@ -88,7 +88,7 @@ describe('dashboard RBAC routes', () => {
   it('keeps a collaborator inside their own portal', () => {
     expect(canAccessDashboardRoute(Role.COLLAB, '/collab/workspace')).toBe(true);
     expect(canAccessDashboardRoute(Role.COLLAB, '/gallery')).toBe(true);
-    for (const denied of ['/products', '/orders', '/settings', '/admin', '/customers']) {
+    for (const denied of ['/catalogue', '/orders', '/settings', '/admin', '/customers']) {
       expect(canAccessDashboardRoute(Role.COLLAB, denied)).toBe(false);
     }
   });

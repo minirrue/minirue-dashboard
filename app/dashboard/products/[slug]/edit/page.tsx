@@ -250,7 +250,7 @@ export default function EditProductPage() {
       <>
         <div className="dash-page-header">
           <h1 className="dash-page-title">Edit Product</h1>
-          <Link href="/products" className="dash-btn-ghost">Back to Products</Link>
+          <Link href="/catalogue/products" className="dash-btn-ghost">Back to Products</Link>
         </div>
         <EditSkeleton />
       </>
@@ -265,7 +265,7 @@ export default function EditProductPage() {
         </div>
         <div className="dash-card">
           <p className="dash-inline-error">{loadError ?? 'Product not found.'}</p>
-          <Link href="/products" className="dash-btn-ghost" style={{ marginTop: 12, display: 'inline-block' }}>
+          <Link href="/catalogue/products" className="dash-btn-ghost" style={{ marginTop: 12, display: 'inline-block' }}>
             Back to Products
           </Link>
         </div>
@@ -332,7 +332,7 @@ export default function EditProductPage() {
             Delete
           </button>
           <Link
-            href="/products"
+            href="/catalogue/products"
             className="dash-btn-ghost"
             data-trace-id="PG-DASHBOARD-CAT-003::EL-LINK-back-to-products"
           >

@@ -7,378 +7,265 @@ import {
   createAttribute,
   updateAttribute,
   deleteAttribute,
-  listAttributeOptions,
-  createAttributeOption,
-  updateAttributeOption,
-  deleteAttributeOption,
   listCategories,
 } from '@/lib/catalog/api';
-import type {
-  AttributeRecord,
-  AttributeOptionRecord,
-  Category,
-} from '@/lib/catalog/types';
+import type { AttributeRecord, Category } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
 import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
 
 const TRACE = 'PG-DASHBOARD-CAT-006';
 
 /**
- * Global variants — a named list, its values, and the categories it covers.
- * specs/2026-07-22-product-tree-design.md
+ * Global variants — the fields every product in the chosen categories must
+ * answer. specs/2026-07-24-free-entry-variant-values
  *
- * Replaces two screens that were the same idea under two names: "Option lists"
- * (a list and its values) and a per-brand "Global variants". The per-brand
- * version could not express "this applies to cosmetics" at all.
- *
- * These describe a VARIANT, never the item — an earlier build showed them on
- * the product details form too, which is why a list called 'Test' appeared
- * under Brand there.
+ * A global variant is JUST a field here: a name (Size, Concentration) and the
+ * categories it applies to. The values are NOT set on this page any more — they
+ * are typed on each product when you add a variant, and remembered for next
+ * time. So this screen is only ever "what fields exist, and where do they
+ * apply."
  */
-function OptionRow({
-  option,
-  onUpdated,
-  onDeleted,
+
+/** A small labelled set of category checkboxes. */
+function CategoryPicker({
+  categories,
+  selected,
+  onToggle,
+  disabled,
+  idPrefix,
 }: {
-  option: AttributeOptionRecord;
-  onUpdated: (o: AttributeOptionRecord) => void;
-  onDeleted: (id: string) => void;
+  categories: Category[];
+  selected: string[];
+  onToggle: (id: string) => void;
+  disabled?: boolean;
+  idPrefix: string;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(option.name);
-  const [saving, setSaving] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleRename(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) return;
-    setSaving(true);
-    setError(null);
-    try {
-      onUpdated(await updateAttributeOption(option.id, { name: name.trim() }));
-      setEditing(false);
-    } catch (e) {
-      setError((e as ApiError).message ?? 'Rename failed.');
-    } finally {
-      setSaving(false);
-    }
+  if (categories.length === 0) {
+    return <p className="dash-muted">No categories yet — add one first.</p>;
   }
-
-  async function handleDelete(mode: 'soft' | 'hard') {
-    // The dialog shows its own error, so nothing is set here — showing it in
-    // both places printed the same sentence twice on screen.
-    await deleteAttributeOption(option.id, mode);
-    setConfirmDelete(false);
-    if (mode === 'hard') onDeleted(option.id);
-    else onUpdated({ ...option, isActive: false });
-  }
-
   return (
-    <li
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '4px 0',
-        opacity: option.isActive ? 1 : 0.55,
-      }}
-      data-trace-id={`${TRACE}::EL-ROW-option@${option.id}`}
-    >
-      {editing ? (
-        <form onSubmit={handleRename} style={{ display: 'flex', gap: 8 }}>
+    <div className="dash-checkbox-grid" data-trace-id={`${TRACE}::EL-REGION-${idPrefix}-categories`}>
+      {categories.map((c) => (
+        <label key={c.id} className="dash-checkbox-label">
           <input
-            className="dash-input"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            disabled={saving}
-            maxLength={60}
-            autoFocus
-            data-trace-id={`${TRACE}::EL-INPUT-rename-option@${option.id}`}
+            type="checkbox"
+            className="dash-checkbox"
+            checked={selected.includes(c.id)}
+            onChange={() => onToggle(c.id)}
+            disabled={disabled}
           />
-          <button className="dash-btn-primary" type="submit" disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-          <button
-            className="dash-btn-secondary"
-            type="button"
-            onClick={() => {
-              setEditing(false);
-              setName(option.name);
-              setError(null);
-            }}
-          >
-            Cancel
-          </button>
-        </form>
-      ) : (
-        <>
-          <span style={{ minWidth: 160 }}>
-            {option.name}
-            {!option.isActive && <span className="dash-muted"> — deleted</span>}
-          </span>
-          <button
-            className="dash-btn-secondary"
-            onClick={() => setEditing(true)}
-            data-trace-id={`${TRACE}::EL-BTN-edit-option@${option.id}`}
-          >
-            Rename
-          </button>
-          {option.isActive ? (
-            <button
-              className="dash-btn-secondary"
-              onClick={() => setConfirmDelete(true)}
-              data-trace-id={`${TRACE}::EL-BTN-delete-option@${option.id}`}
-            >
-              Delete
-            </button>
-          ) : (
-            <button
-              className="dash-btn-secondary"
-              onClick={async () =>
-                onUpdated(
-                  await updateAttributeOption(option.id, { isActive: true }),
-                )
-              }
-              data-trace-id={`${TRACE}::EL-BTN-restore-option@${option.id}`}
-            >
-              Restore
-            </button>
-          )}
-        </>
-      )}
-      {error && <p className="dash-field-error">{error}</p>}
-      {confirmDelete && (
-        <DeleteChoiceDialog
-          productName={option.name}
-          onSoftDelete={() => handleDelete('soft')}
-          onHardDelete={() => handleDelete('hard')}
-          onCancel={() => setConfirmDelete(false)}
-          traceIdPrefix={`${TRACE}::EL-MODAL-delete-option@${option.id}`}
-          hardDeleteNote="Also cleared from any product that had picked it — the products themselves stay."
-        />
-      )}
-    </li>
+          {c.name}
+        </label>
+      ))}
+    </div>
   );
 }
 
-function AttributeCard({
+function GlobalVariantCard({
   attribute,
-  categoryNames,
   categories,
+  categoryNames,
   onUpdated,
   onDeleted,
 }: {
   attribute: AttributeRecord;
-  categoryNames: string[];
   categories: Category[];
+  categoryNames: string[];
   onUpdated: (a: AttributeRecord) => void;
   onDeleted: (id: string) => void;
 }) {
-  const [options, setOptions] = useState<AttributeOptionRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [newOption, setNewOption] = useState('');
-  const [adding, setAdding] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const [name, setName] = useState(attribute.name);
+  const [editingCategories, setEditingCategories] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    listAttributeOptions(attribute.id)
-      .then((rows) => {
-        if (!cancelled) setOptions(rows);
-      })
-      .catch(() => {
-        if (!cancelled) setError('Could not load the values in this list.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [attribute.id]);
-
-  async function handleAddOption(e: React.FormEvent) {
+  async function handleRename(e: React.FormEvent) {
     e.preventDefault();
-    if (!newOption.trim()) return;
-    setAdding(true);
+    if (!name.trim() || name.trim() === attribute.name) {
+      setRenaming(false);
+      return;
+    }
+    setBusy(true);
     setError(null);
     try {
-      const created = await createAttributeOption(attribute.id, {
-        name: newOption.trim(),
-      });
-      setOptions((prev) => [...prev, created]);
-      setNewOption('');
+      onUpdated(await updateAttribute(attribute.id, { name: name.trim() }));
+      setRenaming(false);
     } catch (e) {
-      setError((e as ApiError).message ?? 'Could not add that value.');
+      setError((e as ApiError).message ?? 'Rename failed.');
     } finally {
-      setAdding(false);
+      setBusy(false);
     }
   }
 
-  async function handleDeleteList(mode: 'soft' | 'hard') {
-    await deleteAttribute(attribute.id, mode);
-    setConfirmDelete(false);
-    if (mode === 'hard') onDeleted(attribute.id);
-    else onUpdated({ ...attribute, isActive: false });
+  async function toggleCategory(categoryId: string) {
+    const current = attribute.categoryIds ?? [];
+    const next = current.includes(categoryId)
+      ? current.filter((x) => x !== categoryId)
+      : [...current, categoryId];
+    setBusy(true);
+    setError(null);
+    try {
+      onUpdated(await updateAttribute(attribute.id, { categoryIds: next }));
+    } catch (e) {
+      setError((e as ApiError).message ?? 'Could not change the categories.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDelete(mode: 'soft' | 'hard') {
+    try {
+      await deleteAttribute(attribute.id, mode);
+      if (mode === 'hard') onDeleted(attribute.id);
+      else onUpdated({ ...attribute, isActive: false });
+      setConfirmDelete(false);
+    } catch {
+      // The dialog surfaces its own error.
+    }
   }
 
   return (
     <section
       className="dash-card"
-      style={{ marginBottom: 20, opacity: attribute.isActive ? 1 : 0.6 }}
-      data-trace-id={`${TRACE}::EL-CARD-attribute@${attribute.id}`}
+      style={{ marginBottom: 12, opacity: attribute.isActive ? 1 : 0.6 }}
+      data-trace-id={`${TRACE}::EL-CARD-global-variant@${attribute.id}`}
     >
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'baseline',
+          alignItems: 'flex-start',
           gap: 12,
+          flexWrap: 'wrap',
         }}
       >
-        <h2 style={{ margin: 0 }}>
-          {attribute.name}
-          {!attribute.isActive && <span className="dash-muted"> — deleted</span>}
-        </h2>
-        <div>
-          <span className="dash-muted">
-            {categoryNames.length > 0
-              ? categoryNames.join(', ')
-              : 'Every category'}
-          </span>{' '}
-          {attribute.isActive ? (
+        <div style={{ flex: 1, minWidth: 220 }}>
+          {renaming ? (
+            <form onSubmit={handleRename} style={{ display: 'flex', gap: 8 }}>
+              <input
+                className="dash-input"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={busy}
+                autoFocus
+                maxLength={60}
+                data-trace-id={`${TRACE}::EL-INPUT-rename@${attribute.id}`}
+              />
+              <button type="submit" className="dash-btn-primary" disabled={busy}>
+                Save
+              </button>
+              <button
+                type="button"
+                className="dash-btn-ghost"
+                onClick={() => {
+                  setRenaming(false);
+                  setName(attribute.name);
+                }}
+                disabled={busy}
+              >
+                Cancel
+              </button>
+            </form>
+          ) : (
+            <h2 style={{ margin: 0 }}>
+              {attribute.name}
+              {!attribute.isActive && <span className="dash-muted"> — deleted</span>}
+            </h2>
+          )}
+          <p className="dash-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+            Applies to:{' '}
+            {categoryNames.length > 0 ? categoryNames.join(', ') : 'every category'}
+          </p>
+        </div>
+
+        {attribute.isActive && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {!renaming && (
+              <button
+                type="button"
+                className="dash-btn-ghost"
+                onClick={() => setRenaming(true)}
+                data-trace-id={`${TRACE}::EL-BTN-rename-toggle@${attribute.id}`}
+              >
+                Rename
+              </button>
+            )}
             <button
-              className="dash-btn-secondary"
+              type="button"
+              className="dash-btn-ghost"
+              onClick={() => setEditingCategories((v) => !v)}
+              data-trace-id={`${TRACE}::EL-BTN-edit-categories@${attribute.id}`}
+            >
+              {editingCategories ? 'Done' : 'Categories'}
+            </button>
+            <button
+              type="button"
+              className="dash-btn-ghost dash-btn-danger"
               onClick={() => setConfirmDelete(true)}
-              data-trace-id={`${TRACE}::EL-BTN-delete-attribute@${attribute.id}`}
+              data-trace-id={`${TRACE}::EL-BTN-delete@${attribute.id}`}
             >
               Delete
             </button>
-          ) : (
-            <button
-              className="dash-btn-secondary"
-              onClick={async () =>
-                onUpdated(await updateAttribute(attribute.id, { isActive: true }))
-              }
-              data-trace-id={`${TRACE}::EL-BTN-restore-attribute@${attribute.id}`}
-            >
-              Restore
-            </button>
-          )}
-        </div>
+          </div>
+        )}
+        {!attribute.isActive && (
+          <button
+            type="button"
+            className="dash-btn-secondary"
+            onClick={async () => onUpdated(await updateAttribute(attribute.id, { isActive: true }))}
+            data-trace-id={`${TRACE}::EL-BTN-restore@${attribute.id}`}
+          >
+            Restore
+          </button>
+        )}
       </div>
 
-      <details style={{ margin: '8px 0' }}>
-        <summary className="dash-muted" style={{ cursor: 'pointer' }}>
-          Which categories use this
-        </summary>
-        <div
-          className="dash-checkbox-grid"
-          style={{ marginTop: 8 }}
-          data-trace-id={`${TRACE}::EL-REGION-categories@${attribute.id}`}
-        >
-          {categories.map((c) => (
-            <label key={c.id} className="dash-checkbox-label">
-              <input
-                type="checkbox"
-                className="dash-checkbox"
-                checked={(attribute.categoryIds ?? []).includes(c.id)}
-                onChange={async (e) => {
-                  const current = attribute.categoryIds ?? [];
-                  const next = e.target.checked
-                    ? [...current, c.id]
-                    : current.filter((x) => x !== c.id);
-                  onUpdated(
-                    await updateAttribute(attribute.id, { categoryIds: next }),
-                  );
-                }}
-                data-trace-id={`${TRACE}::EL-CHECK-category@${attribute.id}-${c.id}`}
-              />
-              {c.name}
-            </label>
-          ))}
-          {categories.length === 0 && (
-            <span className="dash-muted">No categories yet.</span>
-          )}
+      {editingCategories && attribute.isActive && (
+        <div style={{ marginTop: 12 }}>
+          <p className="dash-help-text" style={{ marginBottom: 8 }}>
+            Tick the categories whose products must answer this. None ticked
+            means it applies everywhere.
+          </p>
+          <CategoryPicker
+            categories={categories}
+            selected={attribute.categoryIds ?? []}
+            onToggle={toggleCategory}
+            disabled={busy}
+            idPrefix={`edit-${attribute.id}`}
+          />
         </div>
-      </details>
-
-      {loading && <p className="dash-muted">Loading…</p>}
-      {error && <p className="dash-inline-error">{error}</p>}
-
-      {!loading && options.length === 0 && (
-        <p className="dash-muted">No values yet.</p>
       )}
 
-      <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0' }}>
-        {options.map((o) => (
-          <OptionRow
-            key={o.id}
-            option={o}
-            onUpdated={(updated) =>
-              setOptions((prev) =>
-                prev.map((x) => (x.id === updated.id ? updated : x)),
-              )
-            }
-            onDeleted={(id) =>
-              setOptions((prev) => prev.filter((x) => x.id !== id))
-            }
-          />
-        ))}
-      </ul>
-
-      <form onSubmit={handleAddOption} style={{ display: 'flex', gap: 8 }}>
-        <input
-          className="dash-input"
-          placeholder={`New value for ${attribute.name}…`}
-          value={newOption}
-          onChange={(e) => setNewOption(e.target.value)}
-          disabled={adding}
-          maxLength={60}
-          data-trace-id={`${TRACE}::EL-INPUT-new-option@${attribute.id}`}
-        />
-        <button
-          className="dash-btn-primary"
-          type="submit"
-          disabled={adding || !newOption.trim()}
-          data-trace-id={`${TRACE}::EL-BTN-add-option@${attribute.id}`}
-        >
-          {adding ? 'Adding…' : 'Add'}
-        </button>
-      </form>
+      {error && <p className="dash-inline-error" style={{ marginTop: 8 }}>{error}</p>}
 
       {confirmDelete && (
         <DeleteChoiceDialog
           productName={attribute.name}
-          onSoftDelete={() => handleDeleteList('soft')}
-          onHardDelete={() => handleDeleteList('hard')}
+          onSoftDelete={() => handleDelete('soft')}
+          onHardDelete={() => handleDelete('hard')}
           onCancel={() => setConfirmDelete(false)}
-          traceIdPrefix={`${TRACE}::EL-MODAL-delete-attribute@${attribute.id}`}
-          hardDeleteNote="The whole list and all its values go, and every product that used it loses that answer. The products themselves stay."
+          traceIdPrefix={`${TRACE}::EL-MODAL-delete@${attribute.id}`}
+          hardDeleteNote="The field goes for good, and every product that answered it loses that answer. The products themselves stay."
         />
       )}
     </section>
   );
 }
 
-export default function OptionListsPage() {
+export default function GlobalVariantsPage() {
   const [attributes, setAttributes] = useState<AttributeRecord[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const [newName, setNewName] = useState('');
   const [newCategoryIds, setNewCategoryIds] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-
-  // Tracks a confirmed successful load, so the "none yet" empty state can never
-  // show on top of a load failure — that contradiction ("Failed to fetch" AND
-  // "No global variants yet") is what a bare error + ungated empty produced.
-  const [loaded, setLoaded] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -392,8 +279,7 @@ export default function OptionListsPage() {
         setLoaded(true);
       })
       .catch((e: ApiError) => {
-        if (!cancelled)
-          setLoadError(e.message ?? 'Could not load global variants.');
+        if (!cancelled) setLoadError(e.message ?? 'Could not load global variants.');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -417,10 +303,16 @@ export default function OptionListsPage() {
       setNewName('');
       setNewCategoryIds([]);
     } catch (e) {
-      setCreateError((e as ApiError).message ?? 'Could not add that.');
+      setCreateError((e as ApiError).message ?? 'Could not add that field.');
     } finally {
       setCreating(false);
     }
+  }
+
+  function toggleNewCategory(id: string) {
+    setNewCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
   }
 
   function categoryNamesFor(attribute: AttributeRecord): string[] {
@@ -428,6 +320,9 @@ export default function OptionListsPage() {
       .map((id) => categories.find((c) => c.id === id)?.name)
       .filter((n): n is string => !!n);
   }
+
+  const activeVariants = attributes.filter((a) => a.isActive);
+  const deletedVariants = attributes.filter((a) => !a.isActive);
 
   return (
     <div data-trace-id={`${TRACE}::EL-REGION-global-variants-page`}>
@@ -437,104 +332,112 @@ export default function OptionListsPage() {
 
       <CatalogSubnav />
 
-      <p className="dash-muted">
-        A question every product in a category answers — bottle size, price. You
-        set the question here; each product fills in its own answer. Choose which
-        categories it applies to, or leave them empty to use it everywhere.
+      <p className="dash-muted" style={{ maxWidth: 680 }}>
+        A global variant is a field every product in the chosen categories must
+        fill in — like <strong>Size</strong> or <strong>Concentration</strong>.
+        You define the field here and pick where it applies. The actual values
+        (50ml, EDP) are typed on each product when you add a variant, and
+        remembered for next time — you never list them here.
       </p>
 
-      <form
-        onSubmit={handleCreate}
-        style={{ display: 'flex', gap: 8, margin: '16px 0', flexWrap: 'wrap' }}
-      >
-        <input
-          className="dash-input"
-          placeholder="New global variant, e.g. Size"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          disabled={creating}
-          maxLength={60}
-          data-trace-id={`${TRACE}::EL-INPUT-new-attribute`}
-        />
-        {/* Tick as many as apply. None ticked means every category, which is
-            why there is no "all" option to choose. */}
-        <div
-          className="dash-checkbox-grid"
-          style={{ alignSelf: 'center' }}
-          data-trace-id={`${TRACE}::EL-REGION-new-attribute-categories`}
-        >
-          {categories.map((c) => (
-            <label key={c.id} className="dash-checkbox-label">
-              <input
-                type="checkbox"
-                className="dash-checkbox"
-                checked={newCategoryIds.includes(c.id)}
-                onChange={(e) =>
-                  setNewCategoryIds((prev) =>
-                    e.target.checked
-                      ? [...prev, c.id]
-                      : prev.filter((x) => x !== c.id),
-                  )
-                }
-                disabled={creating}
-                data-trace-id={`${TRACE}::EL-CHECK-new-category@${c.id}`}
-              />
-              {c.name}
+      <section className="dash-card" style={{ marginTop: 16 }}>
+        <h2 style={{ marginTop: 0 }}>Add a global variant</h2>
+        <form onSubmit={handleCreate}>
+          <div className="dash-field" style={{ maxWidth: 420 }}>
+            <label className="dash-label" htmlFor="gv-name">
+              Field name <span className="dash-required">*</span>
             </label>
-          ))}
-          {categories.length === 0 && (
-            <span className="dash-muted">No categories yet</span>
-          )}
-        </div>
-        <button
-          className="dash-btn-primary"
-          type="submit"
-          disabled={creating || !newName.trim()}
-          data-trace-id={`${TRACE}::EL-BTN-create-attribute`}
-        >
-          {creating ? 'Adding…' : 'Add'}
-        </button>
-      </form>
-      {createError && <p className="dash-inline-error">{createError}</p>}
+            <input
+              id="gv-name"
+              className="dash-input"
+              placeholder="e.g. Size, Concentration"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              disabled={creating}
+              maxLength={60}
+              data-trace-id={`${TRACE}::EL-INPUT-new-name`}
+            />
+          </div>
 
-      {loading && <p>Loading…</p>}
+          <div className="dash-field">
+            <label className="dash-label">Which categories use it</label>
+            <p className="dash-help-text" style={{ marginBottom: 8 }}>
+              Leave all unticked to apply it to every category.
+            </p>
+            <CategoryPicker
+              categories={categories}
+              selected={newCategoryIds}
+              onToggle={toggleNewCategory}
+              disabled={creating}
+              idPrefix="new"
+            />
+          </div>
 
-      {loadError && (
-        <div className="dash-card">
-          <p className="dash-inline-error" style={{ marginBottom: 12 }}>{loadError}</p>
+          {createError && <p className="dash-inline-error">{createError}</p>}
+
           <button
-            type="button"
-            className="dash-btn-secondary"
-            onClick={() => setReloadKey((k) => k + 1)}
-            data-trace-id={`${TRACE}::EL-BTN-retry-load`}
+            type="submit"
+            className="dash-btn-primary"
+            disabled={creating || !newName.trim()}
+            data-trace-id={`${TRACE}::EL-BTN-create`}
           >
-            Try again
+            {creating ? 'Adding…' : 'Add field'}
           </button>
-        </div>
-      )}
+        </form>
+      </section>
 
-      {/* Empty state shows ONLY on a confirmed successful, empty load — never
-          alongside an error. */}
-      {loaded && !loadError && attributes.length === 0 && (
-        <p className="dash-muted">No global variants yet. Add one above.</p>
-      )}
+      <div style={{ marginTop: 24 }}>
+        {loading && <p>Loading…</p>}
 
-      {attributes.map((a) => (
-        <AttributeCard
-          key={a.id}
-          attribute={a}
-          categoryNames={categoryNamesFor(a)}
-          categories={categories}
-          onUpdated={(updated) =>
-            setAttributes((prev) =>
-              prev.map((x) => (x.id === updated.id ? updated : x)),
-            )
-          }
-          onDeleted={(id) =>
-            setAttributes((prev) => prev.filter((x) => x.id !== id))
-          }
-        />
-      ))}
+        {loadError && (
+          <div className="dash-card">
+            <p className="dash-inline-error" style={{ marginBottom: 12 }}>{loadError}</p>
+            <button
+              type="button"
+              className="dash-btn-secondary"
+              onClick={() => setReloadKey((k) => k + 1)}
+              data-trace-id={`${TRACE}::EL-BTN-retry-load`}
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
+        {loaded && !loadError && activeVariants.length === 0 && deletedVariants.length === 0 && (
+          <p className="dash-muted">No global variants yet. Add one above.</p>
+        )}
+
+        {activeVariants.map((a) => (
+          <GlobalVariantCard
+            key={a.id}
+            attribute={a}
+            categories={categories}
+            categoryNames={categoryNamesFor(a)}
+            onUpdated={(updated) =>
+              setAttributes((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
+            }
+            onDeleted={(id) => setAttributes((prev) => prev.filter((x) => x.id !== id))}
+          />
+        ))}
+
+        {deletedVariants.length > 0 && (
+          <>
+            <h3 className="dash-muted" style={{ marginTop: 24 }}>Deleted</h3>
+            {deletedVariants.map((a) => (
+              <GlobalVariantCard
+                key={a.id}
+                attribute={a}
+                categories={categories}
+                categoryNames={categoryNamesFor(a)}
+                onUpdated={(updated) =>
+                  setAttributes((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
+                }
+                onDeleted={(id) => setAttributes((prev) => prev.filter((x) => x.id !== id))}
+              />
+            ))}
+          </>
+        )}
+      </div>
     </div>
   );
 }

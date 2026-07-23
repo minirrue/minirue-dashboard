@@ -26,7 +26,7 @@ const TRACE = 'PG-DASHBOARD-CAT-007';
 
 /** Brand → its product list, deep-linked by brand name (the list filters by name). */
 function brandHref(brandName: string): string {
-  return `/products?brand=${encodeURIComponent(brandName)}`;
+  return `/catalogue/products?brand=${encodeURIComponent(brandName)}`;
 }
 
 export default function CatalogOverviewClient() {
@@ -87,7 +87,7 @@ export default function CatalogOverviewClient() {
       <div className="dash-page-header">
         <h1 className="dash-page-title">Catalogue</h1>
         <Link
-          href="/products/new"
+          href="/catalogue/products/new"
           className="dash-btn-primary"
           data-trace-id={`${TRACE}::EL-LINK-new-product`}
         >
@@ -120,10 +120,10 @@ export default function CatalogOverviewClient() {
                 it, then the products.
               </p>
               <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                <Link href="/categories" className="dash-btn-secondary">
+                <Link href="/catalogue/categories" className="dash-btn-secondary">
                   Add a category
                 </Link>
-                <Link href="/products/new" className="dash-btn-primary">
+                <Link href="/catalogue/products/new" className="dash-btn-primary">
                   New product
                 </Link>
               </div>
@@ -179,7 +179,7 @@ export default function CatalogOverviewClient() {
                         {category.brands.length === 0 ? (
                           <p className="dash-muted" style={{ margin: '0 0 12px' }}>
                             No brands here yet.{' '}
-                            <Link href="/products/brands" className="dash-link">
+                            <Link href="/catalogue/brands" className="dash-link">
                               Add one
                             </Link>
                             .
@@ -212,7 +212,7 @@ export default function CatalogOverviewClient() {
                             <span className="dash-muted">
                               nothing yet —{' '}
                               <Link
-                                href="/products/global-variants"
+                                href="/catalogue/global-variants"
                                 className="dash-link"
                               >
                                 add a global variant
@@ -253,7 +253,7 @@ export default function CatalogOverviewClient() {
                   A question every product in a category has to answer — bottle
                   size, price. You set the question once; each product fills in
                   its own answer. Manage these on{' '}
-                  <Link href="/products/global-variants" className="dash-link">
+                  <Link href="/catalogue/global-variants" className="dash-link">
                     Global variants
                   </Link>
                   .

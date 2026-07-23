@@ -13,16 +13,15 @@ import {
 
 describe('CatalogSubnav active tab', () => {
   const cases: Array<[string, string]> = [
-    ['/products/overview', 'Overview'],
-    ['/products', 'Products'],
-    ['/products/new', 'Products'],
-    ['/products/abc-123/edit', 'Products'],
-    ['/products/brands', 'Brands'],
-    ['/products/global-variants', 'Global variants'],
-    ['/categories', 'Categories'],
-    ['/categories/xyz', 'Categories'],
+    ['/catalogue', 'Overview'],
+    ['/catalogue/products', 'Products'],
+    ['/catalogue/products/new', 'Products'],
+    ['/catalogue/products/abc-123/edit', 'Products'],
+    ['/catalogue/brands', 'Brands'],
+    ['/catalogue/global-variants', 'Global variants'],
+    ['/catalogue/categories', 'Categories'],
     // Tolerant of the app-router path with its /dashboard prefix.
-    ['/dashboard/products/brands', 'Brands'],
+    ['/dashboard/catalogue/brands', 'Brands'],
   ];
 
   it.each(cases)('marks %s as %s', (path, expected) => {

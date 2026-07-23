@@ -25,30 +25,30 @@ interface Tab {
 const TABS: Tab[] = [
   {
     label: 'Overview',
-    href: '/products/overview',
-    match: (p) => p === '/products/overview',
+    href: '/catalogue',
+    match: (p) => p === '/catalogue',
   },
   {
     label: 'Brands',
-    href: '/products/brands',
-    match: (p) => p.startsWith('/products/brands'),
+    href: '/catalogue/brands',
+    match: (p) => p.startsWith('/catalogue/brands'),
   },
   {
     label: 'Global variants',
-    href: '/products/global-variants',
-    match: (p) => p.startsWith('/products/global-variants'),
+    href: '/catalogue/global-variants',
+    match: (p) => p.startsWith('/catalogue/global-variants'),
   },
   {
     label: 'Categories',
-    href: '/categories',
-    match: (p) => p === '/categories' || p.startsWith('/categories/'),
+    href: '/catalogue/categories',
+    match: (p) => p.startsWith('/catalogue/categories'),
   },
   {
-    // Fallback: anything else under /products (the list, New, Edit) is Products.
-    // Listed last so the more specific /products/* tabs above win.
+    // Fallback: anything else under /catalogue (the list, New, Edit) is
+    // Products. Listed last so the more specific sub-tabs above win.
     label: 'Products',
-    href: '/products',
-    match: (p) => p === '/products' || p.startsWith('/products/'),
+    href: '/catalogue/products',
+    match: (p) => p.startsWith('/catalogue/products') || p === '/catalogue/',
   },
 ];
 

@@ -130,7 +130,7 @@ export default function NewProductPage() {
       <div className="dash-page-header" data-trace-id="PG-DASHBOARD-CAT-002::EL-REGION-new-product-page-header">
         <h1 className="dash-page-title">New Product</h1>
         <Link
-          href="/products"
+          href="/catalogue/products"
           className="dash-btn-ghost"
           data-trace-id="PG-DASHBOARD-CAT-002::EL-LINK-cancel-new-product"
         >
@@ -209,7 +209,7 @@ export default function NewProductPage() {
             {submitting ? 'Creating…' : 'Create Product'}
           </button>
           <Link
-            href="/products"
+            href="/catalogue/products"
             className="dash-btn-ghost"
             data-trace-id="PG-DASHBOARD-CAT-002::EL-LINK-cancel-new-product"
           >

@@ -22,8 +22,12 @@ const ADMIN_AND_SUPPORT: readonly RoleType[] = [
  */
 export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   '/overview': ADMIN_AND_SUPPORT,
-  '/products': ADMIN_ONLY,
-  '/categories': ADMIN_ONLY,
+  // The whole catalogue lives under one parent now (2026-07-24): the map at
+  // /catalogue and the sub-tabs /catalogue/products, /catalogue/categories,
+  // /catalogue/brands, /catalogue/global-variants. One key covers them all by
+  // prefix, so the sidebar's single "Catalogue" item highlights everywhere in
+  // it. Old /products and /categories URLs redirect here (see next.config).
+  '/catalogue': ADMIN_ONLY,
   '/orders': ADMIN_AND_SUPPORT,
   '/customers': ADMIN_ONLY,
   '/fulfillment': ADMIN_AND_SUPPORT,
@@ -118,7 +122,7 @@ export function firstAccessibleDashboardRoute(role: string): string {
     '/overview',
     '/orders',
     '/fulfillment',
-    '/products',
+    '/catalogue',
     '/analytics',
     '/settings',
   ]) {

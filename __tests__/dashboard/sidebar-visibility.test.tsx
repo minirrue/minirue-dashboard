@@ -35,7 +35,7 @@ describe('sidebar visibility', () => {
 
   it('no nav item falls through to the /overview catch-all', () => {
     // A typo'd href silently normalizes to /overview and inherits its rules.
-    // A deliberate deep link like /products/overview (the catalogue map) is
+    // A deliberate deep link like /catalogue/brands (a sub-tab) is
     // fine — it normalizes to its real section (/products), just not to itself.
     for (const item of allItems) {
       if (item.href === '/overview') continue;
@@ -55,7 +55,7 @@ describe('sidebar visibility', () => {
 
   it('shows support staff no admin-only tabs', () => {
     const visible = visibleTo(Role.STAFF);
-    for (const forbidden of ['/products', '/settings', '/customers', '/admin', '/collaborators']) {
+    for (const forbidden of ['/catalogue', '/settings', '/customers', '/admin', '/collaborators']) {
       expect(visible).not.toContain(forbidden);
     }
     expect(visible).toContain('/orders');
@@ -72,7 +72,7 @@ describe('sidebar visibility', () => {
     expect(visible).not.toContain('/admin');
     expect(visible).toContain('/settings');
     // The catalogue nav item lands on the map, not the raw list.
-    expect(visible).toContain('/products/overview');
+    expect(visible).toContain('/catalogue');
   });
 
   it('never shows a tab a role would be refused on', () => {
