@@ -40,3 +40,7 @@ minirue-backend POST /v1/webhooks/payments/gateway
 # ================================================================================================
 minirue-dashboard PAGE /dashboard/products/global-variants
 minirue-dashboard PAGE /dashboard/products/option-lists
+
+# 2026-07-23 — Accounts screen (super admin only),
+# specs/2026-07-23-account-administration. Same vault-is-gone reason as above.
+minirue-dashboard PAGE /dashboard/admin

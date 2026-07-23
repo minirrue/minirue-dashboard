@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { DashboardShell } from '@/components/dashboard';
 import AccessDeniedPanel from '@/components/dashboard/AccessDeniedPanel';
+import ActingAsBanner from '@/components/dashboard/ActingAsBanner';
 import { getAccessToken } from '@/lib/auth/tokens';
 import {
   canAccessDashboardRoute,
@@ -105,6 +106,9 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
       shellEyebrow={shellEyebrow}
       shellTitle={shellTitle}
     >
+      {/* Renders nothing unless a "sign in as" session is running, and sits
+          above the loading branch so it is never hidden behind a skeleton. */}
+      <ActingAsBanner />
       {showLoadingShell ? (
         <DashboardContentSkeleton />
       ) : accessDenied ? (

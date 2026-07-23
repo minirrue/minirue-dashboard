@@ -155,6 +155,16 @@ function IconPalette() {
   );
 }
 
+function IconShield() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <circle cx="12" cy="10.5" r="2.2" />
+      <path d="M8.6 16.2a3.8 3.8 0 0 1 6.8 0" />
+    </svg>
+  );
+}
+
 export interface NavItem {
   label: string;
   href: string;
@@ -181,7 +191,10 @@ export interface DashboardSidebarProps {
   onMobileDrawerClose?: () => void;
 }
 
-const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
+// Exported so __tests__/dashboard/sidebar-visibility.test.tsx can assert
+// against the real list — a role rule that drifts from the nav is exactly the
+// bug that puts a 403 tab on someone's screen.
+export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
   {
     section: 'Partner',
     items: [
@@ -228,6 +241,10 @@ const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
   {
     section: 'System',
     items: [
+      // Super admin only — DASHBOARD_ROUTE_ACCESS['/admin'] lists that role
+      // alone, so the filter below removes this item for everyone else rather
+      // than showing a tab that answers 403.
+      { label: 'Accounts', href: '/admin', icon: <IconShield /> },
       { label: 'Settings', href: '/settings', icon: <IconSettings /> },
       { label: 'Info', href: '/info', icon: <IconInfo /> },
     ],

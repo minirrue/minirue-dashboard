@@ -10,33 +10,23 @@ const BRIEFS: Record<RoleType, RoleBrief> = {
   [Role.SUPERADMIN]: {
     headline: 'Store overview',
     description:
-      'Everything an admin can do, plus the data reset under Settings. Use that one with care — it cannot be undone.',
+      'Everything an admin can do, plus managing accounts under Admin and the data reset under Settings. Use that last one with care — it cannot be undone.',
     primaryAction: { label: 'View analytics', href: '/analytics' },
   },
-  [Role.OWNER]: {
+  [Role.ADMIN]: {
     headline: 'Store overview',
     description: 'Revenue, customer growth, and order flow at a glance. You have full access across catalog, operations, and settings.',
     primaryAction: { label: 'View analytics', href: '/analytics' },
   },
-  [Role.ADMIN]: {
-    headline: 'Administration center',
-    description: 'Manage catalog, customers, refunds, and store settings. Analytics reports are limited to owner and staff roles.',
-    primaryAction: { label: 'Manage products', href: '/products' },
-  },
   [Role.STAFF]: {
-    headline: 'Operations workspace',
-    description: 'Fulfill orders, manage inventory, and support day-to-day store operations.',
+    headline: 'Support workspace',
+    description: 'Answer customers and keep orders moving — orders, fulfillment, and the overview.',
     primaryAction: { label: 'View orders', href: '/orders' },
   },
   [Role.COLLAB]: {
     headline: 'Partner workspace',
     description: 'Manage your brand profile, products, and orders scoped to your collaborator account.',
     primaryAction: { label: 'Open workspace', href: '/collab/workspace' },
-  },
-  [Role.DEV]: {
-    headline: 'Developer session',
-    description: 'Elevated access for local development. Production sessions downgrade developer privileges.',
-    primaryAction: { label: 'Dashboard home', href: '/overview' },
   },
   [Role.CUSTOMER]: {
     headline: 'Customer account',
@@ -62,6 +52,7 @@ export function routeSectionLabel(path: string): string {
     '/analytics': 'Analytics',
     '/loyalty': 'Loyalty',
     '/collaborators': 'Collaborators',
+    '/admin': 'Accounts',
     '/collab': 'Partner workspace',
     '/collab/workspace': 'Partner workspace',
     '/collab/orders': 'Partner orders',

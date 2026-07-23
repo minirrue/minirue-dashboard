@@ -6,15 +6,14 @@ export interface RoleBadgeProps {
   size?: 'compact' | 'default';
 }
 
-const ROLE_TONE: Record<Role, 'owner' | 'admin' | 'staff' | 'dev' | 'customer'> = {
-  // Shares the owner tone deliberately: it is an owner-level account, and a
-  // colour of its own would advertise the reset capability on every screen.
+const ROLE_TONE: Record<Role, 'owner' | 'admin' | 'staff' | 'customer'> = {
+  // Keeps the owner tone deliberately: a colour of its own would advertise the
+  // reset capability on every screen. (OWNER and DEV were retired by backend
+  // migration 0014; the 'owner' and 'dev' tones remain as style names only.)
   SUPERADMIN: 'owner',
-  OWNER: 'owner',
   ADMIN: 'admin',
   STAFF: 'staff',
   COLLAB: 'staff',
-  DEV: 'dev',
   CUSTOMER: 'customer',
 };
 

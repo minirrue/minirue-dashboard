@@ -1430,6 +1430,31 @@
   padding: 8px 12px;
   margin: 0;
 }
+.dash-inline-ok {
+  font-size: 13px;
+  color: var(--mr-st-ok-fg);
+  background: var(--mr-st-ok-bg);
+  border-radius: var(--mr-radius-sm);
+  padding: 8px 12px;
+  margin: 0 0 16px;
+}
+
+/* "Sign in as" — the bar that says whose dashboard this is.
+   Amber rather than red: a borrowed session is a deliberate state, not an
+   error, but it must never blend into the page and be forgotten. */
+.dash-acting-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--mr-st-warn-fg);
+  background: var(--mr-st-warn-bg);
+  border-radius: var(--mr-radius-sm);
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
 .dash-error {
   color: var(--mr-st-danger-fg);
   margin: 0;

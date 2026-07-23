@@ -1,4 +1,5 @@
 import { apiFetch } from './client';
+import type { Role } from '@/lib/auth/role';
 
 /**
  * The super admin data reset.
@@ -89,6 +90,126 @@ export async function createSuperAdmin(data: {
   const res = await apiFetch<{ data: SuperAdminSummary }>(
     '/platform/super-admins',
     { method: 'POST', auth: true, body: JSON.stringify(data) },
+  );
+  return res.data;
+}
+
+// ---------------------------------------------------------------------------
+// Account administration — every account, at any role. SUPERADMIN only.
+// specs/2026-07-23-account-administration
+// ---------------------------------------------------------------------------
+
+export interface AccountSummary {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  status: 'ACTIVE' | 'SUSPENDED';
+  createdAt: string;
+  /** True for the signed-in account — its own row cannot be deleted. */
+  isSelf: boolean;
+}
+
+export interface AccountsPage {
+  data: AccountSummary[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface ListAccountsParams {
+  search?: string;
+  email?: string;
+  role?: Role;
+  status?: 'ACTIVE' | 'SUSPENDED';
+  page?: number;
+  limit?: number;
+}
+
+export async function listAccounts(
+  params: ListAccountsParams = {},
+): Promise<AccountsPage> {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') query.set(key, String(value));
+  }
+  const qs = query.toString();
+  const res = await apiFetch<AccountsPage>(
+    `/platform/accounts${qs ? `?${qs}` : ''}`,
+    { auth: true },
+  );
+  return {
+    data: Array.isArray(res?.data) ? res.data : [],
+    total: res?.total ?? 0,
+    page: res?.page ?? 1,
+    limit: res?.limit ?? 25,
+  };
+}
+
+export async function createAccount(data: {
+  email: string;
+  password: string;
+  name: string;
+  role: Role;
+  /** The caller's own password. Required only when creating a super admin. */
+  confirmPassword?: string;
+}): Promise<AccountSummary> {
+  const res = await apiFetch<{ data: AccountSummary }>('/platform/accounts', {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify(data),
+  });
+  return res.data;
+}
+
+export async function updateAccount(
+  id: string,
+  data: {
+    name?: string;
+    email?: string;
+    role?: Role;
+    status?: 'ACTIVE' | 'SUSPENDED';
+    password?: string;
+    /** The caller's own password — needed to grant SUPERADMIN or set a password. */
+    confirmPassword?: string;
+  },
+): Promise<AccountSummary> {
+  const res = await apiFetch<{ data: AccountSummary }>(
+    `/platform/accounts/${id}`,
+    { method: 'PATCH', auth: true, body: JSON.stringify(data) },
+  );
+  return res.data;
+}
+
+/** Removes the account for good. The caller retypes their own password. */
+export async function deleteAccount(
+  id: string,
+  confirmPassword: string,
+): Promise<void> {
+  await apiFetch<{ data: { deleted: true } }>(`/platform/accounts/${id}`, {
+    method: 'DELETE',
+    auth: true,
+    body: JSON.stringify({ confirmPassword }),
+  });
+}
+
+export interface SignInAsResult {
+  accessToken: string;
+  expiresIn: number;
+  actingAs: { id: string; name: string; email: string; role: Role };
+}
+
+/**
+ * A short-lived token for another account. There is no refresh token by
+ * design, so the borrowed session expires on its own.
+ */
+export async function signInAsAccount(
+  id: string,
+  confirmPassword: string,
+): Promise<SignInAsResult> {
+  const res = await apiFetch<{ data: SignInAsResult }>(
+    `/platform/accounts/${id}/sign-in-as`,
+    { method: 'POST', auth: true, body: JSON.stringify({ confirmPassword }) },
   );
   return res.data;
 }

@@ -21,6 +21,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 43,
+    date: '2026-07-23',
+    area: 'Accounts',
+    summary:
+      'There is a new Accounts tab, and only a super admin can see it. It lists everyone who can sign in, and lets you add an account at whatever level you choose, change someone\'s name, email or level, set a new password for them, suspend them, or delete them for good. You can also open the dashboard as any of them to see exactly what they see, with a bar at the top to switch straight back to yourself. Deleting an account does not touch your sales history — their past orders stay, under their name.',
+  },
+  {
+    id: 42,
+    date: '2026-07-23',
+    area: 'Accounts',
+    summary:
+      'Account levels were simplified from seven to five: Super Admin, Admin, Support Staff, Collab and Customer. "Developer" and "Owner" are gone — anyone who was a Developer is now a Super Admin, and anyone who was an Owner is now an Admin, with exactly the same access as before. Support Staff now means the customer-support channel: orders, fulfillment and the overview. Customers can never open the dashboard at all. Tabs you are not allowed to use no longer appear in the sidebar instead of showing an error when you click them.',
+  },
+  {
     id: 41,
     date: '2026-07-23',
     area: 'Sign in',

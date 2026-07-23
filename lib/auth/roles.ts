@@ -1,33 +1,43 @@
 import { Role, isRole, type Role as RoleType } from './role';
 
-const STAFF_ROLES: RoleType[] = [
-  Role.DEV,
+/** Roles that belong in the admin dashboard at all. */
+const STAFF_ROLES: RoleType[] = [Role.SUPERADMIN, Role.ADMIN, Role.STAFF];
+/** Roles that belong in the brand-partner portal. */
+const COLLAB_ROLES: RoleType[] = [Role.COLLAB];
+
+const ADMIN_ONLY: readonly RoleType[] = [Role.SUPERADMIN, Role.ADMIN];
+/** Admin work that customer support also handles. */
+const ADMIN_AND_SUPPORT: readonly RoleType[] = [
   Role.SUPERADMIN,
-  Role.OWNER,
   Role.ADMIN,
   Role.STAFF,
 ];
-const COLLAB_ROLES: RoleType[] = [Role.COLLAB, Role.DEV];
 
 /**
  * Allowed roles per dashboard route — mirrors backend `@Roles` on controllers.
- * See `knowledge/specs/005-shared-enums-types/data-model.md` RBAC matrix.
+ *
+ * SUPERADMIN is listed explicitly everywhere rather than relied on implicitly,
+ * so this file reads as the whole answer. `canAccessDashboardRoute` grants it
+ * regardless, matching the backend RolesGuard.
  */
 export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
-  '/overview': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.STAFF, Role.DEV],
-  '/products': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.DEV],
-  '/categories': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.DEV],
-  '/orders': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.STAFF, Role.DEV],
-  '/customers': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.DEV],
-  '/fulfillment': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.STAFF, Role.DEV],
-  '/refunds': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.DEV],
-  '/inventory': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.DEV],
-  '/analytics': [Role.OWNER, Role.SUPERADMIN, Role.STAFF, Role.DEV],
-  '/loyalty': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.DEV],
-  '/settings': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.DEV],
+  '/overview': ADMIN_AND_SUPPORT,
+  '/products': ADMIN_ONLY,
+  '/categories': ADMIN_ONLY,
+  '/orders': ADMIN_AND_SUPPORT,
+  '/customers': ADMIN_ONLY,
+  '/fulfillment': ADMIN_AND_SUPPORT,
+  '/refunds': ADMIN_ONLY,
+  '/inventory': ADMIN_ONLY,
+  '/analytics': ADMIN_AND_SUPPORT,
+  '/loyalty': ADMIN_ONLY,
+  '/settings': ADMIN_ONLY,
   '/info': STAFF_ROLES,
-  '/storefront-appearance': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN, Role.DEV],
-  '/collaborators': [Role.ADMIN, Role.OWNER, Role.SUPERADMIN],
+  '/storefront-appearance': ADMIN_ONLY,
+  '/collaborators': ADMIN_ONLY,
+  // Managing accounts — creating them, changing roles, deleting them, and
+  // signing in as one. Nobody but the top role, by design.
+  '/admin': [Role.SUPERADMIN],
   '/collab': COLLAB_ROLES,
   '/collab/workspace': COLLAB_ROLES,
   '/collab/orders': COLLAB_ROLES,
@@ -58,6 +68,9 @@ export function normalizeDashboardPath(path: string): string {
 
 export function canAccessDashboardRoute(role: string, path: string): boolean {
   if (!isRole(role)) return false;
+  // Mirrors the backend guard: the top role reaches every screen. Leaving it
+  // off a single route here would hide a tab the API would happily serve.
+  if (role === Role.SUPERADMIN) return true;
   const normalized = normalizeDashboardPath(path);
   const allowed = DASHBOARD_ROUTE_ACCESS[normalized];
   if (!allowed) return isStaffRole(role);

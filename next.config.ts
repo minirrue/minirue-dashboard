@@ -30,6 +30,7 @@ const nextConfig: NextConfig = {
       { source: "/inventory/warehouses", destination: "/dashboard/inventory/warehouses" },
       { source: "/analytics", destination: "/dashboard/analytics" },
       { source: "/loyalty", destination: "/dashboard/loyalty" },
+      { source: "/admin", destination: "/dashboard/admin" },
       { source: "/settings", destination: "/dashboard/settings" },
       { source: "/info", destination: "/dashboard/info" },
       { source: "/storefront-appearance", destination: "/dashboard/storefront-appearance" },
