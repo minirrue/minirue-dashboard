@@ -157,7 +157,7 @@ export default function WarehousesClient() {
             [TBD — multi-warehouse not in MVP spec. Endpoints pending.]
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Link href="/inventory" className="dash-btn-secondary">
             Back to Inventory
           </Link>

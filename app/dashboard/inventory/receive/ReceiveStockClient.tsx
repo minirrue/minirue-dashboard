@@ -145,7 +145,7 @@ export default function ReceiveStockClient() {
           <div
             className="dash-status"
             data-status="published"
-            style={{ padding: '10px 14px', borderRadius: 6, fontSize: 13, marginBottom: 16 }}
+            style={{ padding: '10px 14px', borderRadius: 6, fontSize: 13, marginBottom: 16, flexWrap: 'wrap', width: '100%' }}
           >
             <span className="dash-status-dot" />
             {successMessage}

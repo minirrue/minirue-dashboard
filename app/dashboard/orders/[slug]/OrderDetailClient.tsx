@@ -178,11 +178,11 @@ export default function OrderDetailClient({ id }: { id: string }) {
     <>
       {/* Page header */}
       <div className="dash-page-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', minWidth: 0 }}>
           <Link href="/orders" className="dash-btn-ghost">
             ← Orders
           </Link>
-          <h1 className="dash-page-title">{formatOrderRef(order)}</h1>
+          <h1 className="dash-page-title" style={{ overflowWrap: 'anywhere' }}>{formatOrderRef(order)}</h1>
           <span style={{ color: 'var(--mr-fg-4)', fontSize: 13 }}>{order.orderNumber}</span>
           <OrderStatusBadge status={order.status} />
         </div>

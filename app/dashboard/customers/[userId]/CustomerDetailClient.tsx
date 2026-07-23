@@ -373,7 +373,7 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
           )}
         </div>
         {customer && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               type="button"
               className={isSuspended ? 'dash-btn-secondary' : 'dash-btn-danger'}
@@ -735,6 +735,7 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                       justifyContent: 'space-between',
                       gap: 12,
                       alignItems: 'center',
+                      flexWrap: 'wrap',
                     }}
                   >
                     <div>
@@ -806,7 +807,7 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                       lineHeight: 1.5,
                     }}
                   >
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
                       <strong style={{ color: 'var(--mr-fg)' }}>{addr.label}</strong>
                       {addr.isDefault && (
                         <span
