@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 46,
+    date: '2026-07-23',
+    area: 'Orders',
+    summary:
+      'You can now choose and record how each order is being fulfilled — manually packed or via a shipping service — right from the Orders list, an order’s own page, or a customer’s order history. Once you mark a manually-fulfilled order as sent, it shows a clear "Fulfilled" badge everywhere it appears.',
+  },
+  {
     id: 45,
     date: '2026-07-23',
     area: 'Orders',

@@ -9,6 +9,8 @@ import type { AdminPaymentAttempt } from '@/lib/api/payments';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { ImagePreviewModal } from '@/components/dashboard/ImagePreviewModal';
+import FulfillmentControl from '@/components/dashboard/FulfillmentControl';
+import { formatOrderRef } from '@/lib/orders/order-format';
 
 /* ── Helpers ── */
 function formatAmount(amount: string, currency: string): string {
@@ -180,7 +182,8 @@ export default function OrderDetailClient({ id }: { id: string }) {
           <Link href="/orders" className="dash-btn-ghost">
             ← Orders
           </Link>
-          <h1 className="dash-page-title">{order.orderNumber}</h1>
+          <h1 className="dash-page-title">{formatOrderRef(order)}</h1>
+          <span style={{ color: 'var(--mr-fg-4)', fontSize: 13 }}>{order.orderNumber}</span>
           <OrderStatusBadge status={order.status} />
         </div>
         <OrderActions
@@ -213,6 +216,15 @@ export default function OrderDetailClient({ id }: { id: string }) {
           <p style={{ margin: '4px 0', fontSize: 14, color: 'var(--mr-fg-2)' }}>
             <strong>Total:</strong> {formatAmount(order.totalAmount, order.totalCurrency)}
           </p>
+        </div>
+        <div className="dash-form-section" style={{ margin: 0 }}>
+          <p className="dash-label" style={{ marginBottom: 6 }}>Fulfillment</p>
+          <FulfillmentControl
+            order={order}
+            variant="full"
+            onUpdated={setOrder}
+            onError={setActionError}
+          />
         </div>
         <div className="dash-form-section" style={{ margin: 0 }}>
           <p className="dash-label" style={{ marginBottom: 6 }}>Buyer</p>

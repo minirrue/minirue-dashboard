@@ -24,6 +24,8 @@ import {
 import type { Order } from '@/lib/api/orders';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import FulfillmentControl from '@/components/dashboard/FulfillmentControl';
+import { formatOrderRef } from '@/lib/orders/order-format';
 
 const TIER_OPTIONS: TierLevel[] = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM'];
 const ADDRESS_LABELS: CustomerAddressInput['label'][] = ['HOME', 'WORK', 'OTHER'];
@@ -128,6 +130,12 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
+  const [orderActionError, setOrderActionError] = useState<string | null>(null);
+
+  const handleOrderUpdated = useCallback((updated: Order) => {
+    setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+    setOrderActionError(null);
+  }, []);
 
   // Address editing
   const [addrForm, setAddrForm] = useState<{
@@ -703,6 +711,9 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                 Order history ({orders.length})
               </h2>
             </div>
+            {orderActionError && (
+              <p className="dash-inline-error" style={{ marginBottom: 10 }}>{orderActionError}</p>
+            )}
             {ordersLoading ? (
               <p className="dash-help-text">Loading orders…</p>
             ) : ordersError ? (
@@ -727,13 +738,23 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                     }}
                   >
                     <div>
-                      <strong style={{ color: 'var(--mr-fg)' }}>#{o.orderNumber}</strong>
+                      <strong style={{ color: 'var(--mr-fg)' }}>{formatOrderRef(o)}</strong>
+                      <span style={{ color: 'var(--mr-fg-4)', fontSize: 12, marginLeft: 8 }}>
+                        {o.orderNumber}
+                      </span>
                       <div style={{ fontSize: 12, marginTop: 2 }}>
                         {o.status} · {formatDate(o.createdAt)}
                       </div>
                     </div>
-                    <div style={{ textAlign: 'right', fontWeight: 600, color: 'var(--mr-fg)' }}>
-                      {formatMoney(o.totalAmount, o.totalCurrency)}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <FulfillmentControl
+                        order={o}
+                        onUpdated={handleOrderUpdated}
+                        onError={setOrderActionError}
+                      />
+                      <span style={{ fontWeight: 600, color: 'var(--mr-fg)' }}>
+                        {formatMoney(o.totalAmount, o.totalCurrency)}
+                      </span>
                     </div>
                   </div>
                 ))}

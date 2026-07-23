@@ -9,6 +9,7 @@ export { default as AccessDeniedPanel } from './AccessDeniedPanel';
 export { default as DashboardRoleWelcome } from './DashboardRoleWelcome';
 export { default as NotificationDrawer } from './NotificationDrawer';
 export { default as DeleteChoiceDialog } from './DeleteChoiceDialog';
+export { default as FulfillmentControl } from './FulfillmentControl';
 
 export type { DashboardShellProps } from './DashboardShell';
 export type { DashboardSidebarProps, NavItem } from './DashboardSidebar';
@@ -18,3 +19,4 @@ export type { DashboardTableProps, Column } from './DashboardTable';
 export type { StatusBadgeProps, StatusKind } from './StatusBadge';
 export type { NotificationDrawerProps } from './NotificationDrawer';
 export type { DeleteChoiceDialogProps } from './DeleteChoiceDialog';
+export type { FulfillmentControlProps } from './FulfillmentControl';

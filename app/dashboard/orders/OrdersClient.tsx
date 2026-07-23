@@ -10,6 +10,7 @@ import type { ApiError } from '@/lib/api/client';
 import { ORDER_TRANSITIONS, formatOrderStatus } from '@/lib/orders/transitions';
 import { formatOrderRef } from '@/lib/orders/order-format';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import FulfillmentControl from '@/components/dashboard/FulfillmentControl';
 import ManualOrderModal from './ManualOrderModal';
 
 function formatAmount(amount: string, currency: string): string {
@@ -98,7 +99,7 @@ function SkeletonRows() {
         <table className="dash-table">
           <thead>
             <tr>
-              {['Order', 'Customer', 'Status', 'Total', 'Date', ''].map((h) => (
+              {['Order', 'Customer', 'Channel', 'Status', 'Fulfillment', 'Total', 'Date', ''].map((h) => (
                 <th key={h}>{h}</th>
               ))}
             </tr>
@@ -106,7 +107,7 @@ function SkeletonRows() {
           <tbody>
             {Array.from({ length: 8 }).map((_, i) => (
               <tr key={i}>
-                {Array.from({ length: 6 }).map((_, j) => (
+                {Array.from({ length: 8 }).map((_, j) => (
                   <td key={j}>
                     <span
                       className="dash-skeleton"
@@ -229,6 +230,17 @@ export default function OrdersClient() {
           <OrderStatusCell
             order={row}
             onTransition={handleOrderUpdated}
+            onError={setTransitionError}
+          />
+        ),
+      },
+      {
+        key: 'fulfillment',
+        label: 'Fulfillment',
+        render: (row) => (
+          <FulfillmentControl
+            order={row}
+            onUpdated={handleOrderUpdated}
             onError={setTransitionError}
           />
         ),
