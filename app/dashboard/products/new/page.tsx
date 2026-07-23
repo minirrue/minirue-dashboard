@@ -52,7 +52,7 @@ export default function NewProductPage() {
   const [values, setValues] = useState<FormValues>({
     name: '',
     description: '',
-    classification: { categoryId: '', brandId: '', attributes: {} },
+    classification: { categoryId: '', brandId: '' },
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -88,7 +88,6 @@ export default function NewProductPage() {
           description: values.description.trim() || undefined,
           brandId: values.classification.brandId,
           categoryId: values.classification.categoryId,
-          attributes: values.classification.attributes,
         },
         idempotencyKey,
       );

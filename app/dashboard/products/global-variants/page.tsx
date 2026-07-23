@@ -3,19 +3,20 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-  listManagedBrands,
-  listBrandGlobalVariants,
-  createBrandGlobalVariant,
-  updateBrandGlobalVariant,
-  deleteBrandGlobalVariant,
-  listAttributes,
+  listAdminAttributes,
+  createAttribute,
+  updateAttribute,
+  deleteAttribute,
   listAttributeOptions,
-  type ManagedBrand,
+  createAttributeOption,
+  updateAttributeOption,
+  deleteAttributeOption,
+  listCategories,
 } from '@/lib/catalog/api';
 import type {
-  BrandGlobalVariant,
   AttributeRecord,
   AttributeOptionRecord,
+  Category,
 } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
 import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
@@ -23,239 +24,367 @@ import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
 const TRACE = 'PG-DASHBOARD-CAT-006';
 
 /**
- * Global variants — the reusable variants a brand offers across its products.
+ * Global variants — a named list, its values, and the categories it covers.
  * specs/2026-07-22-product-tree-design.md
  *
- * Nothing here is fixed in code. A variant has a Label, and everything else
- * describing it comes from VARIANT-scoped option lists the admin creates under
- * Products → Option lists. "Size (ml)" used to be a hardcoded millilitre box,
- * which made the whole screen useless for anything that is not a liquid.
+ * Replaces two screens that were the same idea under two names: "Option lists"
+ * (a list and its values) and a per-brand "Global variants". The per-brand
+ * version could not express "this applies to cosmetics" at all.
  *
- * There is deliberately no price. The same 50ml costs different amounts on
- * different products, so price is typed on the product itself.
+ * These describe a VARIANT, never the item — an earlier build showed them on
+ * the product details form too, which is why a list called 'Test' appeared
+ * under Brand there.
  */
-function VariantRow({
-  variant,
-  variantAttributes,
-  optionsByAttribute,
+function OptionRow({
+  option,
   onUpdated,
   onDeleted,
 }: {
-  variant: BrandGlobalVariant;
-  variantAttributes: AttributeRecord[];
-  optionsByAttribute: Record<string, AttributeOptionRecord[]>;
-  onUpdated: (v: BrandGlobalVariant) => void;
+  option: AttributeOptionRecord;
+  onUpdated: (o: AttributeOptionRecord) => void;
   onDeleted: (id: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [label, setLabel] = useState(variant.label);
-  const [values, setValues] = useState<Record<string, string>>(
-    Object.fromEntries(
-      (variant.values ?? []).map((v) => [v.attributeId, v.optionId]),
-    ),
-  );
+  const [name, setName] = useState(option.name);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSave(e: React.FormEvent) {
+  async function handleRename(e: React.FormEvent) {
     e.preventDefault();
-    if (!label.trim()) return;
+    if (!name.trim()) return;
     setSaving(true);
     setError(null);
     try {
-      onUpdated(
-        await updateBrandGlobalVariant(variant.id, {
-          label: label.trim(),
-          values,
-        }),
-      );
+      onUpdated(await updateAttributeOption(option.id, { name: name.trim() }));
       setEditing(false);
     } catch (e) {
-      setError((e as ApiError).message ?? 'Save failed.');
+      setError((e as ApiError).message ?? 'Rename failed.');
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(mode: 'soft' | 'hard') {
-    await deleteBrandGlobalVariant(variant.id, mode);
+    // The dialog shows its own error, so nothing is set here — showing it in
+    // both places printed the same sentence twice on screen.
+    await deleteAttributeOption(option.id, mode);
     setConfirmDelete(false);
-    if (mode === 'hard') onDeleted(variant.id);
-    else onUpdated({ ...variant, isActive: false });
+    if (mode === 'hard') onDeleted(option.id);
+    else onUpdated({ ...option, isActive: false });
   }
 
-  const summary = (variant.values ?? [])
-    .map((v) => `${v.attributeName}: ${v.optionName}`)
-    .join(' · ');
-
   return (
-    <>
-      <tr
-        style={variant.isActive ? undefined : { opacity: 0.55 }}
-        data-trace-id={`${TRACE}::EL-ROW-global-variant@${variant.id}`}
-      >
-        <td>
-          {editing ? (
-            <form onSubmit={handleSave}>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <input
-                  className="dash-input"
-                  value={label}
-                  onChange={(e) => setLabel(e.target.value)}
-                  placeholder="Name, e.g. 50ml"
-                  disabled={saving}
-                  maxLength={60}
-                  autoFocus
-                  data-trace-id={`${TRACE}::EL-INPUT-edit-label@${variant.id}`}
-                />
-                {variantAttributes.map((a) => (
-                  <select
-                    key={a.id}
-                    className="dash-select"
-                    value={values[a.id] ?? ''}
-                    onChange={(e) => {
-                      const next = { ...values };
-                      if (e.target.value) next[a.id] = e.target.value;
-                      else delete next[a.id];
-                      setValues(next);
-                    }}
-                    disabled={saving}
-                    style={{ maxWidth: 200 }}
-                    data-trace-id={`${TRACE}::EL-SELECT-edit-value@${variant.id}-${a.id}`}
-                  >
-                    <option value="">{a.name}: not set</option>
-                    {(optionsByAttribute[a.id] ?? []).map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {a.name}: {o.name}
-                      </option>
-                    ))}
-                  </select>
-                ))}
-                <button className="dash-btn-primary" type="submit" disabled={saving}>
-                  {saving ? 'Saving…' : 'Save'}
-                </button>
-                <button
-                  className="dash-btn-secondary"
-                  type="button"
-                  onClick={() => {
-                    setEditing(false);
-                    setLabel(variant.label);
-                    setError(null);
-                  }}
-                  disabled={saving}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+    <li
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '4px 0',
+        opacity: option.isActive ? 1 : 0.55,
+      }}
+      data-trace-id={`${TRACE}::EL-ROW-option@${option.id}`}
+    >
+      {editing ? (
+        <form onSubmit={handleRename} style={{ display: 'flex', gap: 8 }}>
+          <input
+            className="dash-input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={saving}
+            maxLength={60}
+            autoFocus
+            data-trace-id={`${TRACE}::EL-INPUT-rename-option@${option.id}`}
+          />
+          <button className="dash-btn-primary" type="submit" disabled={saving}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button
+            className="dash-btn-secondary"
+            type="button"
+            onClick={() => {
+              setEditing(false);
+              setName(option.name);
+              setError(null);
+            }}
+          >
+            Cancel
+          </button>
+        </form>
+      ) : (
+        <>
+          <span style={{ minWidth: 160 }}>
+            {option.name}
+            {!option.isActive && <span className="dash-muted"> — deleted</span>}
+          </span>
+          <button
+            className="dash-btn-secondary"
+            onClick={() => setEditing(true)}
+            data-trace-id={`${TRACE}::EL-BTN-edit-option@${option.id}`}
+          >
+            Rename
+          </button>
+          {option.isActive ? (
+            <button
+              className="dash-btn-secondary"
+              onClick={() => setConfirmDelete(true)}
+              data-trace-id={`${TRACE}::EL-BTN-delete-option@${option.id}`}
+            >
+              Delete
+            </button>
           ) : (
-            <>
-              <strong>{variant.label}</strong>
-              {summary && <span className="dash-muted"> · {summary}</span>}
-              {!variant.isActive && <span className="dash-muted"> — deleted</span>}
-            </>
+            <button
+              className="dash-btn-secondary"
+              onClick={async () =>
+                onUpdated(
+                  await updateAttributeOption(option.id, { isActive: true }),
+                )
+              }
+              data-trace-id={`${TRACE}::EL-BTN-restore-option@${option.id}`}
+            >
+              Restore
+            </button>
           )}
-          {error && <p className="dash-field-error">{error}</p>}
-        </td>
-        <td style={{ textAlign: 'right' }}>
-          {!editing && (
-            <>
-              <button
-                className="dash-btn-secondary"
-                onClick={() => setEditing(true)}
-                data-trace-id={`${TRACE}::EL-BTN-edit@${variant.id}`}
-              >
-                Edit
-              </button>{' '}
-              {variant.isActive ? (
-                <button
-                  className="dash-btn-secondary"
-                  onClick={() => setConfirmDelete(true)}
-                  data-trace-id={`${TRACE}::EL-BTN-delete@${variant.id}`}
-                >
-                  Delete
-                </button>
-              ) : (
-                <button
-                  className="dash-btn-secondary"
-                  onClick={async () =>
-                    onUpdated(
-                      await updateBrandGlobalVariant(variant.id, {
-                        isActive: true,
-                      }),
-                    )
-                  }
-                  data-trace-id={`${TRACE}::EL-BTN-restore@${variant.id}`}
-                >
-                  Restore
-                </button>
-              )}
-            </>
-          )}
-        </td>
-      </tr>
-      {confirmDelete && (
-        <tr>
-          <td colSpan={2}>
-            <DeleteChoiceDialog
-              productName={variant.label}
-              onSoftDelete={() => handleDelete('soft')}
-              onHardDelete={() => handleDelete('hard')}
-              onCancel={() => setConfirmDelete(false)}
-              traceIdPrefix={`${TRACE}::EL-MODAL-delete@${variant.id}`}
-              hardDeleteNote="Variants already added to products stay exactly as they are — they simply stop being linked to this shared one."
-            />
-          </td>
-        </tr>
+        </>
       )}
-    </>
+      {error && <p className="dash-field-error">{error}</p>}
+      {confirmDelete && (
+        <DeleteChoiceDialog
+          productName={option.name}
+          onSoftDelete={() => handleDelete('soft')}
+          onHardDelete={() => handleDelete('hard')}
+          onCancel={() => setConfirmDelete(false)}
+          traceIdPrefix={`${TRACE}::EL-MODAL-delete-option@${option.id}`}
+          hardDeleteNote="Also cleared from any product that had picked it — the products themselves stay."
+        />
+      )}
+    </li>
   );
 }
 
-export default function GlobalVariantsPage() {
-  const [brands, setBrands] = useState<ManagedBrand[]>([]);
-  const [brandId, setBrandId] = useState('');
-  const [variants, setVariants] = useState<BrandGlobalVariant[]>([]);
-  const [variantAttributes, setVariantAttributes] = useState<AttributeRecord[]>(
-    [],
+function AttributeCard({
+  attribute,
+  categoryNames,
+  categories,
+  onUpdated,
+  onDeleted,
+}: {
+  attribute: AttributeRecord;
+  categoryNames: string[];
+  categories: Category[];
+  onUpdated: (a: AttributeRecord) => void;
+  onDeleted: (id: string) => void;
+}) {
+  const [options, setOptions] = useState<AttributeOptionRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newOption, setNewOption] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    listAttributeOptions(attribute.id)
+      .then((rows) => {
+        if (!cancelled) setOptions(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setError('Could not load the values in this list.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [attribute.id]);
+
+  async function handleAddOption(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newOption.trim()) return;
+    setAdding(true);
+    setError(null);
+    try {
+      const created = await createAttributeOption(attribute.id, {
+        name: newOption.trim(),
+      });
+      setOptions((prev) => [...prev, created]);
+      setNewOption('');
+    } catch (e) {
+      setError((e as ApiError).message ?? 'Could not add that value.');
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function handleDeleteList(mode: 'soft' | 'hard') {
+    await deleteAttribute(attribute.id, mode);
+    setConfirmDelete(false);
+    if (mode === 'hard') onDeleted(attribute.id);
+    else onUpdated({ ...attribute, isActive: false });
+  }
+
+  return (
+    <section
+      className="dash-card"
+      style={{ marginBottom: 20, opacity: attribute.isActive ? 1 : 0.6 }}
+      data-trace-id={`${TRACE}::EL-CARD-attribute@${attribute.id}`}
+    >
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          gap: 12,
+        }}
+      >
+        <h2 style={{ margin: 0 }}>
+          {attribute.name}
+          {!attribute.isActive && <span className="dash-muted"> — deleted</span>}
+        </h2>
+        <div>
+          <span className="dash-muted">
+            {categoryNames.length > 0
+              ? categoryNames.join(', ')
+              : 'Every category'}
+          </span>{' '}
+          {attribute.isActive ? (
+            <button
+              className="dash-btn-secondary"
+              onClick={() => setConfirmDelete(true)}
+              data-trace-id={`${TRACE}::EL-BTN-delete-attribute@${attribute.id}`}
+            >
+              Delete
+            </button>
+          ) : (
+            <button
+              className="dash-btn-secondary"
+              onClick={async () =>
+                onUpdated(await updateAttribute(attribute.id, { isActive: true }))
+              }
+              data-trace-id={`${TRACE}::EL-BTN-restore-attribute@${attribute.id}`}
+            >
+              Restore
+            </button>
+          )}
+        </div>
+      </div>
+
+      <details style={{ margin: '8px 0' }}>
+        <summary className="dash-muted" style={{ cursor: 'pointer' }}>
+          Which categories use this
+        </summary>
+        <div
+          className="dash-checkbox-grid"
+          style={{ marginTop: 8 }}
+          data-trace-id={`${TRACE}::EL-REGION-categories@${attribute.id}`}
+        >
+          {categories.map((c) => (
+            <label key={c.id} className="dash-checkbox-label">
+              <input
+                type="checkbox"
+                className="dash-checkbox"
+                checked={(attribute.categoryIds ?? []).includes(c.id)}
+                onChange={async (e) => {
+                  const current = attribute.categoryIds ?? [];
+                  const next = e.target.checked
+                    ? [...current, c.id]
+                    : current.filter((x) => x !== c.id);
+                  onUpdated(
+                    await updateAttribute(attribute.id, { categoryIds: next }),
+                  );
+                }}
+                data-trace-id={`${TRACE}::EL-CHECK-category@${attribute.id}-${c.id}`}
+              />
+              {c.name}
+            </label>
+          ))}
+          {categories.length === 0 && (
+            <span className="dash-muted">No categories yet.</span>
+          )}
+        </div>
+      </details>
+
+      {loading && <p className="dash-muted">Loading…</p>}
+      {error && <p className="dash-inline-error">{error}</p>}
+
+      {!loading && options.length === 0 && (
+        <p className="dash-muted">No values yet.</p>
+      )}
+
+      <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0' }}>
+        {options.map((o) => (
+          <OptionRow
+            key={o.id}
+            option={o}
+            onUpdated={(updated) =>
+              setOptions((prev) =>
+                prev.map((x) => (x.id === updated.id ? updated : x)),
+              )
+            }
+            onDeleted={(id) =>
+              setOptions((prev) => prev.filter((x) => x.id !== id))
+            }
+          />
+        ))}
+      </ul>
+
+      <form onSubmit={handleAddOption} style={{ display: 'flex', gap: 8 }}>
+        <input
+          className="dash-input"
+          placeholder={`New value for ${attribute.name}…`}
+          value={newOption}
+          onChange={(e) => setNewOption(e.target.value)}
+          disabled={adding}
+          maxLength={60}
+          data-trace-id={`${TRACE}::EL-INPUT-new-option@${attribute.id}`}
+        />
+        <button
+          className="dash-btn-primary"
+          type="submit"
+          disabled={adding || !newOption.trim()}
+          data-trace-id={`${TRACE}::EL-BTN-add-option@${attribute.id}`}
+        >
+          {adding ? 'Adding…' : 'Add'}
+        </button>
+      </form>
+
+      {confirmDelete && (
+        <DeleteChoiceDialog
+          productName={attribute.name}
+          onSoftDelete={() => handleDeleteList('soft')}
+          onHardDelete={() => handleDeleteList('hard')}
+          onCancel={() => setConfirmDelete(false)}
+          traceIdPrefix={`${TRACE}::EL-MODAL-delete-attribute@${attribute.id}`}
+          hardDeleteNote="The whole list and all its values go, and every product that used it loses that answer. The products themselves stay."
+        />
+      )}
+    </section>
   );
-  const [optionsByAttribute, setOptionsByAttribute] = useState<
-    Record<string, AttributeOptionRecord[]>
-  >({});
+}
+
+export default function OptionListsPage() {
+  const [attributes, setAttributes] = useState<AttributeRecord[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [newLabel, setNewLabel] = useState('');
-  const [newValues, setNewValues] = useState<Record<string, string>>({});
+  const [newName, setNewName] = useState('');
+  const [newCategoryIds, setNewCategoryIds] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([listManagedBrands(), listAttributes(undefined, 'VARIANT')])
-      .then(async ([brandRows, attrs]) => {
+    Promise.all([listAdminAttributes(), listCategories()])
+      .then(([attrs, cats]) => {
         if (cancelled) return;
-        // Guarded: an endpoint that returns nothing set state to undefined and
-        // the .length below blanked the page — the same bug Settings, Loyalty
-        // and eleven other screens had.
-        const safeBrands = Array.isArray(brandRows) ? brandRows : [];
-        const safeAttrs = Array.isArray(attrs) ? attrs : [];
-        setBrands(safeBrands);
-        if (safeBrands.length > 0) setBrandId(safeBrands[0].id);
-        setVariantAttributes(safeAttrs);
-        const entries = await Promise.all(
-          safeAttrs.map(
-            async (a) => {
-              const opts = await listAttributeOptions(a.id);
-              return [a.id, Array.isArray(opts) ? opts : []] as const;
-            },
-          ),
-        );
-        if (!cancelled) setOptionsByAttribute(Object.fromEntries(entries));
+        setAttributes(attrs);
+        setCategories(cats.items);
       })
       .catch((e: ApiError) => {
-        if (!cancelled) setLoadError(e.message ?? 'Could not load this page.');
+        if (!cancelled)
+          setLoadError(e.message ?? 'Could not load the option lists.');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -265,39 +394,30 @@ export default function GlobalVariantsPage() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!brandId) return;
-    let cancelled = false;
-    listBrandGlobalVariants(brandId)
-      .then((rows) => {
-        if (!cancelled) setVariants(Array.isArray(rows) ? rows : []);
-      })
-      .catch((e: ApiError) => {
-        if (!cancelled) setLoadError(e.message ?? 'Could not load this brand.');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [brandId]);
-
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!newLabel.trim() || !brandId) return;
+    if (!newName.trim()) return;
     setCreating(true);
     setCreateError(null);
     try {
-      const created = await createBrandGlobalVariant(brandId, {
-        label: newLabel.trim(),
-        values: newValues,
+      const created = await createAttribute({
+        name: newName.trim(),
+        categoryIds: newCategoryIds,
       });
-      setVariants((prev) => [...prev, created]);
-      setNewLabel('');
-      setNewValues({});
+      setAttributes((prev) => [...prev, created]);
+      setNewName('');
+      setNewCategoryIds([]);
     } catch (e) {
       setCreateError((e as ApiError).message ?? 'Could not add that.');
     } finally {
       setCreating(false);
     }
+  }
+
+  function categoryNamesFor(attribute: AttributeRecord): string[] {
+    return (attribute.categoryIds ?? [])
+      .map((id) => categories.find((c) => c.id === id)?.name)
+      .filter((n): n is string => !!n);
   }
 
   return (
@@ -314,132 +434,88 @@ export default function GlobalVariantsPage() {
       </div>
 
       <p className="dash-muted">
-        Variants a brand reuses across its products. Give it a name, and
-        describe it using your own option lists — nothing here is fixed. Add it
-        to a product in one click, then set that product&apos;s price.
+        Create a list, fill it with values, and choose which categories it
+        applies to. Products in those categories get it as a field on every
+        variant they add. Leave the categories empty to use it everywhere.
       </p>
+
+      <form
+        onSubmit={handleCreate}
+        style={{ display: 'flex', gap: 8, margin: '16px 0', flexWrap: 'wrap' }}
+      >
+        <input
+          className="dash-input"
+          placeholder="New global variant, e.g. Size"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          disabled={creating}
+          maxLength={60}
+          data-trace-id={`${TRACE}::EL-INPUT-new-attribute`}
+        />
+        {/* Tick as many as apply. None ticked means every category, which is
+            why there is no "all" option to choose. */}
+        <div
+          className="dash-checkbox-grid"
+          style={{ alignSelf: 'center' }}
+          data-trace-id={`${TRACE}::EL-REGION-new-attribute-categories`}
+        >
+          {categories.map((c) => (
+            <label key={c.id} className="dash-checkbox-label">
+              <input
+                type="checkbox"
+                className="dash-checkbox"
+                checked={newCategoryIds.includes(c.id)}
+                onChange={(e) =>
+                  setNewCategoryIds((prev) =>
+                    e.target.checked
+                      ? [...prev, c.id]
+                      : prev.filter((x) => x !== c.id),
+                  )
+                }
+                disabled={creating}
+                data-trace-id={`${TRACE}::EL-CHECK-new-category@${c.id}`}
+              />
+              {c.name}
+            </label>
+          ))}
+          {categories.length === 0 && (
+            <span className="dash-muted">No categories yet</span>
+          )}
+        </div>
+        <button
+          className="dash-btn-primary"
+          type="submit"
+          disabled={creating || !newName.trim()}
+          data-trace-id={`${TRACE}::EL-BTN-create-attribute`}
+        >
+          {creating ? 'Adding…' : 'Add'}
+        </button>
+      </form>
+      {createError && <p className="dash-inline-error">{createError}</p>}
 
       {loading && <p>Loading…</p>}
       {loadError && <p className="dash-inline-error">{loadError}</p>}
 
-      {!loading && brands.length === 0 && (
-        <p className="dash-muted">
-          No brands yet. Add one under Products → Brands first.
-        </p>
+      {!loading && !loadError && attributes.length === 0 && (
+        <p className="dash-muted">No global variants yet. Add one above.</p>
       )}
 
-      {!loading && variantAttributes.length === 0 && (
-        <p className="dash-muted">
-          You have no variant option lists yet. Create one under Products →
-          Option lists and set it to describe variants — for example a
-          &ldquo;Size&rdquo; list with the sizes you sell.
-        </p>
-      )}
-
-      {brands.length > 0 && (
-        <div className="dash-field" style={{ maxWidth: 320 }}>
-          <label className="dash-label" htmlFor="gv-brand">
-            Brand
-          </label>
-          <select
-            id="gv-brand"
-            className="dash-select"
-            value={brandId}
-            onChange={(e) => setBrandId(e.target.value)}
-            data-trace-id={`${TRACE}::EL-SELECT-brand`}
-          >
-            {brands.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {brandId && (
-        <>
-          <form
-            onSubmit={handleCreate}
-            style={{ display: 'flex', gap: 8, margin: '16px 0', flexWrap: 'wrap' }}
-          >
-            <input
-              className="dash-input"
-              placeholder="Name, e.g. 50ml"
-              value={newLabel}
-              onChange={(e) => setNewLabel(e.target.value)}
-              disabled={creating}
-              maxLength={60}
-              data-trace-id={`${TRACE}::EL-INPUT-new-label`}
-            />
-            {variantAttributes.map((a) => (
-              <select
-                key={a.id}
-                className="dash-select"
-                value={newValues[a.id] ?? ''}
-                onChange={(e) => {
-                  const next = { ...newValues };
-                  if (e.target.value) next[a.id] = e.target.value;
-                  else delete next[a.id];
-                  setNewValues(next);
-                }}
-                disabled={creating}
-                style={{ maxWidth: 200 }}
-                data-trace-id={`${TRACE}::EL-SELECT-new-value@${a.id}`}
-              >
-                <option value="">{a.name}: not set</option>
-                {(optionsByAttribute[a.id] ?? []).map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {a.name}: {o.name}
-                  </option>
-                ))}
-              </select>
-            ))}
-            <button
-              className="dash-btn-primary"
-              type="submit"
-              disabled={creating || !newLabel.trim()}
-              data-trace-id={`${TRACE}::EL-BTN-create`}
-            >
-              {creating ? 'Adding…' : 'Add'}
-            </button>
-          </form>
-          {createError && <p className="dash-inline-error">{createError}</p>}
-
-          {variants.length === 0 ? (
-            <p className="dash-muted">
-              This brand has no shared variants yet.
-            </p>
-          ) : (
-            <table className="dash-table">
-              <thead>
-                <tr>
-                  <th>Variant</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {variants.map((v) => (
-                  <VariantRow
-                    key={v.id}
-                    variant={v}
-                    variantAttributes={variantAttributes}
-                    optionsByAttribute={optionsByAttribute}
-                    onUpdated={(updated) =>
-                      setVariants((prev) =>
-                        prev.map((x) => (x.id === updated.id ? updated : x)),
-                      )
-                    }
-                    onDeleted={(id) =>
-                      setVariants((prev) => prev.filter((x) => x.id !== id))
-                    }
-                  />
-                ))}
-              </tbody>
-            </table>
-          )}
-        </>
-      )}
+      {attributes.map((a) => (
+        <AttributeCard
+          key={a.id}
+          attribute={a}
+          categoryNames={categoryNamesFor(a)}
+          categories={categories}
+          onUpdated={(updated) =>
+            setAttributes((prev) =>
+              prev.map((x) => (x.id === updated.id ? updated : x)),
+            )
+          }
+          onDeleted={(id) =>
+            setAttributes((prev) => prev.filter((x) => x.id !== id))
+          }
+        />
+      ))}
     </div>
   );
 }

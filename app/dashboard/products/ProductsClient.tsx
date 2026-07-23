@@ -292,13 +292,6 @@ export default function ProductsClient() {
         <h1 className="dash-page-title">Products</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <Link
-            href="/products/option-lists"
-            className="dash-btn-secondary"
-            data-trace-id="PG-DASHBOARD-CAT-001::EL-LINK-option-lists"
-          >
-            Option lists
-          </Link>
-          <Link
             href="/products/global-variants"
             className="dash-btn-secondary"
             data-trace-id="PG-DASHBOARD-CAT-001::EL-LINK-global-variants"

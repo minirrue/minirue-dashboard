@@ -7,10 +7,13 @@ import {
   softDeleteVariant,
   hardDeleteVariant,
   createProductMedia,
-  listBrandGlobalVariants,
-  applyGlobalVariant,
-  type BrandGlobalVariant,
+  listAttributes,
+  listAttributeOptions,
 } from '@/lib/catalog/api';
+import type {
+  AttributeRecord,
+  AttributeOptionRecord,
+} from '@/lib/catalog/types';
 import type { ProductVariant, ProductMedia } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
 import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
@@ -19,22 +22,20 @@ import type { GalleryItem } from '@/lib/gallery/types';
 
 interface VariantFormValues {
   sku: string;
-  sizeMl: string;
+  /** global variant id -> chosen value id */
+  values: Record<string, string>;
   priceAmount: string;
   currency: string;
 }
 
 interface VariantFormErrors {
   sku?: string;
-  sizeMl?: string;
   priceAmount?: string;
 }
 
 function validateVariant(v: VariantFormValues): VariantFormErrors {
   const errors: VariantFormErrors = {};
   if (!v.sku.trim()) errors.sku = 'SKU is required.';
-  const size = Number(v.sizeMl);
-  if (!v.sizeMl || isNaN(size) || size <= 0) errors.sizeMl = 'Valid size is required.';
   const price = Number(v.priceAmount);
   if (!v.priceAmount || isNaN(price) || price < 0) errors.priceAmount = 'Valid price is required.';
   return errors;
@@ -42,15 +43,15 @@ function validateVariant(v: VariantFormValues): VariantFormErrors {
 
 const EMPTY_FORM: VariantFormValues = {
   sku: '',
-  sizeMl: '',
+  values: {},
   priceAmount: '',
   currency: 'EGP',
 };
 
 interface Props {
   productId: string;
-  /** Level 2 of the tree — decides which shared variants are on offer here. */
-  brandId: string;
+  /** Decides which global variants apply to this product's variants. */
+  categoryId: string;
   variants: ProductVariant[];
   onVariantsChange: (variants: ProductVariant[]) => void;
   // Added for the Gallery module (specs/006-gallery-module, US3): lets this
@@ -66,7 +67,7 @@ interface Props {
 
 export default function VariantsSection({
   productId,
-  brandId,
+  categoryId,
   variants,
   onVariantsChange,
   media,
@@ -88,52 +89,41 @@ export default function VariantsSection({
   const [pickerVariantId, setPickerVariantId] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
 
-  // The brand's reusable variants, offered as one-click additions beside the
-  // custom ones. Replaces the concentration dropdown that used to sit on each
-  // variant row -- concentration describes the ITEM and lives in its option
-  // lists now (specs 2026-07-22-product-tree).
-  const [globals, setGlobals] = useState<BrandGlobalVariant[]>([]);
+  /**
+   * The global variants that apply to this product's category. These are the
+   * fields on every variant here — created and named by the admin under
+   * Products → Global variants, never fixed in code.
+   */
+  const [globals, setGlobals] = useState<AttributeRecord[]>([]);
+  const [optionsByGlobal, setOptionsByGlobal] = useState<
+    Record<string, AttributeOptionRecord[]>
+  >({});
   const [globalsError, setGlobalsError] = useState<string | null>(null);
-  /** The shared variant being added, so its label and answers copy across. */
-  const [pendingGlobal, setPendingGlobal] = useState<BrandGlobalVariant | null>(
-    null,
-  );
 
   useEffect(() => {
-    if (!brandId) return;
+    if (!categoryId) return;
     let cancelled = false;
-    listBrandGlobalVariants(brandId)
-      .then((rows) => {
-        if (!cancelled) setGlobals(rows.filter((g) => g.isActive));
+    listAttributes(categoryId)
+      .then(async (rows) => {
+        const safe = Array.isArray(rows) ? rows : [];
+        if (cancelled) return;
+        setGlobals(safe);
+        const entries = await Promise.all(
+          safe.map(async (a) => {
+            const opts = await listAttributeOptions(a.id);
+            return [a.id, Array.isArray(opts) ? opts : []] as const;
+          }),
+        );
+        if (!cancelled) setOptionsByGlobal(Object.fromEntries(entries));
       })
       .catch(() => {
         if (!cancelled)
-          setGlobalsError(
-            'Could not load this brand\'s shared variants.',
-          );
+          setGlobalsError('Could not load the global variants for this category.');
       });
     return () => {
       cancelled = true;
     };
-  }, [brandId]);
-
-  /**
-   * Copies a brand variant onto this item. The SKU is generated from the
-   * label because SKUs are unique across every variant in the system and so
-   * can never be inherited; the admin can edit it afterwards like any other.
-   */
-  /**
-   * Opens the add-variant form with this shared variant selected, instead of
-   * creating a row immediately. Price is typed here, on the product — the same
-   * 50ml costs different amounts on different products, so a price on the
-   * shared definition was wrong and made this button refuse outright.
-   */
-  function handleApplyGlobal(g: BrandGlobalVariant) {
-    setPendingGlobal(g);
-    setFormValues({ ...EMPTY_FORM, sku: '' });
-    setShowForm(true);
-    setGlobalsError(null);
-  }
+  }, [categoryId]);
 
   async function handleLinkGalleryItem(variantId: string, item: GalleryItem) {
     setPickerVariantId(null);
@@ -168,23 +158,15 @@ export default function VariantsSection({
     setSubmitError(null);
     setSubmitting(true);
     try {
-      // When a shared variant was picked, go through apply-global so the row
-      // records where it came from and inherits that definition's answers.
-      const variant = pendingGlobal
-        ? await applyGlobalVariant(productId, pendingGlobal.id, {
-            sku: formValues.sku.trim(),
-            price_amount: Number(formValues.priceAmount).toFixed(4),
-            price_currency: formValues.currency.trim() || 'EGP',
-          })
-        : await createVariant(productId, {
-            sku: formValues.sku.trim(),
-            priceAmount: Number(formValues.priceAmount),
-            currency: formValues.currency.trim() || 'EGP',
-          });
+      const variant = await createVariant(productId, {
+        sku: formValues.sku.trim(),
+        priceAmount: Number(formValues.priceAmount),
+        currency: formValues.currency.trim() || 'EGP',
+        values: formValues.values,
+      });
       onVariantsChange([...variants, variant]);
       setFormValues(EMPTY_FORM);
       setShowForm(false);
-      setPendingGlobal(null);
     } catch (e) {
       const err = e as ApiError;
       setSubmitError(err.message ?? 'Failed to add variant.');
@@ -204,7 +186,7 @@ export default function VariantsSection({
     setEditingId(v.id);
     setEditValues({
       sku: v.sku,
-      sizeMl: String(v.sizeMl),
+      values: Object.fromEntries(v.values.map((x) => [x.attributeId, x.optionId])),
       priceAmount: String(v.priceAmount),
       currency: v.currency,
     });
@@ -307,7 +289,7 @@ export default function VariantsSection({
               <tr>
                 <th>SKU</th>
                 <th>Size (ml)</th>
-                <th>Source</th>
+                <th>Variant</th>
                 <th style={{ textAlign: 'right' }}>Price</th>
                 <th>Photos</th>
                 <th>Actions</th>
@@ -325,7 +307,11 @@ export default function VariantsSection({
                   >
                     <td>{v.sku}</td>
                     <td>{v.sizeMl}</td>
-                    <td>{v.sourceGlobalVariantId ? 'Shared' : 'Custom'}</td>
+                    <td>
+                      {v.values.length > 0
+                        ? v.values.map((x) => x.optionName).join(' · ')
+                        : '—'}
+                    </td>
                     <td style={{ textAlign: 'right' }}>{formatPrice(v.priceAmount, v.currency)}</td>
                     <td>
                       <button
@@ -387,22 +373,24 @@ export default function VariantsSection({
                                 disabled
                               />
                             </div>
-                            <div className="dash-field">
-                              <label className="dash-label" htmlFor={`edit-size-${v.id}`}>
-                                Size (ml) <span className="dash-required">*</span>
-                              </label>
-                              <input
-                                id={`edit-size-${v.id}`}
-                                type="number"
-                                min={1}
-                                className={`dash-input${editErrors.sizeMl ? ' dash-input-error' : ''}`}
-                                value={editValues.sizeMl}
-                                onChange={(e) => editSetField('sizeMl', e.target.value)}
-                                disabled={editSubmitting}
-                                data-trace-id={`PG-DASHBOARD-CAT-003::EL-INPUT-edit-variant-size@${v.id}`}
-                              />
-                              {editErrors.sizeMl && <p className="dash-field-error">{editErrors.sizeMl}</p>}
-                            </div>
+                              {globals.map((g) => (
+                                <div className="dash-field" key={g.id}>
+                                  <label className="dash-label">{g.name}</label>
+                                  <select
+                                    className="dash-select"
+                                    value={editValues.values[g.id] ?? ''}
+                                    onChange={(e) => editSetField('values', { ...editValues.values, [g.id]: e.target.value })}
+                                    disabled={editSubmitting}
+                                  >
+                                    <option value="">Not set</option>
+                                    {(optionsByGlobal[g.id] ?? []).map((o) => (
+                                      <option key={o.id} value={o.id}>
+                                        {o.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              ))}
                           </div>
                           <div className="dash-field-row">
                             <div className="dash-field">
@@ -480,31 +468,6 @@ export default function VariantsSection({
         </p>
       )}
 
-      {/* One-click additions from the brand. Applying copies the definition
-          onto this item, so its price and SKU stay its own. */}
-      {globals.length > 0 && (
-        <div
-          className="dash-field"
-          data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-apply-global-variants"
-        >
-          <p className="dash-label">Add one of this brand&apos;s shared variants</p>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {globals.map((g) => (
-              <button
-                key={g.id}
-                type="button"
-                className="dash-btn-secondary"
-                onClick={() => handleApplyGlobal(g)}
-                disabled={submitting}
-                data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-apply-global@${g.id}`}
-              >
-                {pendingGlobal?.id === g.id ? `${g.label} ▾` : `+ ${g.label}`}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Add variant form */}
       {showForm && (
         <form
@@ -529,23 +492,24 @@ export default function VariantsSection({
               />
               {formErrors.sku && <p className="dash-field-error">{formErrors.sku}</p>}
             </div>
-            <div className="dash-field">
-              <label className="dash-label" htmlFor="var-size">
-                Size (ml) <span className="dash-required">*</span>
-              </label>
-              <input
-                id="var-size"
-                type="number"
-                min={1}
-                className={`dash-input${formErrors.sizeMl ? ' dash-input-error' : ''}`}
-                value={formValues.sizeMl}
-                onChange={(e) => setField('sizeMl', e.target.value)}
-                placeholder="50"
-                disabled={submitting}
-                data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-add-variant-size"
-              />
-              {formErrors.sizeMl && <p className="dash-field-error">{formErrors.sizeMl}</p>}
-            </div>
+              {globals.map((g) => (
+                                <div className="dash-field" key={g.id}>
+                                  <label className="dash-label">{g.name}</label>
+                                  <select
+                                    className="dash-select"
+                                    value={formValues.values[g.id] ?? ''}
+                                    onChange={(e) => setField('values', { ...formValues.values, [g.id]: e.target.value })}
+                                    disabled={submitting}
+                                  >
+                                    <option value="">Not set</option>
+                                    {(optionsByGlobal[g.id] ?? []).map((o) => (
+                                      <option key={o.id} value={o.id}>
+                                        {o.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              ))}
           </div>
           <div className="dash-field-row">
             <div className="dash-field">

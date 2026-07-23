@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 40,
+    date: '2026-07-23',
+    area: 'Products',
+    summary:
+      'Option lists and Global variants were two names for the same thing — they are now one page called Global variants. Create a list, add its values, and tick which categories it applies to. Those then appear as the fields when you add a variant to a product in one of those categories, and nowhere else: they no longer show up on the product details form, where a list called Test was appearing under Brand. Nothing about a variant is fixed in code any more.',
+  },
+  {
     id: 39,
     date: '2026-07-23',
     area: 'Settings',

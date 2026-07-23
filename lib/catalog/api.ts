@@ -14,8 +14,6 @@ export type { ProductListItem, ProductStatus } from './types';
 export type {
   AttributeRecord,
   AttributeOptionRecord,
-  ProductAttributeValue,
-  BrandGlobalVariant,
   VariantValue,
   TreeCategoryNode,
   TreeBrandNode,
@@ -24,9 +22,7 @@ export type {
 import type {
   AttributeRecord as AttributeRecordDto,
   AttributeOptionRecord as AttributeOptionRecordDto,
-  ProductAttributeValue as ProductAttributeValueDto,
   VariantValue as VariantValueDto,
-  BrandGlobalVariant as BrandGlobalVariantDto,
   TreeCategoryNode as TreeCategoryNodeDto,
 } from './types';
 
@@ -37,7 +33,6 @@ interface BackendVariant {
   productId: string;
   sku: string;
   sizeMl: number | null;
-  sourceGlobalVariantId: string | null;
   values?: VariantValueDto[];
   priceAmount: string;
   priceCurrency: string;
@@ -71,7 +66,6 @@ interface BackendProduct {
   publishedState: string;
   variants: BackendVariant[];
   media?: BackendMedia[];
-  attributes?: ProductAttributeValueDto[];
   createdAt: string;
   updatedAt?: string;
 }
@@ -106,7 +100,6 @@ function mapVariant(v: BackendVariant): ProductVariant {
     sku: v.sku,
     size: v.sizeMl,
     sizeMl: v.sizeMl,
-    sourceGlobalVariantId: v.sourceGlobalVariantId ?? null,
     values: v.values ?? [],
     price,
     priceAmount: price,
@@ -136,7 +129,6 @@ function mapProduct(p: BackendProduct): Product {
     description: p.description ?? '',
     categoryId: p.categoryId,
     categoryName: p.categoryName ?? '',
-    attributes: p.attributes ?? [],
     variants: (p.variants ?? []).map(mapVariant),
     media: (p.media ?? []).map(mapMedia),
     updatedAt: p.updatedAt ?? p.createdAt,
@@ -281,11 +273,9 @@ export async function loadTree(): Promise<TreeCategoryNodeDto[]> {
 /** Active lists only — what the product form offers. */
 export async function listAttributes(
   categoryId?: string,
-  scope?: 'PRODUCT' | 'VARIANT',
 ): Promise<AttributeRecordDto[]> {
   const params = new URLSearchParams();
   if (categoryId) params.set('categoryId', categoryId);
-  if (scope) params.set('scope', scope);
   const qs = params.toString() ? `?${params.toString()}` : '';
   const res = await apiFetch<{ data: AttributeRecordDto[] }>(
     `/catalog/attributes${qs}`,
@@ -296,11 +286,9 @@ export async function listAttributes(
 /** Includes deleted rows, active first — the management screen. */
 export async function listAdminAttributes(
   categoryId?: string,
-  scope?: 'PRODUCT' | 'VARIANT',
 ): Promise<AttributeRecordDto[]> {
   const params = new URLSearchParams();
   if (categoryId) params.set('categoryId', categoryId);
-  if (scope) params.set('scope', scope);
   const qs = params.toString() ? `?${params.toString()}` : '';
   const res = await apiFetch<{ data: AttributeRecordDto[] }>(
     `${ADMIN}/attributes${qs}`,
@@ -311,8 +299,8 @@ export async function listAdminAttributes(
 
 export async function createAttribute(data: {
   name: string;
-  scope?: 'PRODUCT' | 'VARIANT';
-  categoryId?: string | null;
+  /** Categories it applies to. Empty = every category. */
+  categoryIds?: string[];
   sortOrder?: number;
 }): Promise<AttributeRecordDto> {
   return apiFetch<AttributeRecordDto>(`${ADMIN}/attributes`, {
@@ -324,7 +312,12 @@ export async function createAttribute(data: {
 
 export async function updateAttribute(
   id: string,
-  patch: { name?: string; sortOrder?: number; isActive?: boolean },
+  patch: {
+    name?: string;
+    categoryIds?: string[];
+    sortOrder?: number;
+    isActive?: boolean;
+  },
 ): Promise<AttributeRecordDto> {
   return apiFetch<AttributeRecordDto>(`${ADMIN}/attributes/${id}`, {
     method: 'PATCH',
@@ -383,103 +376,7 @@ export async function deleteAttributeOption(
   });
 }
 
-export async function listBrandGlobalVariants(
-  brandId: string,
-): Promise<BrandGlobalVariantDto[]> {
-  const res = await apiFetch<{ data: BrandGlobalVariantDto[] }>(
-    `${ADMIN}/brands/${brandId}/global-variants`,
-    { auth: true },
-  );
-  return res.data;
-}
-
-export async function createBrandGlobalVariant(
-  brandId: string,
-  data: {
-    label: string;
-    /** VARIANT attribute id -> option id. No size, no price. */
-    values?: Record<string, string>;
-    sortOrder?: number;
-  },
-): Promise<BrandGlobalVariantDto> {
-  return apiFetch<BrandGlobalVariantDto>(
-    `${ADMIN}/brands/${brandId}/global-variants`,
-    { method: 'POST', auth: true, body: JSON.stringify(data) },
-  );
-}
-
-export async function updateBrandGlobalVariant(
-  id: string,
-  patch: {
-    label?: string;
-    values?: Record<string, string>;
-    sortOrder?: number;
-    isActive?: boolean;
-  },
-): Promise<BrandGlobalVariantDto> {
-  return apiFetch<BrandGlobalVariantDto>(`${ADMIN}/global-variants/${id}`, {
-    method: 'PATCH',
-    auth: true,
-    body: JSON.stringify(patch),
-  });
-}
-
-export async function deleteBrandGlobalVariant(
-  id: string,
-  mode: DeleteMode,
-): Promise<void> {
-  await apiFetch<void>(`${ADMIN}/global-variants/${id}?mode=${mode}`, {
-    method: 'DELETE',
-    auth: true,
-  });
-}
-
-/**
- * Copies a brand global onto one item. SKU is always required — it is unique
- * across every variant, so it can never come from a shared definition.
- */
-export async function applyGlobalVariant(
-  productId: string,
-  globalVariantId: string,
-  data: {
-    sku: string;
-    /** Required — price is set on the product, never on the definition. */
-    price_amount: string;
-    price_currency?: string;
-  },
-): Promise<ProductVariant> {
-  const raw = await apiFetch<BackendVariant>(
-    `${ADMIN}/products/${productId}/variants/apply-global/${globalVariantId}`,
-    { method: 'POST', auth: true, body: JSON.stringify(data) },
-  );
-  return mapVariant(raw);
-}
-
-
-export async function listManagedBrands(): Promise<ManagedBrand[]> {
-  const res = await apiFetch<{ data: ManagedBrand[] }>(`${ADMIN}/brands/managed`, { auth: true });
-  return res.data;
-}
-
-export async function createBrand(name: string): Promise<ManagedBrand> {
-  return apiFetch<ManagedBrand>(`${ADMIN}/brands/managed`, {
-    method: 'POST',
-    auth: true,
-    body: JSON.stringify({ name }),
-  });
-}
-
-export async function renameBrand(id: string, name: string): Promise<ManagedBrand> {
-  return apiFetch<ManagedBrand>(`${ADMIN}/brands/managed/${id}`, {
-    method: 'PATCH',
-    auth: true,
-    body: JSON.stringify({ name }),
-  });
-}
-
-export async function deleteBrand(id: string): Promise<void> {
-  await apiFetch<void>(`${ADMIN}/brands/managed/${id}`, { method: 'DELETE', auth: true });
-}
+// --- categories -----------------------------------------------------------
 
 export async function createCategory(data: {
   name: string;
@@ -525,6 +422,8 @@ export async function createVariant(
     sku: string;
     priceAmount: number;
     currency: string;
+    /** global variant id -> chosen value id */
+    values?: Record<string, string>;
   },
 ): Promise<ProductVariant> {
   const raw = await apiFetch<BackendVariant>(`${ADMIN}/products/${productId}/variants`, {
@@ -532,13 +431,13 @@ export async function createVariant(
     auth: true,
     body: JSON.stringify({
       sku: data.sku,
+      values: data.values ?? {},
       price_amount: data.priceAmount.toFixed(4),
       price_currency: data.currency || 'EGP',
     }),
   });
   return mapVariant(raw);
 }
-
 export async function updateVariant(
   productId: string,
   variantId: string,
@@ -555,6 +454,39 @@ export async function updateVariant(
     { method: 'PATCH', auth: true, body: JSON.stringify(body) },
   );
   return mapVariant(raw);
+}
+
+// --- brands ---------------------------------------------------------------
+
+export async function listManagedBrands(): Promise<ManagedBrand[]> {
+  const res = await apiFetch<{ data: ManagedBrand[] }>(`${ADMIN}/brands/managed`, { auth: true });
+  return res.data;
+}
+export async function createBrand(name: string): Promise<ManagedBrand> {
+  return apiFetch<ManagedBrand>(`${ADMIN}/brands/managed`, {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify({ name }),
+  });
+}
+export async function renameBrand(id: string, name: string): Promise<ManagedBrand> {
+  return apiFetch<ManagedBrand>(`${ADMIN}/brands/managed/${id}`, {
+    method: 'PATCH',
+    auth: true,
+    body: JSON.stringify({ name }),
+  });
+}
+export async function deleteBrandGlobalVariant(
+  id: string,
+  mode: DeleteMode,
+): Promise<void> {
+  await apiFetch<void>(`${ADMIN}/global-variants/${id}?mode=${mode}`, {
+    method: 'DELETE',
+    auth: true,
+  });
+}
+export async function deleteBrand(id: string): Promise<void> {
+  await apiFetch<void>(`${ADMIN}/brands/managed/${id}`, { method: 'DELETE', auth: true });
 }
 
 export async function getProduct(id: string): Promise<Product> {

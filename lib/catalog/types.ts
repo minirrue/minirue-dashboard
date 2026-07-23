@@ -5,13 +5,15 @@ export type ProductStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED' | 'PUBLISHED';
 // there is nothing left to hardcode.
 
 /** A named option list the admin owns, e.g. Concentration, Gender, Shade. */
+/**
+ * A global variant: a named list, its values, and the categories it applies to.
+ * Products in those categories get it as a field on each variant they add.
+ */
 export interface AttributeRecord {
   id: string;
   name: string;
-  /** PRODUCT lists describe the item; VARIANT lists describe one variant. */
-  scope: 'PRODUCT' | 'VARIANT';
-  /** null = offered in every category. */
-  categoryId: string | null;
+  /** Categories it applies to. Empty = offered in every category. */
+  categoryIds: string[];
   sortOrder: number;
   isActive: boolean;
 }
@@ -20,25 +22,6 @@ export interface AttributeOptionRecord {
   id: string;
   attributeId: string;
   name: string;
-  sortOrder: number;
-  isActive: boolean;
-}
-
-/** One of an item's picks, already resolved to names for display. */
-export interface ProductAttributeValue {
-  attributeId: string;
-  attributeName: string;
-  optionId: string;
-  optionName: string;
-}
-
-/** A reusable variant defined on a brand and copied onto its items. */
-export interface BrandGlobalVariant {
-  id: string;
-  brandId: string;
-  label: string;
-  /** Its VARIANT-list answers, e.g. Size (ml) = 50. No size or price column. */
-  values?: VariantValue[];
   sortOrder: number;
   isActive: boolean;
 }
@@ -82,9 +65,7 @@ export interface ProductVariant {
   size: number | null;
   /** @deprecated pre-0010 rows only. */
   sizeMl: number | null;
-  /** Set when copied from a brand global; null for a one-off custom variant. */
-  sourceGlobalVariantId: string | null;
-  /** The variant's own option-list answers. */
+  /** This variant's answers to the global variants for its category. */
   values: VariantValue[];
   price: number;
   priceAmount: number;
@@ -140,8 +121,6 @@ export interface Product {
   /** Level 1 of the tree. Exactly one — not a list. */
   categoryId: string;
   categoryName: string;
-  /** Replaces the old free-text gender and fragranceFamily fields. */
-  attributes: ProductAttributeValue[];
   variants: ProductVariant[];
   media: ProductMedia[];
   createdAt: string;

@@ -117,7 +117,7 @@ export default function EditProductPage() {
   const [values, setValues] = useState<FormValues>({
     name: '',
     description: '',
-    classification: { categoryId: '', brandId: '', attributes: {} },
+    classification: { categoryId: '', brandId: '' },
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -164,10 +164,6 @@ export default function EditProductPage() {
           classification: {
             categoryId: p.categoryId,
             brandId: p.brandId,
-            // The server sends resolved names for display; the form needs ids.
-            attributes: Object.fromEntries(
-              (p.attributes ?? []).map((a) => [a.attributeId, a.optionId]),
-            ),
           },
         });
         setVariants(p.variants);
@@ -199,7 +195,6 @@ export default function EditProductPage() {
         description: values.description.trim() || undefined,
         brandId: values.classification.brandId,
         categoryId: values.classification.categoryId,
-        attributes: values.classification.attributes,
       });
       setProduct(updated);
       setSavedAt(new Date());
@@ -436,7 +431,7 @@ export default function EditProductPage() {
 
       <VariantsSection
         productId={id}
-        brandId={values.classification.brandId}
+        categoryId={values.classification.categoryId}
         variants={variants}
         onVariantsChange={setVariants}
         media={media}
