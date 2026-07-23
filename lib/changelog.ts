@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 52,
+    date: '2026-07-23',
+    area: 'Storefront',
+    summary:
+      'The Storefront tab is now a real page builder for your home page. It is arranged block by block — the rotating hero banner, the scrolling ribbon, product sections, the Journal, and a collaborator showcase — and you can reorder, hide, or remove any of them. A product section can pull from a whole category, from one brand, or from products you hand-pick and order yourself, and a category section can show its brands instead of its items. The Journal block is either your own photo and words, or a chosen product, shown with that product\'s own picture and description. The top menu is no longer built automatically from your categories — you choose every item yourself, whether it points to a category, a brand, a product, a collaborator, or any link, with separate lists for desktop and mobile. The footer is now fully editable too: its link columns, your social accounts, and the Visa, Mastercard and InstaPay marks. Anywhere a picture is needed, you can pick one from the gallery or upload straight from your device. And the part worth knowing: once you save a change, it now shows up on the shop for anyone already looking at it, without them needing to refresh the page.',
+  },
+  {
     id: 51,
     date: '2026-07-23',
     area: 'Inventory',
