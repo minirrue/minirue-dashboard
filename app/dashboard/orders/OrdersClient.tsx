@@ -291,7 +291,7 @@ export default function OrdersClient() {
           <button
             className="dash-btn-secondary"
             style={{ marginTop: 12 }}
-            onClick={() => load(statusFilter || undefined)}
+            onClick={() => load(statusFilter || undefined, channelFilter || undefined)}
           >
             Retry
           </button>
