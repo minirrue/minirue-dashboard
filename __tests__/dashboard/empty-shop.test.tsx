@@ -23,7 +23,8 @@ const mockedAnalytics = analyticsApi as jest.Mocked<typeof analyticsApi>;
 const mockedLoyalty = loyaltyApi as jest.Mocked<typeof loyaltyApi>;
 
 const EMPTY_OVERVIEW = {
-  revenue: { today_cents: 0, week_cents: 0, month_cents: 0 },
+  revenue: { today_cents: 0, week_cents: 0, month_cents: 0, net_month_cents: 0 },
+  refunds: { today_cents: 0, week_cents: 0, month_cents: 0, count: 0 },
   orders: {
     pending_count: 0,
     confirmed_count: 0,

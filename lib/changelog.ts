@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 49,
+    date: '2026-07-23',
+    area: 'Analytics',
+    summary:
+      'The Analytics page now shows how much was refunded this month and your true net revenue after refunds, right alongside the existing revenue numbers.',
+  },
+  {
     id: 48,
     date: '2026-07-23',
     area: 'Fulfillment',

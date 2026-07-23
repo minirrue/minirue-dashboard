@@ -209,6 +209,8 @@ export default function AnalyticsClient() {
             <StatCard title="Revenue This Month" value={egpShort(overview.revenue?.month_cents || 0)} />
             <StatCard title="Total Orders" value={totalOrders.toLocaleString()} sub={`${overview.orders?.delivered_count || 0} delivered`} />
             <StatCard title="New Customers (Week)" value={(overview.customers?.new_week || 0).toLocaleString()} sub={`${overview.customers?.total_active || 0} total active`} />
+            <StatCard title="Refunded This Month" value={egpShort(overview?.refunds?.month_cents ?? 0)} sub={`${overview?.refunds?.count ?? 0} refunds today`} />
+            <StatCard title="Net Revenue This Month" value={egpShort(overview?.revenue?.net_month_cents ?? 0)} sub={`after ${egp(overview?.refunds?.month_cents ?? 0)} refunded`} />
           </>
         ) : null}
       </div>

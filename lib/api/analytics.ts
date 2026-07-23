@@ -4,6 +4,14 @@ export interface OverviewRevenue {
   today_cents: number;
   week_cents: number;
   month_cents: number;
+  net_month_cents: number;
+}
+
+export interface OverviewRefunds {
+  today_cents: number;
+  week_cents: number;
+  month_cents: number;
+  count: number;
 }
 
 export interface OverviewOrders {
@@ -24,6 +32,7 @@ export interface OverviewCustomers {
 
 export interface AnalyticsOverview {
   revenue: OverviewRevenue;
+  refunds: OverviewRefunds;
   orders: OverviewOrders;
   customers: OverviewCustomers;
 }
