@@ -34,6 +34,7 @@ interface BackendVariant {
   sku: string;
   sizeMl: number | null;
   values?: VariantValueDto[];
+  customValues?: Record<string, string> | null;
   priceAmount: string;
   priceCurrency: string;
   isActive: boolean;
@@ -101,6 +102,7 @@ function mapVariant(v: BackendVariant): ProductVariant {
     size: v.sizeMl,
     sizeMl: v.sizeMl,
     values: v.values ?? [],
+    customValues: v.customValues ?? {},
     price,
     priceAmount: price,
     currency: v.priceCurrency,
@@ -422,8 +424,10 @@ export async function createVariant(
     sku: string;
     priceAmount: number;
     currency: string;
-    /** global variant id -> chosen value id */
+    /** global variant id -> free-typed value */
     values?: Record<string, string>;
+    /** custom field name -> free-typed value (product-specific) */
+    customValues?: Record<string, string>;
   },
 ): Promise<ProductVariant> {
   const raw = await apiFetch<BackendVariant>(`${ADMIN}/products/${productId}/variants`, {
@@ -432,6 +436,7 @@ export async function createVariant(
     body: JSON.stringify({
       sku: data.sku,
       values: data.values ?? {},
+      custom_values: data.customValues ?? {},
       price_amount: data.priceAmount.toFixed(4),
       price_currency: data.currency || 'EGP',
     }),
@@ -446,12 +451,15 @@ export async function updateVariant(
     currency?: string;
     /** global variant id -> free-typed value. */
     values?: Record<string, string>;
+    /** custom field name -> free-typed value (product-specific). */
+    customValues?: Record<string, string>;
   },
 ): Promise<ProductVariant> {
   const body: Record<string, unknown> = {};
   if (data.priceAmount !== undefined) body.price_amount = data.priceAmount.toFixed(4);
   if (data.currency !== undefined) body.price_currency = data.currency;
   if (data.values !== undefined) body.values = data.values;
+  if (data.customValues !== undefined) body.custom_values = data.customValues;
   const raw = await apiFetch<BackendVariant>(
     `${ADMIN}/products/${productId}/variants/${variantId}`,
     { method: 'PATCH', auth: true, body: JSON.stringify(body) },

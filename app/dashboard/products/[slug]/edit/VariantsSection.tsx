@@ -20,17 +20,117 @@ import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
 import GalleryPickerModal from '@/components/dashboard/GalleryPickerModal';
 import type { GalleryItem } from '@/lib/gallery/types';
 
+interface CustomField {
+  name: string;
+  value: string;
+}
+
 interface VariantFormValues {
   sku: string;
-  /** global variant id -> chosen value id */
+  /** global variant id -> typed value */
   values: Record<string, string>;
+  /** product-specific custom fields, same methodology as globals: name + value */
+  customFields: CustomField[];
   priceAmount: string;
   currency: string;
+}
+
+/** Turns the custom-field rows into the { name: value } map the API takes,
+ *  dropping any row with a blank name. */
+function customFieldsToMap(fields: CustomField[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const f of fields) {
+    const name = f.name.trim();
+    if (name) map[name] = f.value.trim();
+  }
+  return map;
 }
 
 interface VariantFormErrors {
   sku?: string;
   priceAmount?: string;
+}
+
+/**
+ * The product-specific custom fields editor — same methodology as a global
+ * variant (a field name plus a typed value), but added here for this one
+ * product. Rows of {name, value}; add and remove freely.
+ */
+function CustomFieldsEditor({
+  fields,
+  onChange,
+  disabled,
+  idScope,
+}: {
+  fields: CustomField[];
+  onChange: (fields: CustomField[]) => void;
+  disabled?: boolean;
+  idScope: string;
+}) {
+  function update(index: number, patch: Partial<CustomField>) {
+    onChange(fields.map((f, i) => (i === index ? { ...f, ...patch } : f)));
+  }
+  function remove(index: number) {
+    onChange(fields.filter((_, i) => i !== index));
+  }
+  function add() {
+    onChange([...fields, { name: '', value: '' }]);
+  }
+
+  return (
+    <div className="dash-field" data-trace-id={`PG-DASHBOARD-CAT-003::EL-REGION-custom-fields-${idScope}`}>
+      <label className="dash-label">Custom fields (just this product)</label>
+      <p className="dash-help-text" style={{ marginBottom: 8 }}>
+        A field only this product has, beyond the ones its category requires.
+        Type a name and its value — for example “Bottle shape” → “Round”.
+      </p>
+      {fields.map((f, i) => (
+        <div
+          key={i}
+          style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}
+        >
+          <input
+            className="dash-input"
+            style={{ maxWidth: 200 }}
+            placeholder="Field name"
+            value={f.name}
+            onChange={(e) => update(i, { name: e.target.value })}
+            disabled={disabled}
+            maxLength={60}
+            data-trace-id={`PG-DASHBOARD-CAT-003::EL-INPUT-custom-name-${idScope}@${i}`}
+          />
+          <input
+            className="dash-input"
+            style={{ maxWidth: 220 }}
+            placeholder="Value"
+            value={f.value}
+            onChange={(e) => update(i, { value: e.target.value })}
+            disabled={disabled}
+            maxLength={200}
+            data-trace-id={`PG-DASHBOARD-CAT-003::EL-INPUT-custom-value-${idScope}@${i}`}
+          />
+          <button
+            type="button"
+            className="dash-btn-ghost dash-btn-danger"
+            onClick={() => remove(i)}
+            disabled={disabled}
+            data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-remove-custom-${idScope}@${i}`}
+          >
+            Remove
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        className="dash-btn-secondary"
+        onClick={add}
+        disabled={disabled}
+        data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-add-custom-field-${idScope}`}
+      >
+        + Add custom field
+      </button>
+    </div>
+  );
 }
 
 function validateVariant(v: VariantFormValues): VariantFormErrors {
@@ -44,6 +144,7 @@ function validateVariant(v: VariantFormValues): VariantFormErrors {
 const EMPTY_FORM: VariantFormValues = {
   sku: '',
   values: {},
+  customFields: [],
   priceAmount: '',
   currency: 'EGP',
 };
@@ -165,6 +266,7 @@ export default function VariantsSection({
         priceAmount: Number(formValues.priceAmount),
         currency: formValues.currency.trim() || 'EGP',
         values: formValues.values,
+        customValues: customFieldsToMap(formValues.customFields),
       });
       onVariantsChange([...variants, variant]);
       setFormValues(EMPTY_FORM);
@@ -191,6 +293,10 @@ export default function VariantsSection({
       // The field value is the TEXT now, not an option id — seed the input with
       // what was typed so it shows and can be edited free-hand.
       values: Object.fromEntries(v.values.map((x) => [x.attributeId, x.optionName])),
+      customFields: Object.entries(v.customValues ?? {}).map(([name, value]) => ({
+        name,
+        value,
+      })),
       priceAmount: String(v.priceAmount),
       currency: v.currency,
     });
@@ -219,6 +325,7 @@ export default function VariantsSection({
         priceAmount: Number(editValues.priceAmount),
         currency: editValues.currency.trim() || 'EGP',
         values: editValues.values,
+        customValues: customFieldsToMap(editValues.customFields),
       });
       onVariantsChange(
         variants.map((x) => (x.id === v.id ? updated : x)),
@@ -311,8 +418,7 @@ export default function VariantsSection({
             <thead>
               <tr>
                 <th>SKU</th>
-                <th>Size (ml)</th>
-                <th>Variant</th>
+                <th>Fields</th>
                 <th style={{ textAlign: 'right' }}>Price</th>
                 <th>Photos</th>
                 <th>Actions</th>
@@ -329,11 +435,13 @@ export default function VariantsSection({
                     data-active={isSelected ? 'true' : undefined}
                   >
                     <td>{v.sku}</td>
-                    <td>{v.sizeMl}</td>
                     <td>
-                      {v.values.length > 0
-                        ? v.values.map((x) => x.optionName).join(' · ')
-                        : '—'}
+                      {[
+                        ...v.values.map((x) => `${x.attributeName}: ${x.optionName}`),
+                        ...Object.entries(v.customValues ?? {}).map(
+                          ([n, val]) => `${n}: ${val}`,
+                        ),
+                      ].join(' · ') || '—'}
                     </td>
                     <td style={{ textAlign: 'right' }}>{formatPrice(v.priceAmount, v.currency)}</td>
                     <td>
@@ -377,7 +485,7 @@ export default function VariantsSection({
                   </tr>
                   {editingId === v.id && (
                     <tr>
-                      <td colSpan={6} style={{ background: 'var(--mr-dash-sub)', padding: '12px 14px' }}>
+                      <td colSpan={5} style={{ background: 'var(--mr-dash-sub)', padding: '12px 14px' }}>
                         <form
                           className="dash-inline-form"
                           onSubmit={(e) => handleEditSave(e, v)}
@@ -450,6 +558,12 @@ export default function VariantsSection({
                               />
                             </div>
                           </div>
+                          <CustomFieldsEditor
+                            fields={editValues.customFields}
+                            onChange={(cf) => editSetField('customFields', cf)}
+                            disabled={editSubmitting}
+                            idScope={`edit-${v.id}`}
+                          />
                           {editSubmitError && <p className="dash-inline-error">{editSubmitError}</p>}
                           <div className="dash-form-actions">
                             <button
@@ -582,6 +696,13 @@ export default function VariantsSection({
               />
             </div>
           </div>
+
+          <CustomFieldsEditor
+            fields={formValues.customFields}
+            onChange={(cf) => setField('customFields', cf)}
+            disabled={submitting}
+            idScope="add"
+          />
 
           {submitError && <p className="dash-inline-error">{submitError}</p>}
 

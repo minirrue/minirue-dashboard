@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 63,
+    date: '2026-07-24',
+    area: 'Products',
+    summary:
+      'On a product you can now add custom fields that only that product has, right beside the ones its category requires — type a field name (like "Bottle shape") and its value ("Round"), add as many as you like, and remove any. It works the same way as the category fields. Fixed a bug where ticking a category on a global variant did nothing and looked like you had to delete and recreate the field — assigning categories now saves properly. Also removed the leftover empty "Size (ml)" column from the variants table; a variant\'s fields all show together now.',
+  },
+  {
     id: 62,
     date: '2026-07-24',
     area: 'Storefront',

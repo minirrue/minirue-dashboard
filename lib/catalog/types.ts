@@ -67,6 +67,9 @@ export interface ProductVariant {
   sizeMl: number | null;
   /** This variant's answers to the global variants for its category. */
   values: VariantValue[];
+  /** Product-specific custom fields: { "Field name": "value" }. Optional so
+   *  existing fixtures/callers need not set it; mapVariant always fills it. */
+  customValues?: Record<string, string>;
   price: number;
   priceAmount: number;
   currency: string;
