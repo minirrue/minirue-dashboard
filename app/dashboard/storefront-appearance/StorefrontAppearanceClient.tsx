@@ -1,47 +1,47 @@
 'use client';
 
-import React, {useCallback, useState } from 'react';
-import { apiGetSettings, apiUpdateSettings } from '@/lib/api/settings';
-import type { HeroSlideConfig, StorefrontSettings, StoreSettings } from '@/lib/api/settings';
+import React, { useCallback, useState } from 'react';
+import {
+  apiGetStorefrontLayout,
+  apiSaveStorefrontLayout,
+  moveSection,
+  newSection,
+  SECTION_LABELS,
+} from '@/lib/api/storefront';
+import type {
+  CollabShowcaseSection,
+  HeroSection,
+  JournalSection,
+  ProductGridSection,
+  RibbonSection,
+  SectionType,
+  StorefrontLayout,
+  StorefrontSection,
+} from '@/lib/api/storefront';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import SectionCard from './SectionCard';
+import HeroEditor from './editors/HeroEditor';
+import RibbonEditor from './editors/RibbonEditor';
+import ProductGridEditor from './editors/ProductGridEditor';
+import JournalEditor from './editors/JournalEditor';
+import CollabShowcaseEditor from './editors/CollabShowcaseEditor';
+import NavbarEditor from './editors/NavbarEditor';
+import FooterEditor from './editors/FooterEditor';
 
-function emptySlide(id: number): HeroSlideConfig {
-  return {
-    id,
-    type: 'editorial',
-    eyebrow: '',
-    headline: '',
-    sub: '',
-    tagline: '',
-    bg: '#0B0B0B',
-  };
-}
+const SECTION_TYPES: SectionType[] = [
+  'hero',
+  'collabShowcase',
+  'ribbon',
+  'productGrid',
+  'journal',
+];
 
-function emptyStorefront(): StorefrontSettings {
-  return {
-    announcementEnabled: true,
-    announcementMessages: [],
-    announcementLinkUrl: null,
-    announcementBackground: null,
-    faviconUrl: null,
-    footerTagline: null,
-    heroSlides: [],
-  };
-}
-
-function moveSlide(slides: HeroSlideConfig[], index: number, direction: -1 | 1): HeroSlideConfig[] {
-  const target = index + direction;
-  if (target < 0 || target >= slides.length) return slides;
-  const next = [...slides];
-  [next[index], next[target]] = [next[target], next[index]];
-  return next.map((slide, i) => ({ ...slide, id: i }));
-}
+type Tab = 'page' | 'navbar' | 'footer' | 'announcement';
 
 export default function StorefrontAppearanceClient() {
-  const [raw, setRaw] = useState<StoreSettings | null>(null);
-  const [form, setForm] = useState<StorefrontSettings | null>(null);
-  const [logoUrl, setLogoUrl] = useState('');
+  const [layout, setLayout] = useState<StorefrontLayout | null>(null);
+  const [tab, setTab] = useState<Tab>('page');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -52,44 +52,40 @@ export default function StorefrontAppearanceClient() {
     setLoading(true);
     setLoadError(null);
     try {
-      const data = await apiGetSettings();
-      setRaw(data);
-      setForm(data.storefront ?? emptyStorefront());
-      setLogoUrl(data.brand.logoUrl ?? '');
+      setLayout(await apiGetStorefrontLayout());
     } catch (e) {
-      setLoadError((e as ApiError).message ?? 'Failed to load settings');
+      setLoadError((e as ApiError).message ?? 'Failed to load the storefront layout');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useMountedEffect(() => { load(); }, [load]);
+  useMountedEffect(() => { void load(); }, [load]);
 
-  const updateSlide = (index: number, patch: Partial<HeroSlideConfig>) => {
-    if (!form) return;
+  const patch = (next: Partial<StorefrontLayout>) => {
     setSaved(false);
-    const slides = [...form.heroSlides];
-    slides[index] = { ...slides[index], ...patch };
-    setForm({ ...form, heroSlides: slides });
+    setLayout((prev) => (prev ? { ...prev, ...next } : prev));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!raw || !form) return;
+  const patchSection = (index: number, next: StorefrontSection) => {
+    setSaved(false);
+    setLayout((prev) =>
+      prev
+        ? { ...prev, sections: prev.sections.map((s, i) => (i === index ? next : s)) }
+        : prev,
+    );
+  };
+
+  const save = async () => {
+    if (!layout) return;
     setSaving(true);
     setSaveError(null);
     setSaved(false);
     try {
-      const updated = await apiUpdateSettings({
-        storefront: form,
-        brand: { ...raw.brand, logoUrl: logoUrl.trim() || null },
-      });
-      setRaw(updated);
-      setForm(updated.storefront ?? form);
-      setLogoUrl(updated.brand.logoUrl ?? '');
+      setLayout(await apiSaveStorefrontLayout(layout));
       setSaved(true);
-    } catch (err) {
-      setSaveError((err as ApiError).message ?? 'Failed to save');
+    } catch (e) {
+      setSaveError((e as ApiError).message ?? 'Failed to save');
     } finally {
       setSaving(false);
     }
@@ -98,237 +94,236 @@ export default function StorefrontAppearanceClient() {
   if (loading) {
     return (
       <div className="dash-form-card">
-        <span className="dash-skeleton" style={{ width: '100%', height: 120 }} />
+        <span className="dash-skeleton" style={{ width: '100%', height: 160 }} />
       </div>
     );
   }
 
-  if (loadError || !form) {
+  // A failed (or not-yet-successful) load must never fall through to the
+  // editor — rendering an empty document here and letting the admin hit Save
+  // would overwrite their real storefront with nothing.
+  if (loadError || !layout) {
     return (
       <div className="dash-card">
-        <p className="dash-inline-error">{loadError ?? 'Settings unavailable'}</p>
-        <button type="button" className="dash-btn-secondary" onClick={load}>Retry</button>
+        <p className="dash-inline-error">{loadError ?? 'Storefront layout unavailable'}</p>
+        <button type="button" className="dash-btn-secondary" onClick={() => void load()}>
+          Retry
+        </button>
       </div>
     );
   }
+
+  const removeSection = (index: number) => {
+    const section = layout.sections[index];
+    const confirmed = window.confirm(
+      `Remove the "${SECTION_LABELS[section.type]}" section? This deletes its configuration ` +
+        'permanently — there is no undo. To keep the settings but take it off the live page, ' +
+        'use "Show" instead.',
+    );
+    if (!confirmed) return;
+    patch({
+      sections: layout.sections
+        .filter((_, i) => i !== index)
+        .map((s, i) => ({ ...s, order: i })),
+    });
+  };
+
+  const renderEditor = (section: StorefrontSection, index: number) => {
+    switch (section.type) {
+      case 'hero':
+        return (
+          <HeroEditor
+            section={section}
+            onChange={(next: HeroSection) => patchSection(index, next)}
+          />
+        );
+      case 'ribbon':
+        return (
+          <RibbonEditor
+            section={section}
+            onChange={(next: RibbonSection) => patchSection(index, next)}
+          />
+        );
+      case 'productGrid':
+        return (
+          <ProductGridEditor
+            section={section}
+            onChange={(next: ProductGridSection) => patchSection(index, next)}
+          />
+        );
+      case 'journal':
+        return (
+          <JournalEditor
+            section={section}
+            onChange={(next: JournalSection) => patchSection(index, next)}
+          />
+        );
+      case 'collabShowcase':
+        return (
+          <CollabShowcaseEditor
+            section={section}
+            onChange={(next: CollabShowcaseSection) => patchSection(index, next)}
+          />
+        );
+    }
+  };
 
   return (
     <>
       <div className="dash-page-header">
-        <h1 className="dash-page-title">Storefront appearance</h1>
-        <p className="dash-page-subtitle">Announcement bar, hero carousel, and public footer copy.</p>
+        <div>
+          <h1 className="dash-page-title">Storefront</h1>
+          <p className="dash-page-subtitle">
+            Compose the home page section by section, and set the navigation and footer.
+          </p>
+        </div>
+        <button type="button" className="dash-btn-primary" disabled={saving} onClick={() => void save()}>
+          {saving ? 'Saving…' : 'Save changes'}
+        </button>
       </div>
 
-      <form onSubmit={(e) => void handleSubmit(e)} className="dash-form-card">
-        <div className="dash-form-section">
-          <div className="dash-section-header">
-            <h2 className="dash-section-title">Announcement bar</h2>
-          </div>
-          <label className="dash-field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <input
-              type="checkbox"
-              checked={form.announcementEnabled}
-              onChange={(e) => {
-                setSaved(false);
-                setForm({ ...form, announcementEnabled: e.target.checked });
-              }}
-            />
-            <span>Show announcement bar on storefront</span>
-          </label>
-          <label className="dash-field">
-            <span className="dash-label">Messages (one per line)</span>
-            <textarea
-              className="dash-input"
-              rows={5}
-              value={form.announcementMessages.join('\n')}
-              onChange={(e) => {
-                setSaved(false);
-                setForm({
-                  ...form,
-                  announcementMessages: e.target.value
-                    .split('\n')
-                    .map((l) => l.trim())
-                    .filter(Boolean),
-                });
-              }}
-            />
-          </label>
-          <label className="dash-field">
-            <span className="dash-label">Link URL (optional)</span>
-            <input
-              className="dash-input"
-              type="url"
-              value={form.announcementLinkUrl ?? ''}
-              onChange={(e) => {
-                setSaved(false);
-                setForm({ ...form, announcementLinkUrl: e.target.value.trim() || null });
-              }}
-              placeholder="https://…"
-            />
-          </label>
-          <label className="dash-field">
-            <span className="dash-label">Background (CSS color or gradient)</span>
-            <input
-              className="dash-input"
-              value={form.announcementBackground ?? ''}
-              onChange={(e) => {
-                setSaved(false);
-                setForm({ ...form, announcementBackground: e.target.value.trim() || null });
-              }}
-              placeholder="#0B0B0B or linear-gradient(…)"
-            />
-          </label>
-        </div>
-
-        <div className="dash-form-section">
-          <div className="dash-section-header">
-            <h2 className="dash-section-title">Brand touches</h2>
-          </div>
-          <label className="dash-field">
-            <span className="dash-label">Store logo URL</span>
-            <input
-              className="dash-input"
-              type="url"
-              value={logoUrl}
-              onChange={(e) => {
-                setSaved(false);
-                setLogoUrl(e.target.value);
-              }}
-              placeholder="https://…"
-            />
-          </label>
-          <label className="dash-field">
-            <span className="dash-label">Favicon URL</span>
-            <input
-              className="dash-input"
-              type="url"
-              value={form.faviconUrl ?? ''}
-              onChange={(e) => {
-                setSaved(false);
-                setForm({ ...form, faviconUrl: e.target.value || null });
-              }}
-              placeholder="https://…"
-            />
-          </label>
-          <label className="dash-field">
-            <span className="dash-label">Footer tagline</span>
-            <input
-              className="dash-input"
-              value={form.footerTagline ?? ''}
-              onChange={(e) => {
-                setSaved(false);
-                setForm({ ...form, footerTagline: e.target.value || null });
-              }}
-            />
-          </label>
-        </div>
-
-        <div className="dash-form-section">
-          <div className="dash-section-header">
-            <h2 className="dash-section-title">Hero slides</h2>
-            <button
-              type="button"
-              className="dash-btn-secondary"
-              onClick={() => {
-                setSaved(false);
-                setForm({
-                  ...form,
-                  heroSlides: [...form.heroSlides, emptySlide(form.heroSlides.length)],
-                });
-              }}
-            >
-              Add slide
-            </button>
-          </div>
-
-          {form.heroSlides.map((slide, index) => (
-            <div key={`${slide.id}-${index}`} className="dash-form-card" style={{ marginBottom: 16 }}>
-              <div className="dash-row-actions" style={{ marginBottom: 12 }}>
-                <strong>Slide {index + 1}</strong>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    type="button"
-                    className="dash-btn-ghost"
-                    disabled={index === 0}
-                    onClick={() => {
-                      setSaved(false);
-                      setForm({ ...form, heroSlides: moveSlide(form.heroSlides, index, -1) });
-                    }}
-                  >
-                    Move up
-                  </button>
-                  <button
-                    type="button"
-                    className="dash-btn-ghost"
-                    disabled={index === form.heroSlides.length - 1}
-                    onClick={() => {
-                      setSaved(false);
-                      setForm({ ...form, heroSlides: moveSlide(form.heroSlides, index, 1) });
-                    }}
-                  >
-                    Move down
-                  </button>
-                  <button
-                    type="button"
-                    className="dash-btn-ghost"
-                    onClick={() => {
-                      setSaved(false);
-                      setForm({
-                        ...form,
-                        heroSlides: form.heroSlides.filter((_, i) => i !== index),
-                      });
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-              <div className="dash-form-grid">
-                <label className="dash-field">
-                  <span className="dash-label">Eyebrow</span>
-                  <input className="dash-input" value={slide.eyebrow} onChange={(e) => updateSlide(index, { eyebrow: e.target.value })} />
-                </label>
-                <label className="dash-field">
-                  <span className="dash-label">Headline</span>
-                  <input className="dash-input" value={slide.headline} onChange={(e) => updateSlide(index, { headline: e.target.value })} />
-                </label>
-                <label className="dash-field">
-                  <span className="dash-label">Sub line</span>
-                  <input className="dash-input" value={slide.sub} onChange={(e) => updateSlide(index, { sub: e.target.value })} />
-                </label>
-                <label className="dash-field">
-                  <span className="dash-label">Tagline</span>
-                  <input className="dash-input" value={slide.tagline} onChange={(e) => updateSlide(index, { tagline: e.target.value })} />
-                </label>
-                <label className="dash-field">
-                  <span className="dash-label">Background</span>
-                  <input className="dash-input" value={slide.bg} onChange={(e) => updateSlide(index, { bg: e.target.value })} />
-                </label>
-                <label className="dash-field">
-                  <span className="dash-label">Type</span>
-                  <select
-                    className="dash-input"
-                    value={slide.type}
-                    onChange={(e) => updateSlide(index, { type: e.target.value as 'photo' | 'editorial' })}
-                  >
-                    <option value="photo">Photo</option>
-                    <option value="editorial">Editorial</option>
-                  </select>
-                </label>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {saveError && <p className="dash-inline-error">{saveError}</p>}
-        {saved && <p className="dash-inline-ok">Storefront settings saved.</p>}
-
-        <div className="dash-form-actions">
-          <button type="submit" className="dash-btn-primary" disabled={saving}>
-            {saving ? 'Saving…' : 'Save changes'}
+      <div className="dash-filters">
+        {(['page', 'navbar', 'footer', 'announcement'] as Tab[]).map((t) => (
+          <button
+            key={t}
+            type="button"
+            className={tab === t ? 'dash-btn-secondary' : 'dash-btn-ghost'}
+            onClick={() => setTab(t)}
+          >
+            {t === 'page' ? 'Home page' : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
+        ))}
+      </div>
+
+      {saveError && <p className="dash-inline-error">{saveError}</p>}
+      {saved && (
+        <p className="dash-inline-ok">
+          Storefront saved. The live site updates within about a minute — it caches for 60
+          seconds, so a refresh right now may still show the old page.
+        </p>
+      )}
+
+      {tab === 'page' && (
+        <>
+          {layout.sections.map((section, index) => (
+            <SectionCard
+              key={section.id}
+              section={section}
+              index={index}
+              total={layout.sections.length}
+              onChange={(next) => patchSection(index, next)}
+              onMove={(direction) => patch({ sections: moveSection(layout.sections, index, direction) })}
+              onRemove={() => removeSection(index)}
+            >
+              {renderEditor(section, index)}
+            </SectionCard>
+          ))}
+
+          <div className="dash-form-card">
+            <div className="dash-section-header">
+              <h2 className="dash-section-title">Add a section</h2>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {SECTION_TYPES.map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  className="dash-btn-secondary"
+                  onClick={() =>
+                    patch({
+                      sections: [...layout.sections, newSection(type, layout.sections.length)],
+                    })
+                  }
+                >
+                  {SECTION_LABELS[type]}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {tab === 'navbar' && (
+        <NavbarEditor navbar={layout.navbar} onChange={(navbar) => patch({ navbar })} />
+      )}
+
+      {tab === 'footer' && (
+        <FooterEditor footer={layout.footer} onChange={(footer) => patch({ footer })} />
+      )}
+
+      {tab === 'announcement' && (
+        <div className="dash-form-card">
+          <div className="dash-form-section">
+            <div className="dash-section-header">
+              <h2 className="dash-section-title">Announcement bar</h2>
+            </div>
+            <label className="dash-field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={layout.announcement.enabled}
+                onChange={(e) =>
+                  patch({ announcement: { ...layout.announcement, enabled: e.target.checked } })
+                }
+              />
+              <span>Show the announcement bar above the header</span>
+            </label>
+            <label className="dash-field">
+              <span className="dash-label">Messages (one per line)</span>
+              <textarea
+                className="dash-input"
+                rows={5}
+                value={layout.announcement.messages.join('\n')}
+                onChange={(e) =>
+                  patch({
+                    announcement: {
+                      ...layout.announcement,
+                      messages: e.target.value.split('\n').map((l) => l.trim()).filter(Boolean),
+                    },
+                  })
+                }
+              />
+            </label>
+            <label className="dash-field">
+              <span className="dash-label">Link URL (optional)</span>
+              <input
+                className="dash-input"
+                value={layout.announcement.linkUrl ?? ''}
+                placeholder="https://…"
+                onChange={(e) =>
+                  patch({
+                    announcement: { ...layout.announcement, linkUrl: e.target.value.trim() || null },
+                  })
+                }
+              />
+            </label>
+            <label className="dash-field">
+              <span className="dash-label">Background (CSS colour or gradient)</span>
+              <input
+                className="dash-input"
+                value={layout.announcement.background ?? ''}
+                placeholder="#0B0B0B or linear-gradient(…)"
+                onChange={(e) =>
+                  patch({
+                    announcement: {
+                      ...layout.announcement,
+                      background: e.target.value.trim() || null,
+                    },
+                  })
+                }
+              />
+            </label>
+            <label className="dash-field">
+              <span className="dash-label">Favicon URL</span>
+              <input
+                className="dash-input"
+                value={layout.faviconUrl ?? ''}
+                placeholder="https://…"
+                onChange={(e) => patch({ faviconUrl: e.target.value.trim() || null })}
+              />
+            </label>
+          </div>
         </div>
-      </form>
+      )}
     </>
   );
 }
