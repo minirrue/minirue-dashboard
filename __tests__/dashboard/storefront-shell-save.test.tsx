@@ -35,8 +35,7 @@ function layoutWithUnfinishedPickers(): StorefrontLayout {
     faviconUrl: null,
     sections: [hero],
     navbar: {
-      desktop: [{ id: 'nav-1', kind: 'product', productId: '', label: 'Featured' }],
-      mobile: [],
+      items: [{ id: 'nav-1', kind: 'product', productId: '', label: 'Featured' }],
       showSearch: true,
       showAccount: true,
     },
@@ -71,7 +70,7 @@ describe('StorefrontAppearanceClient save path', () => {
     const sentHero = sent.sections[0];
     if (sentHero.type !== 'hero') throw new Error('expected hero');
     expect(sentHero.slides[0].ctaTarget).toEqual({ kind: 'scroll' });
-    expect(sent.navbar.desktop).toEqual([]);
+    expect(sent.navbar.items).toEqual([]);
 
     expect(await screen.findByText(/1 unfinished menu item was removed on save/i)).toBeInTheDocument();
   });

@@ -8,8 +8,7 @@ function baseLayout(): StorefrontLayout {
     faviconUrl: null,
     sections: [newSection('hero', 0)],
     navbar: {
-      desktop: [],
-      mobile: [],
+      items: [],
       showSearch: true,
       showAccount: true,
     },
@@ -64,10 +63,10 @@ describe('normalizeStorefrontLayoutForSave', () => {
       label: 'Fragrance',
     };
     const incompleteId: NavItem = { id: 'nav-2', kind: 'product', productId: '', label: 'Featured' };
-    layout.navbar.desktop = [complete, incompleteId];
+    layout.navbar.items = [complete, incompleteId];
 
     const { layout: out, droppedNavItemCount } = normalizeStorefrontLayoutForSave(layout);
-    expect(out.navbar.desktop).toEqual([complete]);
+    expect(out.navbar.items).toEqual([complete]);
     expect(droppedNavItemCount).toBe(1);
   });
 
@@ -79,19 +78,19 @@ describe('normalizeStorefrontLayoutForSave', () => {
       brandId: '22222222-2222-2222-2222-222222222222',
       label: '',
     };
-    layout.navbar.mobile = [incompleteLabel];
+    layout.navbar.items = [incompleteLabel];
 
     const { layout: out, droppedNavItemCount } = normalizeStorefrontLayoutForSave(layout);
-    expect(out.navbar.mobile).toEqual([]);
+    expect(out.navbar.items).toEqual([]);
     expect(droppedNavItemCount).toBe(1);
   });
 
   it('drops link nav items with an empty href', () => {
     const layout = baseLayout();
-    layout.navbar.desktop = [{ id: 'nav-4', kind: 'link', href: '', label: 'Journal' }];
+    layout.navbar.items = [{ id: 'nav-4', kind: 'link', href: '', label: 'Journal' }];
 
     const { layout: out, droppedNavItemCount } = normalizeStorefrontLayoutForSave(layout);
-    expect(out.navbar.desktop).toEqual([]);
+    expect(out.navbar.items).toEqual([]);
     expect(droppedNavItemCount).toBe(1);
   });
 
@@ -100,12 +99,12 @@ describe('normalizeStorefrontLayoutForSave', () => {
     const hero = layout.sections[0];
     if (hero.type !== 'hero') throw new Error('expected hero');
     hero.slides[0].ctaTarget = { kind: 'product', productId: '' };
-    layout.navbar.desktop = [{ id: 'nav-5', kind: 'link', href: '', label: '' }];
+    layout.navbar.items = [{ id: 'nav-5', kind: 'link', href: '', label: '' }];
 
     normalizeStorefrontLayoutForSave(layout);
 
     expect(hero.slides[0].ctaTarget).toEqual({ kind: 'product', productId: '' });
-    expect(layout.navbar.desktop).toHaveLength(1);
+    expect(layout.navbar.items).toHaveLength(1);
   });
 
   it('produces a layout with no empty-string uuid fields or empty nav labels — the invariant', () => {
@@ -113,7 +112,7 @@ describe('normalizeStorefrontLayoutForSave', () => {
     const hero = layout.sections[0];
     if (hero.type !== 'hero') throw new Error('expected hero');
     hero.slides[0].ctaTarget = { kind: 'product', productId: '' };
-    layout.navbar.desktop = [
+    layout.navbar.items = [
       { id: 'nav-6', kind: 'product', productId: '', label: 'Bestseller' },
       { id: 'nav-7', kind: 'link', href: '/journal', label: '' },
       { id: 'nav-8', kind: 'category', categoryId: '33333333-3333-3333-3333-333333333333', label: 'New in' },
@@ -129,7 +128,7 @@ describe('normalizeStorefrontLayoutForSave', () => {
         if (slide.ctaTarget.kind === 'brand') expect(slide.ctaTarget.brandId).not.toBe('');
       }
     }
-    for (const item of [...out.navbar.desktop, ...out.navbar.mobile]) {
+    for (const item of out.navbar.items) {
       expect(item.label.trim()).not.toBe('');
       if (item.kind === 'category') expect(item.categoryId).not.toBe('');
       if (item.kind === 'brand') expect(item.brandId).not.toBe('');
@@ -137,7 +136,7 @@ describe('normalizeStorefrontLayoutForSave', () => {
       if (item.kind === 'collaborator') expect(item.collaboratorId).not.toBe('');
       if (item.kind === 'link') expect(item.href).not.toBe('');
     }
-    expect(out.navbar.desktop).toEqual([
+    expect(out.navbar.items).toEqual([
       { id: 'nav-8', kind: 'category', categoryId: '33333333-3333-3333-3333-333333333333', label: 'New in' },
     ]);
   });

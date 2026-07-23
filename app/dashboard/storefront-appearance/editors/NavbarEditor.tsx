@@ -148,7 +148,7 @@ export default function NavbarEditor({
       <p style={{ fontSize: 13, color: 'var(--mr-fg-3)' }}>
         The navigation is no longer built from your categories automatically. Adding a new
         category will not add a menu item on its own — whatever you list below is exactly what
-        shoppers see, and desktop and mobile are set separately.
+        shoppers see, shown as a bar across the top on desktop and in a slide-out menu on mobile.
       </p>
 
       <div className="dash-form-grid">
@@ -164,18 +164,8 @@ export default function NavbarEditor({
         </label>
       </div>
 
-      <NavList title="Desktop menu" items={navbar.desktop}
-        onChange={(desktop) => onChange({ ...navbar, desktop })} />
-
-      <div className="dash-row-actions" style={{ marginBottom: 12 }}>
-        <button type="button" className="dash-btn-ghost"
-          onClick={() => onChange({ ...navbar, mobile: navbar.desktop.map((i) => ({ ...i, id: newId('nav') })) })}>
-          Copy desktop menu to mobile
-        </button>
-      </div>
-
-      <NavList title="Mobile menu" items={navbar.mobile}
-        onChange={(mobile) => onChange({ ...navbar, mobile })} />
+      <NavList title="Menu" items={navbar.items}
+        onChange={(items) => onChange({ ...navbar, items })} />
     </div>
   );
 }

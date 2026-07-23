@@ -124,8 +124,7 @@ export type NavItem =
   | { id: string; kind: 'link'; href: string; label: string };
 
 export interface NavbarConfig {
-  desktop: NavItem[];
-  mobile: NavItem[];
+  items: NavItem[];
   showSearch: boolean;
   showAccount: boolean;
 }
@@ -283,7 +282,7 @@ function isIncompleteNavItem(item: NavItem): boolean {
 
 export interface NormalizeResult {
   layout: StorefrontLayout;
-  /** Count of navbar items (desktop + mobile) dropped for being unfinished. */
+  /** Count of navbar items dropped for being unfinished. */
   droppedNavItemCount: number;
 }
 
@@ -319,8 +318,7 @@ export function normalizeStorefrontLayoutForSave(layout: StorefrontLayout): Norm
 
   next.navbar = {
     ...next.navbar,
-    desktop: cleanNavList(next.navbar.desktop),
-    mobile: cleanNavList(next.navbar.mobile),
+    items: cleanNavList(next.navbar.items),
   };
 
   return { layout: next, droppedNavItemCount };
