@@ -9,6 +9,7 @@ import type { Order, OrderStatus } from '@/lib/api/orders';
 import type { ApiError } from '@/lib/api/client';
 import { ORDER_TRANSITIONS, formatOrderStatus } from '@/lib/orders/transitions';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import ManualOrderModal from './ManualOrderModal';
 
 function formatAmount(amount: string, currency: string): string {
   return `${currency} ${parseFloat(amount).toLocaleString('en-EG', { minimumFractionDigits: 2 })}`;
@@ -137,13 +138,16 @@ export default function OrdersClient() {
   const [error, setError] = useState<string | null>(null);
   const [transitionError, setTransitionError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [manualOpen, setManualOpen] = useState(false);
+  const [channelFilter, setChannelFilter] = useState<'' | 'ONLINE' | 'MANUAL'>('');
 
-  const load = useCallback(async (status?: string) => {
+  const load = useCallback(async (status?: string, channel?: 'ONLINE' | 'MANUAL') => {
     setLoading(true);
     setError(null);
     try {
       const res = await apiAdminListOrders({
         status: status ? (status as OrderStatus) : undefined,
+        channel,
         limit: 100,
       });
       // Guarded: a response missing this key set state to undefined and the
@@ -159,8 +163,8 @@ export default function OrdersClient() {
   }, []);
 
   useMountedEffect(() => {
-    load(statusFilter || undefined);
-  }, [load, statusFilter]);
+    load(statusFilter || undefined, channelFilter || undefined);
+  }, [load, statusFilter, channelFilter]);
 
   const handleOrderUpdated = useCallback((updated: Order) => {
     setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
@@ -182,7 +186,23 @@ export default function OrdersClient() {
       {
         key: 'customer',
         label: 'Customer',
-        render: (row) => row.shippingAddressSnapshot?.fullName ?? '—',
+        render: (row) =>
+          row.guestContact?.fullName ??
+          row.shippingAddressSnapshot?.fullName ??
+          '—',
+      },
+      {
+        key: 'channel',
+        label: 'Channel',
+        render: (row) =>
+          row.channel === 'MANUAL' ? (
+            <span className="dash-status" data-status="processing">
+              <span className="dash-status-dot" />
+              Manual
+            </span>
+          ) : (
+            <span style={{ color: 'var(--mr-fg-3)' }}>Storefront</span>
+          ),
       },
       {
         key: 'status',
@@ -226,6 +246,9 @@ export default function OrdersClient() {
     <>
       <div className="dash-page-header">
         <h1 className="dash-page-title">Orders</h1>
+        <button type="button" className="dash-btn-primary" onClick={() => setManualOpen(true)}>
+          New manual order
+        </button>
       </div>
 
       <div className="dash-filters">
@@ -240,6 +263,17 @@ export default function OrdersClient() {
               {o.label}
             </option>
           ))}
+        </select>
+        <select
+          className="dash-select"
+          value={channelFilter}
+          onChange={(e) => setChannelFilter(e.target.value as '' | 'ONLINE' | 'MANUAL')}
+          style={{ minWidth: 160 }}
+          aria-label="Filter by channel"
+        >
+          <option value="">All channels</option>
+          <option value="ONLINE">Storefront</option>
+          <option value="MANUAL">Manual</option>
         </select>
       </div>
 
@@ -272,6 +306,16 @@ export default function OrdersClient() {
               ? 'No orders match the selected status.'
               : 'No orders yet.'
           }
+        />
+      )}
+
+      {manualOpen && (
+        <ManualOrderModal
+          onClose={() => setManualOpen(false)}
+          onCreated={(order) => {
+            setManualOpen(false);
+            setOrders((prev) => [order, ...prev]);
+          }}
         />
       )}
     </>
