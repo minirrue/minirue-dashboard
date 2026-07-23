@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 48,
+    date: '2026-07-23',
+    area: 'Fulfillment',
+    summary:
+      'The Fulfillment page now has two tabs: Manual, where you pick a fulfillment method and mark orders fulfilled yourself, and Shipping service, a preview of what a connected courier screen will look like once one is set up (it is clearly marked as not connected yet and nothing on it can be clicked through).',
+  },
+  {
     id: 47,
     date: '2026-07-23',
     area: 'Orders',
