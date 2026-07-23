@@ -94,7 +94,10 @@ export default function VariantsSection({
   // lists now (specs 2026-07-22-product-tree).
   const [globals, setGlobals] = useState<BrandGlobalVariant[]>([]);
   const [globalsError, setGlobalsError] = useState<string | null>(null);
-  const [applying, setApplying] = useState<string | null>(null);
+  /** The shared variant being added, so its label and answers copy across. */
+  const [pendingGlobal, setPendingGlobal] = useState<BrandGlobalVariant | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!brandId) return;
@@ -119,21 +122,17 @@ export default function VariantsSection({
    * label because SKUs are unique across every variant in the system and so
    * can never be inherited; the admin can edit it afterwards like any other.
    */
-  async function handleApplyGlobal(g: BrandGlobalVariant) {
-    setApplying(g.id);
+  /**
+   * Opens the add-variant form with this shared variant selected, instead of
+   * creating a row immediately. Price is typed here, on the product — the same
+   * 50ml costs different amounts on different products, so a price on the
+   * shared definition was wrong and made this button refuse outright.
+   */
+  function handleApplyGlobal(g: BrandGlobalVariant) {
+    setPendingGlobal(g);
+    setFormValues({ ...EMPTY_FORM, sku: '' });
+    setShowForm(true);
     setGlobalsError(null);
-    try {
-      const suffix = g.label.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-      const variant = await applyGlobalVariant(productId, g.id, {
-        sku: `${productId.slice(0, 8).toUpperCase()}-${suffix}`,
-      });
-      onVariantsChange([...variants, variant]);
-    } catch (e) {
-      const err = e as ApiError;
-      setGlobalsError(err.message ?? 'Could not add that variant.');
-    } finally {
-      setApplying(null);
-    }
   }
 
   async function handleLinkGalleryItem(variantId: string, item: GalleryItem) {
@@ -169,15 +168,23 @@ export default function VariantsSection({
     setSubmitError(null);
     setSubmitting(true);
     try {
-      const variant = await createVariant(productId, {
-        sku: formValues.sku.trim(),
-        sizeMl: Number(formValues.sizeMl),
-        priceAmount: Number(formValues.priceAmount),
-        currency: formValues.currency.trim() || 'USD',
-      });
+      // When a shared variant was picked, go through apply-global so the row
+      // records where it came from and inherits that definition's answers.
+      const variant = pendingGlobal
+        ? await applyGlobalVariant(productId, pendingGlobal.id, {
+            sku: formValues.sku.trim(),
+            price_amount: Number(formValues.priceAmount).toFixed(4),
+            price_currency: formValues.currency.trim() || 'EGP',
+          })
+        : await createVariant(productId, {
+            sku: formValues.sku.trim(),
+            priceAmount: Number(formValues.priceAmount),
+            currency: formValues.currency.trim() || 'EGP',
+          });
       onVariantsChange([...variants, variant]);
       setFormValues(EMPTY_FORM);
       setShowForm(false);
+      setPendingGlobal(null);
     } catch (e) {
       const err = e as ApiError;
       setSubmitError(err.message ?? 'Failed to add variant.');
@@ -223,9 +230,8 @@ export default function VariantsSection({
     setEditSubmitting(true);
     try {
       const updated = await updateVariant(productId, v.id, {
-        sizeMl: Number(editValues.sizeMl),
         priceAmount: Number(editValues.priceAmount),
-        currency: editValues.currency.trim() || 'USD',
+        currency: editValues.currency.trim() || 'EGP',
       });
       onVariantsChange(
         variants.map((x) => (x.id === v.id ? updated : x)),
@@ -481,7 +487,7 @@ export default function VariantsSection({
           className="dash-field"
           data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-apply-global-variants"
         >
-          <p className="dash-label">Add from {'{'}this brand{'}'}</p>
+          <p className="dash-label">Add one of this brand&apos;s shared variants</p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {globals.map((g) => (
               <button
@@ -489,10 +495,10 @@ export default function VariantsSection({
                 type="button"
                 className="dash-btn-secondary"
                 onClick={() => handleApplyGlobal(g)}
-                disabled={applying !== null}
+                disabled={submitting}
                 data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-apply-global@${g.id}`}
               >
-                {applying === g.id ? 'Adding…' : `+ ${g.label}`}
+                {pendingGlobal?.id === g.id ? `${g.label} ▾` : `+ ${g.label}`}
               </button>
             ))}
           </div>

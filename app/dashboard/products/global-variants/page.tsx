@@ -8,40 +8,52 @@ import {
   createBrandGlobalVariant,
   updateBrandGlobalVariant,
   deleteBrandGlobalVariant,
+  listAttributes,
+  listAttributeOptions,
   type ManagedBrand,
-  type BrandGlobalVariant,
 } from '@/lib/catalog/api';
+import type {
+  BrandGlobalVariant,
+  AttributeRecord,
+  AttributeOptionRecord,
+} from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
 import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
 
 const TRACE = 'PG-DASHBOARD-CAT-006';
 
 /**
- * Global variants — the reusable variants a brand offers to all of its items.
+ * Global variants — the reusable variants a brand offers across its products.
  * specs/2026-07-22-product-tree-design.md
  *
- * Rewritten. The previous version listed EDP/EDT/Parfum/Hair Mist here, which
- * was wrong: those describe what a product IS and now live under Option lists.
- * A global variant is something like "50ml" that a brand reuses.
+ * Nothing here is fixed in code. A variant has a Label, and everything else
+ * describing it comes from VARIANT-scoped option lists the admin creates under
+ * Products → Option lists. "Size (ml)" used to be a hardcoded millilitre box,
+ * which made the whole screen useless for anything that is not a liquid.
  *
- * Applying one to an item COPIES it, so each item keeps its own price and SKU
- * and nothing a customer already bought can be rewritten from here.
+ * There is deliberately no price. The same 50ml costs different amounts on
+ * different products, so price is typed on the product itself.
  */
 function VariantRow({
   variant,
+  variantAttributes,
+  optionsByAttribute,
   onUpdated,
   onDeleted,
 }: {
   variant: BrandGlobalVariant;
+  variantAttributes: AttributeRecord[];
+  optionsByAttribute: Record<string, AttributeOptionRecord[]>;
   onUpdated: (v: BrandGlobalVariant) => void;
   onDeleted: (id: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(variant.label);
-  const [sizeMl, setSizeMl] = useState(
-    variant.sizeMl === null ? '' : String(variant.sizeMl),
+  const [values, setValues] = useState<Record<string, string>>(
+    Object.fromEntries(
+      (variant.values ?? []).map((v) => [v.attributeId, v.optionId]),
+    ),
   );
-  const [price, setPrice] = useState(variant.defaultPriceAmount ?? '');
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,12 +64,10 @@ function VariantRow({
     setSaving(true);
     setError(null);
     try {
-      const size = sizeMl.trim() ? Number(sizeMl) : null;
       onUpdated(
         await updateBrandGlobalVariant(variant.id, {
           label: label.trim(),
-          sizeMl: size,
-          defaultPriceAmount: price.trim() || null,
+          values,
         }),
       );
       setEditing(false);
@@ -75,6 +85,10 @@ function VariantRow({
     else onUpdated({ ...variant, isActive: false });
   }
 
+  const summary = (variant.values ?? [])
+    .map((v) => `${v.attributeName}: ${v.optionName}`)
+    .join(' · ');
+
   return (
     <>
       <tr
@@ -83,62 +97,62 @@ function VariantRow({
       >
         <td>
           {editing ? (
-            <form onSubmit={handleSave} style={{ display: 'flex', gap: 8 }}>
-              <input
-                className="dash-input"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="Label, e.g. 50ml"
-                disabled={saving}
-                maxLength={60}
-                autoFocus
-                data-trace-id={`${TRACE}::EL-INPUT-edit-label@${variant.id}`}
-              />
-              <input
-                className="dash-input"
-                value={sizeMl}
-                onChange={(e) => setSizeMl(e.target.value)}
-                placeholder="Size (ml)"
-                inputMode="numeric"
-                disabled={saving}
-                style={{ maxWidth: 110 }}
-                data-trace-id={`${TRACE}::EL-INPUT-edit-size@${variant.id}`}
-              />
-              <input
-                className="dash-input"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="Default price"
-                inputMode="decimal"
-                disabled={saving}
-                style={{ maxWidth: 140 }}
-                data-trace-id={`${TRACE}::EL-INPUT-edit-price@${variant.id}`}
-              />
-              <button className="dash-btn-primary" type="submit" disabled={saving}>
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-              <button
-                className="dash-btn-secondary"
-                type="button"
-                onClick={() => {
-                  setEditing(false);
-                  setLabel(variant.label);
-                  setError(null);
-                }}
-                disabled={saving}
-              >
-                Cancel
-              </button>
+            <form onSubmit={handleSave}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input
+                  className="dash-input"
+                  value={label}
+                  onChange={(e) => setLabel(e.target.value)}
+                  placeholder="Name, e.g. 50ml"
+                  disabled={saving}
+                  maxLength={60}
+                  autoFocus
+                  data-trace-id={`${TRACE}::EL-INPUT-edit-label@${variant.id}`}
+                />
+                {variantAttributes.map((a) => (
+                  <select
+                    key={a.id}
+                    className="dash-select"
+                    value={values[a.id] ?? ''}
+                    onChange={(e) => {
+                      const next = { ...values };
+                      if (e.target.value) next[a.id] = e.target.value;
+                      else delete next[a.id];
+                      setValues(next);
+                    }}
+                    disabled={saving}
+                    style={{ maxWidth: 200 }}
+                    data-trace-id={`${TRACE}::EL-SELECT-edit-value@${variant.id}-${a.id}`}
+                  >
+                    <option value="">{a.name}: not set</option>
+                    {(optionsByAttribute[a.id] ?? []).map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {a.name}: {o.name}
+                      </option>
+                    ))}
+                  </select>
+                ))}
+                <button className="dash-btn-primary" type="submit" disabled={saving}>
+                  {saving ? 'Saving…' : 'Save'}
+                </button>
+                <button
+                  className="dash-btn-secondary"
+                  type="button"
+                  onClick={() => {
+                    setEditing(false);
+                    setLabel(variant.label);
+                    setError(null);
+                  }}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+              </div>
             </form>
           ) : (
             <>
               <strong>{variant.label}</strong>
-              {variant.sizeMl !== null && (
-                <span className="dash-muted"> · {variant.sizeMl} ml</span>
-              )}
-              {variant.defaultPriceAmount && (
-                <span className="dash-muted"> · {variant.defaultPriceAmount}</span>
-              )}
+              {summary && <span className="dash-muted"> · {summary}</span>}
               {!variant.isActive && <span className="dash-muted"> — deleted</span>}
             </>
           )}
@@ -165,13 +179,13 @@ function VariantRow({
               ) : (
                 <button
                   className="dash-btn-secondary"
-                  onClick={async () => {
+                  onClick={async () =>
                     onUpdated(
                       await updateBrandGlobalVariant(variant.id, {
                         isActive: true,
                       }),
-                    );
-                  }}
+                    )
+                  }
                   data-trace-id={`${TRACE}::EL-BTN-restore@${variant.id}`}
                 >
                   Restore
@@ -190,6 +204,7 @@ function VariantRow({
               onHardDelete={() => handleDelete('hard')}
               onCancel={() => setConfirmDelete(false)}
               traceIdPrefix={`${TRACE}::EL-MODAL-delete@${variant.id}`}
+              hardDeleteNote="Variants already added to products stay exactly as they are — they simply stop being linked to this shared one."
             />
           </td>
         </tr>
@@ -202,25 +217,45 @@ export default function GlobalVariantsPage() {
   const [brands, setBrands] = useState<ManagedBrand[]>([]);
   const [brandId, setBrandId] = useState('');
   const [variants, setVariants] = useState<BrandGlobalVariant[]>([]);
+  const [variantAttributes, setVariantAttributes] = useState<AttributeRecord[]>(
+    [],
+  );
+  const [optionsByAttribute, setOptionsByAttribute] = useState<
+    Record<string, AttributeOptionRecord[]>
+  >({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [newLabel, setNewLabel] = useState('');
-  const [newSize, setNewSize] = useState('');
-  const [newPrice, setNewPrice] = useState('');
+  const [newValues, setNewValues] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    listManagedBrands()
-      .then((rows) => {
+    Promise.all([listManagedBrands(), listAttributes(undefined, 'VARIANT')])
+      .then(async ([brandRows, attrs]) => {
         if (cancelled) return;
-        setBrands(rows);
-        if (rows.length > 0) setBrandId(rows[0].id);
+        // Guarded: an endpoint that returns nothing set state to undefined and
+        // the .length below blanked the page — the same bug Settings, Loyalty
+        // and eleven other screens had.
+        const safeBrands = Array.isArray(brandRows) ? brandRows : [];
+        const safeAttrs = Array.isArray(attrs) ? attrs : [];
+        setBrands(safeBrands);
+        if (safeBrands.length > 0) setBrandId(safeBrands[0].id);
+        setVariantAttributes(safeAttrs);
+        const entries = await Promise.all(
+          safeAttrs.map(
+            async (a) => {
+              const opts = await listAttributeOptions(a.id);
+              return [a.id, Array.isArray(opts) ? opts : []] as const;
+            },
+          ),
+        );
+        if (!cancelled) setOptionsByAttribute(Object.fromEntries(entries));
       })
       .catch((e: ApiError) => {
-        if (!cancelled) setLoadError(e.message ?? 'Could not load brands.');
+        if (!cancelled) setLoadError(e.message ?? 'Could not load this page.');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -235,11 +270,10 @@ export default function GlobalVariantsPage() {
     let cancelled = false;
     listBrandGlobalVariants(brandId)
       .then((rows) => {
-        if (!cancelled) setVariants(rows);
+        if (!cancelled) setVariants(Array.isArray(rows) ? rows : []);
       })
       .catch((e: ApiError) => {
-        if (!cancelled)
-          setLoadError(e.message ?? 'Could not load this brand.');
+        if (!cancelled) setLoadError(e.message ?? 'Could not load this brand.');
       });
     return () => {
       cancelled = true;
@@ -254,13 +288,11 @@ export default function GlobalVariantsPage() {
     try {
       const created = await createBrandGlobalVariant(brandId, {
         label: newLabel.trim(),
-        sizeMl: newSize.trim() ? Number(newSize) : null,
-        defaultPriceAmount: newPrice.trim() || null,
+        values: newValues,
       });
       setVariants((prev) => [...prev, created]);
       setNewLabel('');
-      setNewSize('');
-      setNewPrice('');
+      setNewValues({});
     } catch (e) {
       setCreateError((e as ApiError).message ?? 'Could not add that.');
     } finally {
@@ -282,10 +314,9 @@ export default function GlobalVariantsPage() {
       </div>
 
       <p className="dash-muted">
-        Variants a brand reuses across its products — a size, for example. Add
-        one here and it becomes a one-click option on every product of that
-        brand. Applying it copies it, so each product keeps its own price and
-        SKU.
+        Variants a brand reuses across its products. Give it a name, and
+        describe it using your own option lists — nothing here is fixed. Add it
+        to a product in one click, then set that product&apos;s price.
       </p>
 
       {loading && <p>Loading…</p>}
@@ -294,6 +325,14 @@ export default function GlobalVariantsPage() {
       {!loading && brands.length === 0 && (
         <p className="dash-muted">
           No brands yet. Add one under Products → Brands first.
+        </p>
+      )}
+
+      {!loading && variantAttributes.length === 0 && (
+        <p className="dash-muted">
+          You have no variant option lists yet. Create one under Products →
+          Option lists and set it to describe variants — for example a
+          &ldquo;Size&rdquo; list with the sizes you sell.
         </p>
       )}
 
@@ -326,33 +365,36 @@ export default function GlobalVariantsPage() {
           >
             <input
               className="dash-input"
-              placeholder="Label, e.g. 50ml"
+              placeholder="Name, e.g. 50ml"
               value={newLabel}
               onChange={(e) => setNewLabel(e.target.value)}
               disabled={creating}
               maxLength={60}
               data-trace-id={`${TRACE}::EL-INPUT-new-label`}
             />
-            <input
-              className="dash-input"
-              placeholder="Size (ml)"
-              value={newSize}
-              onChange={(e) => setNewSize(e.target.value)}
-              disabled={creating}
-              inputMode="numeric"
-              style={{ maxWidth: 120 }}
-              data-trace-id={`${TRACE}::EL-INPUT-new-size`}
-            />
-            <input
-              className="dash-input"
-              placeholder="Default price (optional)"
-              value={newPrice}
-              onChange={(e) => setNewPrice(e.target.value)}
-              disabled={creating}
-              inputMode="decimal"
-              style={{ maxWidth: 180 }}
-              data-trace-id={`${TRACE}::EL-INPUT-new-price`}
-            />
+            {variantAttributes.map((a) => (
+              <select
+                key={a.id}
+                className="dash-select"
+                value={newValues[a.id] ?? ''}
+                onChange={(e) => {
+                  const next = { ...newValues };
+                  if (e.target.value) next[a.id] = e.target.value;
+                  else delete next[a.id];
+                  setNewValues(next);
+                }}
+                disabled={creating}
+                style={{ maxWidth: 200 }}
+                data-trace-id={`${TRACE}::EL-SELECT-new-value@${a.id}`}
+              >
+                <option value="">{a.name}: not set</option>
+                {(optionsByAttribute[a.id] ?? []).map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {a.name}: {o.name}
+                  </option>
+                ))}
+              </select>
+            ))}
             <button
               className="dash-btn-primary"
               type="submit"
@@ -381,6 +423,8 @@ export default function GlobalVariantsPage() {
                   <VariantRow
                     key={v.id}
                     variant={v}
+                    variantAttributes={variantAttributes}
+                    optionsByAttribute={optionsByAttribute}
                     onUpdated={(updated) =>
                       setVariants((prev) =>
                         prev.map((x) => (x.id === updated.id ? updated : x)),

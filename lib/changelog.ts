@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 38,
+    date: '2026-07-23',
+    area: 'Products',
+    summary:
+      'Global variants no longer has fixed boxes. A shared variant now just has a name, and you describe it using your own lists — so "Size (ml)" is something you create, rename or delete, and for anything that is not liquid you make your own list instead. Option lists can now be set to describe either a product or a variant. Price has been removed from the shared variant entirely: you set it on the product, which also fixes the error when adding a shared variant to a product. Also fixed a button that was showing the words THIS BRAND instead of the brand name.',
+  },
+  {
     id: 37,
     date: '2026-07-22',
     area: 'Whole dashboard',

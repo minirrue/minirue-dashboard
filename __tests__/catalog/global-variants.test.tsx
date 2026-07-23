@@ -15,8 +15,7 @@ const ACTIVE = {
   id: 'gv-1',
   brandId: 'brand-1',
   label: '50ml',
-  sizeMl: 50,
-  defaultPriceAmount: '1500.0000',
+  values: [],
   sortOrder: 0,
   isActive: true,
 };
@@ -24,8 +23,7 @@ const DELETED = {
   id: 'gv-2',
   brandId: 'brand-1',
   label: '100ml',
-  sizeMl: 100,
-  defaultPriceAmount: null,
+  values: [],
   sortOrder: 1,
   isActive: false,
 };
@@ -33,6 +31,9 @@ const DELETED = {
 beforeEach(() => {
   jest.clearAllMocks();
   mockedApi.listManagedBrands.mockResolvedValue([BRAND]);
+  // Variant option lists — what replaced the hardcoded Size (ml) box.
+  mockedApi.listAttributes.mockResolvedValue([]);
+  mockedApi.listAttributeOptions.mockResolvedValue([]);
   mockedApi.listBrandGlobalVariants.mockResolvedValue([ACTIVE, DELETED]);
 });
 
@@ -44,12 +45,16 @@ describe('GlobalVariantsPage', () => {
     expect(screen.getByText('100ml')).toBeInTheDocument();
   });
 
-  it('shows size and default price beside the label', async () => {
+  it('shows no size or price column — those are not fields any more', async () => {
     render(<GlobalVariantsPage />);
 
     await screen.findByText('50ml');
-    expect(screen.getByText(/50 ml/)).toBeInTheDocument();
-    expect(screen.getByText(/1500\.0000/)).toBeInTheDocument();
+    // Size is an option-list answer and price is set on the product, so
+    // neither belongs on this screen.
+    expect(screen.queryByPlaceholderText(/size \(ml\)/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText(/default price/i),
+    ).not.toBeInTheDocument();
   });
 
   it('marks a deleted variant and offers Restore rather than Retire', async () => {
@@ -68,15 +73,14 @@ describe('GlobalVariantsPage', () => {
       id: 'gv-3',
       brandId: 'brand-1',
       label: '30ml',
-      sizeMl: 30,
-      defaultPriceAmount: null,
+      values: [],
       sortOrder: 0,
       isActive: true,
     });
     render(<GlobalVariantsPage />);
     await screen.findByText('50ml');
 
-    fireEvent.change(screen.getByPlaceholderText(/label, e\.g\. 50ml/i), {
+    fireEvent.change(screen.getByPlaceholderText(/name, e\.g\. 50ml/i), {
       target: { value: '30ml' },
     });
     fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
@@ -96,7 +100,7 @@ describe('GlobalVariantsPage', () => {
     render(<GlobalVariantsPage />);
     await screen.findByText('50ml');
 
-    fireEvent.change(screen.getByPlaceholderText(/label, e\.g\. 50ml/i), {
+    fireEvent.change(screen.getByPlaceholderText(/name, e\.g\. 50ml/i), {
       target: { value: '50ml' },
     });
     fireEvent.click(screen.getByRole('button', { name: /^add$/i }));

@@ -16,6 +16,7 @@ export type {
   AttributeOptionRecord,
   ProductAttributeValue,
   BrandGlobalVariant,
+  VariantValue,
   TreeCategoryNode,
   TreeBrandNode,
 } from './types';
@@ -24,6 +25,7 @@ import type {
   AttributeRecord as AttributeRecordDto,
   AttributeOptionRecord as AttributeOptionRecordDto,
   ProductAttributeValue as ProductAttributeValueDto,
+  VariantValue as VariantValueDto,
   BrandGlobalVariant as BrandGlobalVariantDto,
   TreeCategoryNode as TreeCategoryNodeDto,
 } from './types';
@@ -34,8 +36,9 @@ interface BackendVariant {
   id: string;
   productId: string;
   sku: string;
-  sizeMl: number;
+  sizeMl: number | null;
   sourceGlobalVariantId: string | null;
+  values?: VariantValueDto[];
   priceAmount: string;
   priceCurrency: string;
   isActive: boolean;
@@ -104,6 +107,7 @@ function mapVariant(v: BackendVariant): ProductVariant {
     size: v.sizeMl,
     sizeMl: v.sizeMl,
     sourceGlobalVariantId: v.sourceGlobalVariantId ?? null,
+    values: v.values ?? [],
     price,
     priceAmount: price,
     currency: v.priceCurrency,
@@ -277,8 +281,12 @@ export async function loadTree(): Promise<TreeCategoryNodeDto[]> {
 /** Active lists only — what the product form offers. */
 export async function listAttributes(
   categoryId?: string,
+  scope?: 'PRODUCT' | 'VARIANT',
 ): Promise<AttributeRecordDto[]> {
-  const qs = categoryId ? `?categoryId=${encodeURIComponent(categoryId)}` : '';
+  const params = new URLSearchParams();
+  if (categoryId) params.set('categoryId', categoryId);
+  if (scope) params.set('scope', scope);
+  const qs = params.toString() ? `?${params.toString()}` : '';
   const res = await apiFetch<{ data: AttributeRecordDto[] }>(
     `/catalog/attributes${qs}`,
   );
@@ -288,8 +296,12 @@ export async function listAttributes(
 /** Includes deleted rows, active first — the management screen. */
 export async function listAdminAttributes(
   categoryId?: string,
+  scope?: 'PRODUCT' | 'VARIANT',
 ): Promise<AttributeRecordDto[]> {
-  const qs = categoryId ? `?categoryId=${encodeURIComponent(categoryId)}` : '';
+  const params = new URLSearchParams();
+  if (categoryId) params.set('categoryId', categoryId);
+  if (scope) params.set('scope', scope);
+  const qs = params.toString() ? `?${params.toString()}` : '';
   const res = await apiFetch<{ data: AttributeRecordDto[] }>(
     `${ADMIN}/attributes${qs}`,
     { auth: true },
@@ -299,6 +311,7 @@ export async function listAdminAttributes(
 
 export async function createAttribute(data: {
   name: string;
+  scope?: 'PRODUCT' | 'VARIANT';
   categoryId?: string | null;
   sortOrder?: number;
 }): Promise<AttributeRecordDto> {
@@ -384,8 +397,8 @@ export async function createBrandGlobalVariant(
   brandId: string,
   data: {
     label: string;
-    sizeMl?: number | null;
-    defaultPriceAmount?: string | null;
+    /** VARIANT attribute id -> option id. No size, no price. */
+    values?: Record<string, string>;
     sortOrder?: number;
   },
 ): Promise<BrandGlobalVariantDto> {
@@ -399,8 +412,7 @@ export async function updateBrandGlobalVariant(
   id: string,
   patch: {
     label?: string;
-    sizeMl?: number | null;
-    defaultPriceAmount?: string | null;
+    values?: Record<string, string>;
     sortOrder?: number;
     isActive?: boolean;
   },
@@ -431,8 +443,8 @@ export async function applyGlobalVariant(
   globalVariantId: string,
   data: {
     sku: string;
-    size_ml?: number;
-    price_amount?: string;
+    /** Required — price is set on the product, never on the definition. */
+    price_amount: string;
     price_currency?: string;
   },
 ): Promise<ProductVariant> {
@@ -511,7 +523,6 @@ export async function createVariant(
   productId: string,
   data: {
     sku: string;
-    sizeMl: number;
     priceAmount: number;
     currency: string;
   },
@@ -521,7 +532,6 @@ export async function createVariant(
     auth: true,
     body: JSON.stringify({
       sku: data.sku,
-      size_ml: data.sizeMl,
       price_amount: data.priceAmount.toFixed(4),
       price_currency: data.currency || 'EGP',
     }),
@@ -533,13 +543,11 @@ export async function updateVariant(
   productId: string,
   variantId: string,
   data: {
-    sizeMl?: number;
     priceAmount?: number;
     currency?: string;
   },
 ): Promise<ProductVariant> {
   const body: Record<string, unknown> = {};
-  if (data.sizeMl !== undefined) body.size_ml = data.sizeMl;
   if (data.priceAmount !== undefined) body.price_amount = data.priceAmount.toFixed(4);
   if (data.currency !== undefined) body.price_currency = data.currency;
   const raw = await apiFetch<BackendVariant>(

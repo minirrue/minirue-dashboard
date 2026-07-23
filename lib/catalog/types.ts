@@ -8,6 +8,8 @@ export type ProductStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED' | 'PUBLISHED';
 export interface AttributeRecord {
   id: string;
   name: string;
+  /** PRODUCT lists describe the item; VARIANT lists describe one variant. */
+  scope: 'PRODUCT' | 'VARIANT';
   /** null = offered in every category. */
   categoryId: string | null;
   sortOrder: number;
@@ -35,10 +37,18 @@ export interface BrandGlobalVariant {
   id: string;
   brandId: string;
   label: string;
-  sizeMl: number | null;
-  defaultPriceAmount: string | null;
+  /** Its VARIANT-list answers, e.g. Size (ml) = 50. No size or price column. */
+  values?: VariantValue[];
   sortOrder: number;
   isActive: boolean;
+}
+
+/** One VARIANT-list answer, resolved to names. */
+export interface VariantValue {
+  attributeId: string;
+  attributeName: string;
+  optionId: string;
+  optionName: string;
 }
 
 /** One node of the Category -> Brand -> Item navigation tree. */
@@ -68,10 +78,14 @@ export interface ProductVariant {
   id: string;
   productId: string;
   sku: string;
-  size: number;
-  sizeMl: number;
+  /** @deprecated pre-0010 rows only; size is an option-list answer now. */
+  size: number | null;
+  /** @deprecated pre-0010 rows only. */
+  sizeMl: number | null;
   /** Set when copied from a brand global; null for a one-off custom variant. */
   sourceGlobalVariantId: string | null;
+  /** The variant's own option-list answers. */
+  values: VariantValue[];
   price: number;
   priceAmount: number;
   currency: string;
