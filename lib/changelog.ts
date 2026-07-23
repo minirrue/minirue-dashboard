@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 47,
+    date: '2026-07-23',
+    area: 'Orders',
+    summary:
+      'There is a new "New manual order" button on the Orders tab for sales made outside the online shop — a walk-in customer, a relative, a DM order. It asks for the buyer\'s name and phone (recorded as a guest, no account needed), lets you pick the products and quantities from your real catalogue, and lets you edit the price on each line for anything that went out at a negotiated figure. Choose how it was paid — Instapay bank transfer, cash in person, or cash on delivery — and optionally attach a photo of the Instapay receipt. The order is created like any other sale and counts toward revenue and reports. Separately, every order\'s page now shows the full payment detail — method, amount, Instapay reference, who sent the money, when, and the receipt photo itself.',
+  },
+  {
     id: 46,
     date: '2026-07-23',
     area: 'Orders',
