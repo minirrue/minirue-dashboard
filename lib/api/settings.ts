@@ -1,4 +1,7 @@
 import { apiFetch } from './client';
+import type { StorefrontLayout } from './storefront';
+
+export type { StorefrontLayout };
 
 export interface BrandConfig {
   storeName: string;
@@ -26,30 +29,7 @@ export interface StoreSettings {
   taxRules?: TaxRule[];
   brand: BrandConfig;
   maintenanceMode: boolean;
-  storefront?: StorefrontSettings;
-}
-
-export interface HeroSlideConfig {
-  id: number;
-  type: 'photo' | 'editorial';
-  eyebrow: string;
-  headline: string;
-  sub: string;
-  tagline: string;
-  bg: string;
-  bottle?: string;
-  cap?: string;
-  tile?: string;
-}
-
-export interface StorefrontSettings {
-  announcementEnabled: boolean;
-  announcementMessages: string[];
-  announcementLinkUrl: string | null;
-  announcementBackground: string | null;
-  faviconUrl: string | null;
-  footerTagline: string | null;
-  heroSlides: HeroSlideConfig[];
+  storefront?: StorefrontLayout;
 }
 
 export async function apiGetSettings(): Promise<StoreSettings> {
