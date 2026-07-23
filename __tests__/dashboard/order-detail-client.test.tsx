@@ -17,6 +17,7 @@ function makeOrder(overrides: Partial<Order>): Order {
   return {
     id: 'ord_1',
     orderNumber: 'MR-0001',
+    orderSeq: 1,
     userId: null,
     channel: 'ONLINE',
     guestContact: null,
@@ -34,6 +35,9 @@ function makeOrder(overrides: Partial<Order>): Order {
       phone: '0100000000',
     },
     notes: null,
+    fulfillmentMethod: null,
+    fulfillmentStatus: 'UNFULFILLED',
+    fulfilledAt: null,
     items: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

@@ -4,6 +4,9 @@ export type OrderStatus = 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | '
 
 export type OrderChannel = 'ONLINE' | 'MANUAL';
 
+export type FulfillmentMethod = 'MANUAL' | 'SHIPPING_SERVICE';
+export type OrderFulfillmentStatus = 'UNFULFILLED' | 'FULFILLED';
+
 export interface GuestContact {
   fullName: string;
   phone: string;
@@ -50,6 +53,7 @@ export interface ShippingAddressSnapshot {
 export interface Order {
   id: string;
   orderNumber: string;
+  orderSeq: number;
   userId: string | null;
   channel: OrderChannel;
   guestContact: GuestContact | null;
@@ -61,6 +65,9 @@ export interface Order {
   totalCurrency: string;
   shippingAddressSnapshot: ShippingAddressSnapshot;
   notes: string | null;
+  fulfillmentMethod: FulfillmentMethod | null;
+  fulfillmentStatus: OrderFulfillmentStatus;
+  fulfilledAt: string | null;
   items: OrderItem[];
   statusHistory?: OrderStatusHistoryEntry[];
   createdAt: string;
@@ -80,6 +87,7 @@ export async function apiAdminListOrders(params?: {
   status?: OrderStatus;
   userId?: string;
   channel?: OrderChannel;
+  q?: string;
 }): Promise<OrdersListResponse> {
   const qs = new URLSearchParams();
   if (params?.page != null) qs.set('page', String(params.page));
@@ -87,6 +95,7 @@ export async function apiAdminListOrders(params?: {
   if (params?.status) qs.set('status', params.status);
   if (params?.userId) qs.set('userId', params.userId);
   if (params?.channel) qs.set('channel', params.channel);
+  if (params?.q) qs.set('q', params.q);
   const query = qs.toString() ? `?${qs.toString()}` : '';
   return apiFetch<OrdersListResponse>(`/orders/admin${query}`, { auth: true });
 }
@@ -149,5 +158,24 @@ export async function apiAdminCreateManualOrder(
     method: 'POST',
     auth: true,
     body: JSON.stringify(input),
+  });
+}
+
+export async function apiAdminSetFulfillmentMethod(
+  id: string,
+  method: FulfillmentMethod,
+): Promise<Order> {
+  return apiFetch<Order>(`/orders/admin/${id}/fulfillment`, {
+    method: 'PATCH',
+    auth: true,
+    body: JSON.stringify({ method }),
+  });
+}
+
+export async function apiAdminMarkFulfilled(id: string, note?: string): Promise<Order> {
+  return apiFetch<Order>(`/orders/admin/${id}/fulfill`, {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify(note ? { note } : {}),
   });
 }

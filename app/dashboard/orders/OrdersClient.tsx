@@ -1,6 +1,6 @@
 'use client';
 
-import React, {useState, useCallback, useMemo } from 'react';
+import React, {useState, useCallback, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import DashboardTable from '@/components/dashboard/DashboardTable';
 import type { Column } from '@/components/dashboard/DashboardTable';
@@ -8,6 +8,7 @@ import { apiAdminListOrders, apiAdminTransitionStatus } from '@/lib/api/orders';
 import type { Order, OrderStatus } from '@/lib/api/orders';
 import type { ApiError } from '@/lib/api/client';
 import { ORDER_TRANSITIONS, formatOrderStatus } from '@/lib/orders/transitions';
+import { formatOrderRef } from '@/lib/orders/order-format';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import ManualOrderModal from './ManualOrderModal';
 
@@ -140,31 +141,43 @@ export default function OrdersClient() {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [manualOpen, setManualOpen] = useState(false);
   const [channelFilter, setChannelFilter] = useState<'' | 'ONLINE' | 'MANUAL'>('');
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  const load = useCallback(async (status?: string, channel?: 'ONLINE' | 'MANUAL') => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await apiAdminListOrders({
-        status: status ? (status as OrderStatus) : undefined,
-        channel,
-        limit: 100,
-      });
-      // Guarded: a response missing this key set state to undefined and the
-      // next .map()/.reduce() blanked the whole tab. Same bug as Settings
-      // and Loyalty had.
-      setOrders(Array.isArray(res?.data) ? res.data : []);
-    } catch (e) {
-      const err = e as ApiError;
-      setError(err.message ?? 'Failed to load orders');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // 300ms so typing "1024" is one request, not four.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const load = useCallback(
+    async (status?: string, channel?: 'ONLINE' | 'MANUAL', q?: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await apiAdminListOrders({
+          status: status ? (status as OrderStatus) : undefined,
+          channel,
+          q: q || undefined,
+          limit: 100,
+        });
+        // Guarded: a response missing this key set state to undefined and the
+        // next .map()/.reduce() blanked the whole tab. Same bug as Settings
+        // and Loyalty had.
+        setOrders(Array.isArray(res?.data) ? res.data : []);
+      } catch (e) {
+        const err = e as ApiError;
+        setError(err.message ?? 'Failed to load orders');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
   useMountedEffect(() => {
-    load(statusFilter || undefined, channelFilter || undefined);
-  }, [load, statusFilter, channelFilter]);
+    load(statusFilter || undefined, channelFilter || undefined, debouncedSearch || undefined);
+  }, [load, statusFilter, channelFilter, debouncedSearch]);
 
   const handleOrderUpdated = useCallback((updated: Order) => {
     setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
@@ -174,12 +187,17 @@ export default function OrdersClient() {
   const columns = useMemo<Column<Order>[]>(
     () => [
       {
-        key: 'orderNumber',
+        key: 'orderSeq',
         label: 'Order',
         sortable: true,
         render: (row) => (
           <Link href={`/orders/${row.id}`} className="dash-link">
-            {row.orderNumber}
+            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+              {formatOrderRef(row)}
+            </span>
+            <span style={{ color: 'var(--mr-fg-4)', fontSize: 12, marginLeft: 8 }}>
+              {row.orderNumber}
+            </span>
           </Link>
         ),
       },
@@ -252,6 +270,15 @@ export default function OrdersClient() {
       </div>
 
       <div className="dash-filters">
+        <input
+          className="dash-input"
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search order # or MR-…"
+          aria-label="Search orders by reference"
+          style={{ minWidth: 220 }}
+        />
         <select
           className="dash-select"
           value={statusFilter}
@@ -291,7 +318,7 @@ export default function OrdersClient() {
           <button
             className="dash-btn-secondary"
             style={{ marginTop: 12 }}
-            onClick={() => load(statusFilter || undefined, channelFilter || undefined)}
+            onClick={() => load(statusFilter || undefined, channelFilter || undefined, debouncedSearch || undefined)}
           >
             Retry
           </button>
@@ -302,9 +329,11 @@ export default function OrdersClient() {
           data={orders}
           pageSize={20}
           emptyMessage={
-            statusFilter
-              ? 'No orders match the selected status.'
-              : 'No orders yet.'
+            debouncedSearch
+              ? `No order matches "${debouncedSearch}".`
+              : statusFilter
+                ? 'No orders match the selected status.'
+                : 'No orders yet.'
           }
         />
       )}

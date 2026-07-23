@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 44,
+    date: '2026-07-23',
+    area: 'Orders',
+    summary:
+      'Every order now shows a short order number like #47 next to its receipt number, and you can search the Orders list by either one.',
+  },
+  {
     id: 43,
     date: '2026-07-23',
     area: 'Accounts',
