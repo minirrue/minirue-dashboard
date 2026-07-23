@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 51,
+    date: '2026-07-23',
+    area: 'Inventory',
+    summary:
+      "Inventory is offline for repairs, so it's hidden from admin accounts for now — you'll see a clear \"under maintenance\" message if you open it directly, not an access-denied error. Nothing else in the dashboard is affected.",
+  },
+  {
     id: 50,
     date: '2026-07-23',
     area: 'Refunds',

@@ -6,6 +6,8 @@ import {
   isStaffRole,
   normalizeDashboardPath,
   DASHBOARD_ROUTE_ACCESS,
+  isMaintenanceRoute,
+  MAINTENANCE_ROUTES,
 } from '@/lib/auth/roles';
 
 describe('role vocabulary', () => {
@@ -102,5 +104,32 @@ describe('dashboard RBAC routes', () => {
 
   it('redirects unknown staff to their first allowed route', () => {
     expect(firstAccessibleDashboardRoute(Role.STAFF)).toBe('/overview');
+  });
+});
+
+describe('inventory parked for maintenance', () => {
+  it('keeps ADMIN and OWNER out of inventory while it is parked', () => {
+    expect(canAccessDashboardRoute(Role.ADMIN, '/inventory')).toBe(false);
+  });
+
+  it('still lets SUPERADMIN in so it can be repaired', () => {
+    expect(canAccessDashboardRoute(Role.SUPERADMIN, '/inventory')).toBe(true);
+  });
+
+  it('parks the inventory subpages too, not just the landing page', () => {
+    expect(canAccessDashboardRoute(Role.ADMIN, '/inventory/movements')).toBe(false);
+    expect(canAccessDashboardRoute(Role.ADMIN, '/inventory/warehouses')).toBe(false);
+  });
+
+  it('flags inventory as a maintenance route so the right panel renders', () => {
+    expect(isMaintenanceRoute('/inventory')).toBe(true);
+    expect(isMaintenanceRoute('/inventory/receive')).toBe(true);
+    expect(isMaintenanceRoute('/orders')).toBe(false);
+  });
+
+  it('leaves every other route reachable for ADMIN', () => {
+    expect(canAccessDashboardRoute(Role.ADMIN, '/orders')).toBe(true);
+    expect(canAccessDashboardRoute(Role.ADMIN, '/refunds')).toBe(true);
+    expect(MAINTENANCE_ROUTES).toEqual(['/inventory']);
   });
 });

@@ -6,6 +6,7 @@ export { default as DashboardTable } from './DashboardTable';
 export { default as StatusBadge } from './StatusBadge';
 export { default as RoleBadge } from './RoleBadge';
 export { default as AccessDeniedPanel } from './AccessDeniedPanel';
+export { default as MaintenancePanel } from './MaintenancePanel';
 export { default as DashboardRoleWelcome } from './DashboardRoleWelcome';
 export { default as NotificationDrawer } from './NotificationDrawer';
 export { default as DeleteChoiceDialog } from './DeleteChoiceDialog';

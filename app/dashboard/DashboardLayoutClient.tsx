@@ -4,11 +4,13 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { DashboardShell } from '@/components/dashboard';
 import AccessDeniedPanel from '@/components/dashboard/AccessDeniedPanel';
+import MaintenancePanel from '@/components/dashboard/MaintenancePanel';
 import ActingAsBanner from '@/components/dashboard/ActingAsBanner';
 import { getAccessToken } from '@/lib/auth/tokens';
 import {
   canAccessDashboardRoute,
   firstAccessibleDashboardRoute,
+  isMaintenanceRoute,
   isStaffRole,
   normalizeDashboardPath,
 } from '@/lib/auth/roles';
@@ -112,7 +114,11 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
       {showLoadingShell ? (
         <DashboardContentSkeleton />
       ) : accessDenied ? (
-        <AccessDeniedPanel role={user!.role} attemptedPath={activePath} />
+        isMaintenanceRoute(activePath) ? (
+          <MaintenancePanel role={user!.role} attemptedPath={activePath} />
+        ) : (
+          <AccessDeniedPanel role={user!.role} attemptedPath={activePath} />
+        )
       ) : (
         children
       )}

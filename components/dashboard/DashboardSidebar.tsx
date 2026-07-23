@@ -228,7 +228,7 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
     items: [
       { label: 'Fulfillment', href: '/fulfillment', icon: <IconTruck /> },
       { label: 'Refunds', href: '/refunds', icon: <IconRefreshCcw /> },
-      { label: 'Inventory', href: '/inventory', icon: <IconPackage /> },
+      { label: 'Inventory', href: '/inventory', icon: <IconPackage />, maintenance: true },
     ],
   },
   {
