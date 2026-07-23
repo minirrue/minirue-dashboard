@@ -1,7 +1,6 @@
 'use client';
 
 import React, {useState, useCallback } from 'react';
-import Link from 'next/link';
 import {
   listManagedBrands,
   createBrand,
@@ -10,6 +9,7 @@ import {
   type ManagedBrand,
 } from '@/lib/catalog/api';
 import type { ApiError } from '@/lib/api/client';
+import CatalogSubnav from '@/components/dashboard/CatalogSubnav';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 const TRACE = 'PG-DASHBOARD-CAT-005';
@@ -193,10 +193,8 @@ export default function BrandsPage() {
         <div>
           <h1 className="dash-page-title">Brands</h1>
           <p className="dash-help-text" style={{ marginTop: 4 }}>
-            Manage the brand list products can be assigned to.{' '}
-            <Link href="/products" className="dash-link">
-              Back to Products
-            </Link>
+            The makers your products belong to — Creed, Dior. Not your shop&apos;s
+            name.
           </p>
         </div>
         {!showAddForm && (
@@ -210,6 +208,8 @@ export default function BrandsPage() {
           </button>
         )}
       </div>
+
+      <CatalogSubnav />
 
       {showAddForm && (
         <form

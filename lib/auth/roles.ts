@@ -39,6 +39,8 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   '/notifications': STAFF_ROLES,
   '/storefront-appearance': ADMIN_ONLY,
   '/collaborators': ADMIN_ONLY,
+  // Partner oversight — watch brand partners. Admin + super admin.
+  '/partners': ADMIN_ONLY,
   // Managing accounts — creating them, changing roles, deleting them, and
   // signing in as one. Nobody but the top role, by design.
   '/admin': [Role.SUPERADMIN],
@@ -81,12 +83,29 @@ export function normalizeDashboardPath(path: string): string {
   return '/overview';
 }
 
+/**
+ * The brand partner's own screens — "my workspace", "my brand profile", "my
+ * orders". They describe the caller's own brand, so they only mean anything to
+ * someone who has one. Matched by path prefix rather than by which roles the
+ * route lists, so an inline role array cannot quietly opt a screen out.
+ */
+export function isPartnerOwnScreen(path: string): boolean {
+  const normalized = normalizeDashboardPath(path);
+  return normalized === '/collab' || normalized.startsWith('/collab/');
+}
+
 export function canAccessDashboardRoute(role: string, path: string): boolean {
   if (!isRole(role)) return false;
+  const normalized = normalizeDashboardPath(path);
   // Mirrors the backend guard: the top role reaches every screen. Leaving it
   // off a single route here would hide a tab the API would happily serve.
-  if (role === Role.SUPERADMIN) return true;
-  const normalized = normalizeDashboardPath(path);
+  //
+  // Except the partner's own screens. A super admin has no brand, so "my
+  // workspace" and "my brand profile" have no subject — they appeared in the
+  // sidebar and answered "Insufficient role" when opened. Watching over
+  // partners is a different screen (/partners), which lists them and is
+  // reached by role like everything else.
+  if (role === Role.SUPERADMIN) return !isPartnerOwnScreen(normalized);
   const allowed = DASHBOARD_ROUTE_ACCESS[normalized];
   if (!allowed) return isStaffRole(role);
   return allowed.includes(role);

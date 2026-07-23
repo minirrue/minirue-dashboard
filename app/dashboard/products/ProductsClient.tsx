@@ -19,6 +19,7 @@ import {
 import type { ManagedBrand } from '@/lib/catalog/api';
 import type { ApiError } from '@/lib/api/client';
 import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
+import CatalogSubnav from '@/components/dashboard/CatalogSubnav';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
@@ -111,6 +112,16 @@ export default function ProductsClient() {
     listManagedBrands()
       .then(setBrands)
       .catch(() => setBrands([]));
+  }, []);
+
+  // The catalogue map deep-links here with ?brand=Creed. Read it once on mount
+  // rather than through useSearchParams, which would force a Suspense boundary
+  // on this page for a one-time seed. A blank or unknown value just leaves the
+  // filter on "All brands".
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const brand = params.get('brand');
+    if (brand) setBrandFilter(brand);
   }, []);
 
   const load = useCallback(
@@ -287,33 +298,20 @@ export default function ProductsClient() {
         />
       )}
 
-      {/* Header */}
+      {/* Header — Brands and Global variants used to live here as buttons;
+          they are tabs in the hallway now, so only the primary action stays. */}
       <div className="dash-page-header" data-trace-id="PG-DASHBOARD-CAT-001::EL-REGION-products-page-header">
         <h1 className="dash-page-title">Products</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Link
-            href="/products/global-variants"
-            className="dash-btn-secondary"
-            data-trace-id="PG-DASHBOARD-CAT-001::EL-LINK-global-variants"
-          >
-            Global variants
-          </Link>
-          <Link
-            href="/products/brands"
-            className="dash-btn-secondary"
-            data-trace-id="PG-DASHBOARD-CAT-001::EL-LINK-manage-brands"
-          >
-            Brands
-          </Link>
-          <Link
-            href="/products/new"
-            className="dash-btn-primary"
-            data-trace-id="PG-DASHBOARD-CAT-001::EL-LINK-new-product"
-          >
-            New Product
-          </Link>
-        </div>
+        <Link
+          href="/products/new"
+          className="dash-btn-primary"
+          data-trace-id="PG-DASHBOARD-CAT-001::EL-LINK-new-product"
+        >
+          New Product
+        </Link>
       </div>
+
+      <CatalogSubnav />
 
       {/* Filters */}
       <div className="dash-filters" data-trace-id="PG-DASHBOARD-CAT-001::EL-REGION-filter-bar">

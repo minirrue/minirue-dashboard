@@ -21,6 +21,27 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 59,
+    date: '2026-07-23',
+    area: 'Settings',
+    summary:
+      'Fixed the Settings page showing "This page couldn\'t load" a couple of seconds after opening. On a shop that had not set its name yet, the "Erase shop data" box tried to use the shop name — which was blank — and crashed the whole page. Settings now opens normally. If your shop name is not set, the erase box simply tells you to set it first (that name is what you type to confirm an erase) instead of breaking the page.',
+  },
+  {
+    id: 58,
+    date: '2026-07-23',
+    area: 'Partners',
+    summary:
+      'There is a new Partners tab for admins and super admins to keep an eye on your brand partners in one place — each partner\'s brand, whether their account is active, what parts of the dashboard they can use, and how they are selling (orders, revenue and live products, over the last 7, 30 or 90 days). From there you can open the dashboard exactly as that partner sees it to check on their activity, or jump to manage their account. Separately, a super admin used to see the partner\'s own "Workspace" and "Brand profile" tabs, which only made sense for an actual partner and said "Insufficient role" when opened — those are gone now, replaced by this Partners view.',
+  },
+  {
+    id: 57,
+    date: '2026-07-23',
+    area: 'Products',
+    summary:
+      'The product area was a set of separate screens you reached by scattered buttons and left with the back button — Products, Categories, Brands and Global variants, with nothing showing how they fit together. They now share one row of tabs at the top, so moving between them is a single click and you always know where you are. The menu item that was "Products" is now "Catalogue" and opens a new map: your categories, the brands inside each, how many products each holds, and — for every category — the questions each of its products answers (like bottle size or price). A short note on the same page explains the difference between a global variant (a question every product in a category answers) and a custom variant (a question only one product has), which is the part that was easiest to lose track of.',
+  },
+  {
     id: 56,
     date: '2026-07-23',
     area: 'Storefront',

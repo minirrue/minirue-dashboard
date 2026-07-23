@@ -5,6 +5,7 @@ import { listCategories, createCategory, deleteCategory } from '@/lib/catalog/ap
 import type { Category } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
 import CategoryTree from './CategoryTree';
+import CatalogSubnav from '@/components/dashboard/CatalogSubnav';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 /* ── Slug generation ── */
@@ -157,6 +158,8 @@ export default function CategoriesPage() {
           </button>
         )}
       </div>
+
+      <CatalogSubnav />
 
       {/* Add category form */}
       {showAddForm && (

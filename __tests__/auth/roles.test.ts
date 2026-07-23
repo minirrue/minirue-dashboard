@@ -8,6 +8,7 @@ import {
   DASHBOARD_ROUTE_ACCESS,
   isMaintenanceRoute,
   MAINTENANCE_ROUTES,
+  isPartnerOwnScreen,
 } from '@/lib/auth/roles';
 
 describe('role vocabulary', () => {
@@ -92,9 +93,19 @@ describe('dashboard RBAC routes', () => {
     }
   });
 
-  it('gives SUPERADMIN every screen, mirroring the backend guard', () => {
+  it('gives SUPERADMIN every admin screen, but not a partner\'s own screens', () => {
     for (const path of Object.keys(DASHBOARD_ROUTE_ACCESS)) {
-      expect(canAccessDashboardRoute(Role.SUPERADMIN, path)).toBe(true);
+      // A super admin has no brand, so "my workspace" and "my brand profile"
+      // have no subject. They used to appear and answer "Insufficient role";
+      // now they are hidden, and partner oversight is its own screen.
+      const expected = !isPartnerOwnScreen(path);
+      expect(canAccessDashboardRoute(Role.SUPERADMIN, path)).toBe(expected);
+    }
+  });
+
+  it('keeps a super admin out of the partner\'s own screens', () => {
+    for (const path of ['/collab', '/collab/workspace', '/collab/brand']) {
+      expect(canAccessDashboardRoute(Role.SUPERADMIN, path)).toBe(false);
     }
   });
 

@@ -142,6 +142,25 @@ export async function apiUpdateCollaboratorSettings(
   });
 }
 
+export interface CollaboratorAnalytics {
+  kpis: { ordersCount: number; revenueCents: number; productsActive: number };
+  daily: Array<{ date: string; orders: number; revenueCents: number }>;
+}
+
+/**
+ * A partner's own sales figures, read by an admin for the Partners oversight
+ * screen. specs/2026-07-23-partner-oversight
+ */
+export async function apiGetCollaboratorAnalytics(
+  id: string,
+  period: '7d' | '30d' | '90d' = '30d',
+): Promise<CollaboratorAnalytics> {
+  return apiFetch<CollaboratorAnalytics>(
+    `/admin/collaborators/${id}/analytics?period=${period}`,
+    { auth: true },
+  );
+}
+
 export async function apiListPendingReviewProducts(): Promise<{ items: PendingReviewProduct[] }> {
   return apiFetch('/admin/collaborators/products/pending', { auth: true });
 }

@@ -33,10 +33,13 @@ describe('sidebar visibility', () => {
     expect(missing).toEqual([]);
   });
 
-  it('no nav item points at a path that normalizes somewhere else', () => {
+  it('no nav item falls through to the /overview catch-all', () => {
     // A typo'd href silently normalizes to /overview and inherits its rules.
+    // A deliberate deep link like /products/overview (the catalogue map) is
+    // fine — it normalizes to its real section (/products), just not to itself.
     for (const item of allItems) {
-      expect(normalizeDashboardPath(item.href)).toBe(item.href);
+      if (item.href === '/overview') continue;
+      expect(normalizeDashboardPath(item.href)).not.toBe('/overview');
     }
   });
 
@@ -68,7 +71,8 @@ describe('sidebar visibility', () => {
     const visible = visibleTo(Role.ADMIN);
     expect(visible).not.toContain('/admin');
     expect(visible).toContain('/settings');
-    expect(visible).toContain('/products');
+    // The catalogue nav item lands on the map, not the raw list.
+    expect(visible).toContain('/products/overview');
   });
 
   it('never shows a tab a role would be refused on', () => {

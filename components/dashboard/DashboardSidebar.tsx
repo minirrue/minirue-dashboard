@@ -217,11 +217,18 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
     section: 'Store',
     items: [
       { label: 'Overview', href: '/overview', icon: <IconBarChart /> },
-      { label: 'Products', href: '/products', icon: <IconPackage /> },
+      // Lands on the catalogue map, not the raw product list — the map orients
+      // you (categories, brands, what each asks) before the list. The list is
+      // one tab away. normalizeDashboardPath folds /products/overview back to
+      // /products, so this item still highlights on every catalogue screen.
+      { label: 'Catalogue', href: '/products/overview', icon: <IconPackage /> },
       { label: 'Categories', href: '/categories', icon: <IconGrid /> },
       { label: 'Orders', href: '/orders', icon: <IconShoppingBag /> },
       { label: 'Customers', href: '/customers', icon: <IconUsers /> },
       { label: 'Collaborators', href: '/collaborators', icon: <IconHandshake /> },
+      // Oversight, not management — watch partners' standing, access and sales.
+      // Admin + super admin (DASHBOARD_ROUTE_ACCESS['/partners'] = ADMIN_ONLY).
+      { label: 'Partners', href: '/partners', icon: <IconTrendingUp /> },
       { label: 'Storefront', href: '/storefront-appearance', icon: <IconPalette /> },
     ],
   },

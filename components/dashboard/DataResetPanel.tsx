@@ -100,7 +100,14 @@ export default function DataResetPanel() {
   if (unavailable) return null;
   if (!preview) return null;
 
-  const phraseMatches = typed.trim() === preview.confirmationPhrase.trim();
+  // The confirm phrase is the shop's name, which a brand-new shop may not have
+  // set yet — the API then sends it back empty or missing. Guard it: calling
+  // .trim() on undefined took the whole Settings page down with "Cannot read
+  // properties of undefined (reading 'trim')". With no phrase, running is
+  // blocked (you cannot match an empty phrase), and the reason is shown below.
+  const confirmationPhrase = (preview.confirmationPhrase ?? '').trim();
+  const hasPhrase = confirmationPhrase.length > 0;
+  const phraseMatches = hasPhrase && typed.trim() === confirmationPhrase;
   const canRun = selected.size > 0 && phraseMatches && !running;
   const totalRows = preview.groups
     .filter((g) => selected.has(g.key))
@@ -183,20 +190,27 @@ export default function DataResetPanel() {
             </strong>
           </p>
 
-          <div className="dash-field" style={{ maxWidth: 380 }}>
-            <label className="dash-label" htmlFor="reset-confirm">
-              Type <strong>{preview.confirmationPhrase}</strong> to confirm
-            </label>
-            <input
-              id="reset-confirm"
-              className="dash-input"
-              value={typed}
-              onChange={(e) => setTyped(e.target.value)}
-              disabled={running}
-              autoComplete="off"
-              data-trace-id={`${TRACE}::EL-INPUT-reset-confirm`}
-            />
-          </div>
+          {hasPhrase ? (
+            <div className="dash-field" style={{ maxWidth: 380 }}>
+              <label className="dash-label" htmlFor="reset-confirm">
+                Type <strong>{confirmationPhrase}</strong> to confirm
+              </label>
+              <input
+                id="reset-confirm"
+                className="dash-input"
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
+                disabled={running}
+                autoComplete="off"
+                data-trace-id={`${TRACE}::EL-INPUT-reset-confirm`}
+              />
+            </div>
+          ) : (
+            <p className="dash-inline-error">
+              Set your shop name in Settings first — it is the phrase you type to
+              confirm this. Without it, erasing is blocked.
+            </p>
+          )}
 
           <button
             type="button"

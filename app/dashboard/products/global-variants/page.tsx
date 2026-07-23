@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
+import CatalogSubnav from '@/components/dashboard/CatalogSubnav';
 import {
   listAdminAttributes,
   createAttribute,
@@ -424,19 +424,14 @@ export default function OptionListsPage() {
     <div data-trace-id={`${TRACE}::EL-REGION-global-variants-page`}>
       <div className="dash-page-header">
         <h1 className="dash-page-title">Global variants</h1>
-        <Link
-          href="/products"
-          className="dash-btn-secondary"
-          data-trace-id={`${TRACE}::EL-LINK-back-to-products`}
-        >
-          Back to products
-        </Link>
       </div>
 
+      <CatalogSubnav />
+
       <p className="dash-muted">
-        Create a list, fill it with values, and choose which categories it
-        applies to. Products in those categories get it as a field on every
-        variant they add. Leave the categories empty to use it everywhere.
+        A question every product in a category answers — bottle size, price. You
+        set the question here; each product fills in its own answer. Choose which
+        categories it applies to, or leave them empty to use it everywhere.
       </p>
 
       <form

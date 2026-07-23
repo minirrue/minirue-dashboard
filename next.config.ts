@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/overview", destination: "/dashboard" },
       { source: "/products", destination: "/dashboard/products" },
+      { source: "/products/overview", destination: "/dashboard/products/overview" },
       { source: "/products/new", destination: "/dashboard/products/new" },
       { source: "/products/brands", destination: "/dashboard/products/brands" },
       { source: "/products/global-variants", destination: "/dashboard/products/global-variants" },
@@ -34,6 +35,7 @@ const nextConfig: NextConfig = {
       { source: "/settings", destination: "/dashboard/settings" },
       { source: "/info", destination: "/dashboard/info" },
       { source: "/storefront-appearance", destination: "/dashboard/storefront-appearance" },
+      { source: "/partners", destination: "/dashboard/partners" },
       { source: "/collaborators", destination: "/dashboard/collaborators" },
       { source: "/collaborators/new", destination: "/dashboard/collaborators/new" },
       { source: "/collaborators/review", destination: "/dashboard/collaborators/review" },
