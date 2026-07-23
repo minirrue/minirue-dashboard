@@ -227,11 +227,15 @@ function settingsToForm(s: StoreSettings): SettingsForm {
     // settings with no taxRules key at all, and an unguarded .find() there took
     // the whole Settings page down with "Cannot read properties of undefined".
     vatPct: String(s.taxRules?.find((r) => r.country === 'EG')?.vatPct ?? 14),
+    // Optional-chained like taxRules above: a settings document that comes back
+    // without a `brand` object (older row, or a partial save response) made
+    // `s.brand.storeName` throw and crashed the page with a React error right
+    // as the admin saved the shop name.
     brand: {
-      storeName: s.brand.storeName,
-      contactEmail: s.brand.contactEmail,
-      contactPhone: s.brand.contactPhone ?? '',
-      logoUrl: s.brand.logoUrl ?? '',
+      storeName: s.brand?.storeName ?? '',
+      contactEmail: s.brand?.contactEmail ?? '',
+      contactPhone: s.brand?.contactPhone ?? '',
+      logoUrl: s.brand?.logoUrl ?? '',
     },
   };
 }

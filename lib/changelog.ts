@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 64,
+    date: '2026-07-24',
+    area: 'Settings',
+    summary:
+      'Fixed a crash when saving the shop name. Also, erasing shop data no longer requires you to have set a shop name first — the confirmation is now simply typing the word DELETE, so a super admin can erase data on a brand-new shop.',
+  },
+  {
     id: 63,
     date: '2026-07-24',
     area: 'Products',
