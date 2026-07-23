@@ -1267,6 +1267,17 @@
   gap: 12px;
 }
 
+/* ── Form grid (multi-column field layout, e.g. storefront editors) ──
+   No rule existed here before — className="dash-form-grid" rendered as an
+   unstyled block, so fields just stacked with no gap/columns. Desktop gets
+   an auto-fitting 2+ column grid; the 640px mobile breakpoint below
+   collapses it to one column so fields never get squeezed. */
+.dash-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
 /* ── Fields ── */
 .dash-field {
   display: flex;
@@ -1458,6 +1469,142 @@
 .dash-error {
   color: var(--mr-st-danger-fg);
   margin: 0;
+}
+
+/* ── Catalogue hallway ──────────────────────────────────────────────
+   One sub-nav shared by Overview, Products, Categories, Brands and Global
+   variants, so the catalogue reads as one area instead of five dead-ends.
+   Underline-on-active rather than filled pills: this is navigation between
+   pages, and filled buttons here would compete with the page's own primary
+   action (New product). */
+.dash-catalog-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--mr-dash-hair);
+}
+.dash-catalog-subnav-link {
+  position: relative;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--mr-fg-3);
+  text-decoration: none;
+  border-radius: var(--mr-radius-sm) var(--mr-radius-sm) 0 0;
+  transition: color var(--mr-dur-fast) var(--mr-ease-snappy),
+    background var(--mr-dur-fast) var(--mr-ease-snappy);
+}
+.dash-catalog-subnav-link:hover {
+  color: var(--mr-fg);
+  background: var(--mr-dash-sub);
+}
+.dash-catalog-subnav-link.is-active {
+  color: var(--mr-fg);
+}
+/* The active underline sits on top of the container's hairline, so the tab
+   reads as connected to the page below it. */
+.dash-catalog-subnav-link.is-active::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--mr-gold-400);
+  border-radius: 2px;
+}
+
+/* ── Catalogue map (Overview) ───────────────────────────────────────
+   The tree the model was never drawn as: category holds brands, and every
+   product in a category answers that category's global questions. */
+.dash-catalog-tree-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--mr-font-label);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--mr-fg);
+}
+.dash-catalog-tree-caret {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--mr-fg-4);
+  transition: transform var(--mr-dur-fast) var(--mr-ease-snappy);
+}
+.dash-catalog-tree-caret[data-open="true"] {
+  transform: rotate(90deg);
+}
+.dash-catalog-tree-name {
+  line-height: 1.2;
+}
+.dash-catalog-brand-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.dash-catalog-brand-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 12px;
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-dash-sub);
+  color: var(--mr-fg-2);
+  text-decoration: none;
+  font-size: 14px;
+  transition: border-color var(--mr-dur-fast) var(--mr-ease-snappy),
+    color var(--mr-dur-fast) var(--mr-ease-snappy);
+}
+.dash-catalog-brand-chip:hover {
+  border-color: var(--mr-gold-400);
+  color: var(--mr-fg);
+}
+.dash-catalog-brand-name {
+  font-weight: 500;
+}
+.dash-catalog-brand-count {
+  min-width: 20px;
+  padding: 0 6px;
+  text-align: center;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-dash-surface);
+  color: var(--mr-fg-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+/* The line that makes the model visible: what every product in this category
+   is asked. Kept quiet — it is context, not an action. */
+.dash-catalog-answers {
+  font-size: 13px;
+  color: var(--mr-fg-3);
+  padding-top: 12px;
+  border-top: 1px dashed var(--mr-dash-hair);
+}
+.dash-catalog-answers-label {
+  font-weight: 500;
+  color: var(--mr-fg-2);
+}
+.dash-catalog-answer-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-st-muted-bg);
+  color: var(--mr-st-muted-fg);
+  font-weight: 500;
+}
+.dash-catalog-explainer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-top: 4px;
 }
 
 /* ── Link in table ── */
@@ -2006,6 +2153,9 @@
   max-width: 560px;
 }
 @media (max-width: 640px) {
+  /* Primary mobile breakpoint for the shared dash-* component set:
+     grids collapse to one column, headers/filters/actions stack or wrap,
+     modals fit the viewport, and buttons/inputs stay comfortably tappable. */
   .dash-filters {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -2018,12 +2168,88 @@
   .dash-filters > .dash-btn-secondary {
     grid-column: 1 / -1;
   }
+  /* The 160px/140px min-widths below are sized for inline desktop rows;
+     inside a 2-column 640px grid a fixed min-width can exceed the actual
+     column width (~160px at a 360px viewport) and force horizontal
+     overflow. Let the grid column set the width instead. */
+  .dash-filters > .dash-select,
+  .dash-filters > .dash-input:not(.dash-input-search) {
+    min-width: 0;
+  }
+  .dash-input-search {
+    min-width: 0;
+  }
   .dash-field-row {
     flex-direction: column;
   }
   .dash-field-row > .dash-field {
     flex: 1 1 100%;
   }
+
+  /* ── Form grid collapses to one column ── */
+  .dash-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* ── Page header: title and action button stack instead of colliding ── */
+  .dash-page-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .dash-page-header > .dash-btn-primary,
+  .dash-page-header > .dash-btn-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* ── Form / row action rows wrap instead of overflowing ── */
+  .dash-form-actions,
+  .dash-row-actions,
+  .dash-toolbar {
+    flex-wrap: wrap;
+  }
+  .dash-form-actions > .dash-btn-primary,
+  .dash-form-actions > .dash-btn-secondary,
+  .dash-form-actions > .dash-btn-ok,
+  .dash-form-actions > .dash-btn-danger {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  /* ── Modals / dialogs: near-full-width, scrollable, buttons never fall
+     off-screen ── */
+  .dash-dialog-overlay {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .dash-dialog {
+    width: 100%;
+    max-width: 100%;
+    margin: 16px auto;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+  }
+
+  /* ── Touch targets: buttons and inputs stay tappable (~40px) and never
+     force a container wider than the viewport ── */
+  .dash-btn-primary,
+  .dash-btn-secondary,
+  .dash-btn-ok,
+  .dash-btn-danger {
+    min-height: 40px;
+    max-width: 100%;
+  }
+  .dash-btn-ghost {
+    min-height: 40px;
+  }
+  .dash-input,
+  .dash-select,
+  .dash-textarea {
+    min-height: 40px;
+    max-width: 100%;
+  }
+
   .collab-brand-logo-row {
     flex-direction: column;
     align-items: flex-start;
