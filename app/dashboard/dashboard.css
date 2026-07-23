@@ -1505,6 +1505,28 @@
   margin-bottom: 24px;
   border-bottom: 1px solid var(--mr-dash-hair);
 }
+@media (max-width: 640px) {
+  /* A wrapped tab strip breaks into a ragged multi-line stack on narrow
+     screens. Scroll it horizontally in its own strip instead — the tabs
+     never wrap, and the page never gets pushed wider than the viewport. */
+  .dash-catalog-subnav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .dash-catalog-subnav::-webkit-scrollbar {
+    display: none;
+  }
+  .dash-catalog-subnav-link {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
 .dash-catalog-subnav-link {
   position: relative;
   padding: 10px 14px;
@@ -1626,6 +1648,20 @@
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 20px;
   margin-top: 4px;
+}
+
+/* Marks a product-variant field that comes from the category's global
+   variants — always present, cannot be removed, must be answered. */
+.dash-pill-applied {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-gold-300);
+  color: var(--mr-ink-800);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
 }
 
 /* ── Link in table ── */

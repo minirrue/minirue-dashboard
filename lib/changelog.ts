@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 60,
+    date: '2026-07-24',
+    area: 'Products',
+    summary:
+      'Global variant values are now typed on the product itself, not pre-listed on the Global variants page. When you add or edit a variant, each field that applies to the product\'s category (like Size or Concentration) shows an "Applied" tag and you simply type the value — 50ml, EDP — and it is remembered, so next time it is offered as a suggestion while you can always type something new. The product\'s variant area is now called "Custom variants" and clearly marks which fields are required by the category. Also, when a page briefly cannot reach the server (for example right after an update goes live), Global variants and a product\'s variant fields now show a clear "Try again" button instead of a confusing "failed" message sitting next to "none yet".',
+  },
+  {
     id: 59,
     date: '2026-07-23',
     area: 'Settings',

@@ -99,10 +99,12 @@ export default function VariantsSection({
     Record<string, AttributeOptionRecord[]>
   >({});
   const [globalsError, setGlobalsError] = useState<string | null>(null);
+  const [globalsReloadKey, setGlobalsReloadKey] = useState(0);
 
   useEffect(() => {
     if (!categoryId) return;
     let cancelled = false;
+    setGlobalsError(null);
     listAttributes(categoryId)
       .then(async (rows) => {
         const safe = Array.isArray(rows) ? rows : [];
@@ -123,7 +125,7 @@ export default function VariantsSection({
     return () => {
       cancelled = true;
     };
-  }, [categoryId]);
+  }, [categoryId, globalsReloadKey]);
 
   async function handleLinkGalleryItem(variantId: string, item: GalleryItem) {
     setPickerVariantId(null);
@@ -186,7 +188,9 @@ export default function VariantsSection({
     setEditingId(v.id);
     setEditValues({
       sku: v.sku,
-      values: Object.fromEntries(v.values.map((x) => [x.attributeId, x.optionId])),
+      // The field value is the TEXT now, not an option id — seed the input with
+      // what was typed so it shows and can be edited free-hand.
+      values: Object.fromEntries(v.values.map((x) => [x.attributeId, x.optionName])),
       priceAmount: String(v.priceAmount),
       currency: v.currency,
     });
@@ -214,6 +218,7 @@ export default function VariantsSection({
       const updated = await updateVariant(productId, v.id, {
         priceAmount: Number(editValues.priceAmount),
         currency: editValues.currency.trim() || 'EGP',
+        values: editValues.values,
       });
       onVariantsChange(
         variants.map((x) => (x.id === v.id ? updated : x)),
@@ -262,7 +267,15 @@ export default function VariantsSection({
         />
       )}
       <div className="dash-section-header">
-        <h2 className="dash-section-title">Variants</h2>
+        <div>
+          <h2 className="dash-section-title">Custom variants</h2>
+          <p className="dash-help-text" style={{ marginTop: 4, maxWidth: 620 }}>
+            Each variant is one buyable version of this product with its own
+            price. The fields marked <strong>Applied</strong> come from this
+            category&apos;s global variants — every variant here must answer
+            them, and you type the value ({globals.map((g) => g.name).join(', ') || 'e.g. Size'}).
+          </p>
+        </div>
         {!showForm && (
           <button
             type="button"
@@ -274,6 +287,16 @@ export default function VariantsSection({
           </button>
         )}
       </div>
+
+      {/* Remembered values for each global variant, offered as suggestions.
+          Free-typed, so a new value is always allowed. */}
+      {globals.map((g) => (
+        <datalist key={g.id} id={`gv-suggestions-${g.id}`}>
+          {(optionsByGlobal[g.id] ?? []).map((o) => (
+            <option key={o.id} value={o.name} />
+          ))}
+        </datalist>
+      ))}
 
       {/* Existing variants */}
       {variants.length === 0 && !showForm ? (
@@ -375,20 +398,18 @@ export default function VariantsSection({
                             </div>
                               {globals.map((g) => (
                                 <div className="dash-field" key={g.id}>
-                                  <label className="dash-label">{g.name}</label>
-                                  <select
-                                    className="dash-select"
+                                  <label className="dash-label">
+                                    {g.name}{' '}
+                                    <span className="dash-pill-applied">Applied</span>
+                                  </label>
+                                  <input
+                                    className="dash-input"
+                                    list={`gv-suggestions-${g.id}`}
                                     value={editValues.values[g.id] ?? ''}
                                     onChange={(e) => editSetField('values', { ...editValues.values, [g.id]: e.target.value })}
+                                    placeholder={`Type a value for ${g.name}…`}
                                     disabled={editSubmitting}
-                                  >
-                                    <option value="">Not set</option>
-                                    {(optionsByGlobal[g.id] ?? []).map((o) => (
-                                      <option key={o.id} value={o.id}>
-                                        {o.name}
-                                      </option>
-                                    ))}
-                                  </select>
+                                  />
                                 </div>
                               ))}
                           </div>
@@ -463,9 +484,21 @@ export default function VariantsSection({
 
       {linkError && <p className="dash-inline-error">{linkError}</p>}
       {globalsError && (
-        <p className="dash-inline-error" data-trace-id="PG-DASHBOARD-CAT-003::EL-TEXT-global-variants-error">
-          {globalsError}
-        </p>
+        <div
+          className="dash-inline-error"
+          style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}
+          data-trace-id="PG-DASHBOARD-CAT-003::EL-TEXT-global-variants-error"
+        >
+          <span>{globalsError} You can still set the price.</span>
+          <button
+            type="button"
+            className="dash-btn-secondary"
+            onClick={() => setGlobalsReloadKey((k) => k + 1)}
+            data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-retry-global-variants"
+          >
+            Try again
+          </button>
+        </div>
       )}
 
       {/* Add variant form */}
@@ -493,23 +526,24 @@ export default function VariantsSection({
               {formErrors.sku && <p className="dash-field-error">{formErrors.sku}</p>}
             </div>
               {globals.map((g) => (
-                                <div className="dash-field" key={g.id}>
-                                  <label className="dash-label">{g.name}</label>
-                                  <select
-                                    className="dash-select"
-                                    value={formValues.values[g.id] ?? ''}
-                                    onChange={(e) => setField('values', { ...formValues.values, [g.id]: e.target.value })}
-                                    disabled={submitting}
-                                  >
-                                    <option value="">Not set</option>
-                                    {(optionsByGlobal[g.id] ?? []).map((o) => (
-                                      <option key={o.id} value={o.id}>
-                                        {o.name}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                              ))}
+                <div className="dash-field" key={g.id}>
+                  <label className="dash-label">
+                    {g.name}{' '}
+                    <span className="dash-pill-applied">Applied</span>
+                  </label>
+                  <input
+                    className="dash-input"
+                    list={`gv-suggestions-${g.id}`}
+                    value={formValues.values[g.id] ?? ''}
+                    onChange={(e) =>
+                      setField('values', { ...formValues.values, [g.id]: e.target.value })
+                    }
+                    placeholder={`Type a value for ${g.name}…`}
+                    disabled={submitting}
+                    data-trace-id={`PG-DASHBOARD-CAT-003::EL-INPUT-add-variant-global@${g.id}`}
+                  />
+                </div>
+              ))}
           </div>
           <div className="dash-field-row">
             <div className="dash-field">

@@ -374,17 +374,26 @@ export default function OptionListsPage() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
+  // Tracks a confirmed successful load, so the "none yet" empty state can never
+  // show on top of a load failure — that contradiction ("Failed to fetch" AND
+  // "No global variants yet") is what a bare error + ungated empty produced.
+  const [loaded, setLoaded] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
     Promise.all([listAdminAttributes(), listCategories()])
       .then(([attrs, cats]) => {
         if (cancelled) return;
-        setAttributes(attrs);
-        setCategories(cats.items);
+        setAttributes(Array.isArray(attrs) ? attrs : []);
+        setCategories(Array.isArray(cats?.items) ? cats.items : []);
+        setLoaded(true);
       })
       .catch((e: ApiError) => {
         if (!cancelled)
-          setLoadError(e.message ?? 'Could not load the option lists.');
+          setLoadError(e.message ?? 'Could not load global variants.');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -392,7 +401,7 @@ export default function OptionListsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -489,9 +498,24 @@ export default function OptionListsPage() {
       {createError && <p className="dash-inline-error">{createError}</p>}
 
       {loading && <p>Loading…</p>}
-      {loadError && <p className="dash-inline-error">{loadError}</p>}
 
-      {!loading && !loadError && attributes.length === 0 && (
+      {loadError && (
+        <div className="dash-card">
+          <p className="dash-inline-error" style={{ marginBottom: 12 }}>{loadError}</p>
+          <button
+            type="button"
+            className="dash-btn-secondary"
+            onClick={() => setReloadKey((k) => k + 1)}
+            data-trace-id={`${TRACE}::EL-BTN-retry-load`}
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
+      {/* Empty state shows ONLY on a confirmed successful, empty load — never
+          alongside an error. */}
+      {loaded && !loadError && attributes.length === 0 && (
         <p className="dash-muted">No global variants yet. Add one above.</p>
       )}
 

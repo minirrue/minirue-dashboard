@@ -444,11 +444,14 @@ export async function updateVariant(
   data: {
     priceAmount?: number;
     currency?: string;
+    /** global variant id -> free-typed value. */
+    values?: Record<string, string>;
   },
 ): Promise<ProductVariant> {
   const body: Record<string, unknown> = {};
   if (data.priceAmount !== undefined) body.price_amount = data.priceAmount.toFixed(4);
   if (data.currency !== undefined) body.price_currency = data.currency;
+  if (data.values !== undefined) body.values = data.values;
   const raw = await apiFetch<BackendVariant>(
     `${ADMIN}/products/${productId}/variants/${variantId}`,
     { method: 'PATCH', auth: true, body: JSON.stringify(body) },
