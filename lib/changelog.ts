@@ -21,6 +21,34 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 56,
+    date: '2026-07-23',
+    area: 'Storefront',
+    summary:
+      'Fixed a bug where picking "A product page" (or category/brand) for a hero button, but not finishing the pick, silently blocked saving the ENTIRE storefront page — every other change you made was stuck too. Now an unfinished button link is saved as "scroll to products" instead of blocking anything. An unfinished menu item (no page picked, or no text typed) is removed when you save, and you\'ll see a message telling you how many were removed so nothing disappears without you knowing.',
+  },
+  {
+    id: 55,
+    date: '2026-07-23',
+    area: 'Notifications',
+    summary:
+      'The bell icon in the sidebar now shows what is actually happening in your store — new orders, refunds, fulfilments, low stock, collaborator activity and more — instead of always saying "All caught up!". You can search notifications, filter by type or importance, sort them, and tick "Unread only" to see just what is new. A Refresh button re-checks the database on demand so you can confirm something just came in without reloading the page. Clicking a notification takes you straight to the order or item it is about and marks it read; there is also a "Mark all read" button and a full-page view at Notifications (under the sidebar\'s System section) for when the drawer is too small.',
+  },
+  {
+    id: 54,
+    date: '2026-07-23',
+    area: 'Products',
+    summary:
+      'The product area was a set of separate screens you reached by scattered buttons and left with the back button — Products, Categories, Brands and Global variants, with nothing showing how they fit together. They now share one row of tabs at the top, so moving between them is a single click and you always know where you are. The menu item that was "Products" is now "Catalogue" and opens a new map: your categories, the brands inside each, how many products each holds, and — for every category — the questions each of its products answers (like bottle size or price). A short note on the same page explains the difference between a global variant (a question every product in a category answers) and a custom variant (a question only one product has), which is the part that was easiest to lose track of.',
+  },
+  {
+    id: 53,
+    date: '2026-07-23',
+    area: 'Partners',
+    summary:
+      'A super admin was shown the brand-partner tabs ("Workspace" and "Brand profile") in the sidebar, but opening either one said "Insufficient role" — those screens describe a partner\'s own brand, which a super admin does not have. They no longer appear for a super admin, so there is nothing broken to click.',
+  },
+  {
     id: 52,
     date: '2026-07-23',
     area: 'Storefront',

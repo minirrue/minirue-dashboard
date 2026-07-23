@@ -6,6 +6,7 @@ import {
   apiSaveStorefrontLayout,
   moveSection,
   newSection,
+  normalizeStorefrontLayoutForSave,
   SECTION_LABELS,
 } from '@/lib/api/storefront';
 import type {
@@ -47,6 +48,7 @@ export default function StorefrontAppearanceClient() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [droppedNavItemCount, setDroppedNavItemCount] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,9 +83,20 @@ export default function StorefrontAppearanceClient() {
     setSaving(true);
     setSaveError(null);
     setSaved(false);
+    setDroppedNavItemCount(0);
     try {
-      setLayout(await apiSaveStorefrontLayout(layout));
+      // Normalize on a copy — never mutate the on-screen layout. An
+      // unfinished hero CTA target (kind picked, id not yet chosen) would
+      // otherwise fail the backend's `.uuid()` check and block saving
+      // every other change on the page, so it's coerced to a safe
+      // default; an unfinished nav item (no target or no label) can't be
+      // sensibly defaulted, so it's dropped and the admin is told.
+      const { layout: toSave, droppedNavItemCount: dropped } =
+        normalizeStorefrontLayoutForSave(layout);
+      const result = await apiSaveStorefrontLayout(toSave);
+      setLayout(result);
       setSaved(true);
+      setDroppedNavItemCount(dropped);
     } catch (e) {
       setSaveError((e as ApiError).message ?? 'Failed to save');
     } finally {
@@ -200,6 +213,15 @@ export default function StorefrontAppearanceClient() {
         <p className="dash-inline-ok">
           Storefront saved. The live site updates within about a minute — it caches for 60
           seconds, so a refresh right now may still show the old page.
+        </p>
+      )}
+      {saved && droppedNavItemCount > 0 && (
+        <p className="dash-inline-error">
+          {droppedNavItemCount === 1
+            ? '1 unfinished menu item was removed on save'
+            : `${droppedNavItemCount} unfinished menu items were removed on save`}
+          {' '}— it had no page picked or no label, so there was nothing to show shoppers. Check
+          the Navbar tab if that wasn&apos;t intended.
         </p>
       )}
 

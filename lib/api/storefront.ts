@@ -246,6 +246,86 @@ export function newSection(type: SectionType, order: number): StorefrontSection 
   }
 }
 
+function isBlank(value: string | null | undefined): boolean {
+  return value == null || value.trim() === '';
+}
+
+/**
+ * A hero CTA target that names a product/category/brand but has no id yet
+ * (the admin picked the kind but hasn't chosen the target) is invalid against
+ * the backend's `.uuid()` schema. Rather than block the whole save, fall back
+ * to the safe "scroll to products" default — losing the half-made choice is
+ * acceptable and clearly better than a 400 that blocks every other edit.
+ */
+export function normalizeCtaTarget(target: CtaTarget): CtaTarget {
+  if (target.kind === 'product' && isBlank(target.productId)) return { kind: 'scroll' };
+  if (target.kind === 'category' && isBlank(target.categoryId)) return { kind: 'scroll' };
+  if (target.kind === 'brand' && isBlank(target.brandId)) return { kind: 'scroll' };
+  return target;
+}
+
+/** True when a nav item is missing its target id/href or its label — unsalvageable, not defaultable. */
+function isIncompleteNavItem(item: NavItem): boolean {
+  if (isBlank(item.label)) return true;
+  switch (item.kind) {
+    case 'category':
+      return isBlank(item.categoryId);
+    case 'brand':
+      return isBlank(item.brandId);
+    case 'product':
+      return isBlank(item.productId);
+    case 'collaborator':
+      return isBlank(item.collaboratorId);
+    case 'link':
+      return isBlank(item.href);
+  }
+}
+
+export interface NormalizeResult {
+  layout: StorefrontLayout;
+  /** Count of navbar items (desktop + mobile) dropped for being unfinished. */
+  droppedNavItemCount: number;
+}
+
+/**
+ * Prepares a layout for `PATCH /v1/settings`: coerces half-finished hero CTA
+ * targets to a safe default, and drops navbar items that have no sensible
+ * default (missing target id/href, or missing label). Never mutates the
+ * input — operates on a deep copy so on-screen state isn't touched.
+ *
+ * Invariant this guarantees: the returned layout can never contain an
+ * empty-string uuid field (productId/categoryId/brandId/collaboratorId) or
+ * an empty nav item label.
+ */
+export function normalizeStorefrontLayoutForSave(layout: StorefrontLayout): NormalizeResult {
+  const next: StorefrontLayout = JSON.parse(JSON.stringify(layout));
+
+  for (const section of next.sections) {
+    if (section.type !== 'hero') continue;
+    for (const slide of section.slides) {
+      slide.ctaTarget = normalizeCtaTarget(slide.ctaTarget);
+    }
+  }
+
+  let droppedNavItemCount = 0;
+  const cleanNavList = (items: NavItem[]): NavItem[] =>
+    items.filter((item) => {
+      if (isIncompleteNavItem(item)) {
+        droppedNavItemCount += 1;
+        return false;
+      }
+      return true;
+    });
+
+  next.navbar = {
+    ...next.navbar,
+    desktop: cleanNavList(next.navbar.desktop),
+    mobile: cleanNavList(next.navbar.mobile),
+  };
+
+  return { layout: next, droppedNavItemCount };
+}
+
 export function moveSection(
   sections: StorefrontSection[],
   index: number,
