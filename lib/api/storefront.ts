@@ -42,7 +42,6 @@ export interface HeroSlide {
   background: string;
   bottle: string | null;
   cap: string | null;
-  tile: string | null;
   ctaLabel: string | null;
   ctaTarget: CtaTarget;
 }
@@ -209,7 +208,6 @@ export function newSection(type: SectionType, order: number): StorefrontSection 
             background: '#0B0B0B',
             bottle: null,
             cap: null,
-            tile: null,
             ctaLabel: 'Shop the edit',
             ctaTarget: { kind: 'scroll' },
           },

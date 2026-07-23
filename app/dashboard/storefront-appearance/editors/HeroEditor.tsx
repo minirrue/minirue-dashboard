@@ -37,7 +37,6 @@ function blankSlide(): HeroSlide {
     background: '#0B0B0B',
     bottle: null,
     cap: null,
-    tile: null,
     ctaLabel: 'Shop the edit',
     ctaTarget: { kind: 'scroll' },
   };
@@ -254,12 +253,6 @@ export default function HeroEditor({
                     <option key={c} value={c}>{c[0].toUpperCase() + c.slice(1)}</option>
                   ))}
                 </select>
-              </label>
-              <label className="dash-field">
-                <span className="dash-label">Tile accent (free text — not yet rendered on storefront)</span>
-                <input className="dash-input" value={slide.tile ?? ''}
-                  placeholder="e.g. amber"
-                  onChange={(e) => patchSlide(slide.id, { tile: e.target.value || null })} />
               </label>
             </div>
           )}
