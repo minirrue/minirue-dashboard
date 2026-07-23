@@ -36,6 +36,7 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   '/loyalty': ADMIN_ONLY,
   '/settings': ADMIN_ONLY,
   '/info': STAFF_ROLES,
+  '/notifications': STAFF_ROLES,
   '/storefront-appearance': ADMIN_ONLY,
   '/collaborators': ADMIN_ONLY,
   // Managing accounts — creating them, changing roles, deleting them, and

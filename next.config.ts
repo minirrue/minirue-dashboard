@@ -47,6 +47,7 @@ const nextConfig: NextConfig = {
       { source: "/collab/brand", destination: "/dashboard/collab/brand" },
       { source: "/collab/analytics", destination: "/dashboard/collab/analytics" },
       { source: "/gallery", destination: "/dashboard/gallery" },
+      { source: "/notifications", destination: "/dashboard/notifications" },
     ];
   },
   images: {

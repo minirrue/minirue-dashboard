@@ -165,6 +165,14 @@ function IconShield() {
   );
 }
 
+function IconBell() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 9a6 6 0 0 1 12 0v5l2 3H4l2-3V9zM10 19a2 2 0 0 0 4 0" />
+    </svg>
+  );
+}
+
 export interface NavItem {
   label: string;
   href: string;
@@ -245,6 +253,7 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
       // alone, so the filter below removes this item for everyone else rather
       // than showing a tab that answers 403.
       { label: 'Accounts', href: '/admin', icon: <IconShield /> },
+      { label: 'Notifications', href: '/notifications', icon: <IconBell /> },
       { label: 'Settings', href: '/settings', icon: <IconSettings /> },
       { label: 'Info', href: '/info', icon: <IconInfo /> },
     ],
@@ -333,6 +342,7 @@ export default function DashboardSidebar({
   // copy in the slim mobile-only bar (DashboardTopbar) since the sidebar
   // itself is hidden there.
   const [notifOpen, setNotifOpen] = React.useState(false);
+  const [unreadCount, setUnreadCount] = React.useState(0);
 
   const renderNav = () => (
     <nav className="dash-sidebar-nav" onClick={onMobileDrawerClose}>
@@ -384,12 +394,12 @@ export default function DashboardSidebar({
           type="button"
           className="dash-notif-btn"
           onClick={() => setNotifOpen(true)}
-          aria-label="Open notifications"
+          aria-label={unreadCount > 0 ? `Open notifications (${unreadCount} unread)` : 'Open notifications'}
         >
           <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 9a6 6 0 0 1 12 0v5l2 3H4l2-3V9zM10 19a2 2 0 0 0 4 0" />
           </svg>
-          <span className="dash-notif-dot" aria-hidden="true" />
+          {unreadCount > 0 && <span className="dash-notif-dot" aria-hidden="true" />}
         </button>
       )}
     </div>
@@ -409,7 +419,11 @@ export default function DashboardSidebar({
         {renderNav()}
         {renderFooter()}
       </aside>
-      <NotificationDrawer open={notifOpen} onClose={() => setNotifOpen(false)} />
+      <NotificationDrawer
+        open={notifOpen}
+        onClose={() => setNotifOpen(false)}
+        onUnreadCountChange={setUnreadCount}
+      />
 
       {/* Mobile slide-out drawer */}
       <aside
