@@ -108,7 +108,7 @@ export default function AdminAccountsClient() {
             marginBottom: 16,
           }}
         >
-          <div className="dash-field" style={{ marginBottom: 0, minWidth: 220 }}>
+          <div className="dash-field" style={{ marginBottom: 0, minWidth: 220, maxWidth: '100%' }}>
             <label className="dash-label" htmlFor="acc-search">
               Search by name
             </label>

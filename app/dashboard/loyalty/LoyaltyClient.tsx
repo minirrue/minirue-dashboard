@@ -58,7 +58,7 @@ function AdjustModal({
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
-      <div style={{ background: 'var(--mr-bg-raised)', border: '1px solid var(--mr-border)', borderRadius: 'var(--mr-radius-lg)', padding: 28, minWidth: 340, maxWidth: 440 }}>
+      <div style={{ background: 'var(--mr-bg-raised)', border: '1px solid var(--mr-border)', borderRadius: 'var(--mr-radius-lg)', padding: 28, minWidth: 'min(340px, calc(100vw - 32px))', maxWidth: 'min(440px, calc(100vw - 32px))' }}>
         <h2 style={{ margin: '0 0 18px', fontSize: 16, fontWeight: 600 }}>Manual Points Adjust</h2>
         <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--mr-fg-3)' }}>
           Customer: <code style={{ fontSize: 12 }}>{account.customerId.slice(0, 8)}…</code><br />

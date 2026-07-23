@@ -109,8 +109,8 @@ export default function GalleryPickerModal({ onSelect, onClose }: GalleryPickerM
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: 16, marginTop: 16 }}>
-          <div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 16 }}>
+          <div style={{ flex: '0 0 160px', maxWidth: '100%', minWidth: 0 }}>
             <p className="dash-section-subtitle" style={{ marginTop: 0 }}>Folders</p>
             {loading ? (
               <p className="dash-help-text">Loading…</p>
@@ -140,7 +140,7 @@ export default function GalleryPickerModal({ onSelect, onClose }: GalleryPickerM
             )}
           </div>
 
-          <div>
+          <div style={{ flex: '1 1 200px', maxWidth: '100%', minWidth: 0 }}>
             <p className="dash-section-subtitle" style={{ marginTop: 0 }}>Items</p>
             {!selectedFolder ? (
               <p className="dash-help-text">Select a folder to view its photos and videos.</p>

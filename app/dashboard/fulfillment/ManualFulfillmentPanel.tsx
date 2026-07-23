@@ -74,14 +74,14 @@ export default function ManualFulfillmentPanel() {
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search order # or MR-…"
           aria-label="Search orders by reference"
-          style={{ minWidth: 220 }}
+          style={{ minWidth: 220, maxWidth: '100%' }}
         />
         <select
           className="dash-select"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           aria-label="Filter by fulfillment state"
-          style={{ minWidth: 190 }}
+          style={{ minWidth: 190, maxWidth: '100%' }}
         >
           {FULFILLMENT_FILTERS.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>

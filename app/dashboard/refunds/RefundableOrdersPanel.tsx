@@ -94,14 +94,14 @@ export default function RefundableOrdersPanel({
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search order # or MR-…"
           aria-label="Search orders by reference"
-          style={{ minWidth: 220 }}
+          style={{ minWidth: 220, maxWidth: '100%' }}
         />
         <select
           className="dash-select"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           aria-label="Filter by refund state"
-          style={{ minWidth: 160 }}
+          style={{ minWidth: 160, maxWidth: '100%' }}
         >
           {REFUND_FILTERS.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>

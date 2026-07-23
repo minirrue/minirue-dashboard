@@ -289,13 +289,13 @@ export default function OrdersClient() {
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search order # or MR-…"
           aria-label="Search orders by reference"
-          style={{ minWidth: 220 }}
+          style={{ minWidth: 220, maxWidth: '100%' }}
         />
         <select
           className="dash-select"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          style={{ minWidth: 160 }}
+          style={{ minWidth: 160, maxWidth: '100%' }}
         >
           {STATUS_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -307,7 +307,7 @@ export default function OrdersClient() {
           className="dash-select"
           value={channelFilter}
           onChange={(e) => setChannelFilter(e.target.value as '' | 'ONLINE' | 'MANUAL')}
-          style={{ minWidth: 160 }}
+          style={{ minWidth: 160, maxWidth: '100%' }}
           aria-label="Filter by channel"
         >
           <option value="">All channels</option>

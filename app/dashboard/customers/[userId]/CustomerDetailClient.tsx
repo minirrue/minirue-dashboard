@@ -463,7 +463,7 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
               gap: 16,
               marginBottom: 20,
             }}
@@ -591,7 +591,7 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                     onChange={(e) => setDetailForm({ ...detailForm, email: e.target.value })}
                   />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12 }}>
                   <div className="dash-field">
                     <label className="dash-label" htmlFor="edit-first">
                       First name
@@ -626,7 +626,7 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                     onChange={(e) => setDetailForm({ ...detailForm, displayName: e.target.value })}
                   />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12 }}>
                   <div className="dash-field">
                     <label className="dash-label" htmlFor="edit-phone">
                       Phone
@@ -880,7 +880,7 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                   {addrForm.mode === 'add' ? 'Add address' : 'Edit address'}
                 </h3>
                 <div style={{ display: 'grid', gap: 12 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12 }}>
                     <div className="dash-field">
                       <label className="dash-label">Label</label>
                       <select
@@ -944,7 +944,7 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                       }
                     />
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))', gap: 12 }}>
                     <div className="dash-field">
                       <label className="dash-label">City</label>
                       <input

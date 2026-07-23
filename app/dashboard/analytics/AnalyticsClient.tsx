@@ -133,7 +133,7 @@ function OrdersFunnelPanel({ funnel }: { funnel: OrdersFunnel }) {
       <p className="dash-section-title" style={{ marginBottom: 12 }}>Checkout funnel</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {steps.map((step) => (
-          <div key={step.label} style={{ display: 'grid', gridTemplateColumns: '140px 1fr auto', gap: 12, alignItems: 'center' }}>
+          <div key={step.label} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 140px) 1fr auto', gap: 12, alignItems: 'center' }}>
             <span style={{ fontSize: 13, color: 'var(--mr-fg-3)' }}>{step.label}</span>
             <div className="dash-revenue-bar-track">
               <div
@@ -195,7 +195,7 @@ export default function AnalyticsClient() {
         <h1 className="dash-page-title">Analytics</h1>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 16, marginBottom: 20 }}>
         {loading ? (
           <><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /></>
         ) : error ? (
