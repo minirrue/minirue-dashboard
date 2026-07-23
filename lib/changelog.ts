@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 40,
+    date: '2026-07-23',
+    area: 'Orders',
+    summary:
+      'The order detail page now shows who bought the order — the guest name and phone for a manually recorded sale, or the shipping name for a storefront order — plus full Instapay transfer detail: the sender name, transfer date, reference number, and a tap-to-enlarge photo of the receipt the customer uploaded. Orders with no payment on file now say so instead of showing an empty page.',
+  },
+  {
     id: 39,
     date: '2026-07-23',
     area: 'Settings',

@@ -8,6 +8,7 @@ import { apiAdminListOrderPayments, apiAdminVerifyInstapay, apiAdminRejectInstap
 import type { AdminPaymentAttempt } from '@/lib/api/payments';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import { ImagePreviewModal } from '@/components/dashboard/ImagePreviewModal';
 
 /* ── Helpers ── */
 function formatAmount(amount: string, currency: string): string {
@@ -103,6 +104,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
   const [busy, setBusy] = useState(false);
   const [payments, setPayments] = useState<AdminPaymentAttempt[]>([]);
   const [paymentBusy, setPaymentBusy] = useState<string | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -212,6 +214,30 @@ export default function OrderDetailClient({ id }: { id: string }) {
             <strong>Total:</strong> {formatAmount(order.totalAmount, order.totalCurrency)}
           </p>
         </div>
+        <div className="dash-form-section" style={{ margin: 0 }}>
+          <p className="dash-label" style={{ marginBottom: 6 }}>Buyer</p>
+          <p style={{ margin: '4px 0', fontSize: 14, color: 'var(--mr-fg-2)' }}>
+            <strong>Name:</strong>{' '}
+            {order.guestContact?.fullName ?? order.shippingAddressSnapshot?.fullName ?? '—'}
+          </p>
+          {order.guestContact && (
+            <>
+              <p style={{ margin: '4px 0', fontSize: 14, color: 'var(--mr-fg-2)' }}>
+                <strong>Phone:</strong> {order.guestContact.phone}
+              </p>
+              {order.guestContact.email && (
+                <p style={{ margin: '4px 0', fontSize: 14, color: 'var(--mr-fg-2)' }}>
+                  <strong>Email:</strong> {order.guestContact.email}
+                </p>
+              )}
+            </>
+          )}
+          <p style={{ margin: '4px 0', fontSize: 14, color: 'var(--mr-fg-3)' }}>
+            {order.channel === 'MANUAL'
+              ? 'Registered manually from the dashboard'
+              : 'Placed on the storefront'}
+          </p>
+        </div>
       </div>
 
       {/* Items table */}
@@ -260,11 +286,15 @@ export default function OrderDetailClient({ id }: { id: string }) {
       </div>
 
       {/* Payment attempts */}
-      {payments.length > 0 && (
-        <div className="dash-form-section">
-          <div className="dash-section-header">
-            <h2 className="dash-section-title">Payments</h2>
-          </div>
+      <div className="dash-form-section">
+        <div className="dash-section-header">
+          <h2 className="dash-section-title">Payments</h2>
+        </div>
+        {payments.length === 0 ? (
+          <p style={{ color: 'var(--mr-fg-4)', fontSize: 14 }}>
+            No payment recorded against this order.
+          </p>
+        ) : (
           <div className="dash-table-wrap">
             <table className="dash-table">
               <thead>
@@ -273,16 +303,15 @@ export default function OrderDetailClient({ id }: { id: string }) {
                   <th>Status</th>
                   <th style={{ textAlign: 'right' }}>Amount</th>
                   <th>Date</th>
+                  <th>Instapay ref</th>
+                  <th>Sender</th>
                   <th>Ref</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
                 {payments.map((p) => {
-                  const receiptUrl =
-                    typeof p.gatewayMeta?.receiptDataUrl === 'string'
-                      ? p.gatewayMeta.receiptDataUrl
-                      : null;
+                  const receiptUrl = p.receiptUrl ?? null;
                   const awaiting =
                     p.method === 'INSTAPAY' &&
                     (p.status === 'PROCESSING' || p.status === 'PENDING');
@@ -299,18 +328,31 @@ export default function OrderDetailClient({ id }: { id: string }) {
                       {order.totalCurrency} {(p.amountCents / 100).toLocaleString('en-EG', { minimumFractionDigits: 2 })}
                     </td>
                     <td style={{ color: 'var(--mr-fg-3)' }}>{formatDate(p.createdAt)}</td>
+                    <td style={{ color: 'var(--mr-fg-3)', fontSize: 12 }}>
+                      {p.instapayReference ?? '—'}
+                    </td>
+                    <td style={{ color: 'var(--mr-fg-3)', fontSize: 12 }}>
+                      {p.payerName ?? '—'}
+                      {p.transferredAt && (
+                        <div style={{ color: 'var(--mr-fg-4)' }}>{formatDate(p.transferredAt)}</div>
+                      )}
+                    </td>
                     <td style={{ color: 'var(--mr-fg-4)', fontSize: 12 }}>{p.gatewayReference ?? '—'}</td>
                     <td>
                       {receiptUrl && (
-                        <a
-                          href={receiptUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          type="button"
                           className="dash-btn-ghost"
-                          style={{ fontSize: 12, marginRight: 8 }}
+                          style={{ padding: 0, marginRight: 8 }}
+                          onClick={() => setReceiptPreview(receiptUrl)}
+                          aria-label="View Instapay receipt"
                         >
-                          View receipt
-                        </a>
+                          <img
+                            src={receiptUrl}
+                            alt="Instapay receipt"
+                            style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, display: 'block' }}
+                          />
+                        </button>
                       )}
                       {awaiting && (
                         <div className="dash-row-actions">
@@ -343,8 +385,8 @@ export default function OrderDetailClient({ id }: { id: string }) {
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Status history */}
       {order.statusHistory && order.statusHistory.length > 0 && (
@@ -378,6 +420,14 @@ export default function OrderDetailClient({ id }: { id: string }) {
             </table>
           </div>
         </div>
+      )}
+
+      {receiptPreview && (
+        <ImagePreviewModal
+          src={receiptPreview}
+          alt="Instapay receipt"
+          onClose={() => setReceiptPreview(null)}
+        />
       )}
     </>
   );
