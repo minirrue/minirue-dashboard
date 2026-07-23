@@ -2,6 +2,14 @@ import { apiFetch } from './client';
 
 export type OrderStatus = 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
 
+export type OrderChannel = 'ONLINE' | 'MANUAL';
+
+export interface GuestContact {
+  fullName: string;
+  phone: string;
+  email?: string;
+}
+
 export interface ProductSnapshot {
   name: string;
   brand: string;
@@ -42,7 +50,9 @@ export interface ShippingAddressSnapshot {
 export interface Order {
   id: string;
   orderNumber: string;
-  userId: string;
+  userId: string | null;
+  channel: OrderChannel;
+  guestContact: GuestContact | null;
   status: OrderStatus;
   subtotalAmount: string;
   subtotalCurrency: string;
@@ -69,12 +79,14 @@ export async function apiAdminListOrders(params?: {
   limit?: number;
   status?: OrderStatus;
   userId?: string;
+  channel?: OrderChannel;
 }): Promise<OrdersListResponse> {
   const qs = new URLSearchParams();
   if (params?.page != null) qs.set('page', String(params.page));
   if (params?.limit != null) qs.set('limit', String(params.limit));
   if (params?.status) qs.set('status', params.status);
   if (params?.userId) qs.set('userId', params.userId);
+  if (params?.channel) qs.set('channel', params.channel);
   const query = qs.toString() ? `?${qs.toString()}` : '';
   return apiFetch<OrdersListResponse>(`/orders/admin${query}`, { auth: true });
 }
@@ -100,5 +112,42 @@ export async function apiAdminCancelOrder(id: string, reason?: string): Promise<
     method: 'PATCH',
     auth: true,
     body: JSON.stringify({ status: 'CANCELLED', reason }),
+  });
+}
+
+export interface ManualOrderItemInput {
+  variantId: string;
+  qty: number;
+  /** Minor units (piastres). Omit to charge the variant's list price. */
+  unitPriceOverrideMinor?: number;
+}
+
+export interface ManualOrderInput {
+  guest: GuestContact;
+  items: ManualOrderItemInput[];
+  paymentMethod: 'INSTAPAY' | 'MANUAL' | 'COD';
+  markPaid: boolean;
+  instapayReference?: string;
+  payerName?: string;
+  transferredAt?: string;
+  receiptDataUrl?: string;
+  shippingAmountMinor?: number;
+  notes?: string;
+  shippingAddress?: {
+    line1: string;
+    line2?: string;
+    city: string;
+    governorate: string;
+    postalCode?: string;
+  };
+}
+
+export async function apiAdminCreateManualOrder(
+  input: ManualOrderInput,
+): Promise<Order> {
+  return apiFetch<Order>('/orders/admin/manual', {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify(input),
   });
 }

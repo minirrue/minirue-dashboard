@@ -1,6 +1,6 @@
 import { apiFetch } from './client';
 
-export type PaymentMethod = 'COD' | 'INSTAPAY' | 'GATEWAY';
+export type PaymentMethod = 'COD' | 'INSTAPAY' | 'GATEWAY' | 'MANUAL';
 export type PaymentAttemptStatus = 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
 
 export interface PaymentAttempt {
@@ -16,6 +16,10 @@ export interface PaymentAttempt {
 export interface AdminPaymentAttempt extends PaymentAttempt {
   gatewayMeta: Record<string, unknown> | null;
   failureReason: string | null;
+  receiptUrl: string | null;
+  instapayReference: string | null;
+  payerName: string | null;
+  transferredAt: string | null;
 }
 
 export async function apiAdminListOrderPayments(orderId: string): Promise<AdminPaymentAttempt[]> {
