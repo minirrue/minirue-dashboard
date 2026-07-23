@@ -100,7 +100,16 @@ export default function CollabShowcaseEditor({
       ))}
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <select className="dash-input" value={pending} onChange={(e) => setPending(e.target.value)}>
+        <select
+          className="dash-input"
+          value={pending}
+          onChange={(e) => {
+            const id = e.target.value;
+            if (!id) return;
+            onChange({ ...section, tabs: [...section.tabs, blankTab(id)] });
+            setPending('');
+          }}
+        >
           <option value="">Add a collaborator tab…</option>
           {options
             .filter((o) => !section.tabs.some((t) => t.collaboratorId === o.id))
@@ -108,17 +117,6 @@ export default function CollabShowcaseEditor({
               <option key={o.id} value={o.id}>{o.label}</option>
             ))}
         </select>
-        <button
-          type="button"
-          className="dash-btn-secondary"
-          disabled={!pending}
-          onClick={() => {
-            onChange({ ...section, tabs: [...section.tabs, blankTab(pending)] });
-            setPending('');
-          }}
-        >
-          Add tab
-        </button>
       </div>
 
       {options.length === 0 && (
