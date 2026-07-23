@@ -89,7 +89,7 @@ export default function FooterEditor({
             <div className="dash-row-actions" style={{ marginBottom: 8 }}>
               <input
                 className="dash-input"
-                style={{ flex: 1 }}
+                style={{ flex: 1, minWidth: 0 }}
                 value={column.title}
                 placeholder="Column title"
                 onChange={(e) => patchColumn(index, { ...column, title: e.target.value })}
@@ -110,7 +110,7 @@ export default function FooterEditor({
 
             {column.links.map((link, linkIndex) => (
               <div key={link.id} style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
-                <input className="dash-input" style={{ flex: 1 }} value={link.label} placeholder="Label"
+                <input className="dash-input" style={{ flex: 1, minWidth: 0 }} value={link.label} placeholder="Label"
                   onChange={(e) =>
                     patchColumn(index, {
                       ...column,
@@ -119,7 +119,7 @@ export default function FooterEditor({
                       ),
                     })
                   } />
-                <input className="dash-input" style={{ flex: 1 }} value={link.href} placeholder="/shipping"
+                <input className="dash-input" style={{ flex: 1, minWidth: 0 }} value={link.href} placeholder="/shipping"
                   onChange={(e) =>
                     patchColumn(index, {
                       ...column,
@@ -170,6 +170,7 @@ export default function FooterEditor({
           <div key={social.id} style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
             <select
               className="dash-input"
+              style={{ flex: '0 0 40%', minWidth: 0 }}
               value={social.network}
               onChange={(e) =>
                 onChange({
@@ -184,7 +185,7 @@ export default function FooterEditor({
                 <option key={n} value={n}>{n}</option>
               ))}
             </select>
-            <input className="dash-input" style={{ flex: 1 }} value={social.url}
+            <input className="dash-input" style={{ flex: 1, minWidth: 0 }} value={social.url}
               placeholder="https://instagram.com/…"
               onChange={(e) =>
                 onChange({
@@ -194,7 +195,7 @@ export default function FooterEditor({
                   ),
                 })
               } />
-            <button type="button" className="dash-btn-ghost"
+            <button type="button" className="dash-btn-ghost" style={{ flex: '0 0 auto' }}
               onClick={() =>
                 onChange({ ...footer, socials: footer.socials.filter((_, i) => i !== index) })
               }>
