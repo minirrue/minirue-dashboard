@@ -68,6 +68,9 @@ export interface Order {
   fulfillmentMethod: FulfillmentMethod | null;
   fulfillmentStatus: OrderFulfillmentStatus;
   fulfilledAt: string | null;
+  /** Task 8 (backend): set once the order's single refund ticket exists. */
+  refundedAt: string | null;
+  refundedAmountCents: number;
   items: OrderItem[];
   statusHistory?: OrderStatusHistoryEntry[];
   createdAt: string;

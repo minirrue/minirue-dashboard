@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 50,
+    date: '2026-07-23',
+    area: 'Refunds',
+    summary:
+      'The Refunds page now lists every order, fulfilled or not, with a Refund button — walk-in orders included. Refunding an order records that you already sent the money back over Instapay and lets you attach the transfer screenshot as proof, but the screenshot is optional. A separate Refund history tab shows every refund ever recorded, who it was for, and lets you re-open the attached proof.',
+  },
+  {
     id: 49,
     date: '2026-07-23',
     area: 'Analytics',

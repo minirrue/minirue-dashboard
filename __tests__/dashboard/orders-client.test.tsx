@@ -33,6 +33,8 @@ function makeOrder(overrides: Partial<Order>): Order {
     fulfillmentMethod: null,
     fulfillmentStatus: 'UNFULFILLED',
     fulfilledAt: null,
+    refundedAt: null,
+    refundedAmountCents: 0,
     items: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

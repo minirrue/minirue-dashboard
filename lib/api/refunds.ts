@@ -8,7 +8,13 @@ export type RefundStatus =
   | 'REJECTED'
   | 'CANCELLED';
 
-export type RefundMethod = 'ORIGINAL_PAYMENT' | 'STORE_CREDIT' | 'BANK_TRANSFER';
+export type RefundMethod =
+  | 'ORIGINAL_PAYMENT'
+  | 'STORE_CREDIT'
+  | 'BANK_TRANSFER'
+  | 'INSTAPAY';
+
+export type RefundSource = 'CUSTOMER' | 'ADMIN';
 
 export interface RefundTicketDto {
   id: string;
@@ -16,6 +22,8 @@ export interface RefundTicketDto {
   customerId: string;
   status: RefundStatus;
   method: RefundMethod;
+  source: RefundSource;
+  hasProof: boolean;
   requestedAmountCents: number;
   approvedAmountCents: number | null;
   reason: string;
@@ -69,4 +77,36 @@ export async function apiAdminMarkRefunded(
 
 export async function apiAdminCancelRefund(id: string): Promise<RefundTicketDto> {
   return apiFetch(`/admin/refunds/${id}/cancel`, { method: 'PATCH', auth: true });
+}
+
+export interface AdminRefundOrderPayload {
+  /** Omit to refund the full order total. */
+  amountCents?: number;
+  reason: string;
+  adminNote?: string;
+  /** Inline PNG/JPG data URL — genuinely optional. */
+  proofDataUrl?: string;
+}
+
+/**
+ * There is no payment gateway — this records an Instapay transfer the admin
+ * already sent. Writes a ticket straight to REFUNDED, source ADMIN. An order
+ * can only ever have one refund ticket; a second attempt 400s with
+ * "This order already has a refund (STATUS)", surfaced to the caller as-is.
+ */
+export async function apiAdminRefundOrder(
+  orderId: string,
+  payload: AdminRefundOrderPayload,
+): Promise<RefundTicketDto> {
+  return apiFetch(`/admin/refunds/order/${orderId}`, {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function apiAdminGetRefundProof(
+  ticketId: string,
+): Promise<{ url: string | null }> {
+  return apiFetch(`/admin/refunds/${ticketId}/proof`, { auth: true });
 }
