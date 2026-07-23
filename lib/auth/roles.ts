@@ -14,7 +14,7 @@ const ADMIN_AND_SUPPORT: readonly RoleType[] = [
 ];
 
 /**
- * Allowed roles per dashboard route â€” mirrors backend `@Roles` on controllers.
+ * Allowed roles per dashboard route — mirrors backend `@Roles` on controllers.
  *
  * SUPERADMIN is listed explicitly everywhere rather than relied on implicitly,
  * so this file reads as the whole answer. `canAccessDashboardRoute` grants it
@@ -38,7 +38,7 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   '/info': STAFF_ROLES,
   '/storefront-appearance': ADMIN_ONLY,
   '/collaborators': ADMIN_ONLY,
-  // Managing accounts â€” creating them, changing roles, deleting them, and
+  // Managing accounts — creating them, changing roles, deleting them, and
   // signing in as one. Nobody but the top role, by design.
   '/admin': [Role.SUPERADMIN],
   '/collab': COLLAB_ROLES,
@@ -48,7 +48,7 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   '/collab/brand': COLLAB_ROLES,
   '/collab/analytics': COLLAB_ROLES,
   // Gallery is per-account (either a staff/admin user or a collaborator, per
-  // gallery-routes.md) â€” the same /dashboard/gallery screen and backend
+  // gallery-routes.md) — the same /dashboard/gallery screen and backend
   // routes serve both caller types, each auto-scoped to their own folders.
   '/gallery': [...STAFF_ROLES, ...COLLAB_ROLES],
 };
