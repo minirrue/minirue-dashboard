@@ -146,7 +146,7 @@ export default function OrdersClient() {
 
   // 300ms so typing "1024" is one request, not four.
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
     return () => clearTimeout(t);
   }, [search]);
 

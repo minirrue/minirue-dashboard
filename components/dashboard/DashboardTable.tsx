@@ -97,6 +97,20 @@ export default function DashboardTable<T extends Record<string, any>>({
   }, [sorted, page, pageSize]);
 
   const totalPages = pageSize > 0 ? Math.ceil(data.length / pageSize) : 1;
+  const lastPage = data.length === 0 ? 0 : totalPages - 1;
+
+  /* Clamp page when data shrinks past the current page (e.g. a search narrows the result
+   * set). Adjusted during render (React's "adjusting state when a prop/derived value
+   * changes" pattern) rather than in an effect, and only moves backward when the current
+   * page is now out of range — never forces page 0 on every data change, or a background
+   * refetch would yank the admin back to page 1 while they're browsing later pages. */
+  const [prevLastPage, setPrevLastPage] = useState(lastPage);
+  if (lastPage !== prevLastPage) {
+    setPrevLastPage(lastPage);
+    if (page > lastPage) {
+      setPage(lastPage);
+    }
+  }
 
   const handleSort = useCallback(
     (key: string) => {

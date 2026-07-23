@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 45,
+    date: '2026-07-23',
+    area: 'Orders',
+    summary:
+      'Fixed a bug where searching the Orders list while on a later page could say "no results" even though matching orders existed — the list now jumps to show them. Also, extra spaces typed before or after a search no longer stop it from matching.',
+  },
+  {
     id: 44,
     date: '2026-07-23',
     area: 'Orders',
