@@ -20,7 +20,7 @@ export default function FulfillmentClient() {
         <h1 className="dash-page-title">Fulfillment</h1>
       </div>
 
-      <div role="tablist" aria-label="Fulfillment method" className="dash-filters" style={{ gap: 8 }}>
+      <div role="tablist" aria-label="Fulfillment method" className="dash-tabstrip">
         {TABS.map((t) => (
           <button
             key={t.id}

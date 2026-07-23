@@ -21,7 +21,7 @@ export default function RefundsClient() {
         <h1 className="dash-page-title">Refunds</h1>
       </div>
 
-      <div role="tablist" aria-label="Refunds view" className="dash-filters" style={{ gap: 8 }}>
+      <div role="tablist" aria-label="Refunds view" className="dash-tabstrip">
         {([
           { id: 'ORDERS' as const, label: 'Orders' },
           { id: 'HISTORY' as const, label: 'Refund history' },
