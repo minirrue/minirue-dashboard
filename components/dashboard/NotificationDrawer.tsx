@@ -22,7 +22,7 @@ export default function NotificationDrawer({
     items, unreadCount, categoryCounts,
     loading, refreshing, error,
     filters, setFilters,
-    refresh, markRead, markAllRead,
+    refresh, toggleRead, markAllRead,
   } = useAdminNotifications({ enabled: open });
 
   React.useEffect(() => {
@@ -92,7 +92,7 @@ export default function NotificationDrawer({
             loading={loading}
             error={error}
             onRetry={() => void refresh()}
-            onMarkRead={(id) => void markRead(id)}
+            onToggleRead={(id, isRead) => void toggleRead(id, isRead)}
           />
         </div>
 

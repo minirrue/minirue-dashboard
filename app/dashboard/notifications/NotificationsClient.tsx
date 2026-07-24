@@ -10,7 +10,7 @@ export default function NotificationsClient() {
     items, total, unreadCount, categoryCounts,
     loading, refreshing, error,
     filters, setFilters,
-    refresh, markRead, markAllRead,
+    refresh, toggleRead, markAllRead,
   } = useAdminNotifications({ enabled: true, limit: 100 });
 
   return (
@@ -54,7 +54,7 @@ export default function NotificationsClient() {
           loading={loading}
           error={error}
           onRetry={() => void refresh()}
-          onMarkRead={(id) => void markRead(id)}
+          onToggleRead={(id, isRead) => void toggleRead(id, isRead)}
         />
       </div>
     </>

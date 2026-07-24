@@ -20,6 +20,7 @@ import {
 function n(over: Partial<AdminNotification> = {}): AdminNotification {
   return {
     id: 1,
+    type: 'order.order',
     category: 'ORDER',
     severity: 'INFO',
     title: 'New order #47',

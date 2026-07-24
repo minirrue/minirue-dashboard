@@ -13,6 +13,8 @@ export type NotificationSort = 'newest' | 'oldest' | 'unread_first';
 
 export interface AdminNotification {
   id: number;
+  /** Stable machine key, e.g. 'customer.support'. */
+  type: string;
   category: NotificationCategory;
   severity: NotificationSeverity;
   title: string;
@@ -60,6 +62,10 @@ export async function apiAdminListNotifications(
 
 export async function apiAdminMarkNotificationRead(id: number): Promise<AdminNotification> {
   return apiFetch(`/admin/notifications/${id}/read`, { method: 'PATCH', auth: true });
+}
+
+export async function apiAdminMarkNotificationUnread(id: number): Promise<AdminNotification> {
+  return apiFetch(`/admin/notifications/${id}/unread`, { method: 'PATCH', auth: true });
 }
 
 export async function apiAdminMarkAllNotificationsRead(): Promise<{ count: number }> {

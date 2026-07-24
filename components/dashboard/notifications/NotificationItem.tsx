@@ -11,6 +11,43 @@ const SEVERITY_STATUS: Record<AdminNotification['severity'], string> = {
   CRITICAL: 'cancelled',
 };
 
+/** Human label + the tab it belongs to, resolved from entityType then category. */
+function typeMeta(n: AdminNotification): { label: string; tab: string } {
+  const et = (n.entityType ?? '').toLowerCase();
+  if (et === 'support') return { label: 'Support', tab: 'Support' };
+  if (et === 'order' || n.category === 'ORDER') return { label: 'Order', tab: 'Orders' };
+  if (et === 'customer' || n.category === 'CUSTOMER') return { label: 'Customer', tab: 'Customers' };
+  switch (n.category) {
+    case 'PAYMENT': return { label: 'Payment', tab: 'Orders' };
+    case 'FULFILLMENT': return { label: 'Fulfilment', tab: 'Fulfilment' };
+    case 'REFUND': return { label: 'Refund', tab: 'Refunds' };
+    case 'INVENTORY': return { label: 'Inventory', tab: 'Inventory' };
+    case 'COLLAB': return { label: 'Collaborator', tab: 'Collaborators' };
+    default: return { label: 'System', tab: 'Notifications' };
+  }
+}
+
+/** entityType/category → clean dashboard URL (support carries the conversation id). */
+function resolveHref(n: AdminNotification): string | null {
+  const et = (n.entityType ?? '').toLowerCase();
+  const convId =
+    n.data && typeof n.data.conversationId === 'string' ? (n.data.conversationId as string) : null;
+  if (et === 'support') return convId ? `/support?c=${encodeURIComponent(convId)}` : '/support';
+  if (et === 'customer' && n.entityId) return `/customers/${n.entityId}`;
+  if ((et === 'order' || n.category === 'ORDER') && n.entityId) return `/orders/${n.entityId}`;
+  if (n.link) return n.link;
+  switch (n.category) {
+    case 'CUSTOMER': return '/customers';
+    case 'ORDER':
+    case 'PAYMENT': return '/orders';
+    case 'FULFILLMENT': return '/fulfillment';
+    case 'REFUND': return '/refunds';
+    case 'INVENTORY': return '/inventory';
+    case 'COLLAB': return '/collab';
+    default: return null;
+  }
+}
+
 function relativeTime(iso: string): string {
   const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
   if (seconds < 60) return 'just now';
@@ -25,26 +62,46 @@ function relativeTime(iso: string): string {
 
 export default function NotificationItem({
   notification,
-  onMarkRead,
+  onToggleRead,
 }: {
   notification: AdminNotification;
-  onMarkRead: (id: number) => void;
+  onToggleRead: (id: number, isRead: boolean) => void;
 }) {
+  const meta = typeMeta(notification);
+  const href = resolveHref(notification);
+  const unread = !notification.isRead;
+
   const body = (
     <>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        {unread && (
+          <span
+            aria-label="Unread"
+            style={{
+              width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+              background: 'var(--mr-accent, #6d28d9)',
+            }}
+          />
+        )}
         <span className="dash-status" data-status={SEVERITY_STATUS[notification.severity]}>
           <span className="dash-status-dot" />
-          {notification.category.charAt(0) + notification.category.slice(1).toLowerCase()}
+          {meta.label}
         </span>
+        <span style={{ color: 'var(--mr-fg-4)', fontSize: 11 }}>from {meta.tab}</span>
         <span style={{ marginLeft: 'auto', color: 'var(--mr-fg-4)', fontSize: 11 }}>
           {relativeTime(notification.createdAt)}
         </span>
       </div>
-      <div style={{ fontWeight: notification.isRead ? 400 : 600, color: 'var(--mr-fg)', fontSize: 14 }}>
+      <div
+        style={{
+          fontWeight: unread ? 650 : 400,
+          color: unread ? 'var(--mr-fg)' : 'var(--mr-fg-3)',
+          fontSize: 14,
+        }}
+      >
         {notification.title}
       </div>
-      <div style={{ color: 'var(--mr-fg-3)', fontSize: 13, marginTop: 2 }}>
+      <div style={{ color: unread ? 'var(--mr-fg-3)' : 'var(--mr-fg-4)', fontSize: 13, marginTop: 2 }}>
         {notification.body}
       </div>
     </>
@@ -53,34 +110,45 @@ export default function NotificationItem({
   return (
     <div
       className="dash-notif-item"
-      data-unread={notification.isRead ? undefined : 'true'}
+      data-unread={unread ? 'true' : undefined}
       style={{
         padding: '12px 14px',
         borderBottom: '1px solid var(--mr-dash-hair)',
-        background: notification.isRead ? 'transparent' : 'var(--mr-dash-raise, rgba(0,0,0,0.02))',
+        background: unread ? 'var(--mr-dash-raise, rgba(109,40,217,0.05))' : 'transparent',
+        opacity: unread ? 1 : 0.72,
       }}
     >
-      {notification.link ? (
+      {href ? (
         <Link
-          href={notification.link}
+          href={href}
           style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
-          onClick={() => { if (!notification.isRead) onMarkRead(notification.id); }}
+          onClick={() => { if (unread) onToggleRead(notification.id, false); }}
         >
           {body}
         </Link>
       ) : (
         body
       )}
-      {!notification.isRead && (
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        {href && (
+          <Link
+            href={href}
+            className="dash-btn-ghost"
+            style={{ fontSize: 11, padding: '2px 8px', textDecoration: 'none' }}
+            onClick={() => { if (unread) onToggleRead(notification.id, false); }}
+          >
+            View
+          </Link>
+        )}
         <button
           type="button"
           className="dash-btn-ghost"
-          style={{ fontSize: 11, padding: '2px 6px', marginTop: 6 }}
-          onClick={() => onMarkRead(notification.id)}
+          style={{ fontSize: 11, padding: '2px 8px' }}
+          onClick={() => onToggleRead(notification.id, notification.isRead)}
         >
-          Mark read
+          {notification.isRead ? 'Mark unread' : 'Mark read'}
         </button>
-      )}
+      </div>
     </div>
   );
 }

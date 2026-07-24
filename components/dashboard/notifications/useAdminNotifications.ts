@@ -5,6 +5,7 @@ import {
   apiAdminListNotifications,
   apiAdminMarkAllNotificationsRead,
   apiAdminMarkNotificationRead,
+  apiAdminMarkNotificationUnread,
   type AdminNotification,
   type NotificationCategory,
   type NotificationSeverity,
@@ -95,6 +96,23 @@ export function useAdminNotifications({
     }
   }, [fetchPage]);
 
+  const markUnread = useCallback(async (id: number) => {
+    // Optimistic: the row lights back up immediately; a failure just refetches.
+    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: false } : n)));
+    setUnreadCount((c) => c + 1);
+    try {
+      await apiAdminMarkNotificationUnread(id);
+    } catch {
+      void fetchPage(true);
+    }
+  }, [fetchPage]);
+
+  /** Toggle from whatever the current state is — powers the per-row button. */
+  const toggleRead = useCallback(
+    (id: number, isRead: boolean) => (isRead ? markUnread(id) : markRead(id)),
+    [markRead, markUnread],
+  );
+
   const markAllRead = useCallback(async () => {
     setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
     setUnreadCount(0);
@@ -109,6 +127,6 @@ export function useAdminNotifications({
     items, total, unreadCount, categoryCounts,
     loading, refreshing, error,
     filters, setFilters,
-    refresh, markRead, markAllRead,
+    refresh, markRead, markUnread, toggleRead, markAllRead,
   };
 }

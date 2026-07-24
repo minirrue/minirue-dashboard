@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 75,
+    date: '2026-07-24',
+    area: 'Notifications',
+    summary:
+      'Your notifications are clearer and easier to organise. Each one now shows what kind of alert it is (Support, Order, Customer and so on) and which section it came from, and clicking it jumps straight to the right place — a support message opens that exact conversation, an order opens that order. Unread ones stand out boldly with a dot; ones you\'ve read are dimmed. You can now mark any single notification as read OR flip it back to unread, so you can keep the important ones highlighted.',
+  },
+  {
     id: 74,
     date: '2026-07-24',
     area: 'Whole dashboard',

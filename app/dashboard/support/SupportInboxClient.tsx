@@ -168,6 +168,19 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   const { data: user } = useUser();
   const markRead = useSupportMarkRead();
 
+  // Deep link from a notification: /support?c=<conversationId> auto-opens that
+  // conversation. Read from the URL (client-only) to avoid a Suspense boundary.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const c = new URLSearchParams(window.location.search).get('c');
+    if (c) {
+      setActiveId((prev) => prev ?? c);
+      markRead.mutate(c);
+    }
+    // Run once on mount; markRead is a stable mutation handle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const canEditPresence = user?.role === Role.SUPERADMIN || user?.role === Role.ADMIN;
 
   const conversations = (conversationDtos ?? []).map(toConversation);

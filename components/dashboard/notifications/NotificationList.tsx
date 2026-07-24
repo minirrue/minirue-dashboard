@@ -9,13 +9,13 @@ export default function NotificationList({
   loading,
   error,
   onRetry,
-  onMarkRead,
+  onToggleRead,
 }: {
   items: AdminNotification[];
   loading: boolean;
   error: string | null;
   onRetry: () => void;
-  onMarkRead: (id: number) => void;
+  onToggleRead: (id: number, isRead: boolean) => void;
 }) {
   if (loading) {
     return (
@@ -53,7 +53,7 @@ export default function NotificationList({
   return (
     <div>
       {items.map((n) => (
-        <NotificationItem key={n.id} notification={n} onMarkRead={onMarkRead} />
+        <NotificationItem key={n.id} notification={n} onToggleRead={onToggleRead} />
       ))}
     </div>
   );
