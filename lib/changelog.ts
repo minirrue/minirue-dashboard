@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 74,
+    date: '2026-07-24',
+    area: 'Whole dashboard',
+    summary:
+      'The dashboard now fits your phone\'s real screen height. Before, the page measured itself against the taller area behind the phone browser\'s address bar, so the top bar and content could get pushed under the browser chrome or feel cut off. It now uses the actual visible height on every device, so the top bar sits correctly on any phone.',
+  },
+  {
     id: 73,
     date: '2026-07-24',
     area: 'Support',
