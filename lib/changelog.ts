@@ -25,7 +25,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-07-24',
     area: 'Support',
     summary:
-      'On a phone, opening a conversation now always shows the reply box at the bottom of the screen — before, it could sit just below the visible area with nowhere to type. The top bar also tucks away as you scroll a chat down and slides back when you scroll up, giving messages more room.',
+      'On a phone, opening a conversation now always shows the reply box at the bottom of the screen — before, it could sit just below the visible area with nowhere to type.',
   },
   {
     id: 83,
