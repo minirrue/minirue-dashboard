@@ -176,8 +176,17 @@ export interface StorefrontPage {
   enabled: boolean;
 }
 
+/** Icon names the storefront can render for a product-page service promise. */
+export type ProductPerkIcon = 'truck' | 'gift' | 'check' | 'heart' | 'grid';
+
+/** Admin-editable service promises shown on every product page. */
+export interface ProductSectionConfig {
+  perks: Array<{ id: string; icon: ProductPerkIcon; text: string }>;
+}
+
 export interface StorefrontLayout {
   version: 2;
+  productSection: ProductSectionConfig;
   announcement: AnnouncementConfig;
   faviconUrl: string | null;
   sections: StorefrontSection[];

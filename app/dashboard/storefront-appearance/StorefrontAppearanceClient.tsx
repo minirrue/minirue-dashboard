@@ -30,6 +30,7 @@ import CollabShowcaseEditor from './editors/CollabShowcaseEditor';
 import NavbarEditor from './editors/NavbarEditor';
 import FooterEditor from './editors/FooterEditor';
 import PagesEditor from './PagesEditor';
+import ProductSectionEditor from './editors/ProductSectionEditor';
 
 const SECTION_TYPES: SectionType[] = [
   'hero',
@@ -39,7 +40,7 @@ const SECTION_TYPES: SectionType[] = [
   'journal',
 ];
 
-type Tab = 'page' | 'navbar' | 'footer' | 'announcement' | 'pages';
+type Tab = 'page' | 'navbar' | 'footer' | 'announcement' | 'productSection' | 'pages';
 
 export default function StorefrontAppearanceClient() {
   const [layout, setLayout] = useState<StorefrontLayout | null>(null);
@@ -197,14 +198,18 @@ export default function StorefrontAppearanceClient() {
       </div>
 
       <div className="dash-tabstrip">
-        {(['page', 'navbar', 'footer', 'announcement', 'pages'] as Tab[]).map((t) => (
+        {(['page', 'navbar', 'footer', 'announcement', 'productSection', 'pages'] as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
             className={tab === t ? 'dash-btn-secondary' : 'dash-btn-ghost'}
             onClick={() => setTab(t)}
           >
-            {t === 'page' ? 'Home page' : t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === 'page'
+              ? 'Home page'
+              : t === 'productSection'
+                ? 'Product section'
+                : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
@@ -272,6 +277,15 @@ export default function StorefrontAppearanceClient() {
 
       {tab === 'footer' && (
         <FooterEditor footer={layout.footer} onChange={(footer) => patch({ footer })} />
+      )}
+
+      {tab === 'productSection' && (
+        <ProductSectionEditor
+          // A layout saved before this field existed has no productSection
+          // until the API backfills it on read; never dereference undefined.
+          section={layout.productSection ?? { perks: [] }}
+          onChange={(productSection) => patch({ productSection })}
+        />
       )}
 
       {tab === 'pages' && (

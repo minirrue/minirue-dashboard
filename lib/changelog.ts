@@ -21,6 +21,27 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 97,
+    date: '2026-07-24',
+    area: 'Storefront',
+    summary:
+      'New "Product section" tab under Storefront: the reassurance lines on every product page (free shipping over a certain amount, free samples) are yours to edit now, with an icon and any order you like. They used to be fixed in the code.',
+  },
+  {
+    id: 96,
+    date: '2026-07-24',
+    area: 'Products',
+    summary:
+      'Product photos were missing everywhere products are listed — category pages, the home page, search and the cart all showed the product name instead of the picture. Only the product page itself was showing it. Fixed.',
+  },
+  {
+    id: 95,
+    date: '2026-07-24',
+    area: 'Brands',
+    summary:
+      'Catalogue → Brands now lists only your own makers. Partner brands are created automatically when you add a collaborator and are managed under Collaborators, so they no longer appear mixed into the same list.',
+  },
+  {
     id: 96,
     date: '2026-07-24',
     area: 'Support',

@@ -474,8 +474,19 @@ export async function updateVariant(
 
 // --- brands ---------------------------------------------------------------
 
-export async function listManagedBrands(): Promise<ManagedBrand[]> {
-  const res = await apiFetch<{ data: ManagedBrand[] }>(`${ADMIN}/brands/managed`, { auth: true });
+/**
+ * `ownedOnly` returns MiniRue's own makers and hides partner brands, which are
+ * auto-created when a collaborator is onboarded and belong under Collaborators.
+ * Filters that need to match any product's brand should omit it.
+ */
+export async function listManagedBrands(
+  opts: { ownedOnly?: boolean } = {},
+): Promise<ManagedBrand[]> {
+  const qs = opts.ownedOnly ? '?scope=own' : '';
+  const res = await apiFetch<{ data: ManagedBrand[] }>(
+    `${ADMIN}/brands/managed${qs}`,
+    { auth: true },
+  );
   return res.data;
 }
 export async function createBrand(name: string): Promise<ManagedBrand> {

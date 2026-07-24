@@ -146,7 +146,10 @@ export default function BrandsPage() {
     setLoadError(null);
     setLoading(true);
     try {
-      const res = await listManagedBrands();
+      // Own makers only — a partner's brand row is created automatically when
+      // the collaborator is onboarded and is managed under Collaborators, so
+      // listing it here mixed two different things into one undivided list.
+      const res = await listManagedBrands({ ownedOnly: true });
       setBrands(res.sort((a, b) => a.name.localeCompare(b.name)));
     } catch (e) {
       const err = e as ApiError;
@@ -193,7 +196,8 @@ export default function BrandsPage() {
         <div>
           <h1 className="dash-page-title">Brands</h1>
           <p className="dash-help-text" style={{ marginTop: 4 }}>
-            The makers your products belong to — Creed, Dior. Not your shop&apos;s
+            Your own makers — Creed, Dior. Partner brands live under
+            Collaborators. Not your shop&apos;s
             name.
           </p>
         </div>
