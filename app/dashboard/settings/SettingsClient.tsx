@@ -77,7 +77,7 @@ function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => void }) {
   if (isLoading || !user) {
     return (
       <div className="dash-form-card" style={{ marginBottom: 20 }}>
-        <span className="dash-skeleton" style={{ width: 200, height: 60 }} />
+        <span className="dash-skeleton" style={{ width: '100%', maxWidth: 200, height: 60 }} />
       </div>
     );
   }
@@ -125,7 +125,7 @@ function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => void }) {
           </span>
         </div>
 
-        <div style={{ flex: 1, minWidth: 220 }}>
+        <div style={{ flex: '1 1 200px', minWidth: 0, maxWidth: '100%' }}>
           <div className="dash-field" style={{ marginBottom: 12 }}>
             <label className="dash-label">Your name</label>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -197,7 +197,7 @@ function Skeleton() {
     <div className="dash-form-card">
       {Array.from({ length: 4 }).map((_, i) => (
         <div key={i} className="dash-field">
-          <span className="dash-skeleton" style={{ width: 90, height: 11 }} />
+          <span className="dash-skeleton" style={{ width: '100%', maxWidth: 90, height: 11 }} />
           <span className="dash-skeleton" style={{ width: '100%', height: 36, marginTop: 4 }} />
         </div>
       ))}

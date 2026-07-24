@@ -109,7 +109,7 @@ export default function FooterEditor({
             </div>
 
             {column.links.map((link, linkIndex) => (
-              <div key={link.id} style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+              <div key={link.id} style={{ display: 'flex', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                 <input className="dash-input" style={{ flex: 1, minWidth: 0 }} value={link.label} placeholder="Label"
                   onChange={(e) =>
                     patchColumn(index, {
@@ -167,10 +167,10 @@ export default function FooterEditor({
           </button>
         </div>
         {footer.socials.map((social, index) => (
-          <div key={social.id} style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+          <div key={social.id} style={{ display: 'flex', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
             <select
               className="dash-input"
-              style={{ flex: '0 0 40%', minWidth: 0 }}
+              style={{ flex: '1 1 140px', minWidth: 0 }}
               value={social.network}
               onChange={(e) =>
                 onChange({

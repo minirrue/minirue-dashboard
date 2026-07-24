@@ -55,25 +55,27 @@ function RevenueChart({ points }: { points: RevenuePoint[] }) {
       {visible.length === 0 ? (
         <p style={{ color: 'var(--mr-fg-4)', fontSize: 14 }}>No revenue data available.</p>
       ) : (
-        <table className="dash-revenue-chart">
-          <tbody>
-            {visible.map((p) => (
-              <tr key={p.date}>
-                <td style={{ color: 'var(--mr-fg-3)', fontSize: 12, whiteSpace: 'nowrap', paddingRight: 12 }}>
-                  {new Date(p.date).toLocaleDateString('en-EG', { month: 'short', day: 'numeric' })}
-                </td>
-                <td className="dash-revenue-bar-cell">
-                  <div className="dash-revenue-bar-track">
-                    <div className="dash-revenue-bar-fill" style={{ transform: `scaleX(${(p.total_cents / max).toFixed(4)})` }} />
-                  </div>
-                </td>
-                <td style={{ textAlign: 'right', paddingLeft: 12, color: 'var(--mr-fg-2)', whiteSpace: 'nowrap' }}>
-                  {egpShort(p.total_cents)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="dash-table-wrap">
+          <table className="dash-revenue-chart">
+            <tbody>
+              {visible.map((p) => (
+                <tr key={p.date}>
+                  <td style={{ color: 'var(--mr-fg-3)', fontSize: 12, whiteSpace: 'nowrap', paddingRight: 12 }}>
+                    {new Date(p.date).toLocaleDateString('en-EG', { month: 'short', day: 'numeric' })}
+                  </td>
+                  <td className="dash-revenue-bar-cell">
+                    <div className="dash-revenue-bar-track">
+                      <div className="dash-revenue-bar-fill" style={{ transform: `scaleX(${(p.total_cents / max).toFixed(4)})` }} />
+                    </div>
+                  </td>
+                  <td style={{ textAlign: 'right', paddingLeft: 12, color: 'var(--mr-fg-2)', whiteSpace: 'nowrap' }}>
+                    {egpShort(p.total_cents)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

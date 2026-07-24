@@ -135,9 +135,10 @@ export function MultiProductPicker({
   return (
     <div className="dash-field">
       <span className="dash-label">Products (shown in this order)</span>
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <select
           className="dash-input"
+          style={{ flex: '1 1 200px', minWidth: 0 }}
           value={pending}
           disabled={loading}
           onChange={(e) => setPending(e.target.value)}

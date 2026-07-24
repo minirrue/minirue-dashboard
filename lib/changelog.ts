@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 67,
+    date: '2026-07-24',
+    area: 'Whole dashboard',
+    summary:
+      'Went through every screen so nothing spills off the side of the phone anymore. The search boxes and dropdown filters on Orders, Refunds, Customers, Fulfillment, Accounts and the shop-name settings no longer stretch wider than the screen; the storefront footer editor, the analytics revenue chart and a few product forms were tidied the same way. Instead of hiding the extra width, each part now properly fits the screen it is on.',
+  },
+  {
     id: 66,
     date: '2026-07-24',
     area: 'Whole dashboard',

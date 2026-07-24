@@ -237,7 +237,7 @@ export default function RefundHistoryPanel({ refreshToken }: { refreshToken: num
           className="dash-select"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          style={{ minWidth: 160 }}
+          style={{ maxWidth: '100%' }}
         >
           {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>

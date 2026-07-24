@@ -176,7 +176,6 @@ export default function CustomersClient() {
           className="dash-select"
           value={tierFilter}
           onChange={(e) => setTierFilter(e.target.value)}
-          style={{ minWidth: 140 }}
         >
           {TIER_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>

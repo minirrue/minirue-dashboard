@@ -141,7 +141,7 @@ function GlobalVariantCard({
           flexWrap: 'wrap',
         }}
       >
-        <div style={{ flex: 1, minWidth: 220 }}>
+        <div style={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
           {renaming ? (
             <form onSubmit={handleRename} style={{ display: 'flex', gap: 8 }}>
               <input

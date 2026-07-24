@@ -299,11 +299,6 @@
     flex-direction: column;
     min-height: 100vh;
     background: var(--mr-dash-bg);
-    /* Safety net: no page's content may push the main column wider than the
-       viewport. Wide tables scroll inside .dash-table-wrap; anything else
-       that overflows is clipped here instead of widening the whole page and
-       creating a horizontal-scroll gutter on mobile. */
-    overflow-x: clip;
   }
 
   .dash-topbar {

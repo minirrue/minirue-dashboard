@@ -31,7 +31,7 @@ export default function ShippingServicePanel() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(0, 1fr))',
             gap: 16,
           }}
         >
@@ -68,7 +68,7 @@ export default function ShippingServicePanel() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(0, 1fr))',
             gap: 16,
           }}
         >
