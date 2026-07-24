@@ -5,6 +5,7 @@ import { DashChatView, type Conversation, type Message, type MessageAttachment }
 import {
   useSupportConversations,
   useSupportThread,
+  useSupportLiveSync,
   useSendSupportMessage,
   useSupportPresence,
   useSetPresence,
@@ -164,6 +165,9 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   const [refreshing, setRefreshing] = useState(false);
   const { data: conversationDtos, refetch: refetchConversations } = useSupportConversations();
   const { data: threadData, refetch: refetchThread } = useSupportThread(activeId);
+  // Single unified live loop: one timer refreshes both the list and the open
+  // thread together (replaces the two separate query intervals).
+  useSupportLiveSync(activeId);
   const sendMessage = useSendSupportMessage(activeId ?? '');
   const { data: presence } = useSupportPresence();
   const uploadImage = useSupportUpload();

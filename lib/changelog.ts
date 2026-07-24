@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 78,
+    date: '2026-07-24',
+    area: 'Support',
+    summary:
+      'The support inbox now refreshes on a single, unified loop — the conversation list and the open chat always update together every few seconds, instead of on two separate timers. It also pauses while the tab is in the background and refreshes the moment you come back.',
+  },
+  {
     id: 77,
     date: '2026-07-24',
     area: 'Support',

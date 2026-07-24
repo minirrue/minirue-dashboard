@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   apiSupportConversations,
@@ -22,9 +23,6 @@ export function useSupportConversations(status?: string) {
   return useQuery({
     queryKey: SUPPORT_KEYS.conversations(status),
     queryFn: () => apiSupportConversations(status),
-    // Poll so new conversations, unread badges, previews and presence update
-    // without a manual refresh. (No sockets — Vercel storefront, SSE is guarded.)
-    refetchInterval: 10_000,
     refetchOnWindowFocus: true,
   });
 }
@@ -34,11 +32,33 @@ export function useSupportThread(id: string | null) {
     queryKey: SUPPORT_KEYS.thread(id ?? ''),
     queryFn: () => apiSupportThread(id as string),
     enabled: !!id,
-    // Poll the open conversation so the team sees the customer's new messages
-    // live instead of having to refresh the page.
-    refetchInterval: 5_000,
     refetchOnWindowFocus: true,
   });
+}
+
+/**
+ * Single unified live-sync loop for the whole support inbox. One timer drives
+ * BOTH the conversation list and the currently-open thread so they always
+ * refresh together — no two competing intervals. Pauses while the tab is
+ * hidden and does one immediate refresh when it becomes visible again.
+ * (No sockets — the storefront is on Vercel; the backend SSE is role-guarded.)
+ */
+export function useSupportLiveSync(activeId: string | null, intervalMs = 5_000) {
+  const qc = useQueryClient();
+  useEffect(() => {
+    const refresh = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      void qc.invalidateQueries({ queryKey: ['support', 'conversations'] });
+      if (activeId) void qc.invalidateQueries({ queryKey: SUPPORT_KEYS.thread(activeId) });
+    };
+    const timer = window.setInterval(refresh, intervalMs);
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [qc, activeId, intervalMs]);
 }
 
 export function useSendSupportMessage(id: string) {
