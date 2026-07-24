@@ -45,6 +45,15 @@ export async function listItems(folderId: string): Promise<GalleryItem[]> {
   return res.data;
 }
 
+/** Resolve a single gallery item (with its loadable `url`) by id — used to
+ *  preview an image that was set on a slide in an earlier session. */
+export async function getItem(id: string): Promise<GalleryItem> {
+  const res = await apiFetch<{ data: GalleryItem }>(`${BASE}/items/${id}`, {
+    auth: true,
+  });
+  return res.data;
+}
+
 export async function uploadItem(
   folderId: string,
   file: File,

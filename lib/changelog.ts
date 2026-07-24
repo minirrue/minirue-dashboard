@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 91,
+    date: '2026-07-24',
+    area: 'Storefront',
+    summary:
+      'Home page slides can now use your own photo. Set a slide\'s style to "Photo", pick or upload an image, and crop it — with ready-made shapes (wide, portrait, square) or a free crop you drag yourself. You can give a slide a separate portrait photo for phones, or crop one photo for both in a single step.',
+  },
+  {
     id: 90,
     date: '2026-07-24',
     area: 'Storefront',

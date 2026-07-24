@@ -1,11 +1,53 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { newId } from '@/lib/api/storefront';
 import type { HeroSection, HeroSlide } from '@/lib/api/storefront';
 import GalleryPickerModal, { uploadDeviceFileToGallery } from '@/components/dashboard/GalleryPickerModal';
+import ImageCropModal from '@/components/dashboard/ImageCropModal';
+import { getItem } from '@/lib/gallery/api';
 import type { ApiError } from '@/lib/api/client';
 import CtaTargetField from './CtaTargetField';
+
+/** A fixed-aspect preview frame — this is what the admin sees the crop will look
+ *  like on that device (16:9 for desktop, 3:4 for mobile). Falls back to the
+ *  slide's background colour when no image is set. */
+function HeroImageFrame({
+  url,
+  background,
+  ratio,
+  muted,
+}: {
+  url?: string;
+  background: string;
+  ratio: string;
+  muted?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        aspectRatio: ratio,
+        width: '100%',
+        maxWidth: 200,
+        borderRadius: 'var(--mr-radius-md)',
+        overflow: 'hidden',
+        border: '1px solid var(--mr-dash-hair)',
+        background: url ? 'var(--mr-dash-sub)' : background,
+        opacity: muted ? 0.65 : 1,
+        marginBottom: 8,
+      }}
+    >
+      {url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={url}
+          alt=""
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
+      )}
+    </div>
+  );
+}
 
 /** BottleSVG's real accepted prop values (apps/minirue-frontend/components/ui/BottleSVG.tsx) —
  * do not add values here without adding a matching FILLS/CAP_COLORS entry there first. */
@@ -33,6 +75,7 @@ function blankSlide(): HeroSlide {
     sub: '',
     tagline: '',
     imageGalleryItemId: null,
+    mobileImageGalleryItemId: null,
     imageAlt: '',
     background: '#0B0B0B',
     bottle: null,
@@ -49,11 +92,25 @@ export default function HeroEditor({
   section: HeroSection;
   onChange: (next: HeroSection) => void;
 }) {
-  const [pickingFor, setPickingFor] = useState<string | null>(null);
+  type Slot = 'desktop' | 'mobile';
+  const slotField = (slot: Slot): 'imageGalleryItemId' | 'mobileImageGalleryItemId' =>
+    slot === 'desktop' ? 'imageGalleryItemId' : 'mobileImageGalleryItemId';
+
+  const [pickingFor, setPickingFor] = useState<{ slideId: string; slot: Slot } | null>(null);
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<{ slideId: string; message: string } | null>(null);
+  const [cropping, setCropping] = useState<{
+    slideId: string;
+    slot: Slot;
+    file: File;
+    chainMobile: boolean;
+  } | null>(null);
+  const [urlById, setUrlById] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const uploadTargetRef = useRef<string | null>(null);
+  const pendingRef = useRef<{ slideId: string; slot: Slot; chainMobile: boolean } | null>(null);
+
+  const rememberUrl = (id: string, url: string) =>
+    setUrlById((m) => (m[id] === url ? m : { ...m, [id]: url }));
 
   const patchSlide = (id: string, patch: Partial<HeroSlide>) =>
     onChange({
@@ -61,19 +118,55 @@ export default function HeroEditor({
       slides: section.slides.map((s) => (s.id === id ? { ...s, ...patch } : s)),
     });
 
-  async function handleDeviceFile(slideId: string, file: File) {
+  // Resolve URLs for images already set on slides (from an earlier session) so
+  // the desktop/mobile previews render immediately, not only after re-picking.
+  useEffect(() => {
+    const ids = new Set<string>();
+    section.slides.forEach((s) => {
+      if (s.imageGalleryItemId) ids.add(s.imageGalleryItemId);
+      if (s.mobileImageGalleryItemId) ids.add(s.mobileImageGalleryItemId);
+    });
+    ids.forEach((id) => {
+      if (!urlById[id]) {
+        getItem(id)
+          .then((item) => rememberUrl(id, item.url))
+          .catch(() => {});
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section.slides]);
+
+  async function handleCropped(blob: Blob, name: string) {
+    if (!cropping) return;
+    const { slideId, slot, file, chainMobile } = cropping;
     setUploadError(null);
     setUploadingFor(slideId);
     try {
-      const item = await uploadDeviceFileToGallery(file, 'Storefront');
-      patchSlide(slideId, { imageGalleryItemId: item.id });
+      const ext = blob.type === 'image/png' ? 'png' : 'jpg';
+      const base = name.replace(/\.[^.]+$/, '');
+      const croppedFile = new File([blob], `${base}-${slot}.${ext}`, { type: blob.type });
+      const item = await uploadDeviceFileToGallery(croppedFile, 'Storefront');
+      rememberUrl(item.id, item.url);
+      patchSlide(slideId, { [slotField(slot)]: item.id } as Partial<HeroSlide>);
+      if (chainMobile && slot === 'desktop') {
+        // "One photo, crop for both": re-open the cropper on the same file for
+        // the mobile portrait crop.
+        setCropping({ slideId, slot: 'mobile', file, chainMobile: false });
+      } else {
+        setCropping(null);
+      }
     } catch (e) {
-      const err = e as ApiError;
-      setUploadError({ slideId, message: err.message || 'Failed to upload image.' });
+      setUploadError({ slideId, message: (e as ApiError).message || 'Failed to upload image.' });
+      setCropping(null);
     } finally {
       setUploadingFor(null);
     }
   }
+
+  const pickDevice = (slideId: string, slot: Slot, chainMobile: boolean) => {
+    pendingRef.current = { slideId, slot, chainMobile };
+    fileInputRef.current?.click();
+  };
 
   return (
     <div className="dash-form-section">
@@ -190,33 +283,90 @@ export default function HeroEditor({
           {slide.mode === 'image' ? (
             <div className="dash-field">
               <span className="dash-label">Photograph</span>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                <button type="button" className="dash-btn-secondary" onClick={() => setPickingFor(slide.id)}>
-                  {slide.imageGalleryItemId ? 'Change photo' : 'Choose from gallery'}
-                </button>
-                <button
-                  type="button"
-                  className="dash-btn-secondary"
-                  disabled={uploadingFor === slide.id}
-                  onClick={() => {
-                    uploadTargetRef.current = slide.id;
-                    fileInputRef.current?.click();
-                  }}
-                >
-                  {uploadingFor === slide.id ? 'Uploading…' : 'Upload from this device'}
-                </button>
-                {slide.imageGalleryItemId && (
-                  <button type="button" className="dash-btn-ghost"
-                    onClick={() => patchSlide(slide.id, { imageGalleryItemId: null })}>
-                    Clear
-                  </button>
-                )}
-                {!slide.imageGalleryItemId && (
-                  <span style={{ fontSize: 13, color: 'var(--mr-fg-4)' }}>
-                    No photo chosen — the slide falls back to its background colour.
-                  </span>
-                )}
+              <p className="dash-help-text" style={{ marginTop: 0 }}>
+                Two crops keep the hero right everywhere: a wide landscape for
+                desktop and a tall portrait for phones. Upload one photo and crop
+                both, or set each separately. The frames below are exactly what
+                shoppers see on each device.
+              </p>
+
+              <button
+                type="button"
+                className="dash-btn-secondary"
+                disabled={uploadingFor === slide.id}
+                onClick={() => pickDevice(slide.id, 'desktop', true)}
+                style={{ marginBottom: 14 }}
+              >
+                {uploadingFor === slide.id
+                  ? 'Working…'
+                  : 'Upload one photo — crop for desktop & mobile'}
+              </button>
+
+              <div className="dash-form-grid">
+                {/* Desktop (landscape) */}
+                <div className="dash-field">
+                  <span className="dash-label">Desktop image (landscape)</span>
+                  <HeroImageFrame
+                    url={urlById[slide.imageGalleryItemId ?? '']}
+                    background={slide.background}
+                    ratio="16 / 9"
+                  />
+                  <div className="dash-row-actions" style={{ flexWrap: 'wrap' }}>
+                    <button type="button" className="dash-btn-ghost"
+                      disabled={uploadingFor === slide.id}
+                      onClick={() => pickDevice(slide.id, 'desktop', false)}>
+                      Upload &amp; crop
+                    </button>
+                    <button type="button" className="dash-btn-ghost"
+                      onClick={() => setPickingFor({ slideId: slide.id, slot: 'desktop' })}>
+                      Gallery
+                    </button>
+                    {slide.imageGalleryItemId && (
+                      <button type="button" className="dash-btn-ghost"
+                        onClick={() => patchSlide(slide.id, { imageGalleryItemId: null })}>
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Mobile (portrait) */}
+                <div className="dash-field">
+                  <span className="dash-label">Mobile image (portrait)</span>
+                  <HeroImageFrame
+                    url={
+                      urlById[slide.mobileImageGalleryItemId ?? ''] ??
+                      urlById[slide.imageGalleryItemId ?? '']
+                    }
+                    background={slide.background}
+                    ratio="3 / 4"
+                    muted={!slide.mobileImageGalleryItemId}
+                  />
+                  <div className="dash-row-actions" style={{ flexWrap: 'wrap' }}>
+                    <button type="button" className="dash-btn-ghost"
+                      disabled={uploadingFor === slide.id}
+                      onClick={() => pickDevice(slide.id, 'mobile', false)}>
+                      Upload &amp; crop
+                    </button>
+                    <button type="button" className="dash-btn-ghost"
+                      onClick={() => setPickingFor({ slideId: slide.id, slot: 'mobile' })}>
+                      Gallery
+                    </button>
+                    {slide.mobileImageGalleryItemId && (
+                      <button type="button" className="dash-btn-ghost"
+                        onClick={() => patchSlide(slide.id, { mobileImageGalleryItemId: null })}>
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  {!slide.mobileImageGalleryItemId && (
+                    <span style={{ fontSize: 12, color: 'var(--mr-fg-4)' }}>
+                      Falls back to the desktop image on phones.
+                    </span>
+                  )}
+                </div>
               </div>
+
               {uploadError && uploadError.slideId === slide.id && (
                 <p className="dash-inline-error">{uploadError.message}</p>
               )}
@@ -276,10 +426,10 @@ export default function HeroEditor({
         hidden
         onChange={(e) => {
           const file = e.target.files?.[0];
-          const target = uploadTargetRef.current;
-          if (file && target) handleDeviceFile(target, file);
+          const target = pendingRef.current;
+          if (file && target) setCropping({ ...target, file });
           e.target.value = '';
-          uploadTargetRef.current = null;
+          pendingRef.current = null;
         }}
       />
 
@@ -287,9 +437,26 @@ export default function HeroEditor({
         <GalleryPickerModal
           onClose={() => setPickingFor(null)}
           onSelect={(item) => {
-            patchSlide(pickingFor, { imageGalleryItemId: item.id });
+            rememberUrl(item.id, item.url);
+            patchSlide(pickingFor.slideId, {
+              [slotField(pickingFor.slot)]: item.id,
+            } as Partial<HeroSlide>);
             setPickingFor(null);
           }}
+        />
+      )}
+
+      {cropping && (
+        <ImageCropModal
+          file={cropping.file}
+          title={
+            cropping.slot === 'desktop'
+              ? 'Crop for desktop (landscape)'
+              : 'Crop for mobile (portrait)'
+          }
+          initialAspect={cropping.slot === 'desktop' ? 16 / 9 : 3 / 4}
+          onCancel={() => setCropping(null)}
+          onCropped={handleCropped}
         />
       )}
     </div>

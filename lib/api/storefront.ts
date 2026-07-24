@@ -31,6 +31,12 @@ export interface HeroSlide {
   mode: 'image' | 'editorial';
   imageGalleryItemId: string | null;
   /**
+   * Optional portrait image shown on mobile. Falls back to imageGalleryItemId
+   * (the landscape/desktop image) when null. The crop is baked into the
+   * uploaded gallery image, so no crop rectangle is stored.
+   */
+  mobileImageGalleryItemId: string | null;
+  /**
    * Alt text for the rendered image. Real content, not metadata — admin-authored
    * words, never derived from a filename or omitted.
    */
@@ -215,6 +221,7 @@ export function newSection(type: SectionType, order: number): StorefrontSection 
             sub: '',
             tagline: '',
             imageGalleryItemId: null,
+            mobileImageGalleryItemId: null,
             imageAlt: '',
             background: '#0B0B0B',
             bottle: null,
