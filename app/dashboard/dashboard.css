@@ -299,6 +299,11 @@
     flex-direction: column;
     min-height: 100vh;
     background: var(--mr-dash-bg);
+    /* Safety net: no page's content may push the main column wider than the
+       viewport. Wide tables scroll inside .dash-table-wrap; anything else
+       that overflows is clipped here instead of widening the whole page and
+       creating a horizontal-scroll gutter on mobile. */
+    overflow-x: clip;
   }
 
   .dash-topbar {
@@ -656,8 +661,13 @@
   }
 
   @media (max-width: 960px) {
+    /* Sidebar stays FIXED (out of flow) all the way down to the 760px drawer
+       breakpoint. It must NOT become position:sticky here: sticky puts it back
+       into the flex row where it eats 216px, while .dash-main also keeps
+       margin-left:216px — the two stack, pushing content 216px past the right
+       edge. That was the "desktop view on mobile with a wide empty margin"
+       bug on every tab at 761–960px (small tablets, large phones, landscape). */
     .dash-sidebar {
-      position: sticky;
       width: 216px;
     }
 
@@ -2881,4 +2891,120 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* ============================================================
+   Mobile comfort pass (≤640px) — tables + "items" ~20% denser
+   On phones the desktop-scaled tables, stat/metric cards, panels,
+   list rows and form cards read oversized. This trims their type,
+   padding and control sizing by roughly a fifth so the same data
+   fits comfortably without horizontal strain. Scoped to the phone
+   breakpoint only — tablet and desktop are untouched. Appended last
+   so it wins over the component defaults by source order.
+   ============================================================ */
+@media (max-width: 640px) {
+  /* ── Data tables ── */
+  .dash-table {
+    font-size: 11.5px;
+  }
+  .dash-table th {
+    padding: 9px 10px;
+    font-size: 9px;
+    letter-spacing: 0.16em;
+  }
+  .dash-table td {
+    padding: 9px 10px;
+  }
+  .dash-table-empty {
+    padding: 32px 10px;
+    font-size: 12px;
+  }
+  .dash-pagination {
+    padding: 10px;
+    font-size: 12px;
+  }
+  .dash-status {
+    font-size: 10.5px;
+    padding: 3px 8px;
+  }
+
+  /* ── Stat cards ── */
+  .dash-card {
+    padding: 16px;
+  }
+  .dash-stat-value {
+    font-size: 22px;
+  }
+  .dash-stat-icon {
+    width: 32px;
+    height: 32px;
+  }
+  .dash-stat-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+  .dash-stat-change {
+    font-size: 10px;
+    padding: 3px 7px;
+  }
+
+  /* ── Overview metric cards ── */
+  .dash-metric {
+    padding: 12px 14px;
+    gap: 7px;
+  }
+  .dash-metric-value {
+    font-size: 20px;
+  }
+  .dash-metric-eyebrow {
+    font-size: 9px;
+  }
+
+  /* ── Panels + list rows ── */
+  .dash-panel {
+    padding: 16px;
+  }
+  .dash-panel-title {
+    font-size: 15px;
+    margin-bottom: 12px;
+  }
+  .dash-panel-head {
+    padding: 14px 16px;
+  }
+  .dash-toprow-name {
+    font-size: 12px;
+  }
+  .dash-toprow-rev {
+    font-size: 12.5px;
+  }
+  .dash-attn-text {
+    font-size: 12px;
+  }
+
+  /* ── Form + section cards ── */
+  .dash-form-card,
+  .dash-form-section {
+    padding: 18px;
+  }
+  .dash-card-title,
+  .dash-section-title {
+    font-size: 15px;
+  }
+
+  /* ── Role welcome strip ── */
+  .dash-role-welcome {
+    padding: 18px;
+    gap: 14px 20px;
+  }
+  .dash-role-welcome-headline {
+    font-size: 1.3rem;
+  }
+  .dash-role-welcome-description {
+    font-size: 13px;
+  }
+
+  /* ── Page header ── */
+  .dash-page-title {
+    font-size: var(--mr-text-lg);
+  }
 }

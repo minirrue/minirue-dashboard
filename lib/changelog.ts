@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 66,
+    date: '2026-07-24',
+    area: 'Whole dashboard',
+    summary:
+      'Fixed the dashboard looking like a shrunken desktop page on phones and tablets. Every screen now fits the width of your device properly, with no more empty margin pushing the page sideways. On phones, tables and cards are a bit more compact so more fits on screen comfortably, and any wide table now scrolls sideways on its own instead of getting cut off.',
+  },
+  {
     id: 65,
     date: '2026-07-24',
     area: 'Whole dashboard',

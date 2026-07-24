@@ -414,6 +414,7 @@ export default function VariantsSection({
           style={{ padding: 0, overflow: 'hidden', marginBottom: 16 }}
           data-trace-id="PG-DASHBOARD-CAT-003::EL-TABLE-variants-table"
         >
+          <div className="dash-table-wrap">
           <table className="dash-table">
             <thead>
               <tr>
@@ -571,6 +572,7 @@ export default function VariantsSection({
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
