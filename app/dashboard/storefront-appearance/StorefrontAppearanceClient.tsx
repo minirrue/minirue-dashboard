@@ -323,22 +323,10 @@ export default function StorefrontAppearanceClient() {
                 }
               />
             </label>
-            <label className="dash-field">
-              <span className="dash-label">Background (CSS colour or gradient)</span>
-              <input
-                className="dash-input"
-                value={layout.announcement.background ?? ''}
-                placeholder="#0B0B0B or linear-gradient(…)"
-                onChange={(e) =>
-                  patch({
-                    announcement: {
-                      ...layout.announcement,
-                      background: e.target.value.trim() || null,
-                    },
-                  })
-                }
-              />
-            </label>
+            {/* The announcement bar's background is no longer editable here
+                (2026-07-24) — its colour is owned by the storefront theme.
+                `layout.announcement.background` is still saved untouched, so
+                whatever is set today keeps rendering. */}
             <label className="dash-field">
               <span className="dash-label">Favicon URL</span>
               <input

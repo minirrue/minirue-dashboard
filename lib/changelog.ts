@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 90,
+    date: '2026-07-24',
+    area: 'Storefront',
+    summary:
+      'The announcement bar\'s background colour box was removed from Storefront appearance — the bar\'s colour is part of the shop\'s theme now. The colour on the live shop is unchanged.',
+  },
+  {
     id: 89,
     date: '2026-07-24',
     area: 'Products',
