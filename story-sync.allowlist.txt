@@ -54,3 +54,8 @@ minirue-dashboard PAGE /dashboard/products/overview
 # 2026-07-23 — partner-oversight page, also from the concurrent session's work, not
 # this one's. Listed only so the shared pre-push hook does not block either of us.
 minirue-dashboard PAGE /dashboard/partners
+
+# 2026-07-24 — customer support inbox (this session). Team + collab support
+# screens. Story pending (vault decoupled, same reason as everything above).
+minirue-dashboard PAGE /dashboard/support
+minirue-dashboard PAGE /dashboard/collab/support
