@@ -15,6 +15,7 @@ import { useUser } from '@/lib/hooks/use-auth';
 import { Role } from '@/lib/auth/role';
 import type { PresenceDto } from '@/lib/api/support';
 import type { ConversationDto, MessageDto } from '@/lib/api/support';
+import { useAdminNotifications } from '@/components/dashboard/notifications/useAdminNotifications';
 
 function initials(name: string): string {
   return (
@@ -160,13 +161,45 @@ function PresenceControls({ presence }: { presence: PresenceDto | undefined }) {
 
 export default function SupportInboxClient({ showPresence = false }: SupportInboxClientProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
-  const { data: conversationDtos } = useSupportConversations();
-  const { data: threadData } = useSupportThread(activeId);
+  const [refreshing, setRefreshing] = useState(false);
+  const { data: conversationDtos, refetch: refetchConversations } = useSupportConversations();
+  const { data: threadData, refetch: refetchThread } = useSupportThread(activeId);
   const sendMessage = useSendSupportMessage(activeId ?? '');
   const { data: presence } = useSupportPresence();
   const uploadImage = useSupportUpload();
   const { data: user } = useUser();
   const markRead = useSupportMarkRead();
+
+  // Powers the rail's refresh button: refetches the conversation list and,
+  // if a thread is open, that thread too.
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([refetchConversations(), activeId ? refetchThread() : Promise.resolve()]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Admin notifications, used only to auto-mark-read any notification that
+  // points at the conversation currently open in this inbox (so the admin
+  // doesn't have to separately dismiss it in the notification centre).
+  const { items: notifications, markRead: markNotificationRead } = useAdminNotifications({ enabled: true });
+
+  useEffect(() => {
+    if (!activeId) return;
+    const matches = notifications.filter((n) => {
+      if (n.isRead) return false;
+      const isSupportNotification = n.entityType === 'support' || n.type.startsWith('customer.support');
+      if (!isSupportNotification) return false;
+      const conversationId = typeof n.data?.conversationId === 'string' ? n.data.conversationId : undefined;
+      return conversationId === activeId;
+    });
+    matches.forEach((n) => void markNotificationRead(n.id));
+    // Re-runs as new messages poll in (every 5s) so a notification that
+    // arrives while the conversation is already open also gets auto-read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId, threadData?.messages, notifications, markNotificationRead]);
 
   // Deep link from a notification: /support?c=<conversationId> auto-opens that
   // conversation. Read from the URL (client-only) to avoid a Suspense boundary.
@@ -209,6 +242,8 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
         const result = await uploadImage.mutateAsync(file);
         return result.url;
       }}
+      onRefresh={handleRefresh}
+      refreshing={refreshing}
       headerSlot={headerSlot}
     />
   );

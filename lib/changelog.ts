@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 77,
+    date: '2026-07-24',
+    area: 'Support',
+    summary:
+      'In the support inbox, opening a conversation now automatically clears any unread notification for it, so you don’t have to separately mark it read. The Messages list also has a new refresh button, and the conversation header now shows a copyable ID that you can also paste into search to jump straight to that conversation.',
+  },
+  {
     id: 76,
     date: '2026-07-24',
     area: 'Support',

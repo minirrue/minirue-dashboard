@@ -63,6 +63,11 @@ export interface DashChatViewProps {
   /** Uploads a picked/pasted image and resolves to its hosted URL. Omit to
    * hide attachment controls entirely (e.g. a read-only view). */
   onUploadImage?: (file: File) => Promise<string>
+  /** Refetches the conversation list (and the open thread, if any). Omit to
+   * hide the refresh button entirely. */
+  onRefresh?: () => void
+  /** Shows a spinning refresh icon while a manual refresh is in flight. */
+  refreshing?: boolean
 }
 
 /** Three-state customer presence: dot colour + human label. */
@@ -176,6 +181,28 @@ const STYLES = `
   color: var(--mr-ink-900);
 }
 .mrc-search input::placeholder { color: var(--mr-ink-400); }
+
+.mrc-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  color: var(--mr-ink-400);
+  cursor: pointer;
+  transition: background var(--mr-dur-fast) var(--mr-ease-snappy), color var(--mr-dur-fast) var(--mr-ease-snappy);
+}
+.mrc-refresh-btn:hover { background: var(--mr-dash-sub); color: var(--mr-ink-700); }
+.mrc-refresh-btn:disabled { cursor: default; }
+.mrc-refresh-btn svg[data-spinning="true"] { animation: mrc-spin 0.8s linear infinite; }
+@keyframes mrc-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .mrc-refresh-btn svg[data-spinning="true"] { animation: none; }
+}
 
 .mrc-list {
   flex: 1;
@@ -362,14 +389,35 @@ const STYLES = `
 }
 .mrc-thread-head {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 6px;
   padding: 13px 22px;
   flex-shrink: 0;
   background: var(--mr-dash-surface);
   border-bottom: 1px solid var(--mr-dash-hair);
   z-index: 2;
 }
+.mrc-thread-head-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mrc-thread-uuid {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  border: 0;
+  background: none;
+  padding: 0;
+  font-family: var(--mr-font-mono, monospace);
+  font-size: 10.5px;
+  color: var(--mr-ink-400);
+  cursor: pointer;
+  transition: color var(--mr-dur-fast) var(--mr-ease-snappy);
+}
+.mrc-thread-uuid:hover { color: var(--mr-ink-700); }
+.mrc-thread-uuid-copied { color: var(--mr-gold-700); font-weight: 600; }
 .mrc-back {
   display: none;
   align-items: center;
@@ -738,10 +786,12 @@ const STYLES = `
 }
 `
 
-export function DashChatView({ conversations, activeId, onSelect, messages, onSend, headerSlot, onUploadImage }: DashChatViewProps) {
+export function DashChatView({ conversations, activeId, onSelect, messages, onSend, headerSlot, onUploadImage, onRefresh, refreshing }: DashChatViewProps) {
   const [input, setInput] = useState('')
   const [pending, setPending] = useState<PendingAttachment[]>([])
   const [contactOpen, setContactOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
   const { mobile } = useBreakpoint()
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -750,6 +800,25 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
   const convo = conversations.find(c => c.id === activeId)
   const canSend = input.trim().length > 0 || pending.some(p => p.url && !p.uploading)
   const unreadTotal = useMemo(() => conversations.reduce((n, c) => n + (c.unread > 0 ? 1 : 0), 0), [conversations])
+
+  // Search matches the customer's name, the message preview, and the
+  // conversation's UUID — so pasting/typing part of an id finds the thread.
+  const filteredConversations = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return conversations
+    return conversations.filter(c =>
+      c.name.toLowerCase().includes(q) ||
+      c.preview.toLowerCase().includes(q) ||
+      c.id.toLowerCase().includes(q)
+    )
+  }, [conversations, search])
+
+  const copyConversationId = (id: string) => {
+    navigator.clipboard?.writeText(id).then(() => {
+      setCopiedId(id)
+      setTimeout(() => setCopiedId(prev => (prev === id ? null : prev)), 1500)
+    }).catch(() => {})
+  }
 
   const uploadFile = (file: File) => {
     if (!onUploadImage || !file.type.startsWith('image/')) return
@@ -812,13 +881,35 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
           <div className="mrc-rail-head">
             <div className="mrc-rail-title-row">
               <span className="mrc-rail-title">Messages</span>
-              {unreadTotal > 0 && (
-                <span className="mrc-rail-count">{unreadTotal} unread</span>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {unreadTotal > 0 && (
+                  <span className="mrc-rail-count">{unreadTotal} unread</span>
+                )}
+                {onRefresh && (
+                  <button
+                    type="button"
+                    className="mrc-refresh-btn"
+                    onClick={onRefresh}
+                    disabled={refreshing}
+                    aria-label="Refresh conversations"
+                    title="Refresh conversations"
+                  >
+                    <svg data-spinning={refreshing ? 'true' : 'false'} width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M23 4v6h-6M1 20v-6h6" />
+                      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                    </svg>
+                  </button>
+                )}
+              </div>
             </div>
             <div className="mrc-search">
               <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="var(--mr-ink-400)" strokeWidth={2} strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-              <input placeholder="Search conversations" aria-label="Search conversations" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search conversations or paste an ID"
+                aria-label="Search conversations"
+              />
             </div>
           </div>
 
@@ -836,9 +927,17 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
               <span className="mrc-empty-title">No messages yet</span>
               <span className="mrc-empty-copy">When a customer starts a conversation from the storefront, it will appear here.</span>
             </div>
+          ) : filteredConversations.length === 0 ? (
+            <div className="mrc-list-empty">
+              <span className="mrc-empty-glyph">
+                <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+              </span>
+              <span className="mrc-empty-title">No matches</span>
+              <span className="mrc-empty-copy">No conversation matches "{search}".</span>
+            </div>
           ) : (
             <div className="mrc-list" role="list">
-              {conversations.map((c, i) => (
+              {filteredConversations.map((c, i) => (
                 <button
                   key={c.id}
                   role="listitem"
@@ -877,30 +976,44 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
       {showThread && (
         <section className="mrc-thread">
           <div className="mrc-thread-head">
-            {mobile && (
-              <button className="mrc-back" onClick={() => onSelect('')} aria-label="Back to conversations">
-                <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-              </button>
-            )}
+            <div className="mrc-thread-head-row">
+              {mobile && (
+                <button className="mrc-back" onClick={() => onSelect('')} aria-label="Back to conversations">
+                  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+                </button>
+              )}
+              {convo && (
+                <button
+                  className="mrc-id"
+                  onClick={() => setContactOpen(o => !o)}
+                  aria-expanded={contactOpen}
+                  aria-label="Show customer contact details"
+                >
+                  <span className="mrc-id-avatar">{convo.avatar}</span>
+                  <span className="mrc-id-text">
+                    <span className="mrc-id-name">{convo.name}</span>
+                    <span className="mrc-id-status">
+                      <span className="mrc-id-status-dot" style={{ background: PRESENCE[convo.presence].color }} />
+                      {PRESENCE[convo.presence].label}
+                    </span>
+                  </span>
+                  <svg className="mrc-id-chevron" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                </button>
+              )}
+              {!mobile && headerSlot && <div className="mrc-head-slot">{headerSlot}</div>}
+            </div>
             {convo && (
               <button
-                className="mrc-id"
-                onClick={() => setContactOpen(o => !o)}
-                aria-expanded={contactOpen}
-                aria-label="Show customer contact details"
+                type="button"
+                className="mrc-thread-uuid"
+                onClick={() => copyConversationId(convo.id)}
+                aria-label="Copy conversation ID"
+                title="Click to copy the conversation ID"
               >
-                <span className="mrc-id-avatar">{convo.avatar}</span>
-                <span className="mrc-id-text">
-                  <span className="mrc-id-name">{convo.name}</span>
-                  <span className="mrc-id-status">
-                    <span className="mrc-id-status-dot" style={{ background: PRESENCE[convo.presence].color }} />
-                    {PRESENCE[convo.presence].label}
-                  </span>
-                </span>
-                <svg className="mrc-id-chevron" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                ID: {convo.id}
+                {copiedId === convo.id && <span className="mrc-thread-uuid-copied">Copied!</span>}
               </button>
             )}
-            {!mobile && headerSlot && <div className="mrc-head-slot">{headerSlot}</div>}
           </div>
 
           {convo && contactOpen && (
