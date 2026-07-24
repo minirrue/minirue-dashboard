@@ -33,7 +33,7 @@ function guestPhoneDisplay(dto: ConversationDto): string | undefined {
 }
 
 function toConversation(dto: ConversationDto): Conversation {
-  const name = dto.guestName ?? dto.customerId ?? 'Customer';
+  const name = dto.customerName || dto.guestName || 'Customer';
   const unread = dto.teamReadAt && dto.teamReadAt >= dto.lastMessageAt ? 0 : 1;
   return {
     id: dto.id,
@@ -44,9 +44,9 @@ function toConversation(dto: ConversationDto): Conversation {
     avatar: initials(name),
     status: dto.status === 'OPEN' ? 'online' : dto.status === 'PENDING' ? 'away' : 'offline',
     contact: {
-      name: dto.guestName ?? undefined,
-      email: dto.guestEmail ?? dto.customerEmail ?? undefined,
-      phone: guestPhoneDisplay(dto),
+      name: dto.customerName ?? dto.guestName ?? undefined,
+      email: dto.customerEmail ?? dto.guestEmail ?? undefined,
+      phone: dto.customerPhone ?? guestPhoneDisplay(dto),
     },
   };
 }

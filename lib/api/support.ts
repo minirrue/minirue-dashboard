@@ -5,7 +5,9 @@ export interface ConversationDto {
   type: 'ITEM' | 'GENERAL';
   status: 'OPEN' | 'PENDING' | 'RESOLVED' | 'CLOSED';
   customerId: string | null;
+  customerName?: string | null;
   customerEmail?: string | null;
+  customerPhone?: string | null;
   guestName: string | null;
   guestEmail: string | null;
   guestPhoneCountry?: string | null;

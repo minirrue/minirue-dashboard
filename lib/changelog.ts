@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 72,
+    date: '2026-07-24',
+    area: 'Support',
+    summary:
+      'Fixed a bug where a logged-in customer\'s support chat showed a long ID number instead of their name, with "No contact details on file" underneath. It now shows their real name, email, and phone the same way it already does for guest shoppers.',
+  },
+  {
     id: 71,
     date: '2026-07-24',
     area: 'Partners',
