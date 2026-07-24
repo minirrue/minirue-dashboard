@@ -8,6 +8,7 @@ import { Sparkle } from '../primitives';
 import { CHANGELOG } from '@/lib/changelog';
 import { hasUnreadChangelog } from '@/lib/changelog-read-state';
 import NotificationDrawer from './NotificationDrawer';
+import { useUnreadNotificationCount } from '@/lib/hooks/use-unread-notifications';
 import { apiCollabOverview, type CollabModule } from '@/lib/api/collab-portal';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
@@ -337,7 +338,9 @@ export default function DashboardSidebar({
   // copy in the slim mobile-only bar (DashboardTopbar) since the sidebar
   // itself is hidden there.
   const [notifOpen, setNotifOpen] = React.useState(false);
-  const [unreadCount, setUnreadCount] = React.useState(0);
+  // Fetches the true unread count on mount, so the bell dot reflects reality
+  // before the drawer is ever opened (it used to only update after opening).
+  const [unreadCount, setUnreadCount] = useUnreadNotificationCount();
 
   const renderNav = () => (
     <nav className="dash-sidebar-nav" onClick={onMobileDrawerClose}>

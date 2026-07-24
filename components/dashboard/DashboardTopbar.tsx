@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import NotificationDrawer from './NotificationDrawer';
+import { useUnreadNotificationCount } from '@/lib/hooks/use-unread-notifications';
 
 // Kept for compatibility with existing callers passing breadcrumbs/eyebrow/
 // title — those props are no longer rendered (see below) but callers don't
@@ -25,6 +26,7 @@ export interface DashboardTopbarProps {
 
 export default function DashboardTopbar({ onToggleDrawer }: DashboardTopbarProps) {
   const [notifOpen, setNotifOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useUnreadNotificationCount();
 
   // The topbar previously also showed an "eyebrow" (app/section label) and
   // breadcrumb trail on the left. That whole block is removed per explicit
@@ -55,11 +57,15 @@ export default function DashboardTopbar({ onToggleDrawer }: DashboardTopbarProps
           <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 9a6 6 0 0 1 12 0v5l2 3H4l2-3V9zM10 19a2 2 0 0 0 4 0" />
           </svg>
-          <span className="dash-notif-dot" aria-hidden="true" />
+          {unreadCount > 0 && <span className="dash-notif-dot" aria-hidden="true" />}
         </button>
       </div>
     </header>
-    <NotificationDrawer open={notifOpen} onClose={() => setNotifOpen(false)} />
+    <NotificationDrawer
+      open={notifOpen}
+      onClose={() => setNotifOpen(false)}
+      onUnreadCountChange={setUnreadCount}
+    />
     </>
   );
 }

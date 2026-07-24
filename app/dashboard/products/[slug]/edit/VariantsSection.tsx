@@ -420,13 +420,11 @@ export default function VariantsSection({
                 <th>SKU</th>
                 <th>Fields</th>
                 <th style={{ textAlign: 'right' }}>Price</th>
-                <th>Photos</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {variants.map((v) => {
-                const variantPhotoCount = media.filter((m) => m.variantId === v.id).length;
                 const isSelected = selectedVariantId === v.id;
                 return (
                 <React.Fragment key={v.id}>
@@ -444,26 +442,6 @@ export default function VariantsSection({
                       ].join(' · ') || '—'}
                     </td>
                     <td style={{ textAlign: 'right' }}>{formatPrice(v.priceAmount, v.currency)}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className={isSelected ? 'dash-btn-primary' : 'dash-btn-ghost'}
-                        onClick={() => onSelectVariant(isSelected ? null : v.id)}
-                        data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-view-variant-photos@${v.id}`}
-                      >
-                        {variantPhotoCount > 0
-                          ? `${variantPhotoCount} photo${variantPhotoCount === 1 ? '' : 's'}`
-                          : 'No photos'}
-                      </button>
-                      <button
-                        type="button"
-                        className="dash-btn-ghost"
-                        onClick={() => setPickerVariantId(v.id)}
-                        data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-link-variant-photo@${v.id}`}
-                      >
-                        + Link Photo
-                      </button>
-                    </td>
                     <td>
                       <button
                         type="button"
@@ -485,7 +463,7 @@ export default function VariantsSection({
                   </tr>
                   {editingId === v.id && (
                     <tr>
-                      <td colSpan={5} style={{ background: 'var(--mr-dash-sub)', padding: '12px 14px' }}>
+                      <td colSpan={4} style={{ background: 'var(--mr-dash-sub)', padding: '12px 14px' }}>
                         <form
                           className="dash-inline-form"
                           onSubmit={(e) => handleEditSave(e, v)}

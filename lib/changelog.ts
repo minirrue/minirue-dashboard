@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 65,
+    date: '2026-07-24',
+    area: 'Whole dashboard',
+    summary:
+      'The red dot on the notification bell now only shows when you actually have unread notifications — it was always lit before, even with nothing new. It now checks the real count as soon as the dashboard loads, on both desktop and mobile. Also, on a product\'s variants, removed the "Photos" column and the leftover "Erase data" dependency block: a super admin can now erase any ticked data without being told another group must be ticked first (whatever it needs is now erased along with it).',
+  },
+  {
     id: 64,
     date: '2026-07-24',
     area: 'Settings',
