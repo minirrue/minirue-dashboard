@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 101,
+    date: '2026-07-24',
+    area: 'Support',
+    summary:
+      'A conversation you had just replied to no longer comes back as unread after you visit the customer profile and return. Your own reply was being counted as a new message you had not read.',
+  },
+  {
     id: 100,
     date: '2026-07-24',
     area: 'Storefront',

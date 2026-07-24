@@ -41,7 +41,15 @@ const TEAM_SENDER_TYPES = new Set(['STAFF', 'ADMIN', 'SUPERADMIN', 'COLLAB', 'SY
 
 function toConversation(dto: ConversationDto): Conversation {
   const name = dto.customerName || dto.guestName || 'Customer';
-  const unread = dto.teamReadAt && dto.teamReadAt >= dto.lastMessageAt ? 0 : 1;
+  // A conversation whose newest message is the team's own reply is never
+  // unread to the team — you cannot have "not read" something you just sent.
+  // Sending a reply pushes lastMessageAt past teamReadAt, so a thread you had
+  // just read popped back up as unread the moment you navigated away and
+  // returned (and after the customer-profile round trip in particular).
+  const lastFromTeam =
+    !!dto.lastMessageSenderType && TEAM_SENDER_TYPES.has(dto.lastMessageSenderType);
+  const unread =
+    lastFromTeam || (dto.teamReadAt && dto.teamReadAt >= dto.lastMessageAt) ? 0 : 1;
   const rawPreview = dto.lastMessagePreview ?? null;
   const preview = rawPreview
     ? (dto.lastMessageSenderType && TEAM_SENDER_TYPES.has(dto.lastMessageSenderType) ? `You: ${rawPreview}` : rawPreview)
