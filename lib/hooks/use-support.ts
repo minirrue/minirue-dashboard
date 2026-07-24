@@ -22,7 +22,10 @@ export function useSupportConversations(status?: string) {
   return useQuery({
     queryKey: SUPPORT_KEYS.conversations(status),
     queryFn: () => apiSupportConversations(status),
-    refetchInterval: 15_000,
+    // Poll so new conversations, unread badges, previews and presence update
+    // without a manual refresh. (No sockets — Vercel storefront, SSE is guarded.)
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -31,6 +34,10 @@ export function useSupportThread(id: string | null) {
     queryKey: SUPPORT_KEYS.thread(id ?? ''),
     queryFn: () => apiSupportThread(id as string),
     enabled: !!id,
+    // Poll the open conversation so the team sees the customer's new messages
+    // live instead of having to refresh the page.
+    refetchInterval: 5_000,
+    refetchOnWindowFocus: true,
   });
 }
 

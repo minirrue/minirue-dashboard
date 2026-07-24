@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 76,
+    date: '2026-07-24',
+    area: 'Support',
+    summary:
+      'The support inbox now updates on its own — a customer\'s new message appears in the open conversation within a few seconds, and the conversation list refreshes automatically, so you no longer have to reload the page to see the latest.',
+  },
+  {
     id: 75,
     date: '2026-07-24',
     area: 'Notifications',
