@@ -7,8 +7,10 @@ import type {
   FooterConfig,
   PaymentBadge,
   SocialNetwork,
+  StorefrontPage,
 } from '@/lib/api/storefront';
 import { moveInList } from '../pickers/EntityPicker';
+import LinkTargetField from '../pickers/LinkTargetField';
 
 const SOCIAL_NETWORKS: SocialNetwork[] = [
   'instagram', 'tiktok', 'facebook', 'x', 'youtube', 'whatsapp', 'pinterest',
@@ -46,9 +48,12 @@ export function blankColumn(): FooterColumn {
 
 export default function FooterEditor({
   footer,
+  pages,
   onChange,
 }: {
   footer: FooterConfig;
+  /** The shop's own pages, offered as link destinations. */
+  pages: StorefrontPage[];
   onChange: (next: FooterConfig) => void;
 }) {
   const patchColumn = (index: number, next: FooterColumn) =>
@@ -132,15 +137,21 @@ export default function FooterEditor({
                       ),
                     })
                   } />
-                <input className="dash-input" style={{ flex: 1, minWidth: 0 }} value={link.href} placeholder="/shipping"
-                  onChange={(e) =>
+                {/* Destination is picked from what exists — pages, categories,
+                    brands — instead of typed. A typed "/shipping" pointed at a
+                    page nobody had created and 404'd silently. */}
+                <LinkTargetField
+                  href={link.href}
+                  pages={pages}
+                  onChange={(href) =>
                     patchColumn(index, {
                       ...column,
                       links: column.links.map((l, i) =>
-                        i === linkIndex ? { ...l, href: e.target.value } : l,
+                        i === linkIndex ? { ...l, href } : l,
                       ),
                     })
-                  } />
+                  }
+                />
                 <button type="button" className="dash-btn-ghost"
                   onClick={() =>
                     patchColumn(index, {

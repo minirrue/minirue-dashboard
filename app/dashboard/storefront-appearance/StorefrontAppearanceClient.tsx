@@ -276,7 +276,11 @@ export default function StorefrontAppearanceClient() {
       )}
 
       {tab === 'footer' && (
-        <FooterEditor footer={layout.footer} onChange={(footer) => patch({ footer })} />
+        <FooterEditor
+          footer={layout.footer}
+          pages={layout.pages}
+          onChange={(footer) => patch({ footer })}
+        />
       )}
 
       {tab === 'productSection' && (

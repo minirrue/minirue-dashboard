@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 100,
+    date: '2026-07-24',
+    area: 'Storefront',
+    summary:
+      'Footer links are now picked from a list — your own pages, a category or a brand — instead of typing a path by hand. Mistyped paths used to save happily and then land shoppers on a "not found" page. "Custom link" is still there for outside links.',
+  },
+  {
     id: 99,
     date: '2026-07-24',
     area: 'Storefront',
