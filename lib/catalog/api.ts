@@ -178,6 +178,8 @@ export async function listProducts(params?: {
   status?: ProductStatus;
   search?: string;
   brand?: string;
+  /** Only this collaborator's products; 'HOUSE' = MiniRue's own catalogue. */
+  collaboratorId?: string;
 }): Promise<{ items: ProductListItem[]; total: number }> {
   const qs = params
     ? '?' +

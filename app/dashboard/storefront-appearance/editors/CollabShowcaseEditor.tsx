@@ -146,7 +146,11 @@ export default function CollabShowcaseEditor({
               kind="collaborator"
               label="Collaborator"
               value={tab.collaboratorId}
-              onChange={(id) => patchTab(index, { collaboratorId: id ?? '' })}
+              // Switching collaborator drops the picked products — they belong
+              // to the previous brand and would leak into this tab.
+              onChange={(id) =>
+                patchTab(index, { collaboratorId: id ?? '', productIds: [] })
+              }
             />
             <label className="dash-field">
               <span className="dash-label">Tab label (blank uses their brand name)</span>
@@ -168,7 +172,11 @@ export default function CollabShowcaseEditor({
             </p>
           )}
 
+          {/* Scoped to this tab's collaborator — a showcase tab must never be
+              able to feature another brand's (or MiniRue's own) products. */}
           <MultiProductPicker
+            key={tab.collaboratorId}
+            collaboratorId={tab.collaboratorId}
             value={tab.productIds}
             onChange={(productIds) => patchTab(index, { productIds })}
           />
@@ -209,6 +217,16 @@ export default function CollabShowcaseEditor({
           No collaborators yet — add one before a showcase tab can be created.
         </p>
       )}
+
+      {/* An empty dropdown reads as broken. Say why it is empty: every
+          collaborator already has a tab, so there is nothing left to add. */}
+      {options.length > 0 &&
+        options.every((o) => section.tabs.some((t) => t.collaboratorId === o.id)) && (
+          <p style={{ fontSize: 13, color: 'var(--mr-fg-4)', marginTop: 8 }}>
+            Every collaborator already has a tab here — add another collaborator
+            under Collaborators to create one more.
+          </p>
+        )}
 
       {section.tabs.length === 0 && (
         <p style={{ fontSize: 13, color: 'var(--mr-fg-4)', marginTop: 8 }}>

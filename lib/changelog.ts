@@ -21,6 +21,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 93,
+    date: '2026-07-24',
+    area: 'Storefront',
+    summary:
+      'Dropdowns on the Storefront appearance page were sometimes showing "Could not load options". The page now loads each list once and shares it, and if something does go wrong it tells you what.',
+  },
+  {
+    id: 92,
+    date: '2026-07-24',
+    area: 'Storefront',
+    summary:
+      'A collaborator showcase tab now only offers that collaborator\'s own products — MiniRue\'s and other brands\' products no longer appear in the list. Changing a tab\'s collaborator clears the picked products, and the storefront skips any product that does not belong to the tab.',
+  },
+  {
     id: 91,
     date: '2026-07-24',
     area: 'Storefront',

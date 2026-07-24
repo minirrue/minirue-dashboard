@@ -33,8 +33,67 @@ function flattenCategories(nodes: Category[]): EntityOption[] {
   return out;
 }
 
-/** One loader per entity kind, so every picker in the tab reads real rows. */
-export function useEntityOptions(kind: EntityKind): {
+async function fetchOptions(
+  kind: EntityKind,
+  collaboratorId?: string,
+): Promise<EntityOption[]> {
+  if (kind === 'category') {
+    const res = await listCategories();
+    return flattenCategories(res.items);
+  }
+  if (kind === 'brand') {
+    const brands = await listManagedBrands();
+    return brands.map((b) => ({ id: b.id, label: b.name }));
+  }
+  if (kind === 'product') {
+    const res = await listProducts({
+      status: 'PUBLISHED',
+      limit: 100,
+      collaboratorId: collaboratorId || undefined,
+    });
+    return res.items.map((p) => ({
+      id: p.id,
+      label: p.brandName ? `${p.brandName} — ${p.name}` : p.name,
+    }));
+  }
+  const res = await apiListCollaborators({ limit: 100 });
+  return res.items.map((c) => ({ id: c.id, label: c.brandName || c.brandSlug }));
+}
+
+/**
+ * One in-flight request per (kind, collaboratorId), shared by every picker on
+ * the page. The appearance screen mounts a dozen pickers at once and each used
+ * to issue its own identical list call — enough duplicate traffic to trip the
+ * API rate limit, which surfaced as "Could not load options" on whichever
+ * picker lost the race. Cached promises also mean a re-render never refetches.
+ */
+const optionsCache = new Map<string, Promise<EntityOption[]>>();
+
+function loadOptions(
+  kind: EntityKind,
+  collaboratorId?: string,
+): Promise<EntityOption[]> {
+  const key = `${kind}:${collaboratorId ?? ''}`;
+  let inFlight = optionsCache.get(key);
+  if (!inFlight) {
+    inFlight = fetchOptions(kind, collaboratorId).catch((e) => {
+      // Never cache a failure — the next mount should retry.
+      optionsCache.delete(key);
+      throw e;
+    });
+    optionsCache.set(key, inFlight);
+  }
+  return inFlight;
+}
+
+/** One loader per entity kind, so every picker in the tab reads real rows.
+ * `collaboratorId` only applies to `product` and scopes the list to that
+ * collaborator's own items — a showcase tab must never offer another brand's
+ * products. */
+export function useEntityOptions(
+  kind: EntityKind,
+  collaboratorId?: string,
+): {
   options: EntityOption[];
   loading: boolean;
   error: string | null;
@@ -47,32 +106,16 @@ export function useEntityOptions(kind: EntityKind): {
     setLoading(true);
     setError(null);
     try {
-      if (kind === 'category') {
-        const res = await listCategories();
-        setOptions(flattenCategories(res.items));
-      } else if (kind === 'brand') {
-        const brands = await listManagedBrands();
-        setOptions(brands.map((b) => ({ id: b.id, label: b.name })));
-      } else if (kind === 'product') {
-        const res = await listProducts({ status: 'PUBLISHED', limit: 100 });
-        setOptions(
-          res.items.map((p) => ({
-            id: p.id,
-            label: p.brandName ? `${p.brandName} — ${p.name}` : p.name,
-          })),
-        );
-      } else {
-        const res = await apiListCollaborators({ limit: 100 });
-        setOptions(
-          res.items.map((c) => ({ id: c.id, label: c.brandName || c.brandSlug })),
-        );
-      }
-    } catch {
-      setError('Could not load options');
+      setOptions(await loadOptions(kind, collaboratorId));
+    } catch (e) {
+      // Show what actually failed — a bare "Could not load options" hid both
+      // rate limiting and permission errors behind the same sentence.
+      const message = e instanceof Error ? e.message : '';
+      setError(message ? `Could not load options — ${message}` : 'Could not load options');
     } finally {
       setLoading(false);
     }
-  }, [kind]);
+  }, [kind, collaboratorId]);
 
   useMountedEffect(() => { void load(); }, [load]);
 
@@ -121,11 +164,15 @@ export default function EntityPicker({
 export function MultiProductPicker({
   value,
   onChange,
+  collaboratorId,
 }: {
   value: string[];
   onChange: (ids: string[]) => void;
+  /** Restricts the list to one collaborator's products. Omit for the whole
+   * catalogue (curated sections); pass it for a collaborator showcase tab. */
+  collaboratorId?: string;
 }) {
-  const { options, loading, error } = useEntityOptions('product');
+  const { options, loading, error } = useEntityOptions('product', collaboratorId);
   const [pending, setPending] = useState('');
   const labelById = useMemo(
     () => new Map(options.map((o) => [o.id, o.label])),
@@ -164,7 +211,11 @@ export function MultiProductPicker({
       </div>
       {error && <span className="dash-inline-error">{error}</span>}
       {!loading && !error && options.length === 0 && (
-        <span className="dash-inline-error">No products yet — nothing can be added here.</span>
+        <span className="dash-inline-error">
+          {collaboratorId
+            ? 'This collaborator has no published products yet — nothing can be added here.'
+            : 'No products yet — nothing can be added here.'}
+        </span>
       )}
       <ol style={{ margin: '10px 0 0', paddingLeft: 18 }}>
         {value.map((id, index) => (
