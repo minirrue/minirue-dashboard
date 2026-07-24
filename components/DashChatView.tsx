@@ -813,6 +813,53 @@ const STYLES = `
   .mrc-thread { animation: mrc-slide-in 0.32s var(--mr-ease-out) both; }
 }
 
+/* ── Mobile: pin the whole support surface to the VISIBLE viewport ──
+   The desktop override at the top sizes .dash-main to 100dvh, but on a phone
+   that block also contains the sticky dashboard top bar, while the outer
+   .dash-shell keeps min-height:100svh with no overflow containment. On engines
+   that fall back to 100vh (or whenever the large/dynamic viewport exceeds the
+   currently-visible one) the shell grows past the visible area, the PAGE
+   itself scrolls, and the bottom-anchored composer slides below the fold —
+   that is why "Reply to customer…" was unreachable the instant a conversation
+   opened. Bounding the shell to the visible viewport (dvh, with an svh
+   fallback) and letting .dash-main flex-fill keeps the thread a fixed-height
+   flex column: header flex-none → messages (.mrc-scroll) flex:1/min-height:0 →
+   composer flex-none pinned above the home indicator. Only the message list
+   ever scrolls. Scoped to the support route via :has(.mrc-shell), so no other
+   tab and none of the shared shell chrome is affected. */
+@media (max-width: 760px) {
+  .dash-shell:has(.mrc-shell) {
+    height: 100svh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .dash-main:has(.mrc-shell) {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+  }
+
+  /* ── Immersive top bar: collapse the sticky hamburger + bell row while the
+     user scrolls the chat down, re-show it on scroll up, giving the thread the
+     full height. Transform-only (never animate height/top); the instant
+     negative margin reclaims the reserved strip so the surface grows to fill it
+     and the composer stays anchored to the bottom. --mrc-topbar-h is measured
+     in JS. Reached through .dash-main:has(.mrc-shell) so the collapse rule only
+     exists on the support route — the shared top bar is untouched elsewhere. */
+  .dash-main:has(.mrc-shell) .dash-topbar--minimal {
+    transition: transform var(--mr-dur-normal) var(--mr-ease-out);
+    will-change: transform;
+  }
+  .dash-main:has(.mrc-shell) .dash-topbar--minimal[data-mrc-collapsed="true"] {
+    transform: translateY(-100%);
+    margin-bottom: calc(-1 * var(--mrc-topbar-h, 60px));
+  }
+}
+@media (max-width: 760px) and (prefers-reduced-motion: reduce) {
+  .dash-main:has(.mrc-shell) .dash-topbar--minimal { transition: none; }
+}
+
 @keyframes mrc-row-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes mrc-msg-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes mrc-slide-in { from { transform: translateX(6%); opacity: 0.6; } to { transform: none; opacity: 1; } }
@@ -904,6 +951,61 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
   useEffect(() => {
     setContactOpen(false)
   }, [activeId])
+
+  // ── Mobile immersion: collapse the dashboard top bar while the active scroll
+  // container (the open thread, else the conversation list) is scrolled DOWN,
+  // and restore it on scroll UP, so the chat reclaims that vertical space. The
+  // top bar is rendered by the shared shell, not this component, so we toggle a
+  // data-attr on it directly (queried, never re-rendered) and clean it up on
+  // unmount — the collapse CSS is support-route-scoped, so this never leaks to
+  // other tabs. rAF-throttled; motion is CSS (transform) and honours
+  // prefers-reduced-motion there.
+  useEffect(() => {
+    if (!mobile) return
+    const topbar = document.querySelector<HTMLElement>('.dash-topbar--minimal')
+    if (!topbar) return
+
+    const measure = () => topbar.style.setProperty('--mrc-topbar-h', `${topbar.offsetHeight}px`)
+    measure()
+    window.addEventListener('resize', measure)
+
+    const scroller = activeId ? scrollRef.current : document.querySelector<HTMLElement>('.mrc-list')
+    const cleanupBase = () => {
+      window.removeEventListener('resize', measure)
+      topbar.removeAttribute('data-mrc-collapsed')
+      topbar.style.removeProperty('--mrc-topbar-h')
+    }
+    if (!scroller) return cleanupBase
+
+    // Seed lastY AFTER the open-thread auto-scroll-to-bottom has run, so simply
+    // opening a bottomed conversation never reads as a downward scroll.
+    let lastY = scroller.scrollTop
+    let collapsed = false
+    let ticking = false
+    const setCollapsed = (next: boolean) => {
+      if (next === collapsed) return
+      collapsed = next
+      topbar.setAttribute('data-mrc-collapsed', next ? 'true' : 'false')
+    }
+    const onScroll = () => {
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(() => {
+        const y = scroller.scrollTop
+        if (y <= 8) setCollapsed(false)
+        else if (y > lastY + 4) setCollapsed(true)
+        else if (y < lastY - 4) setCollapsed(false)
+        lastY = y
+        ticking = false
+      })
+    }
+    scroller.addEventListener('scroll', onScroll, { passive: true })
+
+    return () => {
+      scroller.removeEventListener('scroll', onScroll)
+      cleanupBase()
+    }
+  }, [mobile, activeId])
 
   const send = () => {
     const txt = input.trim()
