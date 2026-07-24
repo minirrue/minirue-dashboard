@@ -108,6 +108,14 @@ export default function ProvisionCollaboratorClient() {
 
     }
 
+    if (!form.brandName.trim()) {
+
+      setError('Brand name is required.');
+
+      return;
+
+    }
+
     setCreating(true);
 
     try {

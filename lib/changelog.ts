@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 71,
+    date: '2026-07-24',
+    area: 'Partners',
+    summary:
+      'A brand partner can no longer be created without a name. The brand name field now rejects blank or spaces-only entries, both on the form and on the server, so every partner always has a proper name — which is also what shows as the sender on their support chat replies.',
+  },
+  {
     id: 70,
     date: '2026-07-24',
     area: 'Support',
