@@ -151,18 +151,10 @@ export default function NavbarEditor({
         shoppers see, shown as a bar across the top on desktop and in a slide-out menu on mobile.
       </p>
 
-      <div className="dash-form-grid">
-        <label className="dash-field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <input type="checkbox" checked={navbar.showSearch}
-            onChange={(e) => onChange({ ...navbar, showSearch: e.target.checked })} />
-          <span>Show the search icon</span>
-        </label>
-        <label className="dash-field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <input type="checkbox" checked={navbar.showAccount}
-            onChange={(e) => onChange({ ...navbar, showAccount: e.target.checked })} />
-          <span>Show the account / sign-in link</span>
-        </label>
-      </div>
+      <p className="dash-help-text" style={{ marginTop: -4 }}>
+        The search and account icons are always shown in the navbar, so there is
+        nothing to switch on or off here.
+      </p>
 
       <NavList title="Menu" items={navbar.items}
         onChange={(items) => onChange({ ...navbar, items })} />
