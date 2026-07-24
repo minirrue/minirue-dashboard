@@ -25,7 +25,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-07-24',
     area: 'Support',
     summary:
-      'Redesigned the customer messages inbox to feel like a proper chat app. On a computer it is now a two-pane view — the conversation list on the left, the open chat on the right; on a phone the list fills the screen and tapping a conversation slides into the chat with a back arrow. Replies group into neat bubbles under day headings (Today, Yesterday), the dot next to each customer now shows whether they are online, and opening the contact details reveals a tap-through link straight to a registered customer\'s profile.',
+      'Rebuilt the customer messages inbox as a full-screen chat app. On a computer it fills the whole page as a two-pane view — the conversation list on the left, the open chat on the right; on a phone the list fills the screen and tapping a conversation slides into the chat with a back arrow, with the reply box sitting clear of the home bar. Each conversation now shows the real latest message (with "You:" when your team sent it), a coloured dot for whether the customer is online, idle or offline, and a Guest or Customer badge. Replies group into tidy bubbles under day headings (Today, Yesterday), photos stay neatly sized, and opening the contact details reveals a tap-through link straight to a registered customer\'s profile.',
   },
   {
     id: 72,

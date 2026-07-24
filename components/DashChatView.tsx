@@ -27,22 +27,25 @@ export interface ConversationContact {
   phone?: string
 }
 
+export type CustomerPresence = 'ONLINE' | 'IDLE' | 'OFFLINE'
+
 export interface Conversation {
   id: string
   name: string
+  /** Real latest-message preview (already truncated). Empty string when the
+   * thread has no messages yet — the row then shows a muted placeholder. */
   preview: string
   time: string
   unread: number
   avatar: string
-  status: 'online' | 'away' | 'offline'
+  /** Three-state live presence of the customer — drives the coloured avatar
+   * dot on the row and in the thread header, plus the header label. */
+  presence: CustomerPresence
   /** Whether the thread is about a specific product (ITEM) or a general
    * enquiry (GENERAL). Shown as a small label in the list row. */
   kind: 'GENERAL' | 'ITEM'
-  /** True when the customer is currently active on the storefront — drives the
-   * green/grey presence dot on the row and in the thread header. */
-  customerOnline?: boolean
   /** The customer's account id, when they're a registered customer (not a
-   * guest). Enables the tap-through link to their profile in the contact panel. */
+   * guest). Drives the Guest/Customer badge and the tap-through profile link. */
   customerId?: string
   /** Full contact info the customer provided (guest checkout details, or
    * whatever is known for a logged-in customer). Revealed on tap in the
@@ -62,8 +65,12 @@ export interface DashChatViewProps {
   onUploadImage?: (file: File) => Promise<string>
 }
 
-/** Customer presence dot: brand green when online, muted ink when not. */
-const onlineDot = (online?: boolean) => (online ? 'var(--mr-success)' : 'var(--mr-ink-300)')
+/** Three-state customer presence: dot colour + human label. */
+const PRESENCE: Record<CustomerPresence, { color: string; label: string }> = {
+  ONLINE: { color: '#4CAF50', label: 'Online' },
+  IDLE: { color: '#E0A400', label: 'Idle' },
+  OFFLINE: { color: '#9E9E9E', label: 'Offline' },
+}
 
 interface PendingAttachment {
   previewUrl: string
@@ -72,17 +79,29 @@ interface PendingAttachment {
 }
 
 const STYLES = `
+/* ── Break out of the dashboard content padding + max-width so the inbox
+   fills the whole tab region edge-to-edge, like a real chat app. Scoped to
+   this route via :has(.mrc-shell); unlayered so it beats the shell's
+   @layer components padding rules. ── */
+.dash-main:has(.mrc-shell) { height: 100vh; height: 100dvh; }
+.dash-content:has(.mrc-shell) { padding: 0; min-height: 0; display: flex; flex-direction: column; }
+.dash-content-inner:has(.mrc-shell) {
+  width: 100%;
+  max-width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .mrc-shell {
   position: relative;
   display: flex;
-  height: calc(100vh - 64px);
-  height: calc(100dvh - 64px);
-  min-height: 460px;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
   overflow: hidden;
   background: var(--mr-dash-surface);
-  border: 1px solid var(--mr-dash-hair);
-  border-radius: 18px;
-  box-shadow: var(--mr-shadow-md);
   font-family: var(--mr-font-ui);
 }
 
@@ -172,9 +191,9 @@ const STYLES = `
   align-items: center;
   gap: 12px;
   width: 100%;
-  height: 74px;
-  min-height: 74px;
-  max-height: 74px;
+  height: 80px;
+  min-height: 80px;
+  max-height: 80px;
   padding: 0 18px;
   overflow: hidden;
   background: transparent;
@@ -244,7 +263,7 @@ const STYLES = `
   padding-top: 1px;
 }
 .mrc-row[data-unread="true"] .mrc-row-time { color: var(--mr-gold-700); font-weight: 600; }
-.mrc-row-bottom { display: flex; align-items: center; gap: 8px; }
+.mrc-row-mid { display: flex; align-items: center; gap: 8px; }
 .mrc-row-preview {
   flex: 1;
   min-width: 0;
@@ -254,20 +273,34 @@ const STYLES = `
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.mrc-row[data-unread="true"] .mrc-row-preview { color: var(--mr-ink-700); }
-.mrc-kind {
+.mrc-row[data-unread="true"] .mrc-row-preview { color: var(--mr-ink-700); font-weight: 500; }
+.mrc-row-preview[data-empty="true"] { color: var(--mr-ink-400); font-style: italic; }
+.mrc-row-chips { display: flex; align-items: center; gap: 6px; }
+.mrc-kind, .mrc-acct {
   flex-shrink: 0;
   font-family: var(--mr-font-label);
   font-size: 8.5px;
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--mr-ink-400);
   padding: 2px 6px;
   border-radius: var(--mr-radius-sm);
+  line-height: 1.3;
+}
+.mrc-kind {
+  color: var(--mr-ink-400);
   background: var(--mr-dash-sub);
   border: 1px solid var(--mr-dash-hair);
-  line-height: 1.3;
+}
+.mrc-acct[data-type="customer"] {
+  color: var(--mr-gold-700);
+  background: var(--mr-gold-100);
+  border: 1px solid var(--mr-gold-200);
+}
+.mrc-acct[data-type="guest"] {
+  color: var(--mr-ink-500);
+  background: transparent;
+  border: 1px solid var(--mr-dash-hair);
 }
 .mrc-badge {
   flex-shrink: 0;
@@ -333,8 +366,7 @@ const STYLES = `
   gap: 12px;
   padding: 13px 22px;
   flex-shrink: 0;
-  background: color-mix(in srgb, var(--mr-dash-surface) 88%, transparent);
-  backdrop-filter: saturate(1.1) blur(6px);
+  background: var(--mr-dash-surface);
   border-bottom: 1px solid var(--mr-dash-hair);
   z-index: 2;
 }
@@ -538,8 +570,11 @@ const STYLES = `
 .mrc-atts[data-has-text="true"] { margin-bottom: 8px; }
 .mrc-att-img {
   display: block;
-  max-width: 220px;
-  max-height: 220px;
+  width: auto;
+  height: auto;
+  max-width: min(240px, 100%);
+  max-height: 260px;
+  object-fit: cover;
   border-radius: 10px;
   cursor: pointer;
   transition: transform var(--mr-dur-fast) var(--mr-ease-out);
@@ -567,7 +602,8 @@ const STYLES = `
 /* ── Composer ── */
 .mrc-composer {
   flex-shrink: 0;
-  padding: 12px 18px 14px;
+  padding: 12px 18px;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--mr-dash-hair);
   background: var(--mr-dash-surface);
   display: flex;
@@ -668,26 +704,21 @@ const STYLES = `
 .mrc-send[data-ready="true"]:hover { transform: scale(1.08); }
 .mrc-send[data-ready="true"]:active { transform: scale(var(--mr-scale-press)); }
 
-/* ── Small viewport: sticky mobile topbar (~72px) eats vertical space ── */
+/* ── Store-level controls relocated to the list on mobile (never the header) ── */
+.mrc-rail-controls {
+  flex-shrink: 0;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--mr-dash-hair);
+  background: var(--mr-dash-sub);
+}
+
+/* ── Small viewport: narrower rail (height is handled by the flex fill) ── */
 @media (max-width: 760px) {
-  .mrc-shell {
-    height: calc(100vh - 112px);
-    height: calc(100dvh - 112px);
-  }
   .mrc-rail { width: 288px; }
 }
 
 /* ── True mobile: single pane, edge-to-edge chat app ── */
 @media (max-width: 640px) {
-  .mrc-shell {
-    margin: -20px;
-    height: calc(100vh - 72px);
-    height: calc(100dvh - 72px);
-    border-radius: 0;
-    border: 0;
-    border-top: 1px solid var(--mr-dash-hair);
-    box-shadow: none;
-  }
   .mrc-rail { width: 100%; border-right: 0; }
   .mrc-back { display: flex; }
   .mrc-bubble-row { max-width: 84%; }
@@ -791,6 +822,12 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
             </div>
           </div>
 
+          {/* Store-level presence/reply-time controls live on the list screen on
+              mobile so they never overlap the per-conversation thread header. */}
+          {mobile && headerSlot && (
+            <div className="mrc-rail-controls">{headerSlot}</div>
+          )}
+
           {conversations.length === 0 ? (
             <div className="mrc-rail-empty">
               <span className="mrc-empty-glyph">
@@ -813,17 +850,20 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
                 >
                   <span className="mrc-avatar-wrap">
                     <span className="mrc-avatar">{c.avatar}</span>
-                    <span className="mrc-dot" style={{ background: onlineDot(c.customerOnline) }} />
+                    <span className="mrc-dot" style={{ background: PRESENCE[c.presence].color }} />
                   </span>
                   <span className="mrc-row-body">
                     <span className="mrc-row-top">
                       <span className="mrc-row-name">{c.name}</span>
                       <span className="mrc-row-time">{c.time}</span>
                     </span>
-                    <span className="mrc-row-bottom">
-                      <span className="mrc-kind">{c.kind}</span>
-                      <span className="mrc-row-preview">{c.preview}</span>
+                    <span className="mrc-row-mid">
+                      <span className="mrc-row-preview" data-empty={!c.preview}>{c.preview || 'No messages yet'}</span>
                       {c.unread > 0 && <span className="mrc-badge">{c.unread}</span>}
+                    </span>
+                    <span className="mrc-row-chips">
+                      <span className="mrc-kind">{c.kind}</span>
+                      <span className="mrc-acct" data-type={c.customerId ? 'customer' : 'guest'}>{c.customerId ? 'Customer' : 'Guest'}</span>
                     </span>
                   </span>
                 </button>
@@ -853,14 +893,14 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
                 <span className="mrc-id-text">
                   <span className="mrc-id-name">{convo.name}</span>
                   <span className="mrc-id-status">
-                    <span className="mrc-id-status-dot" style={{ background: onlineDot(convo.customerOnline) }} />
-                    {convo.customerOnline ? 'Online' : 'Offline'}
+                    <span className="mrc-id-status-dot" style={{ background: PRESENCE[convo.presence].color }} />
+                    {PRESENCE[convo.presence].label}
                   </span>
                 </span>
                 <svg className="mrc-id-chevron" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
               </button>
             )}
-            {headerSlot && <div className="mrc-head-slot">{headerSlot}</div>}
+            {!mobile && headerSlot && <div className="mrc-head-slot">{headerSlot}</div>}
           </div>
 
           {convo && contactOpen && (

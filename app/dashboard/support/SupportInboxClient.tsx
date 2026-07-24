@@ -32,19 +32,25 @@ function guestPhoneDisplay(dto: ConversationDto): string | undefined {
   return dto.guestPhoneCountry ? `${dto.guestPhoneCountry} ${dto.guestPhone}` : dto.guestPhone;
 }
 
+const TEAM_SENDER_TYPES = new Set(['STAFF', 'ADMIN', 'SUPERADMIN', 'COLLAB', 'SYSTEM']);
+
 function toConversation(dto: ConversationDto): Conversation {
   const name = dto.customerName || dto.guestName || 'Customer';
   const unread = dto.teamReadAt && dto.teamReadAt >= dto.lastMessageAt ? 0 : 1;
+  const rawPreview = dto.lastMessagePreview ?? null;
+  const preview = rawPreview
+    ? (dto.lastMessageSenderType && TEAM_SENDER_TYPES.has(dto.lastMessageSenderType) ? `You: ${rawPreview}` : rawPreview)
+    : '';
+  const presence = dto.customerPresence ?? (dto.customerOnline ? 'ONLINE' : 'OFFLINE');
   return {
     id: dto.id,
     name,
-    preview: (dto.subjectSnapshot?.['preview'] as string) ?? dto.type,
+    preview,
     time: new Date(dto.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     unread,
     avatar: initials(name),
-    status: dto.status === 'OPEN' ? 'online' : dto.status === 'PENDING' ? 'away' : 'offline',
+    presence,
     kind: dto.type === 'ITEM' ? 'ITEM' : 'GENERAL',
-    customerOnline: dto.customerOnline ?? false,
     customerId: dto.customerId ?? undefined,
     contact: {
       name: dto.customerName ?? dto.guestName ?? undefined,
@@ -115,7 +121,7 @@ function PresenceControls({ presence }: { presence: PresenceDto | undefined }) {
   }, [presence?.replyTimeText]);
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
       <select
         value={presence?.status ?? 'OFFLINE'}
         onChange={(e) => setPresence.mutate({ status: e.target.value })}
@@ -123,7 +129,7 @@ function PresenceControls({ presence }: { presence: PresenceDto | undefined }) {
         style={{
           fontFamily: 'Inter Tight, sans-serif', fontSize: 12, color: 'var(--mr-ink-900)',
           border: '1px solid var(--mr-dash-hair)', borderRadius: 8, padding: '6px 10px',
-          background: 'var(--mr-dash-bg)', cursor: 'pointer',
+          background: 'var(--mr-dash-bg)', cursor: 'pointer', flexShrink: 0,
         }}
       >
         {PRESENCE_OPTIONS.map((status) => (
@@ -145,7 +151,7 @@ function PresenceControls({ presence }: { presence: PresenceDto | undefined }) {
         style={{
           fontFamily: 'Inter Tight, sans-serif', fontSize: 12, color: 'var(--mr-ink-900)',
           border: '1px solid var(--mr-dash-hair)', borderRadius: 8, padding: '6px 10px',
-          background: 'var(--mr-dash-bg)', width: 220,
+          background: 'var(--mr-dash-bg)', flex: '1 1 200px', minWidth: 0,
         }}
       />
     </div>

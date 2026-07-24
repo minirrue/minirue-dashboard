@@ -18,9 +18,18 @@ export interface ConversationDto {
   lastMessageAt: string;
   customerReadAt: string | null;
   teamReadAt: string | null;
-  /** Whether the customer is currently active on the storefront. Backend field
-   * added in parallel; treated as offline when absent. */
+  /** Whether the customer is currently active on the storefront. Legacy boolean
+   * kept as a fallback for `customerPresence`; treated as offline when absent. */
   customerOnline?: boolean;
+  /** Three-state live presence of the customer on the storefront. Backend field
+   * added in parallel; falls back to `customerOnline` when absent. */
+  customerPresence?: 'ONLINE' | 'IDLE' | 'OFFLINE';
+  /** Real latest-message text, already truncated by the backend, or '📷 Photo'
+   * for an image-only message. Null when the thread has no messages yet. */
+  lastMessagePreview?: string | null;
+  /** Who sent the latest message — used to prefix the preview with "You:" when
+   * it was a team member. Null when there is no latest message. */
+  lastMessageSenderType?: 'CUSTOMER' | 'STAFF' | 'ADMIN' | 'COLLAB' | 'SYSTEM' | null;
 }
 
 export interface MessageAttachmentDto {
