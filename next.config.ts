@@ -1,8 +1,53 @@
 import type { NextConfig } from "next";
 
+const isProd = process.env.NODE_ENV === "production";
+
+// Content-Security-Policy. frame-ancestors/object-src/base-uri/form-action are
+// enforced strictly (they don't affect rendering, so zero breakage risk).
+// NOTE: script-src still allows 'unsafe-inline' because Next's App Router
+// injects inline hydration scripts. TODO(security): move to a nonce-based
+// script-src via proxy/middleware and drop 'unsafe-inline'. Dev adds
+// 'unsafe-eval' + ws/http so HMR keeps working.
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  `connect-src 'self' https:${isProd ? "" : " ws: wss: http:"}`,
+  "frame-src 'self'",
+  "upgrade-insecure-requests",
+].join("; ");
+
+const securityHeaders = [
+  { key: "Content-Security-Policy", value: contentSecurityPolicy },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=(), browsing-topics=()",
+  },
+  ...(isProd
+    ? [
+        {
+          key: "Strict-Transport-Security",
+          value: "max-age=63072000; includeSubDomains; preload",
+        },
+      ]
+    : []),
+];
+
 const nextConfig: NextConfig = {
   output: "standalone",
   reactCompiler: true,
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
+  },
   async redirects() {
     return [
       { source: "/dashboard", destination: "/overview", permanent: true },
