@@ -21,21 +21,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    id: 97,
+    id: 99,
     date: '2026-07-24',
     area: 'Storefront',
     summary:
       'New "Product section" tab under Storefront: the reassurance lines on every product page (free shipping over a certain amount, free samples) are yours to edit now, with an icon and any order you like. They used to be fixed in the code.',
   },
   {
-    id: 96,
+    id: 98,
     date: '2026-07-24',
     area: 'Products',
     summary:
       'Product photos were missing everywhere products are listed — category pages, the home page, search and the cart all showed the product name instead of the picture. Only the product page itself was showing it. Fixed.',
   },
   {
-    id: 95,
+    id: 97,
     date: '2026-07-24',
     area: 'Brands',
     summary:
