@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 68,
+    date: '2026-07-24',
+    area: 'Accounts',
+    summary:
+      'Reorganised the Accounts screen for phones. Instead of a wide table you had to scroll sideways, each account now shows as a tidy stacked card — name, email, role and a colour-coded Active/Suspended badge — with its Edit, Set password, Sign in as and Delete buttons underneath. When you tap one of those, the form now scrolls into view instead of quietly opening below the fold. The desktop table is unchanged.',
+  },
+  {
     id: 67,
     date: '2026-07-24',
     area: 'Whole dashboard',

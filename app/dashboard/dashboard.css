@@ -1824,6 +1824,16 @@
   background: var(--mr-st-danger-bg);
   color: var(--mr-st-danger-fg);
 }
+/* Account states (Accounts screen). Active = ok/green; suspended is a
+   deliberate paused state, not an error, so it reads amber (warn), not red. */
+.dash-status[data-status="active"] {
+  background: var(--mr-st-ok-bg);
+  color: var(--mr-st-ok-fg);
+}
+.dash-status[data-status="suspended"] {
+  background: var(--mr-st-warn-bg);
+  color: var(--mr-st-warn-fg);
+}
 /* Loyalty tier badges — brand tones, no off-palette hex */
 .dash-status[data-status="bronze"] {
   background: var(--mr-cream-300);

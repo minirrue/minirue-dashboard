@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   listAccounts,
   createAccount,
@@ -22,6 +22,18 @@ type Dialog =
   | { kind: 'delete'; account: AccountSummary }
   | { kind: 'signInAs'; account: AccountSummary };
 
+function AccountStatusBadge({ status }: { status: 'ACTIVE' | 'SUSPENDED' }) {
+  return (
+    <span
+      className="dash-status"
+      data-status={status === 'ACTIVE' ? 'active' : 'suspended'}
+    >
+      <span className="dash-status-dot" />
+      {status === 'ACTIVE' ? 'Active' : 'Suspended'}
+    </span>
+  );
+}
+
 /**
  * Accounts — create, edit, delete and sign in as any account.
  * specs/2026-07-23-account-administration
@@ -42,6 +54,7 @@ export default function AdminAccountsClient() {
 
   const [dialog, setDialog] = useState<Dialog>({ kind: 'none' });
   const [notice, setNotice] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   const LIMIT = 25;
 
@@ -70,12 +83,65 @@ export default function AdminAccountsClient() {
     void load();
   }, [load]);
 
+  // Mobile detection — mirrors DashboardTable so the accounts list switches to
+  // a stacked card layout at the same phone breakpoint as every other table.
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const handler = (e: MediaQueryListEvent | MediaQueryList) => setIsMobile(e.matches);
+    handler(mq);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
   const pageCount = Math.max(1, Math.ceil(total / LIMIT));
+
+  // Shared action buttons — same set in the desktop table cell and the mobile
+  // card, so the two layouts never drift.
+  const accountActions = (account: AccountSummary) => (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <button
+        type="button"
+        className="dash-btn-ghost"
+        onClick={() => setDialog({ kind: 'edit', account })}
+        data-trace-id={`${TRACE}::EL-BTN-edit`}
+      >
+        Edit
+      </button>
+      <button
+        type="button"
+        className="dash-btn-ghost"
+        onClick={() => setDialog({ kind: 'password', account })}
+        data-trace-id={`${TRACE}::EL-BTN-password`}
+      >
+        Set password
+      </button>
+      {!account.isSelf && (
+        <button
+          type="button"
+          className="dash-btn-secondary"
+          onClick={() => setDialog({ kind: 'signInAs', account })}
+          data-trace-id={`${TRACE}::EL-BTN-sign-in-as`}
+        >
+          Sign in as
+        </button>
+      )}
+      {!account.isSelf && (
+        <button
+          type="button"
+          className="dash-btn-danger"
+          onClick={() => setDialog({ kind: 'delete', account })}
+          data-trace-id={`${TRACE}::EL-BTN-delete`}
+        >
+          Delete
+        </button>
+      )}
+    </div>
+  );
 
   return (
     <div data-trace-id={`${TRACE}::EL-REGION-accounts`}>
       <header style={{ marginBottom: 24 }}>
-        <h1 style={{ marginBottom: 8 }}>Accounts</h1>
+        <h1 className="dash-page-title" style={{ marginBottom: 8 }}>Accounts</h1>
         <p className="dash-muted" style={{ maxWidth: 640 }}>
           Everyone who can sign in, at any level. Create accounts, change what
           they are allowed to do, remove them, or open the dashboard as them to
@@ -97,7 +163,7 @@ export default function AdminAccountsClient() {
       />
 
       <section className="dash-card" style={{ marginTop: 32 }}>
-        <h2 style={{ marginTop: 0 }}>All accounts</h2>
+        <h2 className="dash-card-title" style={{ marginTop: 0 }}>All accounts</h2>
 
         <div
           style={{
@@ -176,95 +242,114 @@ export default function AdminAccountsClient() {
 
         {loadError && <p className="dash-inline-error">{loadError}</p>}
 
-        <div className="dash-table-wrap">
-          <table className="dash-table">
-            <thead>
-              <tr>
-                <th scope="col">Name</th>
-                <th scope="col">Email</th>
-                <th scope="col">Role</th>
-                <th scope="col">Status</th>
-                <th scope="col">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr>
-                  <td colSpan={5} className="dash-table-empty">
-                    Loading…
-                  </td>
-                </tr>
-              )}
+        {isMobile ? (
+          <div data-trace-id={`${TRACE}::EL-LIST-accounts`}>
+            {loading && <p className="dash-table-empty">Loading…</p>}
 
-              {!loading && accounts.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="dash-table-empty">
-                    No accounts match those filters.
-                  </td>
-                </tr>
-              )}
+            {!loading && accounts.length === 0 && (
+              <p className="dash-table-empty">No accounts match those filters.</p>
+            )}
 
-              {!loading &&
-                accounts.map((account) => (
-                  <tr key={account.id} className="dash-table-row-hover">
-                    <td>
-                      {account.name || '—'}
-                      {account.isSelf && (
-                        <span className="dash-muted"> (you)</span>
-                      )}
-                    </td>
-                    <td>{account.email}</td>
-                    <td>{roleLabel(account.role)}</td>
-                    <td>
-                      {account.status === 'ACTIVE' ? 'Active' : 'Suspended'}
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <button
-                          type="button"
-                          className="dash-btn-ghost"
-                          onClick={() => setDialog({ kind: 'edit', account })}
-                          data-trace-id={`${TRACE}::EL-BTN-edit`}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="dash-btn-ghost"
-                          onClick={() => setDialog({ kind: 'password', account })}
-                          data-trace-id={`${TRACE}::EL-BTN-password`}
-                        >
-                          Set password
-                        </button>
-                        {!account.isSelf && (
-                          <button
-                            type="button"
-                            className="dash-btn-secondary"
-                            onClick={() =>
-                              setDialog({ kind: 'signInAs', account })
-                            }
-                            data-trace-id={`${TRACE}::EL-BTN-sign-in-as`}
-                          >
-                            Sign in as
-                          </button>
-                        )}
-                        {!account.isSelf && (
-                          <button
-                            type="button"
-                            className="dash-btn-danger"
-                            onClick={() => setDialog({ kind: 'delete', account })}
-                            data-trace-id={`${TRACE}::EL-BTN-delete`}
-                          >
-                            Delete
-                          </button>
+            {!loading &&
+              accounts.map((account, i) => (
+                <div
+                  key={account.id}
+                  style={{
+                    padding: '16px 0',
+                    borderTop:
+                      i === 0 ? 'none' : '1px solid var(--mr-dash-hair)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 10,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      gap: 10,
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, color: 'var(--mr-fg)' }}>
+                        {account.name || '—'}
+                        {account.isSelf && (
+                          <span className="dash-muted"> (you)</span>
                         )}
                       </div>
+                      <div
+                        className="dash-muted"
+                        style={{
+                          fontSize: 13,
+                          wordBreak: 'break-word',
+                          marginTop: 2,
+                        }}
+                      >
+                        {account.email}
+                      </div>
+                    </div>
+                    <AccountStatusBadge status={account.status} />
+                  </div>
+
+                  <div className="dash-muted" style={{ fontSize: 13 }}>
+                    {roleLabel(account.role)}
+                  </div>
+
+                  {accountActions(account)}
+                </div>
+              ))}
+          </div>
+        ) : (
+          <div className="dash-table-wrap">
+            <table className="dash-table">
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Email</th>
+                  <th scope="col">Role</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading && (
+                  <tr>
+                    <td colSpan={5} className="dash-table-empty">
+                      Loading…
                     </td>
                   </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
+                )}
+
+                {!loading && accounts.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="dash-table-empty">
+                      No accounts match those filters.
+                    </td>
+                  </tr>
+                )}
+
+                {!loading &&
+                  accounts.map((account) => (
+                    <tr key={account.id} className="dash-table-row-hover">
+                      <td>
+                        {account.name || '—'}
+                        {account.isSelf && (
+                          <span className="dash-muted"> (you)</span>
+                        )}
+                      </td>
+                      <td>{account.email}</td>
+                      <td>{roleLabel(account.role)}</td>
+                      <td>
+                        <AccountStatusBadge status={account.status} />
+                      </td>
+                      <td>{accountActions(account)}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {pageCount > 1 && (
           <div
@@ -411,7 +496,7 @@ function CreateAccountForm({
 
   return (
     <section className="dash-card">
-      <h2 style={{ marginTop: 0 }}>Add an account</h2>
+      <h2 className="dash-card-title" style={{ marginTop: 0 }}>Add an account</h2>
       <form onSubmit={handleSubmit} style={{ maxWidth: 460 }}>
         <div className="dash-field">
           <label className="dash-label" htmlFor="new-email">
@@ -544,9 +629,17 @@ function DialogShell({
   title: string;
   children: React.ReactNode;
 }) {
+  const ref = useRef<HTMLElement>(null);
+  // These "dialogs" render inline at the bottom of the page, not as modals — on
+  // a phone that is far below the account you tapped, so bring the form into
+  // view; otherwise tapping an action looks like nothing happened.
+  useEffect(() => {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    ref.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  }, []);
   return (
-    <section className="dash-card" style={{ marginTop: 24 }}>
-      <h2 style={{ marginTop: 0 }}>{title}</h2>
+    <section ref={ref} className="dash-card" style={{ marginTop: 24 }}>
+      <h2 className="dash-card-title" style={{ marginTop: 0 }}>{title}</h2>
       {children}
     </section>
   );
