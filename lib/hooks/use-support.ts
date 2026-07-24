@@ -10,6 +10,7 @@ import {
   apiSupportSetPresence,
   apiSupportUpload,
   apiSupportMarkRead,
+  apiSupportMergeConversation,
 } from '@/lib/api/support';
 import type { ConversationDto, MessageAttachmentDto } from '@/lib/api/support';
 
@@ -88,6 +89,20 @@ export function useSupportMarkRead() {
       );
     },
     onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ['support', 'conversations'] });
+    },
+  });
+}
+
+/** Admin "merge into…" mutation: absorbs `sourceId` into `intoId`. On success
+ * it refreshes the whole conversation list (the source row is gone, the survivor
+ * moved) so callers can then select the survivor and clear the dead thread. */
+export function useMergeConversations() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sourceId, intoId }: { sourceId: string; intoId: string }) =>
+      apiSupportMergeConversation(sourceId, intoId),
+    onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['support', 'conversations'] });
     },
   });

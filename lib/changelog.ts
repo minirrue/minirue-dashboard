@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 80,
+    date: '2026-07-24',
+    area: 'Support',
+    summary:
+      'Admins can now merge two support conversations into one. Open the conversation you want to remove, click "Merge into…" in its header, and paste the ID of the conversation you want to keep — every message moves into that one and the duplicate is removed. This is handy when the same customer wrote in twice. It cannot be undone, so you confirm first.',
+  },
+  {
     id: 79,
     date: '2026-07-24',
     area: 'Support',

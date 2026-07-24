@@ -67,6 +67,9 @@ export interface DashChatViewProps {
   messages: Message[]
   onSend: (text: string, attachments?: MessageAttachment[]) => void
   headerSlot?: ReactNode
+  /** Per-conversation actions rendered in the thread header (right side), only
+   * while a conversation is open. Used for the admin "Merge into…" action. */
+  threadActions?: ReactNode
   /** Uploads a picked/pasted image and resolves to its hosted URL. Omit to
    * hide attachment controls entirely (e.g. a read-only view). */
   onUploadImage?: (file: File) => Promise<string>
@@ -495,6 +498,8 @@ const STYLES = `
 }
 .mrc-id[aria-expanded="true"] .mrc-id-chevron { transform: rotate(180deg); }
 .mrc-head-slot { margin-left: auto; flex-shrink: 0; }
+.mrc-head-actions { margin-left: auto; flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+.mrc-head-actions + .mrc-head-slot { margin-left: 10px; }
 
 .mrc-contact {
   flex-shrink: 0;
@@ -821,7 +826,7 @@ const STYLES = `
 }
 `
 
-export function DashChatView({ conversations, activeId, onSelect, messages, onSend, headerSlot, onUploadImage, onRefresh, refreshing }: DashChatViewProps) {
+export function DashChatView({ conversations, activeId, onSelect, messages, onSend, headerSlot, threadActions, onUploadImage, onRefresh, refreshing }: DashChatViewProps) {
   const [input, setInput] = useState('')
   const [pending, setPending] = useState<PendingAttachment[]>([])
   const [contactOpen, setContactOpen] = useState(false)
@@ -1035,6 +1040,7 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
                   <svg className="mrc-id-chevron" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
                 </button>
               )}
+              {convo && threadActions && <div className="mrc-head-actions">{threadActions}</div>}
               {!mobile && headerSlot && <div className="mrc-head-slot">{headerSlot}</div>}
             </div>
             {convo && (

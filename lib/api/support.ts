@@ -81,6 +81,16 @@ export const apiSupportUpload = (file: File) => {
 export const apiSupportMarkRead = (id: string) =>
   apiFetch<void>(`/support/conversations/${id}/read`, { method: 'POST', auth: true });
 
+/** Admin action: merges `sourceId` INTO `intoId` — the source conversation is
+ * absorbed (all its messages move over) and removed; `intoId` survives. Returns
+ * the enriched surviving conversation. */
+export const apiSupportMergeConversation = (sourceId: string, intoId: string) =>
+  apiFetch<ConversationDto>(`/support/conversations/${sourceId}/merge`, {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify({ intoId }),
+  });
+
 export const apiSupportPresence = () => apiFetch<PresenceDto>('/support/presence', { auth: true });
 
 export const apiSupportSetPresence = (patch: { status?: string; replyTimeText?: string }) =>
