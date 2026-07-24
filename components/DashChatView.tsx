@@ -889,9 +889,16 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
   }
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
+    const el = scrollRef.current
+    if (!el) return
+    const toBottom = () => { el.scrollTop = el.scrollHeight }
+    // Land on the newest message when opening a conversation or on a new one,
+    // re-running after layout + late-loading images settle so we never start
+    // scrolled to the top.
+    toBottom()
+    const raf = requestAnimationFrame(toBottom)
+    const t = window.setTimeout(toBottom, 80)
+    return () => { cancelAnimationFrame(raf); window.clearTimeout(t) }
   }, [activeId, messages.length])
 
   useEffect(() => {

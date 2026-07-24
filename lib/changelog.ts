@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 81,
+    date: '2026-07-24',
+    area: 'Support',
+    summary:
+      'Opening a conversation now always jumps straight to the most recent message, instead of sometimes starting at the top and making you scroll down.',
+  },
+  {
     id: 80,
     date: '2026-07-24',
     area: 'Support',
