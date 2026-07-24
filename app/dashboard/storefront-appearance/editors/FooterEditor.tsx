@@ -14,6 +14,19 @@ const SOCIAL_NETWORKS: SocialNetwork[] = [
   'instagram', 'tiktok', 'facebook', 'x', 'youtube', 'whatsapp', 'pinterest',
 ];
 
+/**
+ * Makes a social URL absolute. A bare "instagram.com/minirue" in an href is a
+ * RELATIVE path, so the storefront would send shoppers to
+ * minirueshop.com/instagram.com/minirue. Anything already carrying a scheme
+ * (or an explicit protocol-relative "//") is left alone.
+ */
+export function withScheme(raw: string): string {
+  const url = raw.trim();
+  if (!url) return '';
+  if (/^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith('//')) return url;
+  return `https://${url}`;
+}
+
 const PAYMENT_BADGES: Array<{ value: PaymentBadge; label: string }> = [
   { value: 'visa', label: 'Visa' },
   { value: 'mastercard', label: 'Mastercard' },
@@ -192,6 +205,18 @@ export default function FooterEditor({
                   ...footer,
                   socials: footer.socials.map((s, i) =>
                     i === index ? { ...s, url: e.target.value } : s,
+                  ),
+                })
+              }
+              // A social link typed as "instagram.com/minirue" renders as a
+              // RELATIVE link on the storefront and lands on
+              // minirueshop.com/instagram.com/…. Add the scheme on blur so
+              // what is stored is always an absolute URL.
+              onBlur={(e) =>
+                onChange({
+                  ...footer,
+                  socials: footer.socials.map((s, i) =>
+                    i === index ? { ...s, url: withScheme(e.target.value) } : s,
                   ),
                 })
               } />

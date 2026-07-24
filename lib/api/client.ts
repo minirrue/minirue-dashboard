@@ -8,6 +8,39 @@ export interface ApiError {
 
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8002') + '/v1';
 
+/**
+ * Coerces an API error body's `message` to a string. Validation failures come
+ * back as an array of `{ field, issue }` objects, and every screen renders
+ * `err.message` straight into JSX — handing React an object there threw
+ * "Minified React error #31" and blanked the whole page instead of showing
+ * which field was wrong.
+ */
+export function errorMessageToText(raw: unknown, fallback: string): string {
+  if (typeof raw === 'string' && raw) return raw;
+  if (Array.isArray(raw)) {
+    const parts = raw
+      .map((entry) => {
+        if (typeof entry === 'string') return entry;
+        if (entry && typeof entry === 'object') {
+          const { field, issue, message, path } = entry as Record<string, unknown>;
+          const where = field ?? path;
+          const what = issue ?? message;
+          if (where && what) return `${String(where)}: ${String(what)}`;
+          if (what) return String(what);
+        }
+        return '';
+      })
+      .filter(Boolean);
+    if (parts.length) return parts.join('; ');
+  }
+  if (raw && typeof raw === 'object') {
+    const { message, issue } = raw as Record<string, unknown>;
+    if (typeof message === 'string' && message) return message;
+    if (typeof issue === 'string' && issue) return issue;
+  }
+  return fallback;
+}
+
 export async function apiFetch<T>(
   path: string,
   init?: RequestInit & { auth?: boolean; _isRetry?: boolean },
@@ -69,7 +102,7 @@ export async function apiFetch<T>(
   if (!res.ok) {
     let body: Record<string, unknown> = {};
     try { body = (await res.json()) as Record<string, unknown>; } catch { /* ignore */ }
-    throw { status: res.status, message: (body['message'] as string) ?? res.statusText, error: body['error'] as string | undefined } as ApiError;
+    throw { status: res.status, message: errorMessageToText(body['message'], res.statusText), error: body['error'] as string | undefined } as ApiError;
   }
 
   if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as T;
@@ -98,7 +131,7 @@ export async function apiUpload<T>(path: string, formData: FormData): Promise<T>
   if (!res.ok) {
     let body: Record<string, unknown> = {};
     try { body = (await res.json()) as Record<string, unknown>; } catch { /* ignore */ }
-    throw { status: res.status, message: (body['message'] as string) ?? res.statusText, error: body['error'] as string | undefined } as ApiError;
+    throw { status: res.status, message: errorMessageToText(body['message'], res.statusText), error: body['error'] as string | undefined } as ApiError;
   }
 
   if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as T;

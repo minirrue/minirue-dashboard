@@ -4,6 +4,18 @@ import React, { useState } from 'react';
 import { newPage, slugify, SLUG_PATTERN } from '@/lib/api/storefront';
 import type { StorefrontPage } from '@/lib/api/storefront';
 
+/**
+ * Storefront routes that already exist. Pages live at /<slug> now, and Next
+ * resolves a real route ahead of the catch-all — so a page claiming one of
+ * these slugs would save fine and then be permanently unreachable.
+ * Mirrors the top-level folders in apps/minirue-frontend/app.
+ */
+const RESERVED_SLUGS = new Set([
+  'account', 'brands', 'cart', 'categories', 'checkout', 'login', 'logout',
+  'orders', 'pages', 'products', 'search', 'signup', 'forgot',
+  'reset-password', 'api', 'robots.txt', 'sitemap.xml', 'favicon.ico',
+]);
+
 export default function PagesEditor({
   pages,
   onChange,
@@ -39,7 +51,7 @@ export default function PagesEditor({
         </div>
         <p className="dash-hint">
           Terms, Privacy, Shipping, Returns, and any other standalone page shown at
-          /pages/&lt;slug&gt; on the storefront.
+          /&lt;slug&gt; on the storefront.
         </p>
 
         {pages.length === 0 && (
@@ -50,6 +62,7 @@ export default function PagesEditor({
           const trimmedSlug = page.slug.trim();
           const slugInvalid = trimmedSlug === '' || !SLUG_PATTERN.test(trimmedSlug);
           const slugDuplicate = trimmedSlug !== '' && (slugCounts[trimmedSlug] ?? 0) > 1;
+          const slugReserved = RESERVED_SLUGS.has(trimmedSlug);
           const titleInvalid = page.title.trim() === '';
 
           return (
@@ -87,12 +100,18 @@ export default function PagesEditor({
               </div>
 
               <p className="dash-hint">
-                Public URL: <code>/pages/{trimmedSlug || '…'}</code>
+                Public URL: <code>/{trimmedSlug || '…'}</code>
               </p>
               {titleInvalid && <p className="dash-inline-error">Title is required.</p>}
               {slugInvalid && (
                 <p className="dash-inline-error">
                   Slug must be lowercase letters, numbers and hyphens only (e.g. &quot;privacy-policy&quot;).
+                </p>
+              )}
+              {!slugInvalid && slugReserved && (
+                <p className="dash-inline-error">
+                  &quot;{trimmedSlug}&quot; is a built-in storefront address — the shop&apos;s own
+                  page would win and this one would never be reachable. Pick another slug.
                 </p>
               )}
               {!slugInvalid && slugDuplicate && (

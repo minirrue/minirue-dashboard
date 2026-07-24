@@ -21,6 +21,27 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 96,
+    date: '2026-07-24',
+    area: 'Support',
+    summary:
+      'In the shop\'s chat bubble you can now scroll back through a conversation with a mouse — it used to refuse to scroll, and jump you back to the newest message every few seconds. The online/offline dot also stops flashing green before it knows the real answer.',
+  },
+  {
+    id: 95,
+    date: '2026-07-24',
+    area: 'Storefront',
+    summary:
+      'Your pages now live at a clean address — minirueshop.com/terms instead of /pages/terms. Old links still work. The editor warns you if a slug clashes with a built-in shop address like "cart" or "products", which would have made the page unreachable.',
+  },
+  {
+    id: 94,
+    date: '2026-07-24',
+    area: 'Storefront',
+    summary:
+      'Saving Storefront appearance with something invalid used to blank the whole page with a technical error. It now tells you which field is wrong. Social links typed without "https://" get it added automatically, so they no longer point back at the shop.',
+  },
+  {
     id: 93,
     date: '2026-07-24',
     area: 'Storefront',
