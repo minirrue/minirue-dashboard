@@ -43,12 +43,29 @@ function toConversation(dto: ConversationDto): Conversation {
     unread,
     avatar: initials(name),
     status: dto.status === 'OPEN' ? 'online' : dto.status === 'PENDING' ? 'away' : 'offline',
+    kind: dto.type === 'ITEM' ? 'ITEM' : 'GENERAL',
+    customerOnline: dto.customerOnline ?? false,
+    customerId: dto.customerId ?? undefined,
     contact: {
       name: dto.customerName ?? dto.guestName ?? undefined,
       email: dto.customerEmail ?? dto.guestEmail ?? undefined,
       phone: dto.customerPhone ?? guestPhoneDisplay(dto),
     },
   };
+}
+
+/** Friendly day label from a full timestamp, for in-thread date separators.
+ * Uses the real message date only — never a fabricated one. */
+function dayLabel(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  if (sameDay(d, today)) return 'Today';
+  if (sameDay(d, yesterday)) return 'Yesterday';
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: d.getFullYear() === today.getFullYear() ? undefined : 'numeric' });
 }
 
 function toMessage(dto: MessageDto): Message {
@@ -58,6 +75,7 @@ function toMessage(dto: MessageDto): Message {
     name: dto.senderName ?? (isCustomer ? 'Customer' : 'MiniRue'),
     text: dto.body,
     time: new Date(dto.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    day: dayLabel(dto.createdAt),
     attachments: dto.attachments as MessageAttachment[] | undefined,
   };
 }

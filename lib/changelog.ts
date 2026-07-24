@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 73,
+    date: '2026-07-24',
+    area: 'Support',
+    summary:
+      'Redesigned the customer messages inbox to feel like a proper chat app. On a computer it is now a two-pane view — the conversation list on the left, the open chat on the right; on a phone the list fills the screen and tapping a conversation slides into the chat with a back arrow. Replies group into neat bubbles under day headings (Today, Yesterday), the dot next to each customer now shows whether they are online, and opening the contact details reveals a tap-through link straight to a registered customer\'s profile.',
+  },
+  {
     id: 72,
     date: '2026-07-24',
     area: 'Support',

@@ -18,6 +18,9 @@ export interface ConversationDto {
   lastMessageAt: string;
   customerReadAt: string | null;
   teamReadAt: string | null;
+  /** Whether the customer is currently active on the storefront. Backend field
+   * added in parallel; treated as offline when absent. */
+  customerOnline?: boolean;
 }
 
 export interface MessageAttachmentDto {
