@@ -1,16 +1,16 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { useBreakpoint } from '@/hooks/useMotion'
 
-interface Message {
+export interface Message {
   from: 'cx' | 'agent'
   name: string
   text: string
   time: string
 }
 
-interface Conversation {
+export interface Conversation {
   id: string
   name: string
   preview: string
@@ -20,33 +20,13 @@ interface Conversation {
   status: 'online' | 'away' | 'offline'
 }
 
-const DASH_CONVERSATIONS: Conversation[] = [
-  { id:'c1', name:'Hélène Bernard',  preview:'Do you still have the Oud Nocturne in 50ml?', time:'Now',  unread:2, avatar:'HB', status:'online' },
-  { id:'c2', name:'Junichi Mori',    preview:"My order MR-24800 hasn't arrived yet.",        time:'4m',   unread:1, avatar:'JM', status:'online' },
-  { id:'c3', name:'Louisa Greer',    preview:"Can I exchange the Figuier for a diff size?",  time:'18m',  unread:0, avatar:'LG', status:'away' },
-  { id:'c4', name:'Marcus Wahl',     preview:'The packaging was beautiful, thank you!',      time:'1h',   unread:0, avatar:'MW', status:'offline' },
-  { id:'c5', name:'Priya Raghavan',  preview:"What's the difference between the two oud…",  time:'2h',   unread:0, avatar:'PR', status:'offline' },
-]
-
-const THREAD_MAP: Record<string, Message[]> = {
-  c1: [
-    { from:'cx',    name:'Hélène Bernard', text:'Bonjour! Do you still have the Oud Nocturne in 50ml?',                              time:'10:41' },
-    { from:'agent', name:'Sophie M.',      text:'Bonjour Hélène! Yes, we have 42 units in stock right now.',                         time:'10:42' },
-    { from:'cx',    name:'Hélène Bernard', text:"Perfect. Can I get gift wrapping? It's for my husband's birthday.",                 time:'10:42' },
-    { from:'agent', name:'Sophie M.',      text:'Absolutely — we offer complimentary gift wrapping on all orders. Shall I add a handwritten card as well?', time:'10:43' },
-    { from:'cx',    name:'Hélène Bernard', text:'Yes please! That would be wonderful.',                                              time:'10:44' },
-  ],
-  c2: [
-    { from:'cx',    name:'Junichi Mori',  text:'Hello, my order MR-24800 was supposed to arrive yesterday.',                        time:'09:15' },
-    { from:'agent', name:'Sophie M.',     text:'Hi Junichi! Let me check that for you right away.',                                  time:'09:16' },
-    { from:'agent', name:'Sophie M.',     text:"I can see it's currently in transit with DHL. Estimated delivery is today by 6pm.", time:'09:17' },
-    { from:'cx',    name:'Junichi Mori',  text:"My order MR-24800 hasn't arrived yet.",                                            time:'10:58' },
-  ],
-  c3: [
-    { from:'cx',    name:'Louisa Greer',  text:'Hi — I bought the Figuier 75ml but I think 50ml would suit me better. Can I exchange?', time:'08:30' },
-    { from:'agent', name:'Sophie M.',     text:"Of course Louisa! We have a 14-day exchange policy. I'll arrange a prepaid return label.", time:'08:45' },
-    { from:'cx',    name:'Louisa Greer',  text:"Can I exchange the Figuier for a different size? Thank you.",                      time:'09:02' },
-  ],
+export interface DashChatViewProps {
+  conversations: Conversation[]
+  activeId: string | null
+  onSelect: (id: string) => void
+  messages: Message[]
+  onSend: (text: string) => void
+  headerSlot?: ReactNode
 }
 
 const statusColor: Record<string, string> = {
@@ -55,51 +35,36 @@ const statusColor: Record<string, string> = {
   offline: '#9E9E9E',
 }
 
-export function DashChatView() {
-  const [active, setActive] = useState<string | null>('c1')
+export function DashChatView({ conversations, activeId, onSelect, messages, onSend, headerSlot }: DashChatViewProps) {
   const [input, setInput] = useState('')
-  const [threads, setThreads] = useState<Record<string, Message[]>>(THREAD_MAP)
-  const [typing, setTyping] = useState(false)
-  const [convos, setConvos] = useState<Conversation[]>(DASH_CONVERSATIONS)
   const { mobile } = useBreakpoint()
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const thread = active ? (threads[active] || []) : []
-  const convo = convos.find(c => c.id === active)
+  const convo = conversations.find(c => c.id === activeId)
 
   useEffect(() => {
     if (bottomRef.current) {
       bottomRef.current.scrollTop = bottomRef.current.scrollHeight
     }
-  }, [active, thread.length])
+  }, [activeId, messages.length])
 
   const send = () => {
     const txt = input.trim()
-    if (!txt || !active) return
+    if (!txt || !activeId) return
     setInput('')
-    const msg: Message = {
-      from: 'agent',
-      name: 'Sophie M. (You)',
-      text: txt,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    }
-    setThreads(t => ({ ...t, [active]: [...(t[active] || []), msg] }))
-    setTyping(true)
-    setConvos(c => c.map(x => x.id === active ? { ...x, unread: 0, preview: txt, time: 'Now' } : x))
-    setTimeout(() => setTyping(false), 1600)
+    onSend(txt)
   }
 
   const selectConvo = (id: string) => {
-    setActive(id)
-    setConvos(c => c.map(x => x.id === id ? { ...x, unread: 0 } : x))
+    onSelect(id)
   }
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 73px)', overflow: 'hidden' }}>
 
       {/* Conversation list */}
-      {(!mobile || !active) && (
+      {(!mobile || !activeId) && (
         <div style={{
           width: mobile ? '100%' : 280, flexShrink: 0,
           borderRight: '1px solid var(--mr-dash-hair)',
@@ -117,8 +82,8 @@ export function DashChatView() {
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
-            {convos.map((c, i) => {
-              const isActive = active === c.id
+            {conversations.map((c, i) => {
+              const isActive = activeId === c.id
               return (
                 <button key={c.id} onClick={() => selectConvo(c.id)} style={{
                   display: 'flex', alignItems: 'flex-start', gap: 12,
@@ -159,13 +124,13 @@ export function DashChatView() {
       )}
 
       {/* Thread */}
-      {(!mobile || active) && (
+      {(!mobile || activeId) && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--mr-dash-bg)' }}>
 
           {/* Thread header */}
           <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--mr-dash-hair)', display: 'flex', alignItems: 'center', gap: 14, background: 'var(--mr-dash-surface)' }}>
             {mobile && (
-              <button onClick={() => setActive(null)} style={{ background: 'none', border: 0, cursor: 'pointer', color: 'var(--mr-ink-700)', padding: 0 }}>
+              <button onClick={() => onSelect('')} style={{ background: 'none', border: 0, cursor: 'pointer', color: 'var(--mr-ink-700)', padding: 0 }}>
                 <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M20 12H4M10 6l-6 6 6 6"/></svg>
               </button>
             )}
@@ -181,11 +146,14 @@ export function DashChatView() {
                 </div>
               </>
             )}
+            {headerSlot && (
+              <div style={{ marginLeft: 'auto' }}>{headerSlot}</div>
+            )}
           </div>
 
           {/* Messages */}
           <div ref={bottomRef} style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12, scrollbarWidth: 'none' }}>
-            {thread.map((msg, i) => {
+            {messages.map((msg, i) => {
               const isAgent = msg.from === 'agent'
               return (
                 <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: isAgent ? 'flex-end' : 'flex-start', animation: `mr-fade-up 0.35s cubic-bezier(0.16,1,0.3,1) both`, animationDelay: `${i * 35}ms` }}>
@@ -206,16 +174,6 @@ export function DashChatView() {
                 </div>
               )
             })}
-
-            {typing && (
-              <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-                <div style={{ padding: '12px 16px', borderRadius: '4px 14px 14px 14px', background: 'var(--mr-dash-surface)', border: '1px solid var(--mr-dash-hair)', display: 'flex', gap: 4, alignItems: 'center' }}>
-                  {[0, 1, 2].map(j => (
-                    <span key={j} style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--mr-ink-400)', animation: 'mr-breath 1s ease-in-out infinite', animationDelay: `${j * 150}ms`, display: 'inline-block' }} />
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Input */}
