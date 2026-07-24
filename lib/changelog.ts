@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 83,
+    date: '2026-07-24',
+    area: 'Support',
+    summary:
+      'The conversation you have open no longer shows a red unread count in the list — since you are already reading it, a new message in it is not counted as unread, and it stays marked read as more messages come in.',
+  },
+  {
     id: 82,
     date: '2026-07-24',
     area: 'Support',

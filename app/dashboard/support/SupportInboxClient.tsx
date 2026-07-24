@@ -396,6 +396,14 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
     if (activeId) void refreshNotifications();
   }, [activeId, threadData?.messages, refreshNotifications]);
 
+  // Keep the open conversation marked read on the server as new messages arrive
+  // while you're viewing it, so its unread badge stays cleared everywhere (not
+  // just via the local override above) and doesn't re-appear on the next poll.
+  useEffect(() => {
+    if (activeId) markRead.mutate(activeId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId, threadData?.messages]);
+
   // Deep link from a notification: /support?c=<conversationId> auto-opens that
   // conversation. Read from the URL (client-only) to avoid a Suspense boundary.
   useEffect(() => {
@@ -458,7 +466,11 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
     postPending({ ...item, status: 'sending' });
   };
 
-  const conversations = (conversationDtos ?? []).map(toConversation);
+  const conversations = (conversationDtos ?? []).map(toConversation).map(
+    // The conversation you're currently viewing never shows a red unread badge —
+    // you're already looking at it, so a message arriving in it isn't "unread".
+    (c) => (c.id === activeId ? { ...c, unread: 0 } : c),
+  );
 
   // Display = server messages CONCAT this conversation's pending items that
   // aren't yet in the server list. Dedup rule: once a pending item has a
