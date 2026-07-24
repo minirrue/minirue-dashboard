@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 82,
+    date: '2026-07-24',
+    area: 'Support',
+    summary:
+      'While you have a conversation open, its notifications no longer pop up as unread — a message that arrives in the conversation you are already viewing is marked read automatically, so the bell only flags conversations you are not currently looking at.',
+  },
+  {
     id: 81,
     date: '2026-07-24',
     area: 'Support',

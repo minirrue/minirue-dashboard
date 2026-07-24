@@ -369,7 +369,7 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   // Admin notifications, used only to auto-mark-read any notification that
   // points at the conversation currently open in this inbox (so the admin
   // doesn't have to separately dismiss it in the notification centre).
-  const { items: notifications, markRead: markNotificationRead } = useAdminNotifications({ enabled: true });
+  const { items: notifications, markRead: markNotificationRead, refresh: refreshNotifications } = useAdminNotifications({ enabled: true });
 
   useEffect(() => {
     if (!activeId) return;
@@ -385,6 +385,16 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
     // arrives while the conversation is already open also gets auto-read.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId, threadData?.messages, notifications, markNotificationRead]);
+
+  // The notifications list is fetched once on mount and does NOT poll, so a
+  // notification created while this conversation is already open would never
+  // enter `notifications` — and thus never get auto-read. Refresh the list
+  // whenever we open a conversation or its thread gains a message; the effect
+  // above then marks any notification for the open conversation read at once,
+  // so it never shows as unread while you're viewing that conversation.
+  useEffect(() => {
+    if (activeId) void refreshNotifications();
+  }, [activeId, threadData?.messages, refreshNotifications]);
 
   // Deep link from a notification: /support?c=<conversationId> auto-opens that
   // conversation. Read from the URL (client-only) to avoid a Suspense boundary.
