@@ -1,6 +1,6 @@
 {
   "name": "minirue-dashboard",
-  "version": "0.26.17",
+  "version": "0.27.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",

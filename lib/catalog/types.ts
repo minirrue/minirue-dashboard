@@ -89,6 +89,10 @@ export interface ProductMedia {
   // product-level image, shown as the fallback for variants with no
   // photos of their own (spec Acceptance Scenario 3).
   variantId: string | null;
+  /** COVER = the thumbnail shoppers see outside the product (grids, cart, share
+   * previews). CAROUSEL = the images inside the product's gallery. Exactly one
+   * COVER per product; the first image uploaded becomes it automatically. */
+  role: 'COVER' | 'CAROUSEL';
   url?: string | null;
   width: number | null;
   height: number | null;

@@ -453,28 +453,10 @@ export default function CollaboratorDetailClient() {
         <p className="dash-help-text">
           When off, the brand page and its products are hidden from shoppers.
         </p>
-        <label className="dash-checkbox-label">
-          <input
-            type="checkbox"
-            className="dash-checkbox"
-            checked={homeFeature}
-            onChange={(e) => setHomeFeature(e.target.checked)}
-            disabled={settingsSaving}
-            data-trace-id="PG-DASHBOARD-COLLAB-008::EL-CHECK-detail-home-feature"
-          />
-          Feature brand on storefront home page
-        </label>
-        <label className="dash-checkbox-label">
-          <input
-            type="checkbox"
-            className="dash-checkbox"
-            checked={navLink}
-            onChange={(e) => setNavLink(e.target.checked)}
-            disabled={settingsSaving}
-            data-trace-id="PG-DASHBOARD-COLLAB-008::EL-CHECK-detail-nav-link"
-          />
-          Add link to brand page in storefront navbar
-        </label>
+        {/* "Feature brand on home page" and "Add link in navbar" were removed
+            (2026-07-24) — home-page features and navbar links are curated in
+            Storefront → Appearance, not per collaborator. The underlying
+            homeFeature/navLink settings are still sent unchanged on save. */}
 
         <h2 className="dash-card-title" style={{ marginTop: 24 }}>
           Revenue & operations

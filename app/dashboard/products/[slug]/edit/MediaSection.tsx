@@ -4,6 +4,7 @@ import React, { useRef, useState } from 'react';
 import {
   cloudinaryPreviewUrl,
   createProductMedia,
+  setProductMediaCover,
 } from '@/lib/catalog/api';
 import type { ProductMedia } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
@@ -34,6 +35,28 @@ export default function MediaSection({ productId, productName, media, onMediaCha
   const [pickerOpen, setPickerOpen] = useState(false);
   const [previewMedia, setPreviewMedia] = useState<ProductMedia | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [coverSaving, setCoverSaving] = useState<string | null>(null);
+
+  /** Promote one image to the cover thumbnail; the old cover joins the carousel. */
+  async function handleSetCover(m: ProductMedia) {
+    if (m.role === 'COVER' || m.variantId) return;
+    setError(null);
+    setCoverSaving(m.id);
+    try {
+      await setProductMediaCover(productId, m.id);
+      onMediaChange(
+        media.map((x) => ({
+          ...x,
+          role: x.id === m.id ? 'COVER' : x.variantId ? x.role : 'CAROUSEL',
+        })),
+      );
+    } catch (e) {
+      const err = e as ApiError;
+      setError(err.message || 'Failed to set the cover image.');
+    } finally {
+      setCoverSaving(null);
+    }
+  }
 
   async function handleDeviceUpload(file: File) {
     setError(null);
@@ -80,6 +103,10 @@ export default function MediaSection({ productId, productName, media, onMediaCha
       <h2 className="dash-card-title" style={{ marginTop: 0 }}>
         Product images
       </h2>
+      <p className="dash-help-text" style={{ marginTop: 0 }}>
+        The cover thumbnail is the one photo shoppers see in listings, the cart
+        and shared links. Every other photo shows inside the product carousel.
+      </p>
 
       {pickerOpen && (
         <GalleryPickerModal
@@ -123,6 +150,24 @@ export default function MediaSection({ productId, productName, media, onMediaCha
                 className="dash-help-text"
                 style={{ marginTop: 6, fontSize: 11, wordBreak: 'break-all' }}
               >
+                {m.role === 'COVER' ? (
+                  <strong style={{ display: 'block', color: 'var(--mr-dash-accent, #8a6d3b)' }}>
+                    Cover thumbnail
+                  </strong>
+                ) : m.variantId ? (
+                  <span style={{ display: 'block' }}>Variant image</span>
+                ) : (
+                  <button
+                    type="button"
+                    className="dash-btn-ghost"
+                    style={{ display: 'block', padding: '2px 0', fontSize: 11 }}
+                    disabled={coverSaving !== null}
+                    onClick={() => handleSetCover(m)}
+                    data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-set-cover-image@${m.id}`}
+                  >
+                    {coverSaving === m.id ? 'Setting…' : 'Set as cover'}
+                  </button>
+                )}
                 {m.galleryItemId ? 'From Gallery' : m.cloudinaryPublicId}
               </figcaption>
             </figure>

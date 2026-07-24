@@ -21,6 +21,41 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 89,
+    date: '2026-07-24',
+    area: 'Products',
+    summary:
+      'Each product now has one clear cover photo — the picture shoppers see in listings, the cart and shared links — and every other photo shows inside the product carousel. Open a product, and use "Set as cover" under any photo to change it.',
+  },
+  {
+    id: 88,
+    date: '2026-07-24',
+    area: 'Products',
+    summary:
+      'Product codes (SKUs) are now created for you from the product\'s category, brand, name and the variant you picked. Nobody types or edits them any more, and you can click a code to copy it for searching.',
+  },
+  {
+    id: 87,
+    date: '2026-07-24',
+    area: 'Products',
+    summary:
+      'The brand name now shows on the product list and on the storefront product page — it was blank before.',
+  },
+  {
+    id: 86,
+    date: '2026-07-24',
+    area: 'Collaborators',
+    summary:
+      'The brand slug on the new-collaborator form now follows the brand name as you type it, instead of freezing after the first letter. The "feature on home page" and "add to navbar" tick boxes were removed — those are set under Storefront.',
+  },
+  {
+    id: 85,
+    date: '2026-07-24',
+    area: 'Storefront',
+    summary:
+      'Fixed product pages on the shop showing "Something went wrong" instead of the product.',
+  },
+  {
     id: 84,
     date: '2026-07-24',
     area: 'Support',

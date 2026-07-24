@@ -48,6 +48,8 @@ interface BackendMedia {
   // Added for the Gallery module (specs/006-gallery-module, US3): NULL means
   // this row is a general product-level image, not scoped to a variant.
   variantId?: string | null;
+  /** 'COVER' | 'CAROUSEL' — absent on responses from an older API build. */
+  role?: string | null;
   url?: string | null;
   width: number | null;
   height: number | null;
@@ -116,6 +118,7 @@ function mapMedia(m: BackendMedia): ProductMedia {
     cloudinaryPublicId: m.cloudinaryPublicId,
     galleryItemId: m.galleryItemId ?? null,
     variantId: m.variantId ?? null,
+    role: m.role === 'COVER' ? 'COVER' : 'CAROUSEL',
     url: m.url ?? null,
     width: m.width,
     height: m.height,
@@ -421,7 +424,6 @@ export async function deleteCategory(id: string): Promise<void> {
 export async function createVariant(
   productId: string,
   data: {
-    sku: string;
     priceAmount: number;
     currency: string;
     /** global variant id -> free-typed value */
@@ -430,11 +432,12 @@ export async function createVariant(
     customValues?: Record<string, string>;
   },
 ): Promise<ProductVariant> {
+  // No `sku` in the body: the API derives it from the product's category,
+  // brand, name and this variant's values, and refuses to let it change.
   const raw = await apiFetch<BackendVariant>(`${ADMIN}/products/${productId}/variants`, {
     method: 'POST',
     auth: true,
     body: JSON.stringify({
-      sku: data.sku,
       values: data.values ?? {},
       custom_values: data.customValues ?? {},
       price_amount: data.priceAmount.toFixed(4),
@@ -555,5 +558,18 @@ export async function createProductMedia(
     auth: true,
     body: JSON.stringify(body),
   });
+  return mapMedia(raw);
+}
+
+/** Makes one image the product's cover thumbnail. The previous cover drops back
+ * into the carousel — there is always exactly one cover. */
+export async function setProductMediaCover(
+  productId: string,
+  mediaId: string,
+): Promise<ProductMedia> {
+  const raw = await apiFetch<BackendMedia>(
+    `${ADMIN}/products/${productId}/media/${mediaId}/cover`,
+    { method: 'PATCH', auth: true },
+  );
   return mapMedia(raw);
 }

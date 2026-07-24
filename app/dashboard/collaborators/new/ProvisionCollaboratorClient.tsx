@@ -62,6 +62,10 @@ export default function ProvisionCollaboratorClient() {
 
   const [mode, setMode] = useState<ProvisionMode>('invite');
 
+  // True once the admin has typed in the slug field themselves — before that the
+  // slug tracks the brand name on every keystroke.
+  const [slugEdited, setSlugEdited] = useState(false);
+
   const [form, setForm] = useState({
 
     email: '',
@@ -288,7 +292,10 @@ export default function ProvisionCollaboratorClient() {
 
                   brandName: e.target.value,
 
-                  brandSlug: f.brandSlug || slugify(e.target.value),
+                  // Keep mirroring the brand name until the admin types their
+                  // own slug. `f.brandSlug || …` froze it after the first
+                  // keystroke, so "Helya" shipped with the slug "h".
+                  brandSlug: slugEdited ? f.brandSlug : slugify(e.target.value),
 
                 }))
 
@@ -322,7 +329,10 @@ export default function ProvisionCollaboratorClient() {
 
             value={form.brandSlug}
 
-            onChange={(e) => setForm((f) => ({ ...f, brandSlug: e.target.value }))}
+            onChange={(e) => {
+              setSlugEdited(true);
+              setForm((f) => ({ ...f, brandSlug: e.target.value }));
+            }}
 
             pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
 
