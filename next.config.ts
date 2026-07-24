@@ -43,6 +43,7 @@ const nextConfig: NextConfig = {
       { source: "/inventory/receive", destination: "/dashboard/inventory/receive" },
       { source: "/inventory/warehouses", destination: "/dashboard/inventory/warehouses" },
       { source: "/analytics", destination: "/dashboard/analytics" },
+      { source: "/support", destination: "/dashboard/support" },
       { source: "/loyalty", destination: "/dashboard/loyalty" },
       { source: "/admin", destination: "/dashboard/admin" },
       { source: "/settings", destination: "/dashboard/settings" },
@@ -61,6 +62,7 @@ const nextConfig: NextConfig = {
       { source: "/collab/products/:id/edit", destination: "/dashboard/collab/products/:id/edit" },
       { source: "/collab/brand", destination: "/dashboard/collab/brand" },
       { source: "/collab/analytics", destination: "/dashboard/collab/analytics" },
+      { source: "/collab/support", destination: "/dashboard/collab/support" },
       { source: "/gallery", destination: "/dashboard/gallery" },
       { source: "/notifications", destination: "/dashboard/notifications" },
     ];

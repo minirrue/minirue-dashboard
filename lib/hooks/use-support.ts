@@ -7,7 +7,9 @@ import {
   apiSupportSend,
   apiSupportPresence,
   apiSupportSetPresence,
+  apiSupportUpload,
 } from '@/lib/api/support';
+import type { MessageAttachmentDto } from '@/lib/api/support';
 
 export const SUPPORT_KEYS = {
   conversations: (status?: string) => ['support', 'conversations', status ?? 'all'] as const,
@@ -34,10 +36,17 @@ export function useSupportThread(id: string | null) {
 export function useSendSupportMessage(id: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: string) => apiSupportSend(id, body),
+    mutationFn: ({ body, attachments }: { body: string; attachments?: MessageAttachmentDto[] }) =>
+      apiSupportSend(id, body, attachments),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: SUPPORT_KEYS.thread(id) });
     },
+  });
+}
+
+export function useSupportUpload() {
+  return useMutation({
+    mutationFn: (file: File) => apiSupportUpload(file),
   });
 }
 
@@ -52,7 +61,7 @@ export function useSupportPresence() {
 export function useSetPresence() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: apiSupportSetPresence,
+    mutationFn: (patch: { status?: string; replyTimeText?: string }) => apiSupportSetPresence(patch),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: SUPPORT_KEYS.presence() });
     },

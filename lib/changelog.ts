@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 69,
+    date: '2026-07-24',
+    area: 'Support',
+    summary:
+      'The customer support inbox is now reachable from the sidebar for support staff, admins and brand partners. Admins and super admins can set their own status (Online, Idle, Away, Offline) and write a short "typical reply time" note that shows to customers; support staff see the status but cannot change it. Everyone can now attach a photo to a reply — paste one from the clipboard or pick one from your device — and photos sent by customers or staff show up as a small preview you can click to see full size.',
+  },
+  {
     id: 68,
     date: '2026-07-24',
     area: 'Accounts',

@@ -37,6 +37,9 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   // Restore ADMIN_ONLY when it comes back.
   '/inventory': [Role.SUPERADMIN],
   '/analytics': ADMIN_AND_SUPPORT,
+  // Customer support inbox — staff/admin/superadmin handle it; collaborators
+  // get their own inbox at /collab/support instead.
+  '/support': ADMIN_AND_SUPPORT,
   '/loyalty': ADMIN_ONLY,
   '/settings': ADMIN_ONLY,
   '/info': STAFF_ROLES,
@@ -54,6 +57,7 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   '/collab/products': COLLAB_ROLES,
   '/collab/brand': COLLAB_ROLES,
   '/collab/analytics': COLLAB_ROLES,
+  '/collab/support': COLLAB_ROLES,
   // Gallery is per-account (either a staff/admin user or a collaborator, per
   // gallery-routes.md) — the same /dashboard/gallery screen and backend
   // routes serve both caller types, each auto-scoped to their own folders.

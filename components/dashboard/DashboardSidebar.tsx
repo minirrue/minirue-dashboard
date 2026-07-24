@@ -201,6 +201,7 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
       { label: 'My products', href: '/collab/products', icon: <IconPackage />, requiresCollabModule: 'PRODUCTS' },
       { label: 'Brand profile', href: '/collab/brand', icon: <IconPalette /> },
       { label: 'My analytics', href: '/collab/analytics', icon: <IconTrendingUp />, requiresCollabModule: 'ANALYTICS' },
+      { label: 'Support', href: '/collab/support', icon: <IconUsers /> },
     ],
   },
   {
@@ -230,6 +231,7 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
   {
     section: 'Operations',
     items: [
+      { label: 'Support', href: '/support', icon: <IconUsers /> },
       { label: 'Fulfillment', href: '/fulfillment', icon: <IconTruck /> },
       { label: 'Refunds', href: '/refunds', icon: <IconRefreshCcw /> },
       { label: 'Inventory', href: '/inventory', icon: <IconPackage />, maintenance: true },
