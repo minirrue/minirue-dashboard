@@ -1,20 +1,22 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { DashChatView, type Conversation, type Message, type MessageAttachment } from '@/components/DashChatView';
 import {
   useSupportConversations,
   useSupportThread,
   useSupportLiveSync,
-  useSendSupportMessage,
   useSupportPresence,
   useSetPresence,
   useSupportUpload,
   useSupportMarkRead,
+  SUPPORT_KEYS,
 } from '@/lib/hooks/use-support';
 import { useUser } from '@/lib/hooks/use-auth';
 import { Role } from '@/lib/auth/role';
-import type { PresenceDto } from '@/lib/api/support';
+import { apiSupportSend } from '@/lib/api/support';
+import type { PresenceDto, MessageAttachmentDto } from '@/lib/api/support';
 import type { ConversationDto, MessageDto } from '@/lib/api/support';
 import { useAdminNotifications } from '@/components/dashboard/notifications/useAdminNotifications';
 
@@ -86,6 +88,21 @@ function toMessage(dto: MessageDto): Message {
     day: dayLabel(dto.createdAt),
     attachments: dto.attachments as MessageAttachment[] | undefined,
   };
+}
+
+/** A locally-tracked outgoing reply that appears in the thread instantly,
+ * before (and independently of) the server round-trip. Keyed to a
+ * conversation so switching threads never leaks pending bubbles across. */
+interface PendingOutgoing {
+  tempId: string;
+  conversationId: string;
+  body: string;
+  attachments?: MessageAttachmentDto[];
+  status: 'sending' | 'sent' | 'failed';
+  /** The real message id once the POST returns — used to drop this pending
+   * item the moment the same message arrives via the ~5s poll (no duplicate). */
+  realId?: string;
+  createdAt: string;
 }
 
 export interface SupportInboxClientProps {
@@ -163,12 +180,13 @@ function PresenceControls({ presence }: { presence: PresenceDto | undefined }) {
 export default function SupportInboxClient({ showPresence = false }: SupportInboxClientProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [pending, setPending] = useState<PendingOutgoing[]>([]);
+  const qc = useQueryClient();
   const { data: conversationDtos, refetch: refetchConversations } = useSupportConversations();
   const { data: threadData, refetch: refetchThread } = useSupportThread(activeId);
   // Single unified live loop: one timer refreshes both the list and the open
   // thread together (replaces the two separate query intervals).
   useSupportLiveSync(activeId);
-  const sendMessage = useSendSupportMessage(activeId ?? '');
   const { data: presence } = useSupportPresence();
   const uploadImage = useSupportUpload();
   const { data: user } = useUser();
@@ -220,8 +238,73 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
 
   const canEditPresence = user?.role === Role.SUPERADMIN || user?.role === Role.ADMIN;
 
+  // Fires the POST for a pending item and moves it to 'sent' (recording the
+  // real id, so the poll can dedup it) or 'failed'. Uses the item's OWN
+  // conversationId — never the current activeId — so a retry after switching
+  // threads still targets the right conversation.
+  const postPending = (item: PendingOutgoing) => {
+    apiSupportSend(item.conversationId, item.body, item.attachments)
+      .then((dto: MessageDto) => {
+        setPending((prev) =>
+          prev.map((p) => (p.tempId === item.tempId ? { ...p, status: 'sent', realId: dto.id } : p)),
+        );
+        void qc.invalidateQueries({ queryKey: SUPPORT_KEYS.thread(item.conversationId) });
+        void qc.invalidateQueries({ queryKey: ['support', 'conversations'] });
+      })
+      .catch(() => {
+        setPending((prev) => prev.map((p) => (p.tempId === item.tempId ? { ...p, status: 'failed' } : p)));
+      });
+  };
+
+  const sendOptimistic = (conversationId: string, body: string, attachments?: MessageAttachmentDto[]) => {
+    const item: PendingOutgoing = {
+      tempId: `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      conversationId,
+      body,
+      attachments,
+      status: 'sending',
+      createdAt: new Date().toISOString(),
+    };
+    setPending((prev) => [...prev, item]);
+    postPending(item);
+  };
+
+  const retryPending = (tempId: string) => {
+    const item = pending.find((p) => p.tempId === tempId);
+    if (!item) return;
+    setPending((prev) => prev.map((p) => (p.tempId === tempId ? { ...p, status: 'sending' } : p)));
+    postPending({ ...item, status: 'sending' });
+  };
+
   const conversations = (conversationDtos ?? []).map(toConversation);
-  const messages = (threadData?.messages ?? []).map(toMessage);
+
+  // Display = server messages CONCAT this conversation's pending items that
+  // aren't yet in the server list. Dedup rule: once a pending item has a
+  // realId AND that id is present in the polled server messages, drop it —
+  // the server copy takes over with no flicker and no duplicate.
+  const messages = useMemo<Message[]>(() => {
+    const serverMessages = threadData?.messages ?? [];
+    const serverIds = new Set(serverMessages.map((m) => m.id));
+    const senderName = user?.name ?? 'MiniRue';
+    const activePending = pending.filter(
+      (p) => p.conversationId === activeId && !(p.realId && serverIds.has(p.realId)),
+    );
+    return [
+      ...serverMessages.map(toMessage),
+      ...activePending.map<Message>((p) => ({
+        from: 'agent',
+        name: senderName,
+        text: p.body,
+        time: new Date(p.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        day: dayLabel(p.createdAt),
+        attachments: p.attachments as MessageAttachment[] | undefined,
+        status: p.status,
+        onRetry: p.status === 'failed' ? () => retryPending(p.tempId) : undefined,
+      })),
+    ];
+    // retryPending is stable enough for render; pending drives the recompute.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadData?.messages, pending, activeId, user?.name]);
 
   const headerSlot = showPresence
     ? canEditPresence
@@ -240,7 +323,7 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
       messages={messages}
       onSend={(text, attachments) => {
         if (!activeId) return;
-        sendMessage.mutate({ body: text, attachments });
+        sendOptimistic(activeId, text, attachments);
       }}
       onUploadImage={async (file) => {
         const result = await uploadImage.mutateAsync(file);

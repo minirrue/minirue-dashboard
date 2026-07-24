@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 79,
+    date: '2026-07-24',
+    area: 'Support',
+    summary:
+      'When you reply in the support inbox, your message now appears instantly with a "Sending…" note, instead of waiting for the server. It turns into a small check once it goes through, and if it fails to send you\'ll see a red "Failed" label with a "Retry" button right next to it — so you always know exactly where each reply stands.',
+  },
+  {
     id: 78,
     date: '2026-07-24',
     area: 'Support',

@@ -19,6 +19,13 @@ export interface Message {
    * read-only / legacy callers that only have a time string still work. */
   day?: string
   attachments?: MessageAttachment[]
+  /** Optimistic-send lifecycle for the team's own (right-side) messages.
+   * 'sending' while the POST is in flight, 'sent' once it succeeds (until the
+   * poll replaces it with the real message), 'failed' if the POST errored.
+   * Absent on server-confirmed and incoming (customer) messages. */
+  status?: 'sending' | 'sent' | 'failed'
+  /** Re-sends a failed optimistic message. Wired only when status==='failed'. */
+  onRetry?: () => void
 }
 
 export interface ConversationContact {
@@ -636,6 +643,34 @@ const STYLES = `
 }
 .mrc-msg[data-side="agent"] .mrc-meta { text-align: right; }
 
+/* ── Optimistic send status (team/right-side bubbles only) ── */
+.mrc-status {
+  margin-top: 4px;
+  padding: 0 6px;
+  font-size: 10.5px;
+  line-height: 1.2;
+  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.mrc-status[data-status="sending"] { color: var(--mr-ink-400); opacity: 0.85; }
+.mrc-status[data-status="sent"] { color: var(--mr-ink-400); }
+.mrc-status[data-status="sent"] svg { display: block; }
+.mrc-status[data-status="failed"] { color: var(--mr-crimson-500); font-weight: 500; }
+.mrc-retry {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--mr-crimson-500);
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.mrc-retry:hover { color: var(--mr-crimson-600, var(--mr-crimson-500)); }
+
 .mrc-thread-empty {
   flex: 1;
   display: flex;
@@ -1088,6 +1123,21 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
                         </div>
                         {lastOfGroup && (
                           <div className="mrc-meta">{msg.name} · {msg.time}</div>
+                        )}
+                        {isAgent && msg.status && (
+                          <div className="mrc-status" data-status={msg.status}>
+                            {msg.status === 'sending' && <span>Sending…</span>}
+                            {msg.status === 'sent' && (
+                              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-label="Sent">
+                                <path d="M20 6L9 17l-5-5" />
+                              </svg>
+                            )}
+                            {msg.status === 'failed' && (
+                              <span>
+                                Failed · <button type="button" className="mrc-retry" onClick={msg.onRetry}>Retry</button>
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
