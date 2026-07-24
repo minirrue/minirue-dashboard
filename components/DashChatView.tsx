@@ -16,6 +16,12 @@ export interface Message {
   attachments?: MessageAttachment[]
 }
 
+export interface ConversationContact {
+  name?: string
+  email?: string
+  phone?: string
+}
+
 export interface Conversation {
   id: string
   name: string
@@ -24,6 +30,10 @@ export interface Conversation {
   unread: number
   avatar: string
   status: 'online' | 'away' | 'offline'
+  /** Full contact info the customer provided (guest checkout details, or
+   * whatever is known for a logged-in customer). Revealed on tap in the
+   * thread header. Blank fields are omitted from display. */
+  contact?: ConversationContact
 }
 
 export interface DashChatViewProps {
@@ -53,6 +63,7 @@ interface PendingAttachment {
 export function DashChatView({ conversations, activeId, onSelect, messages, onSend, headerSlot, onUploadImage }: DashChatViewProps) {
   const [input, setInput] = useState('')
   const [pending, setPending] = useState<PendingAttachment[]>([])
+  const [contactOpen, setContactOpen] = useState(false)
   const { mobile } = useBreakpoint()
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -94,6 +105,10 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
       bottomRef.current.scrollTop = bottomRef.current.scrollHeight
     }
   }, [activeId, messages.length])
+
+  useEffect(() => {
+    setContactOpen(false)
+  }, [activeId])
 
   const send = () => {
     const txt = input.trim()
@@ -156,9 +171,14 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
                     <span style={{ position: 'absolute', bottom: 0, right: 0, width: 9, height: 9, borderRadius: '50%', background: statusColor[c.status] ?? '#9E9E9E', border: '2px solid var(--mr-dash-surface)' }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                      <span style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: 13, fontWeight: c.unread ? 700 : 500, color: 'var(--mr-ink-900)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 130 }}>{c.name}</span>
-                      <span style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: 10, color: 'var(--mr-ink-400)', flexShrink: 0 }}>{c.time}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 3 }}>
+                      <span style={{
+                        fontFamily: 'Inter Tight, sans-serif', fontSize: 12, fontWeight: c.unread ? 700 : 500,
+                        color: 'var(--mr-ink-900)', lineHeight: 1.3,
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden', wordBreak: 'break-word',
+                      }}>{c.name}</span>
+                      <span style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: 10, color: 'var(--mr-ink-400)', flexShrink: 0, paddingTop: 1 }}>{c.time}</span>
                     </div>
                     <div style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: 12, color: c.unread ? 'var(--mr-ink-700)' : 'var(--mr-ink-400)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.preview}</div>
                   </div>
@@ -185,20 +205,58 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
             )}
             {convo && (
               <>
-                <div style={{ position: 'relative', flexShrink: 0 }}>
-                  <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--mr-gold-500)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Cormorant Garamond, serif', fontSize: 13, color: 'var(--mr-cream-100)' }}>{convo.avatar}</div>
-                  <span style={{ position: 'absolute', bottom: 0, right: 0, width: 9, height: 9, borderRadius: '50%', background: statusColor[convo.status] ?? '#9E9E9E', border: '2px solid var(--mr-dash-surface)' }} />
-                </div>
-                <div>
-                  <div style={{ fontFamily: 'Inter Tight, sans-serif', fontWeight: 600, fontSize: 14, color: 'var(--mr-ink-900)' }}>{convo.name}</div>
-                  <div style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: 11, color: 'var(--mr-ink-400)', textTransform: 'capitalize' }}>{convo.status}</div>
-                </div>
+                <button
+                  onClick={() => setContactOpen(o => !o)}
+                  aria-expanded={contactOpen}
+                  aria-label="Show customer contact details"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    background: 'none', border: 0, padding: 0, cursor: 'pointer', textAlign: 'left',
+                  }}
+                >
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--mr-gold-500)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Cormorant Garamond, serif', fontSize: 13, color: 'var(--mr-cream-100)' }}>{convo.avatar}</div>
+                    <span style={{ position: 'absolute', bottom: 0, right: 0, width: 9, height: 9, borderRadius: '50%', background: statusColor[convo.status] ?? '#9E9E9E', border: '2px solid var(--mr-dash-surface)' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: 'Inter Tight, sans-serif', fontWeight: 600, fontSize: 14, color: 'var(--mr-ink-900)' }}>{convo.name}</div>
+                    <div style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: 11, color: 'var(--mr-ink-400)', textTransform: 'capitalize' }}>{convo.status}</div>
+                  </div>
+                </button>
               </>
             )}
             {headerSlot && (
               <div style={{ marginLeft: 'auto' }}>{headerSlot}</div>
             )}
           </div>
+
+          {convo && contactOpen && (
+            <div style={{ padding: '12px 24px', borderBottom: '1px solid var(--mr-dash-hair)', background: 'var(--mr-dash-sub)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: 11, fontWeight: 600, color: 'var(--mr-ink-400)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Contact details
+              </div>
+              {(() => {
+                const fields = [
+                  { label: 'Name', value: convo.contact?.name },
+                  { label: 'Email', value: convo.contact?.email },
+                  { label: 'Phone', value: convo.contact?.phone },
+                ].filter((f): f is { label: string; value: string } => Boolean(f.value))
+                if (fields.length === 0) {
+                  return (
+                    <div style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: 12.5, color: 'var(--mr-ink-400)' }}>
+                      No contact details on file for this conversation.
+                    </div>
+                  )
+                }
+                return fields.map(f => (
+                  <div key={f.label} style={{ display: 'flex', gap: 8, fontFamily: 'Inter Tight, sans-serif', fontSize: 12.5, color: 'var(--mr-ink-900)' }}>
+                    <span style={{ color: 'var(--mr-ink-400)', minWidth: 48 }}>{f.label}</span>
+                    <span>{f.value}</span>
+                  </div>
+                ))
+              })()}
+            </div>
+          )}
 
           {/* Messages */}
           <div ref={bottomRef} style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12, scrollbarWidth: 'none' }}>

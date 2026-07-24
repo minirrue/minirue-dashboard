@@ -8,8 +8,9 @@ import {
   apiSupportPresence,
   apiSupportSetPresence,
   apiSupportUpload,
+  apiSupportMarkRead,
 } from '@/lib/api/support';
-import type { MessageAttachmentDto } from '@/lib/api/support';
+import type { ConversationDto, MessageAttachmentDto } from '@/lib/api/support';
 
 export const SUPPORT_KEYS = {
   conversations: (status?: string) => ['support', 'conversations', status ?? 'all'] as const,
@@ -40,6 +41,27 @@ export function useSendSupportMessage(id: string) {
       apiSupportSend(id, body, attachments),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: SUPPORT_KEYS.thread(id) });
+    },
+  });
+}
+
+/** Marks a conversation read for the team, optimistically zeroing its
+ * unread badge in the cached conversation list so it clears the instant
+ * the conversation is opened, then reconciles with the server. */
+export function useSupportMarkRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiSupportMarkRead(id),
+    onMutate: (id: string) => {
+      const now = new Date().toISOString();
+      qc.setQueriesData<ConversationDto[]>(
+        { queryKey: ['support', 'conversations'] },
+        (old) =>
+          old?.map((c) => (c.id === id ? { ...c, teamReadAt: now } : c)),
+      );
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ['support', 'conversations'] });
     },
   });
 }

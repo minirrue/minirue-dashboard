@@ -5,8 +5,11 @@ export interface ConversationDto {
   type: 'ITEM' | 'GENERAL';
   status: 'OPEN' | 'PENDING' | 'RESOLVED' | 'CLOSED';
   customerId: string | null;
+  customerEmail?: string | null;
   guestName: string | null;
   guestEmail: string | null;
+  guestPhoneCountry?: string | null;
+  guestPhone?: string | null;
   collaboratorId: string | null;
   productId: string | null;
   subjectSnapshot: Record<string, unknown> | null;
@@ -25,6 +28,7 @@ export interface MessageDto {
   conversationId: string;
   senderType: 'CUSTOMER' | 'STAFF' | 'ADMIN' | 'COLLAB' | 'SYSTEM';
   senderUserId: string | null;
+  senderName?: string | null;
   body: string;
   attachments?: MessageAttachmentDto[];
   createdAt: string;

@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 70,
+    date: '2026-07-24',
+    area: 'Support',
+    summary:
+      'Polished the customer support inbox. Messages now show the real sender\'s name instead of a placeholder. Conversation names in the list no longer get cut off. Tap a customer\'s name at the top of a conversation to see the contact details they gave us — email and phone. And the unread "1" badge now clears the moment you open a conversation, instead of sticking around.',
+  },
+  {
     id: 69,
     date: '2026-07-24',
     area: 'Support',

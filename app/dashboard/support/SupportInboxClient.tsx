@@ -9,6 +9,7 @@ import {
   useSupportPresence,
   useSetPresence,
   useSupportUpload,
+  useSupportMarkRead,
 } from '@/lib/hooks/use-support';
 import { useUser } from '@/lib/hooks/use-auth';
 import { Role } from '@/lib/auth/role';
@@ -26,6 +27,11 @@ function initials(name: string): string {
   );
 }
 
+function guestPhoneDisplay(dto: ConversationDto): string | undefined {
+  if (!dto.guestPhone) return undefined;
+  return dto.guestPhoneCountry ? `${dto.guestPhoneCountry} ${dto.guestPhone}` : dto.guestPhone;
+}
+
 function toConversation(dto: ConversationDto): Conversation {
   const name = dto.guestName ?? dto.customerId ?? 'Customer';
   const unread = dto.teamReadAt && dto.teamReadAt >= dto.lastMessageAt ? 0 : 1;
@@ -37,13 +43,19 @@ function toConversation(dto: ConversationDto): Conversation {
     unread,
     avatar: initials(name),
     status: dto.status === 'OPEN' ? 'online' : dto.status === 'PENDING' ? 'away' : 'offline',
+    contact: {
+      name: dto.guestName ?? undefined,
+      email: dto.guestEmail ?? dto.customerEmail ?? undefined,
+      phone: guestPhoneDisplay(dto),
+    },
   };
 }
 
 function toMessage(dto: MessageDto): Message {
+  const isCustomer = dto.senderType === 'CUSTOMER';
   return {
-    from: dto.senderType === 'CUSTOMER' ? 'cx' : 'agent',
-    name: dto.senderType === 'CUSTOMER' ? 'Customer' : 'Sophie M.',
+    from: isCustomer ? 'cx' : 'agent',
+    name: dto.senderName ?? (isCustomer ? 'Customer' : 'MiniRue'),
     text: dto.body,
     time: new Date(dto.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     attachments: dto.attachments as MessageAttachment[] | undefined,
@@ -130,6 +142,7 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   const { data: presence } = useSupportPresence();
   const uploadImage = useSupportUpload();
   const { data: user } = useUser();
+  const markRead = useSupportMarkRead();
 
   const canEditPresence = user?.role === Role.SUPERADMIN || user?.role === Role.ADMIN;
 
@@ -146,7 +159,10 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
     <DashChatView
       conversations={conversations}
       activeId={activeId}
-      onSelect={(id) => setActiveId(id || null)}
+      onSelect={(id) => {
+        setActiveId(id || null);
+        if (id) markRead.mutate(id);
+      }}
       messages={messages}
       onSend={(text, attachments) => {
         if (!activeId) return;
