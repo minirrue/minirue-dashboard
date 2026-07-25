@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 106,
+    date: '2026-07-25',
+    area: 'Customers',
+    summary:
+      'Fixed a customer address being saved twice — once as default and once not — while showing an error. If the connection dropped after saving, the app retried and saved a second copy. It no longer retries saves, the server ignores a repeat of the same address, and existing duplicates have been cleaned up.',
+  },
+  {
     id: 105,
     date: '2026-07-25',
     area: 'Collaborators',

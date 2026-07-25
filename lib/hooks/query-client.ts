@@ -10,8 +10,11 @@ export function createQueryClient() {
         retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       },
       mutations: {
-        retry: 1,
-        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+        // NEVER retry a mutation. A write is not idempotent, so replaying one
+        // whose response was merely lost performs it twice — the storefront had
+        // exactly this bug, duplicating a customer's address on every save whose
+        // response went missing.
+        retry: 0,
       },
       dehydrate: {
         shouldDehydrateQuery: (query) =>
