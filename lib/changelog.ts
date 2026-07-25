@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 103,
+    date: '2026-07-25',
+    area: 'Media',
+    summary:
+      'Every photo you upload now opens a crop window first — Gallery, product photos, home page slides, journal art, your brand logo and your own profile picture, for admins and collaborators alike. Pick a ready-made shape (wide 16:9 or 4:3, square, portrait 3:4, 4:5 or 9:16) or drag a free crop with no fixed shape. Documents are left alone: support attachments, refund evidence and order receipts upload untouched so nothing can be trimmed out of a record.',
+  },
+  {
     id: 102,
     date: '2026-07-25',
     area: 'Sign in',

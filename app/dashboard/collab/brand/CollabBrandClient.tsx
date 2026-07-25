@@ -29,6 +29,7 @@ import {
 } from '@/lib/api/collab-portal';
 
 import type { ApiError } from '@/lib/api/client';
+import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 
 
 
@@ -118,9 +119,17 @@ export default function CollabBrandClient() {
 
 
 
-  const onLogo = async (file: File) => {
+  const cropImage = useImageCrop();
+
+  const onLogo = async (rawFile: File) => {
 
     setError(null);
+
+    // A brand logo is square on the storefront, so the cropper opens on 1:1 —
+    // the collaborator can still switch to a free crop or any other ratio.
+    const file = await cropImage(rawFile, { title: 'Crop brand logo', initialAspect: 1 });
+
+    if (!file) return;
 
     setLogoUploading(true);
 

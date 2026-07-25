@@ -6,6 +6,7 @@ import { DashboardShell } from '@/components/dashboard';
 import AccessDeniedPanel from '@/components/dashboard/AccessDeniedPanel';
 import MaintenancePanel from '@/components/dashboard/MaintenancePanel';
 import ActingAsBanner from '@/components/dashboard/ActingAsBanner';
+import ImageCropProvider from '@/components/dashboard/ImageCropProvider';
 import { getAccessToken } from '@/lib/auth/tokens';
 import {
   canAccessDashboardRoute,
@@ -101,6 +102,9 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
   const shellTitle = titleFromSegment(pathSegments[pathSegments.length - 1] ?? 'overview');
 
   return (
+    // Wraps the whole dashboard so every upload screen — admin, super admin and
+    // collaborator alike — shares one crop step before an image is sent.
+    <ImageCropProvider>
     <DashboardShell
       activePath={activePath}
       userName={userName}
@@ -123,5 +127,6 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
         children
       )}
     </DashboardShell>
+    </ImageCropProvider>
   );
 }

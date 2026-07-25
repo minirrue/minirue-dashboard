@@ -6,6 +6,7 @@ import type { ApiError } from '@/lib/api/client';
 import type { GalleryItem } from '@/lib/gallery/types';
 import EntityPicker from '../pickers/EntityPicker';
 import GalleryPickerModal, { uploadDeviceFileToGallery } from '@/components/dashboard/GalleryPickerModal';
+import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 
 /** True when the admin has typed editorial copy or attached an image that
  * would be silently thrown away by switching into product mode (product
@@ -25,6 +26,7 @@ export default function JournalEditor({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cropImage = useImageCrop();
 
   function handleModeChange(mode: JournalSection['mode']) {
     if (mode === 'product' && section.mode === 'editorial' && hasEditorialContent(section)) {
@@ -42,7 +44,9 @@ export default function JournalEditor({
     setUploadError(null);
     setUploading(true);
     try {
-      const item: GalleryItem = await uploadDeviceFileToGallery(file, section.title || undefined);
+      const cropped = await cropImage(file, { title: `Crop ${file.name}` });
+      if (!cropped) return;
+      const item: GalleryItem = await uploadDeviceFileToGallery(cropped, section.title || undefined);
       onChange({ ...section, imageGalleryItemId: item.id });
     } catch (e) {
       const err = e as ApiError;

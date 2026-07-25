@@ -11,6 +11,7 @@ import RoleBadge from '@/components/dashboard/RoleBadge';
 import DataResetPanel from '@/components/dashboard/DataResetPanel';
 import SuperAdminPanel from '@/components/dashboard/SuperAdminPanel';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 
 function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => void }) {
   const { data: user, isLoading } = useUser();
@@ -42,14 +43,19 @@ function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => void }) {
     }
   };
 
+  const cropImage = useImageCrop();
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    // Avatars render as a circle, so the cropper opens square; the free crop
+    // and every other ratio are still available.
+    const cropped = await cropImage(file, { title: 'Crop your photo', initialAspect: 1 });
+    if (!cropped) return;
     setUploadingAvatar(true);
     setAvatarError(null);
     try {
-      const updated = await apiUploadMyAvatar(file);
+      const updated = await apiUploadMyAvatar(cropped);
       queryClient.setQueryData(['auth', 'me'], updated);
     } catch (err) {
       setAvatarError((err as ApiError).message ?? 'Failed to upload avatar');
@@ -62,10 +68,17 @@ function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => void }) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    // SVG logos are vector — cropping would rasterise them, so they pass
+    // straight through; raster logos get the same crop step as everything else.
+    const cropped =
+      file.type === 'image/svg+xml'
+        ? file
+        : await cropImage(file, { title: 'Crop shop logo' });
+    if (!cropped) return;
     setUploadingLogo(true);
     setAvatarError(null);
     try {
-      await apiUploadBrandLogo(file);
+      await apiUploadBrandLogo(cropped);
       onLogoUploaded();
     } catch (err) {
       setAvatarError((err as ApiError).message ?? 'Failed to upload brand logo');

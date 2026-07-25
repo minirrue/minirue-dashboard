@@ -14,6 +14,7 @@ import {
 import type { GalleryFolder, GalleryItem } from '@/lib/gallery/types';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 
 const TRACE = 'PG-DASHBOARD-GAL-001';
 
@@ -192,6 +193,7 @@ function UploadDropzone({ folderId, onUploaded }: UploadDropzoneProps) {
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const cropImage = useImageCrop();
 
   const upload = useCallback(
     async (files: FileList | File[]) => {
@@ -199,7 +201,11 @@ function UploadDropzone({ folderId, onUploaded }: UploadDropzoneProps) {
       setUploading(true);
       try {
         for (const file of Array.from(files)) {
-          const item = await uploadItem(folderId, file);
+          // Crop step first — same modal and presets as every other upload.
+          // Cancelling the crop skips that file rather than uploading it raw.
+          const cropped = await cropImage(file, { title: `Crop ${file.name}` });
+          if (!cropped) continue;
+          const item = await uploadItem(folderId, cropped);
           onUploaded(item);
         }
       } catch (e) {
@@ -209,7 +215,7 @@ function UploadDropzone({ folderId, onUploaded }: UploadDropzoneProps) {
         setUploading(false);
       }
     },
-    [folderId, onUploaded],
+    [folderId, onUploaded, cropImage],
   );
 
   return (

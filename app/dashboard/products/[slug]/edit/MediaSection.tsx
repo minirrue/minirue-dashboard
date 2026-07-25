@@ -13,6 +13,7 @@ import GalleryPickerModal, {
 } from '@/components/dashboard/GalleryPickerModal';
 import type { GalleryItem } from '@/lib/gallery/types';
 import { ImagePreviewModal } from '@/components/dashboard/ImagePreviewModal';
+import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 
 interface Props {
   productId: string;
@@ -36,6 +37,7 @@ export default function MediaSection({ productId, productName, media, onMediaCha
   const [previewMedia, setPreviewMedia] = useState<ProductMedia | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [coverSaving, setCoverSaving] = useState<string | null>(null);
+  const cropImage = useImageCrop();
 
   /** Promote one image to the cover thumbnail; the old cover joins the carousel. */
   async function handleSetCover(m: ProductMedia) {
@@ -65,7 +67,11 @@ export default function MediaSection({ productId, productName, media, onMediaCha
       // Device uploads still land in the user's own gallery — not
       // gallery-invisible — per spec Story 2, Acceptance Scenario 3.
       // Folder is named exactly after this product, not a shared bucket.
-      const item: GalleryItem = await uploadDeviceFileToGallery(file, productName);
+      // Crop before upload — product photos share the app-wide crop step so a
+      // cover and its carousel siblings can be framed consistently.
+      const cropped = await cropImage(file, { title: `Crop ${file.name}` });
+      if (!cropped) return;
+      const item: GalleryItem = await uploadDeviceFileToGallery(cropped, productName);
       const asset = await createProductMedia(productId, {
         galleryItemId: item.id,
         sortOrder: media.length,

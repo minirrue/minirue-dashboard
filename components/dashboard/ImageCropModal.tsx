@@ -27,10 +27,14 @@ export interface CropPreset {
 }
 
 export const CROP_PRESETS: CropPreset[] = [
+  // Free first: no fixed ratio, drag any shape you like.
   { label: 'Free', aspect: undefined },
   { label: 'Landscape 16:9', aspect: 16 / 9 },
-  { label: 'Portrait 3:4', aspect: 3 / 4 },
+  { label: 'Landscape 4:3', aspect: 4 / 3 },
   { label: 'Square 1:1', aspect: 1 },
+  { label: 'Portrait 3:4', aspect: 3 / 4 },
+  { label: 'Portrait 4:5', aspect: 4 / 5 },
+  { label: 'Portrait 9:16', aspect: 9 / 16 },
 ];
 
 function centeredCrop(width: number, height: number, aspect?: number): Crop {
