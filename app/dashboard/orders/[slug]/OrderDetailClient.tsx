@@ -184,6 +184,17 @@ export default function OrderDetailClient({ id }: { id: string }) {
           </Link>
           <h1 className="dash-page-title" style={{ overflowWrap: 'anywhere' }}>{formatOrderRef(order)}</h1>
           <span style={{ color: 'var(--mr-fg-4)', fontSize: 13 }}>{order.orderNumber}</span>
+          {/* The reverse of the link on the customer page. A guest/manual order has
+              no account, so there is nothing to link to. */}
+          {order.userId && (
+            <Link
+              href={`/customers/${order.userId}`}
+              className="dash-btn-ghost"
+              style={{ fontSize: 13 }}
+            >
+              View customer →
+            </Link>
+          )}
           <OrderStatusBadge status={order.status} />
         </div>
         <OrderActions
@@ -264,6 +275,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
             <table className="dash-table">
               <thead>
                 <tr>
+                  <th style={{ width: 44 }} aria-label="Image" />
                   <th>Product</th>
                   <th>Brand</th>
                   <th>Size</th>
@@ -275,6 +287,38 @@ export default function OrderDetailClient({ id }: { id: string }) {
               <tbody>
                 {items.map((item) => (
                   <tr key={item.id}>
+                    {/* The thumbnail is what makes two orders distinguishable at
+                        a glance; the table was text-only before. */}
+                    <td>
+                      {item.productSnapshot.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.productSnapshot.imageUrl}
+                          alt=""
+                          width={36}
+                          height={45}
+                          style={{
+                            width: 36,
+                            height: 45,
+                            objectFit: 'cover',
+                            borderRadius: 4,
+                            border: '1px solid var(--mr-dash-border, #e5e0d8)',
+                            display: 'block',
+                          }}
+                        />
+                      ) : (
+                        <div
+                          aria-hidden
+                          style={{
+                            width: 36,
+                            height: 45,
+                            borderRadius: 4,
+                            border: '1px solid var(--mr-dash-border, #e5e0d8)',
+                            background: 'var(--mr-dash-sub, #f4f1ec)',
+                          }}
+                        />
+                      )}
+                    </td>
                     <td>{item.productSnapshot.name}</td>
                     <td style={{ color: 'var(--mr-fg-3)' }}>{item.productSnapshot.brand}</td>
                     <td>{item.productSnapshot.sizeMl ? `${item.productSnapshot.sizeMl} ml` : '—'}</td>
@@ -284,7 +328,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
                   </tr>
                 ))}
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'right', fontWeight: 600, color: 'var(--mr-fg)' }}>
+                  <td colSpan={6} style={{ textAlign: 'right', fontWeight: 600, color: 'var(--mr-fg)' }}>
                     Total
                   </td>
                   <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--mr-fg)' }}>

@@ -19,6 +19,8 @@ export interface ProductSnapshot {
   sizeMl: number;
   bottleType: string;
   sku: string;
+  /** Product cover, resolved per line by the API (backend 0.38.0). */
+  imageUrl?: string | null;
 }
 
 export interface OrderItem {

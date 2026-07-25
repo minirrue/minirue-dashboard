@@ -739,10 +739,24 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                     }}
                   >
                     <div>
-                      <strong style={{ color: 'var(--mr-fg)' }}>{formatOrderRef(o)}</strong>
-                      <span style={{ color: 'var(--mr-fg-4)', fontSize: 12, marginLeft: 8 }}>
-                        {o.orderNumber}
-                      </span>
+                      {/* Straight through to the order. Reading an order number
+                          off this list and pasting it into the Orders search is
+                          the sort of friction that adds up all day. */}
+                      <Link
+                        href={`/orders/${o.id}`}
+                        style={{ color: 'var(--mr-fg)', textDecoration: 'none' }}
+                      >
+                        <strong style={{ color: 'var(--mr-fg)' }}>{formatOrderRef(o)}</strong>
+                        <span style={{ color: 'var(--mr-fg-4)', fontSize: 12, marginLeft: 8 }}>
+                          {o.orderNumber}
+                        </span>
+                        <span
+                          aria-hidden
+                          style={{ color: 'var(--mr-fg-4)', fontSize: 12, marginLeft: 8 }}
+                        >
+                          →
+                        </span>
+                      </Link>
                       <div style={{ fontSize: 12, marginTop: 2 }}>
                         {o.status} · {formatDate(o.createdAt)}
                       </div>

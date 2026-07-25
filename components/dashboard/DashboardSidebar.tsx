@@ -241,7 +241,9 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
     section: 'Insights',
     items: [
       { label: 'Analytics', href: '/analytics', icon: <IconTrendingUp /> },
-      { label: 'Loyalty', href: '/loyalty', icon: <IconStar /> },
+      // Marked maintenance alongside Inventory: the module is not in service, and
+      // the storefront's Loyalty tab is hidden to match.
+      { label: 'Loyalty', href: '/loyalty', icon: <IconStar />, maintenance: true },
     ],
   },
   {
