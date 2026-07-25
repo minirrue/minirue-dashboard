@@ -21,6 +21,90 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 118,
+    date: '2026-07-25',
+    area: 'Orders',
+    summary:
+      'Refunding an order now marks the order itself as Refunded — on the order, in its history, and in the orders list. Before, only the refund record changed and the order still looked delivered, so refunded money never showed up in Analytics either.',
+  },
+  {
+    id: 117,
+    date: '2026-07-25',
+    area: 'Orders',
+    summary:
+      'Orders now show the product photo — in the orders table and on a customer’s own order pages — so you can tell two orders apart at a glance. You can also jump straight from a customer to any of their orders and back again.',
+  },
+  {
+    id: 116,
+    date: '2026-07-25',
+    area: 'Settings',
+    summary:
+      'You can now set the shipping fee, and a basket total above which shipping is free, in Settings. Until now the fee was fixed in the code and could only be changed by a developer.',
+  },
+  {
+    id: 115,
+    date: '2026-07-25',
+    area: 'Settings',
+    summary:
+      'The store name is now shown as fixed and cannot be edited. It appears on order numbers, emails and receipts, so a typo there would follow every order — editing it never actually did anything, and now it says so.',
+  },
+  {
+    id: 114,
+    date: '2026-07-25',
+    area: 'Sign in',
+    summary:
+      'The dashboard and the shop now keep separate sign-ins. Signing into one no longer signs you out of the other, and signing in as a customer can no longer knock you out of your admin session. You will need to sign into the dashboard once after this update.',
+  },
+  {
+    id: 113,
+    date: '2026-07-25',
+    area: 'Sign in',
+    summary:
+      'An expired session no longer makes the page reload over and over. It now takes you to the sign-in screen once, like signing out does.',
+  },
+  {
+    id: 112,
+    date: '2026-07-25',
+    area: 'Products',
+    summary:
+      'You can set how many units of each variant are in stock, straight from the product page — type the number and press Enter. Warehouses are out of service, and with no stock recorded every order was being refused at checkout with "insufficient stock". Variants at zero are labelled Out of stock, and the shop now says so on the product page instead of letting someone reach payment first. Collaborators can set stock for their own products too.',
+  },
+  {
+    id: 111,
+    date: '2026-07-25',
+    area: 'Analytics',
+    summary:
+      'Added a figure for money awaiting payment confirmation. Revenue only counts orders whose payment has been verified, so a day of real sales waiting on receipts used to read as zero. It is shown separately and is never mixed into revenue.',
+  },
+  {
+    id: 110,
+    date: '2026-07-25',
+    area: 'Customers',
+    summary:
+      'Saving a customer address no longer fails with "Internal server error" the first time and then works on the second try. The address was in fact being saved every time; the reply back to the browser was what broke.',
+  },
+  {
+    id: 109,
+    date: '2026-07-25',
+    area: 'Customers',
+    summary:
+      'Sign-up now asks for a last name and a phone number with its country, and keeps them. Names typed at sign-up used to be thrown away and the customer was named after their email address. A phone number can only belong to one account, like an email.',
+  },
+  {
+    id: 108,
+    date: '2026-07-25',
+    area: 'Customers',
+    summary:
+      'Everyone is now addressed by their first name — customers, staff and admins alike — instead of "Hi, there". Customers can change how their name appears from their own account settings.',
+  },
+  {
+    id: 107,
+    date: '2026-07-25',
+    area: 'Loyalty',
+    summary:
+      'Loyalty is marked as under maintenance and hidden from customer accounts while it is out of service.',
+  },
+  {
     id: 106,
     date: '2026-07-25',
     area: 'Customers',

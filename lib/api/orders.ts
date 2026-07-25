@@ -1,6 +1,14 @@
 import { apiFetch } from './client';
 
-export type OrderStatus = 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+export type OrderStatus =
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'PROCESSING'
+  | 'SHIPPED'
+  | 'DELIVERED'
+  | 'CANCELLED'
+  /** Set when a refund is paid out (backend 0.40.0 / migration 0031). */
+  | 'REFUNDED';
 
 export type OrderChannel = 'ONLINE' | 'MANUAL';
 

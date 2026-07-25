@@ -8,6 +8,9 @@ export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   SHIPPED: ['DELIVERED'],
   DELIVERED: [],
   CANCELLED: [],
+  // Terminal, and NOT reachable by hand: REFUNDED is set by paying out a refund,
+  // never by picking it from the status menu — the money has to actually move.
+  REFUNDED: [],
 };
 
 export function formatOrderStatus(status: OrderStatus): string {

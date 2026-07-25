@@ -30,6 +30,17 @@ export interface ConversationDto {
   /** Who sent the latest message — used to prefix the preview with "You:" when
    * it was a team member. Null when there is no latest message. */
   lastMessageSenderType?: 'CUSTOMER' | 'STAFF' | 'ADMIN' | 'COLLAB' | 'SYSTEM' | null;
+  /** The brand this thread is addressed to; null means MiniRue direct. */
+  brandName?: string | null;
+  /** Set when the thread was resolved or closed; cleared when it reopens. */
+  closedAt?: string | null;
+  closedBy?: string | null;
+  /**
+   * When the team allowed this GUEST conversation to attach images. Null means
+   * not allowed — an unclaimed thread is anonymous, so files from it are refused
+   * until someone knows who they are talking to.
+   */
+  guestAttachmentsAllowedAt?: string | null;
 }
 
 export interface MessageAttachmentDto {
@@ -55,8 +66,38 @@ export interface PresenceDto {
   updatedAt: string;
 }
 
-export const apiSupportConversations = (status?: string) =>
-  apiFetch<ConversationDto[]>(`/support/conversations${status ? `?status=${status}` : ''}`, { auth: true });
+/**
+ * `brand` slices the team inbox by the brand a thread is tagged to: a collaborator
+ * id, or the literal 'direct' for untagged MiniRue threads. Ignored for a COLLAB
+ * viewer, whose list is already scoped to their own brand.
+ */
+export const apiSupportConversations = (status?: string, brand?: string) => {
+  const qs = new URLSearchParams();
+  if (status) qs.set('status', status);
+  if (brand) qs.set('brand', brand);
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  return apiFetch<ConversationDto[]>(`/support/conversations${suffix}`, { auth: true });
+};
+
+/**
+ * Team-only conversation patch: status (which is what resolve-and-close means) and
+ * the guest attachment grant. Closing is enforced server-side — a closed thread
+ * refuses new messages from everyone, including us — so this is a real state
+ * change, not a UI toggle.
+ */
+export const apiSupportUpdateConversation = (
+  id: string,
+  patch: {
+    status?: 'OPEN' | 'PENDING' | 'RESOLVED' | 'CLOSED';
+    assignedStaffId?: string | null;
+    guestAttachmentsAllowed?: boolean;
+  },
+) =>
+  apiFetch<ConversationDto>(`/support/conversations/${id}`, {
+    method: 'PATCH',
+    auth: true,
+    body: JSON.stringify(patch),
+  });
 
 export const apiSupportThread = (id: string, after?: string) =>
   apiFetch<{ conversation: ConversationDto; messages: MessageDto[] }>(

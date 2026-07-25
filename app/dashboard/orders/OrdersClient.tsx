@@ -32,6 +32,8 @@ const STATUS_DATA_ATTR: Record<OrderStatus, string> = {
   SHIPPED: 'shipped',
   DELIVERED: 'delivered',
   CANCELLED: 'cancelled',
+  // Reuses the cancelled tone: both mean "this order is not money we kept".
+  REFUNDED: 'cancelled',
 };
 
 function OrderStatusBadge({ status }: { status: OrderStatus }) {
@@ -132,6 +134,7 @@ const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'SHIPPED', label: 'Shipped' },
   { value: 'DELIVERED', label: 'Delivered' },
   { value: 'CANCELLED', label: 'Cancelled' },
+  { value: 'REFUNDED', label: 'Refunded' },
 ];
 
 export default function OrdersClient() {
