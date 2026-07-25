@@ -111,8 +111,25 @@ export async function apiCollabUpdateProduct(
 }
 
 export async function apiCollabAnalytics(period: '7d' | '30d' | '90d' = '30d'): Promise<{
-  kpis: { ordersCount: number; revenueCents: number; productsActive: number };
-  daily: Array<{ date: string; orders: number; revenueCents: number }>;
+  kpis: {
+    ordersCount: number;
+    revenueCents: number;
+    productsActive: number;
+    /**
+     * MiniRue's cut of this partner's paid revenue, and what the partner keeps.
+     * `commissionRate` is null when no agreement is recorded, which reads as zero
+     * commission — never as everything (backend 0.42.0).
+     */
+    commissionRate?: number | null;
+    commissionCents?: number;
+    partnerNetCents?: number;
+  };
+  daily: Array<{
+    date: string;
+    orders: number;
+    revenueCents: number;
+    commissionCents?: number;
+  }>;
 }> {
   return apiFetch(`/collab/analytics?period=${period}`, { auth: true });
 }

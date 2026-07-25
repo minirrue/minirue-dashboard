@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 122,
+    date: '2026-07-25',
+    area: 'Partners',
+    summary:
+      'The Partners screen now shows what MiniRue earns from each partner, alongside their revenue and their commission rate. It also fixes the revenue figure itself, which was failing to load behind the scenes. Note: the commission is calculated as MiniRue’s share of partner revenue — tell us if a rate is meant to be the partner’s share instead.',
+  },
+  {
     id: 121,
     date: '2026-07-25',
     area: 'Collaborators',

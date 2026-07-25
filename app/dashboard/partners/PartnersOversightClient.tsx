@@ -174,6 +174,7 @@ export default function PartnersOversightClient() {
                   <th scope="col">Access</th>
                   <th scope="col" style={{ textAlign: 'right' }}>Orders</th>
                   <th scope="col" style={{ textAlign: 'right' }}>Revenue</th>
+                  <th scope="col" style={{ textAlign: 'right' }}>MiniRue commission</th>
                   <th scope="col" style={{ textAlign: 'right' }}>Live products</th>
                   <th scope="col">Actions</th>
                 </tr>
@@ -198,6 +199,18 @@ export default function PartnersOversightClient() {
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       {statCell(partner.id, (a) => formatEgp(a.kpis.revenueCents / 100))}
+                    </td>
+                    {/* What MiniRue earns from this partner. The rate was stored
+                        and used nowhere, so this screen reported gross revenue and
+                        said nothing about our own take. */}
+                    <td style={{ textAlign: 'right' }}>
+                      {statCell(partner.id, (a) =>
+                        a.kpis.commissionRate == null
+                          ? '—'
+                          : `${formatEgp((a.kpis.commissionCents ?? 0) / 100)} (${Math.round(
+                              a.kpis.commissionRate * 100,
+                            )}%)`,
+                      )}
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       {statCell(partner.id, (a) => String(a.kpis.productsActive))}
