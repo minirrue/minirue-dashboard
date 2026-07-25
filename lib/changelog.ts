@@ -25,14 +25,14 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-07-25',
     area: 'Collaborators',
     summary:
-      'Collaborators have their own notification bell again — it used to say "Insufficient role" and show nothing. Each partner sees only their own notices, never the shop's, and they are told when MiniRue approves a product or asks for changes.',
+      'Collaborators have their own notification bell again — it used to say "Insufficient role" and show nothing. Each partner sees only their own notices, never the shop ones, and they are told when MiniRue approves a product or asks for changes.',
   },
   {
     id: 104,
     date: '2026-07-25',
     area: 'Storefront',
     summary:
-      'Footer links to a category now point at the right address. They were being built from the category's internal id, so clicking one landed shoppers on a "not found" page.',
+      'Footer links to a category now point at the right address. They were being built from the internal id of the category, so clicking one landed shoppers on a "not found" page.',
   },
   {
     id: 103,
