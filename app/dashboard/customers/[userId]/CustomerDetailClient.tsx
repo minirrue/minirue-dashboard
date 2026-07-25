@@ -2,6 +2,13 @@
 
 import React, {useCallback, useState } from 'react';
 import Link from 'next/link';
+import {
+  DEFAULT_DIAL_CODE,
+  DIAL_CODES,
+  phoneProblem,
+  splitE164,
+  toE164,
+} from '@/lib/phone/dial-codes';
 import { useRouter } from 'next/navigation';
 import {
   apiAdminAdjustTier,
@@ -120,6 +127,10 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
     lastName: '',
     displayName: '',
     phone: '',
+    // Held apart so the country is a real choice, not something an admin has to
+    // remember to type as a + prefix.
+    phoneDial: DEFAULT_DIAL_CODE,
+    phoneNational: '',
     avatarUrl: '',
     emailVerified: false,
   });
@@ -159,6 +170,8 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
         lastName: data.lastName,
         displayName: data.displayName ?? '',
         phone: data.phone ?? '',
+        phoneDial: splitE164(data.phone).dial,
+        phoneNational: splitE164(data.phone).national,
         avatarUrl: data.avatarUrl ?? '',
         emailVerified: data.emailVerified,
       });
@@ -242,7 +255,12 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
         firstName: detailForm.firstName.trim() || undefined,
         lastName: detailForm.lastName.trim() || undefined,
         displayName: detailForm.displayName.trim() || null,
-        phone: detailForm.phone.trim() || null,
+        // Normalised the same way signup does — trunk zero dropped, dial code not
+        // doubled — so an admin correction cannot store a number the shop itself
+        // would have rejected.
+        phone: detailForm.phoneNational.trim()
+          ? toE164(detailForm.phoneDial, detailForm.phoneNational)
+          : null,
         avatarUrl: detailForm.avatarUrl.trim() || null,
         emailVerified: detailForm.emailVerified,
       });
@@ -253,6 +271,8 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
         lastName: updated.lastName,
         displayName: updated.displayName ?? '',
         phone: updated.phone ?? '',
+        phoneDial: splitE164(updated.phone).dial,
+        phoneNational: splitE164(updated.phone).national,
         avatarUrl: updated.avatarUrl ?? '',
         emailVerified: updated.emailVerified,
       });
@@ -631,12 +651,47 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                     <label className="dash-label" htmlFor="edit-phone">
                       Phone
                     </label>
-                    <input
-                      id="edit-phone"
-                      className="dash-input"
-                      value={detailForm.phone}
-                      onChange={(e) => setDetailForm({ ...detailForm, phone: e.target.value })}
-                    />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <select
+                        className="dash-input"
+                        style={{ flex: '0 0 128px' }}
+                        aria-label="Phone country"
+                        value={detailForm.phoneDial}
+                        onChange={(e) =>
+                          setDetailForm({ ...detailForm, phoneDial: e.target.value })
+                        }
+                      >
+                        {DIAL_CODES.map((c) => (
+                          <option key={`${c.code}-${c.dial}`} value={c.dial}>
+                            {c.code} {c.dial}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        id="edit-phone"
+                        className="dash-input"
+                        type="tel"
+                        inputMode="tel"
+                        placeholder="1001234567"
+                        value={detailForm.phoneNational}
+                        onChange={(e) =>
+                          setDetailForm({ ...detailForm, phoneNational: e.target.value })
+                        }
+                      />
+                    </div>
+                    {/* Shows what will actually be stored, and the same
+                        per-country length check signup applies — this box used to
+                        accept anything at all. */}
+                    {detailForm.phoneNational.trim() &&
+                      (phoneProblem(detailForm.phoneDial, detailForm.phoneNational) ? (
+                        <p className="dash-inline-error">
+                          {phoneProblem(detailForm.phoneDial, detailForm.phoneNational)}
+                        </p>
+                      ) : (
+                        <p className="dash-help-text">
+                          Saved as {toE164(detailForm.phoneDial, detailForm.phoneNational)}
+                        </p>
+                      ))}
                   </div>
                   <div className="dash-field">
                     <label className="dash-label" htmlFor="edit-avatar">

@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 119,
+    date: '2026-07-25',
+    area: 'Customers',
+    summary:
+      'Editing a customer’s phone number now works like the sign-up form: pick the country, type the local number, and it shows you exactly what will be saved. The old box accepted anything, so it was possible to save a number the shop itself would have rejected.',
+  },
+  {
     id: 118,
     date: '2026-07-25',
     area: 'Orders',
