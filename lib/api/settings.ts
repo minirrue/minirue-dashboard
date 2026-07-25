@@ -25,6 +25,15 @@ export interface StoreSettings {
   currency: string;
   locale: string;
   shippingZones: ShippingZone[];
+  /**
+   * MiniRue's own shipping charge, used when no zone matches. Optional: a store
+   * that has never set one gets the server default.
+   */
+  shipping?: {
+    flatRateCents: number;
+    currency: string;
+    freeOverCents: number;
+  };
   /** Absent on a store that has never had tax rules configured. */
   taxRules?: TaxRule[];
   brand: BrandConfig;

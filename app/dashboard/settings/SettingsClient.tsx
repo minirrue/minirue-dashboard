@@ -230,7 +230,23 @@ type SettingsForm = {
   locale: string;
   vatPct: string;
   brand: BrandForm;
+  /** What MiniRue charges to ship, in major units as typed (e.g. "50.00"). */
+  shippingFlatRate: string;
+  /** Order subtotal at or above which shipping is free. Blank or 0 disables it. */
+  shippingFreeOver: string;
 };
+
+/** Minor units (what the API stores) to a major-unit string for an input. */
+function centsToInput(cents: number | undefined | null): string {
+  if (typeof cents !== 'number' || !Number.isFinite(cents)) return '';
+  return (cents / 100).toFixed(2);
+}
+
+/** Major units as typed back to integer minor units. */
+function inputToCents(value: string): number {
+  const n = parseFloat(value);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : 0;
+}
 
 function settingsToForm(s: StoreSettings): SettingsForm {
   return {
@@ -250,6 +266,10 @@ function settingsToForm(s: StoreSettings): SettingsForm {
       contactPhone: s.brand?.contactPhone ?? '',
       logoUrl: s.brand?.logoUrl ?? '',
     },
+    // Blank when unset, so the form shows the server default rather than
+    // pretending the admin chose 0.
+    shippingFlatRate: centsToInput(s.shipping?.flatRateCents),
+    shippingFreeOver: centsToInput(s.shipping?.freeOverCents),
   };
 }
 
@@ -259,6 +279,8 @@ export default function SettingsClient() {
     locale: 'ar-EG',
     vatPct: '14',
     brand: { storeName: '', contactEmail: '', contactPhone: '', logoUrl: '' },
+    shippingFlatRate: '',
+    shippingFreeOver: '',
   });
   const [raw, setRaw] = useState<StoreSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -301,6 +323,17 @@ export default function SettingsClient() {
       const patch: Partial<StoreSettings> = {
         currency: form.currency,
         locale: form.locale,
+        // Only sent when a rate has been typed: sending 0 for a blank field would
+        // silently make shipping free for the whole store.
+        ...(form.shippingFlatRate.trim()
+          ? {
+              shipping: {
+                flatRateCents: inputToCents(form.shippingFlatRate),
+                currency: form.currency || 'EGP',
+                freeOverCents: inputToCents(form.shippingFreeOver),
+              },
+            }
+          : {}),
         brand: {
           storeName: form.brand.storeName,
           contactEmail: form.brand.contactEmail,
@@ -359,8 +392,20 @@ export default function SettingsClient() {
         <div className="dash-form-card">
           <div className="dash-field-row">
             <div className="dash-field">
-              <label className="dash-label">Store name <span className="dash-required">*</span></label>
-              <input type="text" className="dash-input" value={form.brand.storeName} onChange={setBrand('storeName')} required />
+              <label className="dash-label">Store name</label>
+              {/* Fixed, not a setting. It is the brand — it appears in order
+                  numbers, emails and receipts — so the API pins it and discards
+                  whatever a client sends, superadmin included. Shown read-only
+                  rather than hidden, because it is still worth seeing. */}
+              <input
+                type="text"
+                className="dash-input"
+                value={form.brand.storeName || 'MINIRUESHOP'}
+                readOnly
+                disabled
+                aria-readonly="true"
+              />
+              <p className="dash-help-text">Fixed — the store name cannot be changed.</p>
             </div>
             <div className="dash-field">
               <label className="dash-label">Currency</label>
@@ -389,6 +434,41 @@ export default function SettingsClient() {
               <label className="dash-label">Locale</label>
               <input type="text" className="dash-input" value={form.locale} onChange={setField('locale')} placeholder="ar-EG" />
               <p className="dash-help-text">BCP 47 — e.g. ar-EG, en-US</p>
+            </div>
+          </div>
+
+          {/* Shipping was hardcoded in checkout, so what customers were charged
+              could only be changed by a deploy. */}
+          <div className="dash-field-row">
+            <div className="dash-field">
+              <label className="dash-label">Shipping fee ({form.currency || 'EGP'})</label>
+              <input
+                type="number"
+                className="dash-input"
+                value={form.shippingFlatRate}
+                onChange={setField('shippingFlatRate')}
+                min="0"
+                step="0.01"
+                placeholder="50.00"
+              />
+              <p className="dash-help-text">
+                Charged on every order. Leave blank to keep the current default.
+              </p>
+            </div>
+            <div className="dash-field">
+              <label className="dash-label">Free shipping over ({form.currency || 'EGP'})</label>
+              <input
+                type="number"
+                className="dash-input"
+                value={form.shippingFreeOver}
+                onChange={setField('shippingFreeOver')}
+                min="0"
+                step="0.01"
+                placeholder="0"
+              />
+              <p className="dash-help-text">
+                Order subtotal at or above which shipping is free. 0 disables it.
+              </p>
             </div>
           </div>
 
