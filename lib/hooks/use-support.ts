@@ -11,20 +11,48 @@ import {
   apiSupportUpload,
   apiSupportMarkRead,
   apiSupportMergeConversation,
+  apiSupportUpdateConversation,
 } from '@/lib/api/support';
 import type { ConversationDto, MessageAttachmentDto } from '@/lib/api/support';
 
 export const SUPPORT_KEYS = {
-  conversations: (status?: string) => ['support', 'conversations', status ?? 'all'] as const,
+  conversations: (status?: string, brand?: string) =>
+    ['support', 'conversations', status ?? 'all', brand ?? 'all'] as const,
   thread: (id: string) => ['support', 'thread', id] as const,
   presence: () => ['support', 'presence'] as const,
 };
 
-export function useSupportConversations(status?: string) {
+export function useSupportConversations(status?: string, brand?: string) {
   return useQuery({
-    queryKey: SUPPORT_KEYS.conversations(status),
-    queryFn: () => apiSupportConversations(status),
+    queryKey: SUPPORT_KEYS.conversations(status, brand),
+    queryFn: () => apiSupportConversations(status, brand),
     refetchOnWindowFocus: true,
+  });
+}
+
+/**
+ * Team-only conversation patch: the status (resolve / close / reopen) and the
+ * guest attachment grant. Both are enforced server-side — a closed thread refuses
+ * new messages from everyone including us, and an ungranted guest cannot upload —
+ * so these are real state changes, not UI toggles.
+ *
+ * Invalidates the list AND the open thread, because a close changes both the row
+ * and whether the composer should be there at all.
+ */
+export function useUpdateConversation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: Parameters<typeof apiSupportUpdateConversation>[1];
+    }) => apiSupportUpdateConversation(id, patch),
+    onSuccess: (_data, { id }) => {
+      void qc.invalidateQueries({ queryKey: ['support', 'conversations'] });
+      void qc.invalidateQueries({ queryKey: SUPPORT_KEYS.thread(id) });
+    },
   });
 }
 

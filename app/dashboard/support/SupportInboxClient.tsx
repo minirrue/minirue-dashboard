@@ -12,6 +12,7 @@ import {
   useSupportUpload,
   useSupportMarkRead,
   useMergeConversations,
+  useUpdateConversation,
   SUPPORT_KEYS,
 } from '@/lib/hooks/use-support';
 import { useUser } from '@/lib/hooks/use-auth';
@@ -70,7 +71,100 @@ function toConversation(dto: ConversationDto): Conversation {
       email: dto.customerEmail ?? dto.guestEmail ?? undefined,
       phone: dto.customerPhone ?? guestPhoneDisplay(dto),
     },
+    brandName: dto.brandName ?? undefined,
+    status: dto.status,
   };
+}
+
+/**
+ * Resolve / reopen, and the guest attachment grant.
+ *
+ * Both are real server-side states, not display toggles: a closed thread refuses
+ * new messages from everyone including the team, and an unclaimed guest cannot
+ * upload until this grant exists. Rendered together because they are the two
+ * things you decide once you have read a thread.
+ */
+function ThreadStateActions({
+  conversation,
+  onNotice,
+}: {
+  conversation: ConversationDto;
+  onNotice: (message: string) => void;
+}) {
+  const update = useUpdateConversation();
+  const closed =
+    conversation.status === 'RESOLVED' || conversation.status === 'CLOSED';
+  // Only a GUEST thread can be granted: a signed-in customer is never gated.
+  const isGuest = !conversation.customerId;
+  const attachmentsAllowed = !!conversation.guestAttachmentsAllowedAt;
+
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      {closed ? (
+        <button
+          type="button"
+          className="dash-btn-secondary"
+          disabled={update.isPending}
+          onClick={() =>
+            update.mutate(
+              { id: conversation.id, patch: { status: 'OPEN' } },
+              { onSuccess: () => onNotice('Conversation reopened.') },
+            )
+          }
+        >
+          {update.isPending ? 'Reopening…' : 'Reopen'}
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="dash-btn-secondary"
+          disabled={update.isPending}
+          onClick={() =>
+            update.mutate(
+              { id: conversation.id, patch: { status: 'RESOLVED' } },
+              {
+                onSuccess: () =>
+                  onNotice('Marked resolved. The customer cannot reply — they will start a new conversation.'),
+              },
+            )
+          }
+        >
+          {update.isPending ? 'Resolving…' : 'Resolve & close'}
+        </button>
+      )}
+
+      {isGuest && (
+        <button
+          type="button"
+          className="dash-btn-ghost"
+          disabled={update.isPending}
+          title={
+            attachmentsAllowed
+              ? 'Stop this guest attaching images'
+              : 'Let this guest attach images'
+          }
+          onClick={() =>
+            update.mutate(
+              {
+                id: conversation.id,
+                patch: { guestAttachmentsAllowed: !attachmentsAllowed },
+              },
+              {
+                onSuccess: () =>
+                  onNotice(
+                    attachmentsAllowed
+                      ? 'Attachments turned off for this guest.'
+                      : 'This guest can now attach images.',
+                  ),
+              },
+            )
+          }
+        >
+          {attachmentsAllowed ? 'Attachments: on' : 'Attachments: off'}
+        </button>
+      )}
+    </div>
+  );
 }
 
 /** Friendly day label from a full timestamp, for in-thread date separators.
@@ -349,11 +443,16 @@ function MergeConversationAction({
 
 export default function SupportInboxClient({ showPresence = false }: SupportInboxClientProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  // Two filters: work state, and which brand the thread belongs to. 'direct' is
+  // MiniRue's own threads — the ones no partner owns.
+  const [statusFilter, setStatusFilter] = useState('');
+  const [brandFilter, setBrandFilter] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [mergeNotice, setMergeNotice] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingOutgoing[]>([]);
   const qc = useQueryClient();
-  const { data: conversationDtos, refetch: refetchConversations } = useSupportConversations();
+  const { data: conversationDtos, refetch: refetchConversations } =
+    useSupportConversations(statusFilter || undefined, brandFilter || undefined);
   const { data: threadData, refetch: refetchThread } = useSupportThread(activeId);
   // Single unified live loop: one timer refreshes both the list and the open
   // thread together (replaces the two separate query intervals).
@@ -474,6 +573,20 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
     postPending({ ...item, status: 'sending' });
   };
 
+  // The raw DTO for the open thread: the view model deliberately drops fields the
+  // chat list has no use for, but the actions need the real status and grant.
+  const activeConversationDto = (conversationDtos ?? []).find((c) => c.id === activeId);
+
+  // Derived from the conversations themselves rather than fetching every brand:
+  // a brand with no threads is not worth an option, and this needs no extra call.
+  const brandOptions = Array.from(
+    new Map(
+      (conversationDtos ?? [])
+        .filter((c) => c.collaboratorId && c.brandName)
+        .map((c) => [c.collaboratorId as string, c.brandName as string]),
+    ).entries(),
+  ).map(([id, name]) => ({ id, name }));
+
   const conversations = (conversationDtos ?? []).map(toConversation).map(
     // The conversation you're currently viewing never shows a red unread badge —
     // you're already looking at it, so a message arriving in it isn't "unread".
@@ -508,11 +621,53 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadData?.messages, pending, activeId, user?.name]);
 
-  const headerSlot = showPresence
-    ? canEditPresence
-      ? <PresenceControls presence={presence} />
-      : presenceReadOnly(presence)
-    : null;
+  const filterControls = (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      <select
+        className="dash-input"
+        style={{ maxWidth: 150 }}
+        aria-label="Filter by status"
+        value={statusFilter}
+        onChange={(e) => setStatusFilter(e.target.value)}
+      >
+        <option value="">All statuses</option>
+        <option value="OPEN">Open</option>
+        <option value="PENDING">Pending</option>
+        <option value="RESOLVED">Resolved</option>
+        <option value="CLOSED">Closed</option>
+      </select>
+      {/* Only the team sees this: a collaborator's list is already scoped to their
+          own brand by the server, so a brand filter there would be meaningless. */}
+      {isAdmin && (
+        <select
+          className="dash-input"
+          style={{ maxWidth: 170 }}
+          aria-label="Filter by brand"
+          value={brandFilter}
+          onChange={(e) => setBrandFilter(e.target.value)}
+        >
+          <option value="">All brands</option>
+          <option value="direct">MiniRue direct</option>
+          {brandOptions.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.name}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+
+  const headerSlot = (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+      {filterControls}
+      {showPresence
+        ? canEditPresence
+          ? <PresenceControls presence={presence} />
+          : presenceReadOnly(presence)
+        : null}
+    </div>
+  );
 
   return (
     <>
@@ -536,15 +691,25 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
         refreshing={refreshing}
         headerSlot={headerSlot}
         threadActions={
-          isAdmin && activeId ? (
-            <MergeConversationAction
-              sourceId={activeId}
-              onMerged={(survivorId) => {
-                setActiveId(survivorId);
-                markRead.mutate(survivorId);
-                setMergeNotice('Conversations merged. Now viewing the surviving conversation.');
-              }}
-            />
+          activeId ? (
+            <>
+              {activeConversationDto && (
+                <ThreadStateActions
+                  conversation={activeConversationDto}
+                  onNotice={setMergeNotice}
+                />
+              )}
+              {isAdmin && (
+                <MergeConversationAction
+                  sourceId={activeId}
+                  onMerged={(survivorId) => {
+                    setActiveId(survivorId);
+                    markRead.mutate(survivorId);
+                    setMergeNotice('Conversations merged. Now viewing the surviving conversation.');
+                  }}
+                />
+              )}
+            </>
           ) : null
         }
       />

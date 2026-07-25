@@ -58,6 +58,12 @@ export interface Conversation {
    * whatever is known for a logged-in customer). Revealed on tap in the
    * thread header. Blank fields are omitted from display. */
   contact?: ConversationContact
+  /** The brand the shopper addressed, or undefined for MiniRue direct. Shown as
+   * a chip so a mixed inbox is readable at a glance. */
+  brandName?: string
+  /** Drives the row's closed treatment and the "which thread am I replying to"
+   * banner — a closed thread refuses new messages server-side. */
+  status?: 'OPEN' | 'PENDING' | 'RESOLVED' | 'CLOSED'
 }
 
 export interface DashChatViewProps {
@@ -313,6 +319,52 @@ const STYLES = `
 .mrc-row[data-unread="true"] .mrc-row-preview { color: var(--mr-ink-700); font-weight: 500; }
 .mrc-row-preview[data-empty="true"] { color: var(--mr-ink-400); font-style: italic; }
 .mrc-row-chips { display: flex; align-items: center; gap: 6px; }
+.mrc-replying {
+  padding: 7px 14px;
+  font-family: var(--mr-font-label);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mr-ink-500);
+  background: var(--mr-dash-sub);
+  border-bottom: 1px solid var(--mr-dash-hair);
+}
+.mrc-replying strong { color: var(--mr-ink-900); font-weight: 600; }
+.mrc-replying[data-closed="true"] {
+  color: var(--mr-cream-100);
+  background: var(--mr-ink-700);
+}
+.mrc-brand, .mrc-closed { flex-shrink: 0; }
+.mrc-brand {
+  font-family: var(--mr-font-label);
+  font-size: 8.5px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--mr-radius-sm);
+  line-height: 1.3;
+  color: var(--mr-ink-500);
+  background: transparent;
+  border: 1px dashed var(--mr-dash-hair);
+}
+.mrc-closed {
+  font-family: var(--mr-font-label);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--mr-radius-sm);
+  line-height: 1.3;
+  color: var(--mr-ink-100, #fff);
+  background: var(--mr-ink-700);
+}
+/* A resolved or closed row is history: dimmed so live work stands out. */
+.mrc-row[data-closed="true"] { opacity: 0.62; }
+.mrc-row[data-closed="true"]:hover { opacity: 1; }
+/* New vs seen: an unread row gets a gold spine, not just bolder text. */
+.mrc-row[data-unread="true"] { box-shadow: inset 3px 0 0 0 var(--mr-gold-500); }
 .mrc-kind, .mrc-acct {
   flex-shrink: 0;
   font-family: var(--mr-font-label);
@@ -1020,6 +1072,7 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
                   onClick={() => onSelect(c.id)}
                   data-active={activeId === c.id}
                   data-unread={c.unread > 0}
+                  data-closed={c.status === 'RESOLVED' || c.status === 'CLOSED'}
                   className="mrc-row"
                   style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
                 >
@@ -1039,6 +1092,13 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
                     <span className="mrc-row-chips">
                       <span className="mrc-kind">{c.kind}</span>
                       <span className="mrc-acct" data-type={c.customerId ? 'customer' : 'guest'}>{c.customerId ? 'Customer' : 'Guest'}</span>
+                      {/* Which brand this belongs to. Untagged threads are MiniRue's
+                          own, and are labelled rather than left blank so an empty
+                          chip cannot be mistaken for missing data. */}
+                      <span className="mrc-brand">{c.brandName || 'MiniRue'}</span>
+                      {(c.status === 'RESOLVED' || c.status === 'CLOSED') && (
+                        <span className="mrc-closed">{c.status}</span>
+                      )}
                     </span>
                   </span>
                 </button>
@@ -1092,6 +1152,25 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
               </button>
             )}
           </div>
+
+          {/* Which thread a reply will go to. With several similar-looking rows
+              open all day, the identity button alone was too quiet — and a closed
+              thread has to say so, because the server refuses the message rather
+              than the textarea. */}
+          {convo && (
+            <div className="mrc-replying" data-closed={convo.status === 'RESOLVED' || convo.status === 'CLOSED'}>
+              {convo.status === 'RESOLVED' || convo.status === 'CLOSED' ? (
+                <>
+                  This conversation is {convo.status.toLowerCase()} — reopen it to reply.
+                </>
+              ) : (
+                <>
+                  Replying to <strong>{convo.name}</strong>
+                  {convo.brandName ? <> · {convo.brandName}</> : <> · MiniRue</>}
+                </>
+              )}
+            </div>
+          )}
 
           {convo && contactOpen && (
             <div className="mrc-contact">
@@ -1198,7 +1277,9 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
           )}
 
           {/* ── Composer ── */}
-          {convo && (
+          {/* Hidden entirely on a closed thread: the send would be refused by the
+              server anyway, so offering it would only produce an error. */}
+          {convo && convo.status !== "RESOLVED" && convo.status !== "CLOSED" && (
             <div className="mrc-composer">
               {pending.length > 0 && (
                 <div className="mrc-pending">

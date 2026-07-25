@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 120,
+    date: '2026-07-25',
+    area: 'Support',
+    summary:
+      'The support inbox now shows which brand each conversation is for, marks unread threads with a gold edge, and says at the top of the thread exactly who you are replying to. You can filter by status and by brand, mark a conversation resolved (the customer then starts a new one rather than replying to a closed thread), reopen it, and allow or block image attachments for a guest you have not identified yet.',
+  },
+  {
     id: 119,
     date: '2026-07-25',
     area: 'Customers',
