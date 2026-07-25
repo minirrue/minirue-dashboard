@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { DashboardShell } from '@/components/dashboard';
 import AccessDeniedPanel from '@/components/dashboard/AccessDeniedPanel';
@@ -45,6 +45,17 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
   const activePath = normalizeDashboardPath(pathname ?? '/overview');
   const { data: user, isLoading, isError } = useUser();
   const [mounted, setMounted] = useState(false);
+  // router.replace('/login') inside an effect whose condition stays true fires
+  // again on every render — which is what made an expired session hammer the
+  // page in a rapid, endless reload loop instead of landing on the sign-in
+  // screen once. A ref, not state: it must not itself cause a render.
+  const redirectedToLogin = useRef(false);
+
+  const goToLogin = useCallback(() => {
+    if (redirectedToLogin.current) return;
+    redirectedToLogin.current = true;
+    router.replace('/login');
+  }, [router]);
 
   useMountedEffect(() => {
     setMounted(true);
@@ -54,9 +65,9 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
     const hasCookie = document.cookie.split(';').some((c) => c.trim().startsWith('mr-auth='));
     const hasToken = Boolean(getAccessToken());
     if (!hasCookie && !hasToken) {
-      router.replace('/login');
+      goToLogin();
     }
-  }, [router]);
+  }, [goToLogin]);
 
   useEffect(() => {
     if (!mounted || isLoading || !user) return;
@@ -71,9 +82,9 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
   useEffect(() => {
     if (!mounted || isLoading) return;
     if (isError || !user || !isStaffRole(user.role)) {
-      router.replace('/login');
+      goToLogin();
     }
-  }, [isError, isLoading, mounted, router, user]);
+  }, [isError, isLoading, mounted, goToLogin, user]);
 
   // '/overview' is the universal post-login landing path, but a COLLAB
   // (or any role without staff-console access) doesn't have permission

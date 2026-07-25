@@ -9,6 +9,18 @@ export interface ApiError {
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8002') + '/v1';
 
 /**
+ * Tells the API this request belongs to the DASHBOARD, so it reads and writes the
+ * dashboard's own session cookies.
+ *
+ * Both apps used one cookie pair on the apex domain and both call the same API
+ * host, so signing into the dashboard overwrote the storefront's session — and the
+ * public storefront then carried a SUPERADMIN token. With this header the two
+ * sessions coexist and log out independently.
+ */
+const CLIENT_HEADER = 'x-mr-client';
+const CLIENT_AUDIENCE = 'dashboard';
+
+/**
  * One shared refresh attempt for the whole app.
  *
  * The dashboard polls several endpoints at once (notifications, the support
@@ -30,7 +42,10 @@ async function refreshSession(): Promise<boolean> {
         if (!refreshToken) return false;
         const res = await fetch(`${BASE}/auth/refresh`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            [CLIENT_HEADER]: CLIENT_AUDIENCE,
+          },
           credentials: 'include',
           body: JSON.stringify({ refreshToken }),
         });
@@ -96,6 +111,7 @@ export async function apiFetch<T>(
 
   const headers = new Headers(fetchInit.headers);
   headers.set('Content-Type', 'application/json');
+  headers.set(CLIENT_HEADER, CLIENT_AUDIENCE);
 
   if (auth) {
     const token = getAccessToken();
@@ -150,6 +166,7 @@ export async function apiFetch<T>(
  */
 export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
   const headers = new Headers();
+  headers.set(CLIENT_HEADER, CLIENT_AUDIENCE);
   const token = getAccessToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
