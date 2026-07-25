@@ -45,9 +45,9 @@ export default function LinkTargetField({
   const { options: categories } = useEntityOptions('category');
   const { options: brands } = useEntityOptions('brand');
 
-  // Categories and brands are stored as ids in the picker but as real paths in
-  // the href, so map back and forth by label.
-  const categoryHref = (slugOrName: string) => `/categories/${slugOrName}`;
+  // The storefront addresses a category by SLUG. Building the href from the
+  // picker's `id` (a uuid) produced /categories/<uuid>, which 404s.
+  const categoryHref = (slug: string) => `/categories/${slug}`;
 
   const selectStyle = { flex: '1 1 220px', minWidth: 0 } as const;
 
@@ -97,8 +97,10 @@ export default function LinkTargetField({
           onChange={(e) => onChange(e.target.value)}
         >
           <option value="">Select a category…</option>
-          {categories.map((c) => (
-            <option key={c.id} value={categoryHref(c.id)}>
+          {categories
+            .filter((c) => !!c.slug)
+            .map((c) => (
+            <option key={c.id} value={categoryHref(c.slug!)}>
               {c.label.replace(/^—\s*/g, '')}
             </option>
           ))}

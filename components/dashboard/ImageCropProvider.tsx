@@ -57,7 +57,13 @@ export default function ImageCropProvider({
     // to a canvas and would produce a broken still frame.
     if (!file.type.startsWith('image/')) return Promise.resolve(file);
     return new Promise<File | null>((resolve) => {
-      setPending({ file, request, resolve });
+      setPending((prev) => {
+        // Only one crop can be on screen. If a second starts while one is open,
+        // settle the first as cancelled — otherwise its promise never resolves
+        // and the caller awaits forever with the modal already replaced.
+        prev?.resolve(null);
+        return { file, request, resolve };
+      });
     });
   }, []);
 

@@ -11,6 +11,13 @@ export type EntityKind = 'category' | 'brand' | 'product' | 'collaborator';
 export interface EntityOption {
   id: string;
   label: string;
+  /**
+   * URL-facing identifier, when the entity has one that differs from its id.
+   * Categories are addressed by SLUG on the storefront (/categories/<slug>), so
+   * a link built from the id would 404 — anything constructing an href must use
+   * this, not `id`.
+   */
+  slug?: string;
 }
 
 export function moveInList<T>(list: T[], index: number, direction: -1 | 1): T[] {
@@ -25,7 +32,11 @@ function flattenCategories(nodes: Category[]): EntityOption[] {
   const out: EntityOption[] = [];
   const walk = (list: Category[], depth: number): void => {
     for (const node of list) {
-      out.push({ id: node.id, label: `${'— '.repeat(depth)}${node.name}` });
+      out.push({
+        id: node.id,
+        slug: node.slug,
+        label: `${'— '.repeat(depth)}${node.name}`,
+      });
       if (node.children?.length) walk(node.children, depth + 1);
     }
   };
