@@ -206,12 +206,20 @@ export default function CollabEditProductClient() {
             <input
               id="edit-stock"
               className="dash-input"
+              type="number"
               inputMode="numeric"
+              step={1}
               value={form.initialStock}
               onChange={(e) => setForm((f) => ({ ...f, initialStock: e.target.value }))}
               min={0}
               disabled={saving}
             />
+            {/* This field existed but the API ignored it on update, so a stock
+                correction silently did nothing. It now sets the sellable quantity
+                (backend 0.39.0). */}
+            <p className="dash-help-text">
+              Units available to sell. 0 shows the product as out of stock.
+            </p>
           </div>
         </div>
 
