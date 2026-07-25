@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 123,
+    date: '2026-07-25',
+    area: 'Gallery',
+    summary:
+      'New "Organise by category" button. It creates a folder for each category with the brands inside it, and files every photo that a product uses into the right one — the gallery supported folders but nothing ever filled them, so everything sat in one pile. Safe to press more than once, and photos not used by any product are left where they are.',
+  },
+  {
     id: 122,
     date: '2026-07-25',
     area: 'Partners',

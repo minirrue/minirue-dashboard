@@ -9,8 +9,7 @@ import {
   listItems,
   renameFolder,
   updateItemAltText,
-  uploadItem,
-} from '@/lib/gallery/api';
+  uploadItem, organiseGallery } from '@/lib/gallery/api';
 import type { GalleryFolder, GalleryItem } from '@/lib/gallery/types';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
@@ -502,6 +501,30 @@ export default function GalleryClient() {
     loadFolderContents(folder);
   }
 
+  const [organising, setOrganising] = useState(false);
+  const [organiseNotice, setOrganiseNotice] = useState<string | null>(null);
+
+  async function handleOrganise() {
+    setOrganising(true);
+    setOrganiseNotice(null);
+    try {
+      const result = await organiseGallery();
+      setOrganiseNotice(
+        result.movedCount === 0 && result.foldersCreated === 0
+          ? `Everything is already filed. ${result.skippedUnused} image(s) are not used by any product, so they were left where they are.`
+          : `Filed ${result.movedCount} image(s) into ${result.foldersCreated} new folder(s). ${result.skippedUnused} image(s) are not used by any product and were left alone.`,
+      );
+      // The tree changed underneath us, so reload rather than guess at it.
+      await loadFolders();
+    } catch (err) {
+      setOrganiseNotice(
+        err instanceof Error ? err.message : 'Could not organise the gallery.',
+      );
+    } finally {
+      setOrganising(false);
+    }
+  }
+
   async function handleCreateFolder(e: React.FormEvent) {
     e.preventDefault();
     if (!newFolderName.trim()) {
@@ -566,17 +589,37 @@ export default function GalleryClient() {
     <>
       <div className="dash-page-header" data-trace-id={`${TRACE}::EL-REGION-gallery-page-header`}>
         <h1 className="dash-page-title">Gallery</h1>
-        {!showAddForm && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {/* Files images into Category / Brand folders instead of leaving the
+              gallery as one flat pile. Safe to press repeatedly — it reuses
+              folders and only moves what is not already in place. */}
           <button
             type="button"
-            className="dash-btn-primary"
-            onClick={() => setShowAddForm(true)}
-            data-trace-id={`${TRACE}::EL-BTN-show-add-folder-form`}
+            className="dash-btn-secondary"
+            onClick={handleOrganise}
+            disabled={organising}
+            data-trace-id={`${TRACE}::EL-BTN-organise-gallery`}
           >
-            New Folder
+            {organising ? 'Organising…' : 'Organise by category'}
           </button>
-        )}
+          {!showAddForm && (
+            <button
+              type="button"
+              className="dash-btn-primary"
+              onClick={() => setShowAddForm(true)}
+              data-trace-id={`${TRACE}::EL-BTN-show-add-folder-form`}
+            >
+              New Folder
+            </button>
+          )}
+        </div>
       </div>
+
+      {organiseNotice && (
+        <p className="dash-help-text" role="status" style={{ marginTop: 8 }}>
+          {organiseNotice}
+        </p>
+      )}
 
       {showAddForm && (
         <form
