@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 124,
+    date: '2026-07-25',
+    area: 'Settings',
+    summary:
+      'The store name field is gone from Settings. The shop is permanently MiniRue Shop and the name appears on order numbers, emails and receipts, so having a box for it only risked a typo following every order.',
+  },
+  {
     id: 123,
     date: '2026-07-25',
     area: 'Gallery',

@@ -219,7 +219,6 @@ function Skeleton() {
 }
 
 type BrandForm = {
-  storeName: string;
   contactEmail: string;
   contactPhone: string;
   logoUrl: string;
@@ -261,7 +260,6 @@ function settingsToForm(s: StoreSettings): SettingsForm {
     // `s.brand.storeName` throw and crashed the page with a React error right
     // as the admin saved the shop name.
     brand: {
-      storeName: s.brand?.storeName ?? '',
       contactEmail: s.brand?.contactEmail ?? '',
       contactPhone: s.brand?.contactPhone ?? '',
       logoUrl: s.brand?.logoUrl ?? '',
@@ -278,7 +276,7 @@ export default function SettingsClient() {
     currency: 'EGP',
     locale: 'ar-EG',
     vatPct: '14',
-    brand: { storeName: '', contactEmail: '', contactPhone: '', logoUrl: '' },
+    brand: { contactEmail: '', contactPhone: '', logoUrl: '' },
     shippingFlatRate: '',
     shippingFreeOver: '',
   });
@@ -335,7 +333,6 @@ export default function SettingsClient() {
             }
           : {}),
         brand: {
-          storeName: form.brand.storeName,
           contactEmail: form.brand.contactEmail,
           contactPhone: form.brand.contactPhone || null,
           logoUrl: form.brand.logoUrl || null,
@@ -391,22 +388,6 @@ export default function SettingsClient() {
       <form onSubmit={handleSubmit}>
         <div className="dash-form-card">
           <div className="dash-field-row">
-            <div className="dash-field">
-              <label className="dash-label">Store name</label>
-              {/* Fixed, not a setting. It is the brand — it appears in order
-                  numbers, emails and receipts — so the API pins it and discards
-                  whatever a client sends, superadmin included. Shown read-only
-                  rather than hidden, because it is still worth seeing. */}
-              <input
-                type="text"
-                className="dash-input"
-                value={form.brand.storeName || 'MINIRUESHOP'}
-                readOnly
-                disabled
-                aria-readonly="true"
-              />
-              <p className="dash-help-text">Fixed — the store name cannot be changed.</p>
-            </div>
             <div className="dash-field">
               <label className="dash-label">Currency</label>
               <input type="text" className="dash-input" value={form.currency} onChange={setField('currency')} placeholder="EGP" maxLength={3} />

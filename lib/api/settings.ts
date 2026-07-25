@@ -4,7 +4,6 @@ import type { StorefrontLayout } from './storefront';
 export type { StorefrontLayout };
 
 export interface BrandConfig {
-  storeName: string;
   logoUrl: string | null;
   contactEmail: string;
   contactPhone: string | null;
