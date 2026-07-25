@@ -38,6 +38,9 @@ interface BackendVariant {
   priceAmount: string;
   priceCurrency: string;
   isActive: boolean;
+  /** Available stock, added to every product read so the form can show it. */
+  availableQuantity?: number;
+  inStock?: boolean;
 }
 
 interface BackendMedia {
@@ -108,7 +111,9 @@ function mapVariant(v: BackendVariant): ProductVariant {
     price,
     priceAmount: price,
     currency: v.priceCurrency,
-    stock: 0,
+    // Was hardcoded to 0, so the dashboard could never show or edit stock. The
+    // read now carries it (backend 0.34.0).
+    stock: v.availableQuantity ?? 0,
   };
 }
 
@@ -585,4 +590,19 @@ export async function setProductMediaCover(
     { method: 'PATCH', auth: true },
   );
   return mapMedia(raw);
+}
+
+/**
+ * Sets the available quantity for one variant. The warehouse module is out of
+ * service, so this is how stock gets recorded — an absolute quantity, not a
+ * delta, matching what someone typing into the product form means.
+ */
+export async function apiSetVariantStock(
+  variantId: string,
+  qty: number,
+): Promise<{ variantId: string; available: number }> {
+  return apiFetch<{ variantId: string; available: number }>(
+    `/inventory/stock/variant/${variantId}`,
+    { method: 'PUT', auth: true, body: JSON.stringify({ qty }) },
+  );
 }

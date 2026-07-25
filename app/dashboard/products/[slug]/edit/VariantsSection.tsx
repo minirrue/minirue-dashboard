@@ -8,8 +8,7 @@ import {
   hardDeleteVariant,
   createProductMedia,
   listAttributes,
-  listAttributeOptions,
-} from '@/lib/catalog/api';
+  listAttributeOptions, apiSetVariantStock } from '@/lib/catalog/api';
 import type {
   AttributeRecord,
   AttributeOptionRecord,
@@ -190,6 +189,46 @@ export default function VariantsSection({
   const [pickerVariantId, setPickerVariantId] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [copiedSku, setCopiedSku] = useState<string | null>(null);
+
+  // Stock is edited per row and saved on its own, not with the variant form:
+  // correcting a quantity is a one-field job and should not require opening the
+  // whole variant editor.
+  const [stockDrafts, setStockDrafts] = useState<Record<string, string>>({});
+  const [stockSavingId, setStockSavingId] = useState<string | null>(null);
+  const [stockError, setStockError] = useState<Record<string, string>>({});
+
+  async function handleSaveStock(variant: ProductVariant) {
+    const raw = stockDrafts[variant.id];
+    if (raw === undefined) return;
+    const qty = Number(raw);
+    if (!Number.isInteger(qty) || qty < 0) {
+      setStockError((e) => ({ ...e, [variant.id]: 'Whole number, 0 or more.' }));
+      return;
+    }
+    setStockError((e) => ({ ...e, [variant.id]: '' }));
+    setStockSavingId(variant.id);
+    try {
+      const result = await apiSetVariantStock(variant.id, qty);
+      onVariantsChange(
+        variants.map((v) =>
+          v.id === variant.id ? { ...v, stock: result.available } : v,
+        ),
+      );
+      setStockDrafts((d) => {
+        const next = { ...d };
+        delete next[variant.id];
+        return next;
+      });
+    } catch (err) {
+      setStockError((e) => ({
+        ...e,
+        [variant.id]:
+          err instanceof Error ? err.message : 'Could not save the quantity.',
+      }));
+    } finally {
+      setStockSavingId(null);
+    }
+  }
 
   /** SKUs are read-only but searchable — one click puts one on the clipboard. */
   async function handleCopySku(sku: string) {
@@ -434,6 +473,7 @@ export default function VariantsSection({
                 <th>SKU</th>
                 <th>Fields</th>
                 <th style={{ textAlign: 'right' }}>Price</th>
+                <th style={{ textAlign: 'right' }}>Stock</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -482,6 +522,58 @@ export default function VariantsSection({
                       ].join(' · ') || '—'}
                     </td>
                     <td style={{ textAlign: 'right' }}>{formatPrice(v.priceAmount, v.currency)}</td>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <input
+                        className="dash-input"
+                        type="number"
+                        min={0}
+                        step={1}
+                        inputMode="numeric"
+                        aria-label={`Available quantity for ${v.sku}`}
+                        style={{ width: 78, textAlign: 'right', display: 'inline-block' }}
+                        value={stockDrafts[v.id] ?? String(v.stock)}
+                        onChange={(e) =>
+                          setStockDrafts((d) => ({ ...d, [v.id]: e.target.value }))
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            void handleSaveStock(v);
+                          }
+                        }}
+                        disabled={stockSavingId === v.id}
+                        data-trace-id={`PG-DASHBOARD-CAT-003::EL-FIELD-variant-stock@${v.id}`}
+                      />
+                      {stockDrafts[v.id] !== undefined &&
+                        stockDrafts[v.id] !== String(v.stock) && (
+                          <button
+                            type="button"
+                            className="dash-btn-ghost"
+                            onClick={() => void handleSaveStock(v)}
+                            disabled={stockSavingId === v.id}
+                            data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-save-variant-stock@${v.id}`}
+                          >
+                            {stockSavingId === v.id ? 'Saving…' : 'Save'}
+                          </button>
+                        )}
+                      {v.stock === 0 && stockDrafts[v.id] === undefined && (
+                        <span
+                          className="dash-help-text"
+                          style={{ display: 'block', color: 'var(--mr-dash-danger, #c0392b)' }}
+                        >
+                          Out of stock
+                        </span>
+                      )}
+                      {stockError[v.id] && (
+                        <span
+                          role="alert"
+                          className="dash-help-text"
+                          style={{ display: 'block', color: 'var(--mr-dash-danger, #c0392b)' }}
+                        >
+                          {stockError[v.id]}
+                        </span>
+                      )}
+                    </td>
                     <td>
                       <button
                         type="button"
@@ -503,7 +595,7 @@ export default function VariantsSection({
                   </tr>
                   {editingId === v.id && (
                     <tr>
-                      <td colSpan={4} style={{ background: 'var(--mr-dash-sub)', padding: '12px 14px' }}>
+                      <td colSpan={5} style={{ background: 'var(--mr-dash-sub)', padding: '12px 14px' }}>
                         <form
                           className="dash-inline-form"
                           onSubmit={(e) => handleEditSave(e, v)}
