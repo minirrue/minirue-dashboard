@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 121,
+    date: '2026-07-25',
+    area: 'Collaborators',
+    summary:
+      'Partners can now describe what makes a product version distinct — Size / 50 ml, Shade / Amber, and so on — when adding a product. Every partner product used to be recorded as 50 ml with a random reference code; they now get a proper readable SKU built the same way as MiniRue’s own.',
+  },
+  {
     id: 120,
     date: '2026-07-25',
     area: 'Support',

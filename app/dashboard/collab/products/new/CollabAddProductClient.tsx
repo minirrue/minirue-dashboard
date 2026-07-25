@@ -30,6 +30,21 @@ export default function CollabAddProductClient() {
     priceAmount: '',
     initialStock: '',
   });
+  /**
+   * Product-specific variant fields, e.g. Size / 50 ml.
+   *
+   * A collaborator product had no way to describe its variant at all — every one
+   * was created as a hardcoded 50 ml with a random SKU. These also feed the SKU,
+   * which is now generated the same way as on the admin side.
+   */
+  const [customFields, setCustomFields] = useState<{ name: string; value: string }[]>([
+    { name: '', value: '' },
+  ]);
+
+  const setField = (index: number, patch: Partial<{ name: string; value: string }>) =>
+    setCustomFields((rows) =>
+      rows.map((row, i) => (i === index ? { ...row, ...patch } : row)),
+    );
 
   useEffect(() => {
     Promise.all([apiCollabOverview(), apiCollabGetBrand()])
@@ -56,6 +71,16 @@ export default function CollabAddProductClient() {
       };
       const stock = form.initialStock.trim();
       if (stock) payload.initialStock = Number.parseInt(stock, 10);
+
+      // Only rows with BOTH a name and a value: a half-filled row is someone
+      // mid-thought, not data, and an empty key would break the SKU.
+      const customValues = Object.fromEntries(
+        customFields
+          .map((row) => [row.name.trim(), row.value.trim()] as const)
+          .filter(([name, value]) => name && value),
+      );
+      if (Object.keys(customValues).length) payload.customValues = customValues;
+
       await apiCollabCreateProduct(payload);
       router.push('/collab/products');
     } catch (err) {
@@ -146,6 +171,63 @@ export default function CollabAddProductClient() {
               disabled={!profileComplete || saving}
             />
           </div>
+        </div>
+
+        <div className="dash-field">
+          <label className="dash-label">Variant details (optional)</label>
+          <p className="dash-help-text" style={{ marginTop: 0, marginBottom: 8 }}>
+            What makes this version distinct — e.g. Size / 50 ml, or Shade / Amber.
+            These appear on the product and are used to build its SKU.
+          </p>
+          {customFields.map((row, i) => (
+            <div
+              key={i}
+              style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}
+            >
+              <input
+                className="dash-input"
+                style={{ flex: '1 1 140px' }}
+                placeholder="Field name"
+                aria-label={`Custom field ${i + 1} name`}
+                value={row.name}
+                onChange={(e) => setField(i, { name: e.target.value })}
+                disabled={!profileComplete || saving}
+              />
+              <input
+                className="dash-input"
+                style={{ flex: '1 1 140px' }}
+                placeholder="Value"
+                aria-label={`Custom field ${i + 1} value`}
+                value={row.value}
+                onChange={(e) => setField(i, { value: e.target.value })}
+                disabled={!profileComplete || saving}
+              />
+              {customFields.length > 1 && (
+                <button
+                  type="button"
+                  className="dash-btn-ghost"
+                  onClick={() =>
+                    setCustomFields((rows) => rows.filter((_, idx) => idx !== i))
+                  }
+                  disabled={saving}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          ))}
+          {/* Capped at the same 10 the API accepts, so the form cannot offer a row
+              that would be rejected on save. */}
+          {customFields.length < 10 && (
+            <button
+              type="button"
+              className="dash-btn-secondary"
+              onClick={() => setCustomFields((rows) => [...rows, { name: '', value: '' }])}
+              disabled={!profileComplete || saving}
+            >
+              + Add field
+            </button>
+          )}
         </div>
 
         {error ? (

@@ -50,6 +50,11 @@ export async function apiCollabCreateProduct(data: {
   priceAmount: string;
   priceCurrency?: string;
   initialStock?: number;
+  /**
+   * Product-specific variant fields, e.g. { Size: '50 ml' }. Also feed the SKU,
+   * which is generated the same way as on the admin side (backend 0.41.0).
+   */
+  customValues?: Record<string, string>;
 }): Promise<unknown> {
   return apiFetch('/collab/products', {
     method: 'POST',
