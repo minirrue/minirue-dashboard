@@ -7,6 +7,17 @@ export interface OverviewRevenue {
   net_month_cents: number;
 }
 
+/**
+ * Placed but not yet confirmed as paid. Kept apart from OverviewRevenue on
+ * purpose — expected money is not banked money.
+ */
+export interface OverviewPendingRevenue {
+  today_cents: number;
+  week_cents: number;
+  total_cents: number;
+  order_count: number;
+}
+
 export interface OverviewRefunds {
   today_cents: number;
   week_cents: number;
@@ -32,6 +43,8 @@ export interface OverviewCustomers {
 
 export interface AnalyticsOverview {
   revenue: OverviewRevenue;
+  /** Optional: an API older than backend 0.35.0 does not send it. */
+  pending_revenue?: OverviewPendingRevenue;
   refunds: OverviewRefunds;
   orders: OverviewOrders;
   customers: OverviewCustomers;

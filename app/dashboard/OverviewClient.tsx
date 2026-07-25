@@ -221,17 +221,28 @@ export default function OverviewClient() {
           trend: revDelta?.trend ?? 'up',
           index: 1,
         },
+        // Money placed but not yet confirmed. Its own tile rather than folded
+        // into revenue, so nobody reads unverified receipts as banked cash — and
+        // so a day of real sales awaiting confirmation stops reading as zero.
+        {
+          eyebrow: 'Awaiting payment',
+          value: egpShort(overview.pending_revenue?.total_cents ?? 0),
+          sub: `${overview.pending_revenue?.order_count ?? 0} order${
+            (overview.pending_revenue?.order_count ?? 0) === 1 ? '' : 's'
+          } · not counted as revenue`,
+          index: 2,
+        },
         {
           eyebrow: 'Pending orders',
           value: String(overview.orders.pending_count),
           sub: `${overview.orders.processing_count} processing · ${overview.orders.shipped_count} shipped`,
-          index: 2,
+          index: 3,
         },
         {
           eyebrow: 'New customers · 7d',
           value: String(overview.customers.new_week),
           sub: `${overview.customers.new_today} today · ${overview.customers.total_active} active`,
-          index: 3,
+          index: 4,
         },
       ]
     : [];

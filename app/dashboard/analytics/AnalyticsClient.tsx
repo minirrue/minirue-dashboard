@@ -213,6 +213,15 @@ export default function AnalyticsClient() {
             <StatCard title="New Customers (Week)" value={(overview.customers?.new_week || 0).toLocaleString()} sub={`${overview.customers?.total_active || 0} total active`} />
             <StatCard title="Refunded This Month" value={egpShort(overview?.refunds?.month_cents ?? 0)} sub={`${overview?.refunds?.count ?? 0} refunds today`} />
             <StatCard title="Net Revenue This Month" value={egpShort(overview?.revenue?.net_month_cents ?? 0)} sub={`after ${egp(overview?.refunds?.month_cents ?? 0)} refunded`} />
+            {/* Expected, not banked. Its own card so it can never be mistaken for
+                confirmed revenue — every figure above counts only paid orders. */}
+            <StatCard
+              title="Awaiting Payment Confirmation"
+              value={egpShort(overview?.pending_revenue?.total_cents ?? 0)}
+              sub={`${overview?.pending_revenue?.order_count ?? 0} order${
+                (overview?.pending_revenue?.order_count ?? 0) === 1 ? '' : 's'
+              } · excluded from revenue`}
+            />
           </>
         ) : null}
       </div>
