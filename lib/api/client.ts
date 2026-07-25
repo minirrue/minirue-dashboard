@@ -9,6 +9,53 @@ export interface ApiError {
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8002') + '/v1';
 
 /**
+ * One shared refresh attempt for the whole app.
+ *
+ * The dashboard polls several endpoints at once (notifications, the support
+ * inbox, orders). When the access token expired, each of those 401s started its
+ * own /auth/refresh — and because the backend ROTATES the refresh token, only
+ * the first succeeded. The rest presented a token that had just been invalidated,
+ * failed, and called clearTokens(), signing the user out mid-session even though
+ * their session was perfectly renewable. Every caller now awaits the same
+ * promise and shares its outcome.
+ */
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function refreshSession(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      try {
+        const { getRefreshToken } = await import('@/lib/auth/tokens');
+        const refreshToken = getRefreshToken();
+        if (!refreshToken) return false;
+        const res = await fetch(`${BASE}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ refreshToken }),
+        });
+        if (!res.ok) return false;
+        const pair = (await res.json()) as {
+          accessToken: string;
+          refreshToken: string;
+        };
+        setTokens(pair.accessToken, pair.refreshToken);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        // Cleared next tick so callers arriving during teardown join this
+        // attempt instead of starting another.
+        setTimeout(() => {
+          refreshInFlight = null;
+        }, 0);
+      }
+    })();
+  }
+  return refreshInFlight;
+}
+
+/**
  * Coerces an API error body's `message` to a string. Validation failures come
  * back as an array of `{ field, issue }` objects, and every screen renders
  * `err.message` straight into JSX — handing React an object there threw
@@ -77,23 +124,8 @@ export async function apiFetch<T>(
       } as ApiError;
     }
 
-    const { getRefreshToken } = await import('@/lib/auth/tokens');
-    const refreshToken = getRefreshToken();
-    if (refreshToken) {
-      try {
-        const refreshRes = await fetch(`${BASE}/auth/refresh`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken }),
-        });
-        if (refreshRes.ok) {
-          const pair = (await refreshRes.json()) as { accessToken: string; refreshToken: string };
-          setTokens(pair.accessToken, pair.refreshToken);
-          return apiFetch<T>(path, { ...init, _isRetry: true });
-        }
-      } catch {
-        // refresh network failure
-      }
+    if (await refreshSession()) {
+      return apiFetch<T>(path, { ...init, _isRetry: true });
     }
     clearTokens();
     throw { status: 401, message: 'Session expired' } as ApiError;

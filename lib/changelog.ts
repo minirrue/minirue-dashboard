@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 102,
+    date: '2026-07-25',
+    area: 'Sign in',
+    summary:
+      'You should no longer be signed out while you are working. Several screens refresh in the background, and when your sign-in needed renewing they all tried at once — only the first succeeded and the rest logged you out. Staying signed in now lasts a day and renews itself as you use the dashboard.',
+  },
+  {
     id: 101,
     date: '2026-07-24',
     area: 'Support',
