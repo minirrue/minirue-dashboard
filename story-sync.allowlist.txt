@@ -59,3 +59,10 @@ minirue-dashboard PAGE /dashboard/partners
 # screens. Story pending (vault decoupled, same reason as everything above).
 minirue-dashboard PAGE /dashboard/support
 minirue-dashboard PAGE /dashboard/collab/support
+
+# 2026-07-29 — the dashboard half of "spaces": a partner managing their own category tree, the
+# screen behind /v1/collab/categories. Exempted as a block with the backend routes it calls, for
+# the same reason — new product surface with no existing story that describes it, and inventing
+# an attribution would record coverage that does not exist. Story pending per §18/§21 (vault
+# decoupled).
+minirue-dashboard PAGE /dashboard/collab/categories
