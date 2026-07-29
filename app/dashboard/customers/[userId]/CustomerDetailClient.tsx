@@ -18,6 +18,7 @@ import {
   apiAdminDeleteCustomer,
   apiAdminGetCustomer,
   apiAdminGetCustomerOrders,
+  apiAdminGetCustomerRefunds,
   apiAdminSetDefaultAddress,
   apiAdminUnblockCustomer,
   apiAdminUpdateAddress,
@@ -29,6 +30,7 @@ import {
   type TierLevel,
 } from '@/lib/api/customers';
 import type { Order } from '@/lib/api/orders';
+import type { CustomerRefundsResponse } from '@/lib/api/customers';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import FulfillmentControl from '@/components/dashboard/FulfillmentControl';
@@ -139,6 +141,7 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
 
   // Order history
   const [orders, setOrders] = useState<Order[]>([]);
+  const [refunds, setRefunds] = useState<CustomerRefundsResponse | null>(null);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
   const [orderActionError, setOrderActionError] = useState<string | null>(null);
@@ -199,11 +202,24 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
     load();
   }, [load]);
 
+  // Refunds are their own read rather than part of the customer payload: they
+  // are a history list, and a customer with none must cost nothing to render.
+  const loadRefunds = useCallback(async () => {
+    try {
+      setRefunds(await apiAdminGetCustomerRefunds(userId));
+    } catch {
+      // A missing refund history must never blank the customer page — the
+      // card simply does not render.
+      setRefunds(null);
+    }
+  }, [userId]);
+
   useMountedEffect(() => {
     if (customer) {
       void loadOrders();
+      void loadRefunds();
     }
-  }, [customer, loadOrders]);
+  }, [customer, loadOrders, loadRefunds]);
 
   const handleAdjustTier = async () => {
     if (!customer) return;
@@ -517,6 +533,16 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                 <strong>Lifetime spend:</strong>{' '}
                 {formatMoney(customer.lifetimeSpendAmount, customer.lifetimeSpendCurrency)}
               </p>
+              {/* Refunds are shown here, not subtracted from the figure above:
+                  spend answers "how much has this person ever paid us", so
+                  netting refunds off would hide a repeat returner. */}
+              {refunds && refunds.count > 0 && (
+                <p style={{ margin: '6px 0', fontSize: 14, color: 'var(--mr-st-danger-fg, #b91c1c)' }}>
+                  <strong>Refunded back:</strong>{' '}
+                  {formatMoney((refunds.totalCents / 100).toFixed(2), customer.lifetimeSpendCurrency)}
+                  {' '}across {refunds.count} {refunds.count === 1 ? 'refund' : 'refunds'}
+                </p>
+              )}
               <p style={{ margin: '6px 0', fontSize: 14, color: 'var(--mr-fg-2)' }}>
                 <strong>Joined:</strong> {formatDate(customer.createdAt)}
               </p>
@@ -831,6 +857,58 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
               </div>
             )}
           </section>
+
+          {/* Refund history. Its own section rather than a column on the order
+              list: the question it answers is "is this customer returning
+              things repeatedly", which needs the refunds together and in
+              order. Hidden entirely when there are none — an empty card here
+              is noise on the majority of customers. */}
+          {refunds && refunds.count > 0 && (
+            <section className="dash-form-section">
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 16,
+                }}
+              >
+                <h2 className="dash-section-title" style={{ margin: 0 }}>
+                  Refund history ({refunds.count})
+                </h2>
+                <span style={{ fontSize: 13, color: 'var(--mr-st-danger-fg, #b91c1c)', fontWeight: 600 }}>
+                  {formatMoney((refunds.totalCents / 100).toFixed(2), 'EGP')} returned
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {refunds.items.map((r) => (
+                  <div
+                    key={r.ticketId}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 12,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <Link href={`/orders/${r.orderId}`} className="dash-link">
+                        {formatOrderRef({ orderSeq: r.orderSeq })}
+                      </Link>
+                      <div style={{ fontSize: 12, marginTop: 2, color: 'var(--mr-fg-2)' }}>
+                        {r.status} · {r.refundedAt ? formatDate(r.refundedAt) : '—'}
+                        {r.reason ? ` · ${r.reason}` : ''}
+                      </div>
+                    </div>
+                    <span style={{ fontWeight: 600, color: 'var(--mr-st-danger-fg, #b91c1c)' }}>
+                      {formatMoney((r.amountCents / 100).toFixed(2), 'EGP')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="dash-form-section">
             <div

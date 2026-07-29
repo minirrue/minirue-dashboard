@@ -149,6 +149,39 @@ export async function apiAdminGetCustomerOrders(
   return apiFetch<OrdersListResponse>(`/orders/admin?${qs.toString()}`, { auth: true });
 }
 
+/**
+ * Refunds paid back to this customer.
+ *
+ * Shown beside lifetime spend, not subtracted from it: spend answers "how much
+ * has this person ever paid us", so netting refunds off would hide a customer
+ * who buys and returns repeatedly.
+ */
+export interface CustomerRefundItem {
+  ticketId: string;
+  orderId: string;
+  orderNumber: string;
+  orderSeq: number;
+  status: string;
+  amountCents: number;
+  reason: string;
+  refundedAt: string | null;
+}
+
+export interface CustomerRefundsResponse {
+  items: CustomerRefundItem[];
+  /** Only tickets that actually paid out — a rejected one is not a refund. */
+  totalCents: number;
+  count: number;
+}
+
+export async function apiAdminGetCustomerRefunds(
+  userId: string,
+): Promise<CustomerRefundsResponse> {
+  return apiFetch<CustomerRefundsResponse>(`/customers/${userId}/refunds`, {
+    auth: true,
+  });
+}
+
 export async function apiAdminCreateAddress(
   userId: string,
   input: CustomerAddressInput,

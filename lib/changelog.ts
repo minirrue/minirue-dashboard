@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 126,
+    date: '2026-07-29',
+    area: 'Customers',
+    summary:
+      'Lifetime spend is a real number now. It always showed EGP 0.00, for everyone, no matter how much they had bought — nothing was ever adding to it. It now counts money as each order is paid, and past orders have been added back in, so tiers finally move on their own. Refunds are shown separately on the customer, with a running total, rather than being quietly taken off the spend — so you can see who keeps buying and returning.',
+  },
+  {
     id: 125,
     date: '2026-07-29',
     area: 'Orders & Refunds',
