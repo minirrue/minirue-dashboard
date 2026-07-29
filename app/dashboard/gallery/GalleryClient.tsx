@@ -729,7 +729,18 @@ export default function GalleryClient() {
             <>
               <h2 className="dash-section-title">{selectedFolder.name}</h2>
 
-              <UploadDropzone folderId={selectedFolder.id} onUploaded={handleItemUploaded} />
+              {/* Owner rule 2026-07-29: a top-level folder holds folders, not
+                  files. Uploading into one is what turned the gallery into a
+                  flat pile in the first place — the level exists to group, and
+                  something dropped straight into it belongs to no group. */}
+              {selectedFolder.parentId ? (
+                <UploadDropzone folderId={selectedFolder.id} onUploaded={handleItemUploaded} />
+              ) : (
+                <p className="dash-help-text" style={{ marginTop: 0 }}>
+                  Photos go inside a subfolder. Open <strong>{selectedFolder.name}</strong>{' '}
+                  and make one, then upload there.
+                </p>
+              )}
 
               <h3 className="dash-section-subtitle">Items</h3>
               {itemsLoading ? (

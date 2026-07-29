@@ -3087,11 +3087,24 @@
 .dash-order-item-thumb {
   width: 64px;
   height: 64px;
+  /* max-width: none beats the global `img { max-width: 100% }` reset, which
+     was letting the narrow PRODUCT column squeeze this to a sliver — the image
+     kept its 64px height and lost its width, so a bottle rendered as a
+     letterbox strip. min-width holds the floor if the column narrows further. */
+  min-width: 64px;
+  max-width: none;
   object-fit: cover;
   border-radius: 6px;
   border: 1px solid var(--mr-dash-border, #e5e0d8);
   background: var(--mr-dash-sub, #f4f1ec);
   display: block;
+}
+/* The cell itself must not collapse around it. `width: 1%` makes the column
+   take only what it needs and hand the rest to the product name. */
+.dash-table td:has(> .dash-order-item-thumb),
+.dash-table td:has(> button > .dash-order-item-thumb) {
+  width: 1%;
+  white-space: nowrap;
 }
 .dash-order-item-thumb--empty {
   /* No image to enlarge, so no button and no pointer affordance. */
@@ -3171,4 +3184,25 @@
   background: var(--mr-st-warn-bg);
   color: var(--mr-st-warn-fg);
   font-size: 13px;
+}
+
+/* ── Editable table cell ──
+   An em dash in a table reads as "no value", not as "you can type here", so
+   the InstaPay/Sender/Ref cells looked inert. The pencil is the affordance;
+   it stays dim until the row is hovered so a column of them does not compete
+   with the numbers beside it. */
+.dash-editable-pencil {
+  flex-shrink: 0;
+  opacity: 0;
+  color: var(--mr-ink-400);
+  transition: opacity var(--mr-dur-fast, 140ms) var(--mr-ease-out, ease-out);
+}
+.dash-editable-cell:hover .dash-editable-pencil,
+.dash-editable-cell:focus-visible .dash-editable-pencil,
+tr:hover .dash-editable-pencil {
+  opacity: 1;
+}
+/* Always visible on touch, where there is no hover to reveal it. */
+@media (hover: none) {
+  .dash-editable-pencil { opacity: 0.6; }
 }

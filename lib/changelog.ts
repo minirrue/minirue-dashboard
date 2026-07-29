@@ -21,6 +21,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 143,
+    date: '2026-07-29',
+    area: 'Orders & Gallery',
+    summary:
+      'Three small fixes. The product photo on an order was being squashed into a thin strip by the narrow column — it is a proper square again. The InstaPay reference, sender and reference now show a small pencil when you hover the row, because a dash in a table reads as “nothing here” rather than “you can type here”. And a top-level gallery folder no longer accepts photos: it holds folders, and dropping files straight into it is what left everything in one pile.',
+  },
+  {
+    id: 143,
+    date: '2026-07-29',
+    area: 'Photos & files',
+    summary:
+      'We moved to a new photo and file storage system. The visible change is that photos no longer break when a new part of the dashboard starts accepting uploads. Before, each new kind of upload — support chat attachments, review photos — had to be switched on by hand behind the scenes, and until someone did, those pictures showed as broken while everything else looked fine. That step is gone: uploads work everywhere from the moment the feature ships. Product and gallery photos are also now visible in the dashboard itself, not just on the shop.',
+  },
+  {
     id: 142,
     date: '2026-07-29',
     area: 'Support',
