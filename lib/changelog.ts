@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 134,
+    date: '2026-07-29',
+    area: 'Collaborators',
+    summary:
+      'A partner’s page now has tabs: Settings (everything that was already there), Products (what they have actually listed, and whether each one is live), and Activity (what has been happening with them). Note the Products / Orders / Analytics boxes under Access are not tabs — they control what the partner can see in their own dashboard.',
+  },
+  {
     id: 133,
     date: '2026-07-29',
     area: 'Catalogue',

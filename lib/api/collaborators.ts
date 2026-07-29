@@ -229,3 +229,41 @@ export async function apiAssignCollaboratorScope(
     body: JSON.stringify(data),
   });
 }
+
+/* ── Partner detail tabs ──
+   The chips on the partner page labelled Products / Orders / Analytics are
+   PERMISSION toggles for what the partner sees in their own portal — they were
+   never tabs, and this page had no tab strip at all. These back the real ones. */
+
+export interface CollaboratorProductItem {
+  id: string;
+  name: string;
+  slug: string;
+  publishedState: string;
+  rejectionReason?: string | null;
+  priceAmount?: string | null;
+  priceCurrency?: string | null;
+  imageUrl?: string | null;
+}
+
+export async function apiGetCollaboratorProducts(
+  id: string,
+): Promise<{ items: CollaboratorProductItem[] }> {
+  return apiFetch(`/admin/collaborators/${id}/products`, { auth: true });
+}
+
+export interface CollaboratorActivityItem {
+  id: string;
+  title: string;
+  body: string | null;
+  category: string | null;
+  createdAt: string;
+  /** PARTNER = raised in their own feed; STORE = raised about them, store-wide. */
+  source: 'PARTNER' | 'STORE';
+}
+
+export async function apiGetCollaboratorActivity(
+  id: string,
+): Promise<{ items: CollaboratorActivityItem[] }> {
+  return apiFetch(`/admin/collaborators/${id}/activity`, { auth: true });
+}

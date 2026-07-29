@@ -18,12 +18,27 @@ import {
   apiSuspendCollaborator,
   apiUpdateCollaborator,
   apiUpdateCollaboratorSettings,
+  apiGetCollaboratorProducts,
+  apiGetCollaboratorActivity,
+  type CollaboratorProductItem,
+  type CollaboratorActivityItem,
   type CollaboratorDeleteImpact,
   type CollaboratorDetail,
   type CollaboratorModule,
   type FulfillmentMode,
 } from '@/lib/api/collaborators';
 import { useRouter } from 'next/navigation';
+
+/** Short, readable timestamp for the activity feed. */
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleString('en-EG', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 import type { ApiError } from '@/lib/api/client';
 
 const MODULE_OPTIONS: Array<{ value: CollaboratorModule; label: string }> = [
@@ -57,10 +72,36 @@ export default function CollaboratorDetailClient() {
   const [fulfillmentMode, setFulfillmentMode] = useState<FulfillmentMode>('MINIRUE_SHIPS');
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [tab, setTab] = useState<'Settings' | 'Products' | 'Activity'>('Settings');
+  const [products, setProducts] = useState<CollaboratorProductItem[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [activity, setActivity] = useState<CollaboratorActivityItem[]>([]);
+  const [activityLoading, setActivityLoading] = useState(false);
   const [deleteImpact, setDeleteImpact] = useState<CollaboratorDeleteImpact | null>(null);
   const [deleteImpactError, setDeleteImpactError] = useState<string | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Loaded when the tab is first opened rather than up front: most visits to
+  // this page are to change a setting, and two extra reads on every one of
+  // them buys nothing.
+  useEffect(() => {
+    if (tab !== 'Products' || products.length > 0 || productsLoading) return;
+    setProductsLoading(true);
+    apiGetCollaboratorProducts(id)
+      .then((res) => setProducts(res.items ?? []))
+      .catch(() => setProducts([]))
+      .finally(() => setProductsLoading(false));
+  }, [tab, id, products.length, productsLoading]);
+
+  useEffect(() => {
+    if (tab !== 'Activity' || activity.length > 0 || activityLoading) return;
+    setActivityLoading(true);
+    apiGetCollaboratorActivity(id)
+      .then((res) => setActivity(res.items ?? []))
+      .catch(() => setActivity([]))
+      .finally(() => setActivityLoading(false));
+  }, [tab, id, activity.length, activityLoading]);
 
   useEffect(() => {
     let cancelled = false;
@@ -355,7 +396,89 @@ export default function CollaboratorDetailClient() {
         </div>
       ) : null}
 
-      <div className="collab-admin-grid">
+      {/* The chips further down labelled Products / Orders / Analytics are
+          PERMISSION toggles for what this partner sees in their own portal —
+          they were never tabs, and this page had no tab strip at all. These
+          are the real ones. Settings holds what was already here, so nothing
+          an admin knows how to find has moved. */}
+      <div
+        className="dash-tabs"
+        role="tablist"
+        data-trace-id="PG-DASHBOARD-COLLAB-008::EL-TABS-detail"
+        style={{ display: 'flex', gap: 4, marginBottom: 16, flexWrap: 'wrap' }}
+      >
+        {(['Settings', 'Products', 'Activity'] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={tab === t}
+            className={tab === t ? 'dash-btn-secondary' : 'dash-btn-ghost'}
+            onClick={() => setTab(t)}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'Products' && (
+        <div className="dash-card">
+          {productsLoading ? (
+            <p className="dash-help-text">Loading products…</p>
+          ) : products.length === 0 ? (
+            <p className="dash-help-text">This partner has not listed anything yet.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {products.map((p) => (
+                <div
+                  key={p.id}
+                  style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600 }}>{p.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--mr-fg-3)' }}>/{p.slug}</div>
+                  </div>
+                  <span className="dash-status" data-status={p.publishedState.toLowerCase()}>
+                    <span className="dash-status-dot" />
+                    {p.publishedState.charAt(0) + p.publishedState.slice(1).toLowerCase()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'Activity' && (
+        <div className="dash-card">
+          <p className="dash-help-text" style={{ marginTop: 0 }}>
+            Notifications raised by this partner and about them. This is a feed,
+            not a full record of every change.
+          </p>
+          {activityLoading ? (
+            <p className="dash-help-text">Loading activity…</p>
+          ) : activity.length === 0 ? (
+            <p className="dash-help-text">Nothing has happened yet.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {activity.map((a) => (
+                <div key={a.id}>
+                  <div style={{ fontWeight: 600 }}>{a.title}</div>
+                  {a.body ? (
+                    <div style={{ fontSize: 13, color: 'var(--mr-fg-2)' }}>{a.body}</div>
+                  ) : null}
+                  <div style={{ fontSize: 12, color: 'var(--mr-fg-3)' }}>
+                    {a.source === 'PARTNER' ? 'From their feed' : 'Store-wide'} ·{' '}
+                    {formatDate(a.createdAt)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="collab-admin-grid" hidden={tab !== 'Settings'}>
       <form
         className="dash-form-card"
         onSubmit={handleSave}
