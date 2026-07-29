@@ -3158,3 +3158,17 @@
   color: var(--mr-ink-500);
   flex-shrink: 0;
 }
+
+/* ── Watching another desk ──
+   An admin may READ any partner's support desk but must not reply as that
+   partner — the customer would see a reply from a brand written by someone who
+   does not work there. The server refuses the post; this says so before
+   anyone types. Amber, not red: nothing is wrong, it is just not yours. */
+.mrc-watch-bar {
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-st-warn-bg);
+  color: var(--mr-st-warn-fg);
+  font-size: 13px;
+}

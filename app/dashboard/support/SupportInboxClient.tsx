@@ -17,6 +17,7 @@ import {
 } from '@/lib/hooks/use-support';
 import { useUser } from '@/lib/hooks/use-auth';
 import { apiCollabOverview } from '@/lib/api/collab-portal';
+import { apiSupportChannels, type SupportChannel } from '@/lib/api/support';
 import { Role } from '@/lib/auth/role';
 import { apiSupportSend } from '@/lib/api/support';
 import type { PresenceDto, MessageAttachmentDto } from '@/lib/api/support';
@@ -423,6 +424,8 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
    * answers for them.
    */
   const [collabModules, setCollabModules] = useState<string[]>([]);
+  /** Every desk this user may open — including ones with no threads yet. */
+  const [channels, setChannels] = useState<SupportChannel[]>([]);
   const [mergeNotice, setMergeNotice] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingOutgoing[]>([]);
   const qc = useQueryClient();
@@ -452,6 +455,22 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   // points at the conversation currently open in this inbox (so the admin
   // doesn't have to separately dismiss it in the notification centre).
   const { items: notifications, markRead: markNotificationRead, refresh: refreshNotifications } = useAdminNotifications({ enabled: true });
+
+  useEffect(() => {
+    let cancelled = false;
+    apiSupportChannels()
+      .then((r) => {
+        if (!cancelled) setChannels(r.data ?? []);
+      })
+      .catch(() => {
+        // Falls back to the desks visible in the loaded conversations, which
+        // is what this screen did before there was a channel list at all.
+        if (!cancelled) setChannels([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Only a partner needs this: the grant decides whether they can set their
   // own desk's status. An admin's role already answers, so no request is made.
@@ -581,15 +600,37 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   // chat list has no use for, but the actions need the real status and grant.
   const activeConversationDto = (conversationDtos ?? []).find((c) => c.id === activeId);
 
-  // Derived from the conversations themselves rather than fetching every brand:
-  // a brand with no threads is not worth an option, and this needs no extra call.
-  const brandOptions = Array.from(
-    new Map(
-      (conversationDtos ?? [])
-        .filter((c) => c.collaboratorId && c.brandName)
-        .map((c) => [c.collaboratorId as string, c.brandName as string]),
-    ).entries(),
-  ).map(([id, name]) => ({ id, name }));
+  /**
+   * Every partner desk, from the channel list — not derived from whatever
+   * conversations happen to be loaded. That derivation meant a partner with no
+   * threads yet had no option, so their desk could not be opened to see that it
+   * was empty, which is exactly the question "has anyone messaged Helia".
+   *
+   * Falls back to the old derivation if the channel list did not load, so the
+   * filter never goes completely blank.
+   */
+  const brandOptions = channels.length
+    ? channels
+        .filter((ch) => ch.collaboratorId)
+        .map((ch) => ({ id: ch.collaboratorId as string, name: ch.name }))
+    : Array.from(
+        new Map(
+          (conversationDtos ?? [])
+            .filter((c) => c.collaboratorId && c.brandName)
+            .map((c) => [c.collaboratorId as string, c.brandName as string]),
+        ).entries(),
+      ).map(([id, name]) => ({ id, name }));
+
+  /**
+   * Watching someone else's desk. An admin may READ any desk but must not
+   * reply as that partner — the customer would see a reply from a brand
+   * written by someone who does not work there. The server refuses the post
+   * either way (canPostOnChannel); this is what says so before they type.
+   */
+  const watchedBrand =
+    isAdmin && brandFilter && brandFilter !== 'direct'
+      ? (brandOptions.find((b) => b.id === brandFilter)?.name ?? 'this partner')
+      : null;
 
   const conversations = (conversationDtos ?? []).map(toConversation).map(
     // The conversation you're currently viewing never shows a red unread badge —
@@ -690,6 +731,12 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   return (
     <>
       {presenceBar}
+      {watchedBrand && (
+        <div className="mrc-watch-bar" role="status">
+          Watching <strong>{watchedBrand}</strong>&apos;s desk — read only. Only{' '}
+          {watchedBrand} can reply here.
+        </div>
+      )}
       <DashChatView
         conversations={conversations}
         activeId={activeId}

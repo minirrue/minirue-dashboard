@@ -140,3 +140,20 @@ export const apiSupportSetPresence = (patch: { status?: string; replyTimeText?: 
     auth: true,
     body: JSON.stringify(patch),
   });
+
+/* ── Support desks ──
+   One per space since backend 0.54.0. Fetched properly rather than derived
+   from loaded conversations, which meant a partner with no threads had no
+   option and their desk could not be opened at all. */
+
+export interface SupportChannel {
+  id: string;
+  /** null = MiniRue's own desk. */
+  collaboratorId: string | null;
+  name: string;
+  presenceStatus: string;
+}
+
+export async function apiSupportChannels(): Promise<{ data: SupportChannel[] }> {
+  return apiFetch('/support/channels', { auth: true });
+}

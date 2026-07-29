@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 142,
+    date: '2026-07-29',
+    area: 'Support',
+    summary:
+      'You can now open a partner’s support desk even when nobody has messaged them — the brand list used to be built from conversations that had already arrived, so an empty desk simply was not in it. When you open someone else’s desk a bar says you are watching it: you can read everything, but only that partner can reply, so a customer never gets a message from a brand written by someone who does not work there.',
+  },
+  {
     id: 141,
     date: '2026-07-29',
     area: 'Collaborators',
