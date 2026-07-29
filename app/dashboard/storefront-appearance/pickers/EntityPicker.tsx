@@ -176,12 +176,19 @@ export function MultiProductPicker({
   value,
   onChange,
   collaboratorId,
+  label = 'Products (shown in this order)',
+  emptyHint = 'No products picked yet — this section will not appear on the storefront.',
 }: {
   value: string[];
   onChange: (ids: string[]) => void;
   /** Restricts the list to one collaborator's products. Omit for the whole
    * catalogue (curated sections); pass it for a collaborator showcase tab. */
   collaboratorId?: string;
+  /** Overridable so each caller names what the list is FOR. The default reads
+   * as a page section; a navbar dropdown is not one. */
+  label?: string;
+  /** What "nothing picked" means here — the consequence differs per caller. */
+  emptyHint?: string;
 }) {
   const { options, loading, error } = useEntityOptions('product', collaboratorId);
   const [pending, setPending] = useState('');
@@ -192,7 +199,7 @@ export function MultiProductPicker({
 
   return (
     <div className="dash-field">
-      <span className="dash-label">Products (shown in this order)</span>
+      <span className="dash-label">{label}</span>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <select
           className="dash-input"
@@ -243,7 +250,7 @@ export function MultiProductPicker({
       </ol>
       {value.length === 0 && (
         <p style={{ fontSize: 13, color: 'var(--mr-fg-4)', margin: '6px 0 0' }}>
-          No products picked yet — this section will not appear on the storefront.
+          {emptyHint}
         </p>
       )}
     </div>

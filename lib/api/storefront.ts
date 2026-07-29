@@ -123,7 +123,16 @@ export type StorefrontSection =
   | CollabShowcaseSection;
 
 export type NavItem =
-  | { id: string; kind: 'category'; categoryId: string; label: string }
+  | {
+      id: string;
+      kind: 'category';
+      categoryId: string;
+      label: string;
+      /** Up to 3 products pinned to this category's storefront nav dropdown, in
+       * the order shoppers see them. Optional — items saved before the dropdown
+       * existed have no such key and the backend defaults it to []. */
+      featuredProductIds?: string[];
+    }
   | { id: string; kind: 'brand'; brandId: string; label: string }
   | { id: string; kind: 'product'; productId: string; label: string }
   | { id: string; kind: 'collaborator'; collaboratorId: string; label: string }

@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 131,
+    date: '2026-07-29',
+    area: 'Storefront appearance → Menu',
+    summary:
+      'Category menu items can now show product pictures. Open Storefront appearance → Menu, pick a category item, and choose up to three products on it. On a computer those products slide down in a panel when a shopper hovers that menu item; on a phone the menu itself now rises from the bottom of the screen and tapping the item opens the same three products with their photos and prices. Leave the products empty and the menu item keeps working exactly as before, linking straight to the category.',
+  },
+  {
     id: 130,
     date: '2026-07-29',
     area: 'Support',

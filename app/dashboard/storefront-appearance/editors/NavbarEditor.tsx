@@ -3,13 +3,18 @@
 import React from 'react';
 import { newId } from '@/lib/api/storefront';
 import type { NavItem, NavbarConfig } from '@/lib/api/storefront';
-import EntityPicker, { moveInList } from '../pickers/EntityPicker';
+import EntityPicker, { MultiProductPicker, moveInList } from '../pickers/EntityPicker';
+
+/** The storefront dropdown shows at most three tiles — more would not fit the
+ * desktop panel or the mobile sheet, so the cap is enforced here as well as in
+ * the backend schema. */
+const MAX_FEATURED = 3;
 
 export function blankNavItem(kind: NavItem['kind']): NavItem {
   const id = newId('nav');
   switch (kind) {
     case 'category':
-      return { id, kind: 'category', categoryId: '', label: '' };
+      return { id, kind: 'category', categoryId: '', label: '', featuredProductIds: [] };
     case 'brand':
       return { id, kind: 'brand', brandId: '', label: '' };
     case 'product':
@@ -92,10 +97,30 @@ function NavList({
             </label>
           )}
           {item.kind === 'category' && (
-            <EntityPicker kind="category" label="Category" value={item.categoryId || null}
-              onChange={(id, label) =>
-                patch(index, { ...item, categoryId: id ?? '', label: item.label || label })
-              } />
+            <>
+              <EntityPicker kind="category" label="Category" value={item.categoryId || null}
+                onChange={(id, label) =>
+                  patch(index, { ...item, categoryId: id ?? '', label: item.label || label })
+                } />
+              <p className="dash-help-text" style={{ marginTop: 10 }}>
+                Pick up to {MAX_FEATURED} products to show as pictures when a shopper hovers
+                this menu item on desktop, or taps into it on mobile. Leave it empty and the
+                menu item just links straight to the category.
+              </p>
+              <MultiProductPicker
+                label={`Dropdown products (up to ${MAX_FEATURED}, shown in this order)`}
+                emptyHint="Nothing picked — this menu item will link straight to the category with no dropdown."
+                value={item.featuredProductIds ?? []}
+                onChange={(ids) =>
+                  patch(index, { ...item, featuredProductIds: ids.slice(0, MAX_FEATURED) })
+                }
+              />
+              {(item.featuredProductIds ?? []).length >= MAX_FEATURED && (
+                <p className="dash-help-text">
+                  That is the maximum — remove one before adding another.
+                </p>
+              )}
+            </>
           )}
           {item.kind === 'brand' && (
             <EntityPicker kind="brand" label="Brand" value={item.brandId || null}
@@ -148,7 +173,13 @@ export default function NavbarEditor({
       <p style={{ fontSize: 13, color: 'var(--mr-fg-3)' }}>
         The navigation is no longer built from your categories automatically. Adding a new
         category will not add a menu item on its own — whatever you list below is exactly what
-        shoppers see, shown as a bar across the top on desktop and in a slide-out menu on mobile.
+        shoppers see, shown as a bar across the top on desktop and in a slide-up menu on mobile.
+      </p>
+
+      <p className="dash-help-text" style={{ marginTop: -4 }}>
+        Category menu items can also show product pictures: pick up to {MAX_FEATURED} products
+        on the item and they appear in a dropdown when a shopper hovers it on desktop, or taps
+        into it on mobile.
       </p>
 
       <p className="dash-help-text" style={{ marginTop: -4 }}>
