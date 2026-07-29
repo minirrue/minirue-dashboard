@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 145,
+    date: '2026-07-29',
+    area: 'Reviews',
+    summary:
+      'A customer can now attach up to four photos and one short video to a review — what the bottle actually looked like when it arrived. You see them in the Reviews tab before you decide, and clicking a photo opens it full size, because approving from a thumbnail is approving blind. If someone adds a photo to a review you have already approved, it comes back to you for a second look rather than appearing on the shop by itself.',
+  },
+  {
     id: 143,
     date: '2026-07-29',
     area: 'Left menu',

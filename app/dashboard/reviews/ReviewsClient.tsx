@@ -194,8 +194,70 @@ export default function ReviewsClient() {
                         <div className="dash-muted" style={{ maxWidth: '48ch' }}>
                           {row.body}
                         </div>
-                      ) : !row.title ? (
+                      ) : !row.title && !row.media?.length ? (
                         <span className="dash-muted">Stars only, no words.</span>
+                      ) : null}
+                      {row.media?.length ? (
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: 8,
+                            flexWrap: 'wrap',
+                            marginTop: 10,
+                          }}
+                        >
+                          {row.media.map((m) =>
+                            m.url ? (
+                              m.kind === 'IMAGE' ? (
+                                // Opens full size, because deciding from a
+                                // 72px square is deciding from nothing.
+                                <a
+                                  key={m.id}
+                                  href={m.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title="Open full size"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={m.url}
+                                    alt="Attached by the customer"
+                                    width={72}
+                                    height={72}
+                                    style={{
+                                      objectFit: 'cover',
+                                      borderRadius: 'var(--mr-radius-sm)',
+                                      border: '1px solid var(--mr-dash-hair)',
+                                      display: 'block',
+                                    }}
+                                  />
+                                </a>
+                              ) : (
+                                <video
+                                  key={m.id}
+                                  src={m.url}
+                                  controls
+                                  preload="metadata"
+                                  width={128}
+                                  style={{
+                                    height: 72,
+                                    borderRadius: 'var(--mr-radius-sm)',
+                                    border: '1px solid var(--mr-dash-hair)',
+                                    background: 'var(--mr-ink-900)',
+                                  }}
+                                />
+                              )
+                            ) : (
+                              <span
+                                key={m.id}
+                                className="dash-muted"
+                                style={{ fontSize: 'var(--mr-text-xs)' }}
+                              >
+                                An attachment could not be loaded.
+                              </span>
+                            ),
+                          )}
+                        </div>
                       ) : null}
                       {row.status === 'REJECTED' && row.rejectionReason ? (
                         <div

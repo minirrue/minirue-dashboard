@@ -2,6 +2,15 @@ import { apiFetch } from './client';
 
 export type ReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
+export interface ReviewMedia {
+  id: string;
+  kind: 'IMAGE' | 'VIDEO';
+  /** Resolved server-side at read time — images through imgproxy, videos as a
+   * freshly signed link. Null if storage could not resolve it. */
+  url: string | null;
+  contentType: string;
+}
+
 export interface AdminReview {
   id: string;
   productId: string;
@@ -17,6 +26,9 @@ export interface AdminReview {
   moderatedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Photos and clips the customer attached. A review approved without looking
+   * at these is a review approved blind. */
+  media: ReviewMedia[];
 }
 
 export interface AdminReviewList {
