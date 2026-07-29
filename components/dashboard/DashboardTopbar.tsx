@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import NotificationDrawer from './NotificationDrawer';
+import ServerStatus from './ServerStatus';
 import { useUnreadNotificationCount } from '@/lib/hooks/use-unread-notifications';
 
 // Kept for compatibility with existing callers passing breadcrumbs/eyebrow/
@@ -48,6 +49,10 @@ export default function DashboardTopbar({ onToggleDrawer }: DashboardTopbarProps
             <line x1="3" y1="18" x2="21" y2="18" />
           </svg>
         </button>
+
+        {/* Is the API up. Sits before the bell because a dead server makes
+            every other control in here a lie — including the bell's count. */}
+        <ServerStatus variant="dot" />
 
         <button
           className="dash-notif-btn"

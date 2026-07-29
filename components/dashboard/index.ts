@@ -11,6 +11,7 @@ export { default as DashboardRoleWelcome } from './DashboardRoleWelcome';
 export { default as NotificationDrawer } from './NotificationDrawer';
 export { default as DeleteChoiceDialog } from './DeleteChoiceDialog';
 export { default as FulfillmentControl } from './FulfillmentControl';
+export { default as ServerStatus } from './ServerStatus';
 
 export type { DashboardShellProps } from './DashboardShell';
 export type { DashboardSidebarProps, NavItem } from './DashboardSidebar';

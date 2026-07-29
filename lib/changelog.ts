@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 136,
+    date: '2026-07-29',
+    area: 'Everywhere',
+    summary:
+      'The dashboard now tells you whether the server is up. A small dot sits at the bottom of the left menu, and on the sign-in page under the password box: green means the server is answering normally, red means it is not. If it turns red, nothing you do will save until it is green again — so you are told instead of finding out when a change quietly disappears. Red also covers the case where the server answers but its database does not, and hovering the dot says which it is. Click it to check again immediately.',
+  },
+  {
     id: 135,
     date: '2026-07-29',
     area: 'Catalogue',

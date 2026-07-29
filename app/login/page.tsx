@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { apiLogin } from '@/lib/api/auth';
 import type { ApiError } from '@/lib/api/client';
 import ErrorBanner from '@/components/dashboard/ErrorBanner';
+import ServerStatus from '@/components/dashboard/ServerStatus';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -278,6 +279,22 @@ export default function LoginPage() {
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
+
+        {/* Answers "is it me or is it them?" before anyone tries a third
+            password. A failed sign-in against a dead API is indistinguishable
+            from a wrong one otherwise. */}
+        <div
+          data-trace-id="PG-DASHBOARD-IAM-001::EL-REGION-server-status"
+          style={{
+            marginTop: 24,
+            paddingTop: 18,
+            borderTop: '1px solid var(--mr-hairline, rgba(0,0,0,0.08))',
+            display: 'flex',
+            justifyContent: 'center',
+          }}
+        >
+          <ServerStatus variant="full" />
+        </div>
       </div>
     </div>
   );

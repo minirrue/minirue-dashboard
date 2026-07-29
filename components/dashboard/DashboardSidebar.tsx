@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { canAccessDashboardRoute } from '@/lib/auth/roles';
 import UserMenu from './UserMenu';
+import ServerStatus from './ServerStatus';
 import { Sparkle } from '../primitives';
 import { CHANGELOG } from '@/lib/changelog';
 import { hasUnreadChangelog } from '@/lib/changelog-read-state';
@@ -418,6 +419,13 @@ export default function DashboardSidebar({
 
   const renderFooter = () => (
     <div className="dash-sidebar-footer">
+      {/* Is the API up. It lives here rather than only in the topbar because
+          .dash-topbar--minimal is display:none above the mobile breakpoint —
+          a status shown only in the topbar would be invisible on desktop,
+          which is where this dashboard is actually used. */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+        <ServerStatus variant="full" />
+      </div>
       <UserMenu userName={userName} userRole={userRole} />
     </div>
   );
