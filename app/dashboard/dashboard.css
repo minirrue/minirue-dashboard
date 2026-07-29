@@ -154,6 +154,29 @@
     opacity: 0.9;
   }
 
+  /* Unread count for one nav section. Same pill and colour as the bell badge,
+     because they count the same things — a shopper who learns the red pill on
+     the bell should not have to learn a second visual language in the nav.
+     margin-left:auto pins it to the right edge so the numbers line up in a
+     column down the sidebar and can be scanned without reading the labels.
+     tabular-nums stops the pill twitching as counts change. */
+  .dash-sidebar-link-count {
+    margin-left: auto;
+    flex-shrink: 0;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    box-sizing: border-box;
+    border-radius: var(--mr-radius-pill);
+    background: var(--mr-crimson-500);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
   .dash-sidebar-link-dot {
     width: 6px;
     height: 6px;
@@ -407,8 +430,17 @@
      tabular-nums stops the badge twitching as the count changes. */
   .dash-notif-count {
     position: absolute;
-    top: 2px;
-    right: 2px;
+    /* Outside the button's top-right corner, not tucked inside it. At 2px the
+       pill sat on the bell glyph itself and read as part of the icon; hung off
+       the corner it reads as a count attached to it, and stops covering the
+       thing it is annotating. Neither container clips it — .dash-sidebar-brand
+       and .dash-topbar-actions have padding to spare and no overflow rule. */
+    top: -6px;
+    right: -6px;
+    z-index: 1;
+    /* A ring in the surface colour separates the pill from the button border
+       underneath, so the two reds/edges do not merge into one shape. */
+    box-shadow: 0 0 0 2px var(--mr-dash-surface);
     min-width: 18px;
     height: 18px;
     padding: 0 5px;
@@ -3097,4 +3129,32 @@
   align-items: center;
   gap: 2px;
   min-width: 0;
+}
+
+/* ── Support presence bar ──
+   Whether the shop is answering, and how fast — one setting for the whole
+   business. It used to sit inside the THREAD header, so a shop-wide switch
+   appeared above one conversation and moved every time you clicked a different
+   row. Three altitudes shared that strip: this, the inbox filters, and the
+   actions for the open thread. Each now sits where its scope actually is. */
+.mrc-presence-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-dash-surface);
+}
+.mrc-presence-bar-label {
+  font-family: var(--mr-font-label);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  /* ink-500, not 400: this is a real label, and 400 on the surface tint sits
+     under 4.5:1. */
+  color: var(--mr-ink-500);
+  flex-shrink: 0;
 }

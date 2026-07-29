@@ -95,8 +95,6 @@ function ThreadStateActions({
   const closed =
     conversation.status === 'RESOLVED' || conversation.status === 'CLOSED';
   // Only a GUEST thread can be granted: a signed-in customer is never gated.
-  const isGuest = !conversation.customerId;
-  const attachmentsAllowed = !!conversation.guestAttachmentsAllowedAt;
 
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -133,36 +131,6 @@ function ThreadStateActions({
         </button>
       )}
 
-      {isGuest && (
-        <button
-          type="button"
-          className="dash-btn-ghost"
-          disabled={update.isPending}
-          title={
-            attachmentsAllowed
-              ? 'Stop this guest attaching images'
-              : 'Let this guest attach images'
-          }
-          onClick={() =>
-            update.mutate(
-              {
-                id: conversation.id,
-                patch: { guestAttachmentsAllowed: !attachmentsAllowed },
-              },
-              {
-                onSuccess: () =>
-                  onNotice(
-                    attachmentsAllowed
-                      ? 'Attachments turned off for this guest.'
-                      : 'This guest can now attach images.',
-                  ),
-              },
-            )
-          }
-        >
-          {attachmentsAllowed ? 'Attachments: on' : 'Attachments: off'}
-        </button>
-      )}
     </div>
   );
 }
@@ -658,19 +626,34 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
     </div>
   );
 
-  const headerSlot = (
-    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-      {filterControls}
-      {showPresence
-        ? canEditPresence
-          ? <PresenceControls presence={presence} />
-          : presenceReadOnly(presence)
-        : null}
+  /**
+   * Three different altitudes used to share one strip in the THREAD header:
+   * actions for this conversation, filters for the whole inbox, and presence
+   * for the whole shop. Each now sits where its scope is.
+   *
+   * Filters go above the list they filter — which is where mobile already put
+   * them; only desktop was wrong.
+   */
+  const railControls = filterControls;
+
+  /**
+   * Presence and reply time are shop-wide, not per-thread and not per-list, so
+   * they sit above everything in their own strip.
+   */
+  const presenceBar = showPresence ? (
+    <div className="mrc-presence-bar">
+      <span className="mrc-presence-bar-label">Support status</span>
+      {canEditPresence ? (
+        <PresenceControls presence={presence} />
+      ) : (
+        presenceReadOnly(presence)
+      )}
     </div>
-  );
+  ) : null;
 
   return (
     <>
+      {presenceBar}
       <DashChatView
         conversations={conversations}
         activeId={activeId}
@@ -689,7 +672,7 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
         }}
         onRefresh={handleRefresh}
         refreshing={refreshing}
-        headerSlot={headerSlot}
+        railControls={railControls}
         threadActions={
           activeId ? (
             <>

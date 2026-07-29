@@ -73,7 +73,8 @@ export interface DashChatViewProps {
   onSelect: (id: string) => void
   messages: Message[]
   onSend: (text: string, attachments?: MessageAttachment[]) => void
-  headerSlot?: ReactNode
+  /** Filters for the conversation list, rendered directly above it. */
+  railControls?: ReactNode
   /** Per-conversation actions rendered in the thread header (right side), only
    * while a conversation is open. Used for the admin "Merge into…" action. */
   threadActions?: ReactNode
@@ -492,22 +493,33 @@ const STYLES = `
   align-items: center;
   gap: 12px;
 }
+/* Moved out of the thread header and into the contact panel, where someone
+   already goes looking for details about a conversation. It was its own row
+   under the header — a monospace UUID given equal billing with who you are
+   talking to. */
 .mrc-thread-uuid {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  align-self: flex-start;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
   border: 0;
   background: none;
   padding: 0;
-  font-family: var(--mr-font-mono, monospace);
-  font-size: 10.5px;
-  color: var(--mr-ink-400);
+  font: inherit;
+  font-size: 12.5px;
+  color: inherit;
+  text-align: left;
   cursor: pointer;
+}
+.mrc-thread-uuid .mrc-contact-id {
   transition: color var(--mr-dur-fast) var(--mr-ease-snappy);
 }
-.mrc-thread-uuid:hover { color: var(--mr-ink-700); }
-.mrc-thread-uuid-copied { color: var(--mr-gold-700); font-weight: 600; }
+.mrc-thread-uuid:hover .mrc-contact-id { color: var(--mr-gold-700); }
+.mrc-thread-uuid-copied {
+  color: var(--mr-gold-700);
+  font-weight: 600;
+  font-size: 11px;
+}
 .mrc-back {
   display: none;
   align-items: center;
@@ -872,7 +884,10 @@ const STYLES = `
 .mrc-send[data-ready="true"]:hover { transform: scale(1.08); }
 .mrc-send[data-ready="true"]:active { transform: scale(var(--mr-scale-press)); }
 
-/* ── Store-level controls relocated to the list on mobile (never the header) ── */
+/* ── Inbox filters, above the list they filter, at every width ──
+   These used to sit in the THREAD header on desktop — controls for the whole
+   inbox stacked above a single conversation — and only moved here on mobile.
+   Mobile had it right. */
 .mrc-rail-controls {
   flex-shrink: 0;
   padding: 12px 18px;
@@ -935,7 +950,7 @@ const STYLES = `
 }
 `
 
-export function DashChatView({ conversations, activeId, onSelect, messages, onSend, headerSlot, threadActions, onUploadImage, onRefresh, refreshing }: DashChatViewProps) {
+export function DashChatView({ conversations, activeId, onSelect, messages, onSend, railControls, threadActions, onUploadImage, onRefresh, refreshing }: DashChatViewProps) {
   const [input, setInput] = useState('')
   const [pending, setPending] = useState<PendingAttachment[]>([])
   const [contactOpen, setContactOpen] = useState(false)
@@ -1073,10 +1088,13 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
             </div>
           </div>
 
-          {/* Store-level presence/reply-time controls live on the list screen on
-              mobile so they never overlap the per-conversation thread header. */}
-          {mobile && headerSlot && (
-            <div className="mrc-rail-controls">{headerSlot}</div>
+          {/* Filters belong to the list they filter, so they live above it —
+              at every width. They used to sit in the THREAD header on desktop,
+              which put controls for the whole inbox above a single
+              conversation, and only moved here on mobile. Mobile had it
+              right. */}
+          {railControls && (
+            <div className="mrc-rail-controls">{railControls}</div>
           )}
 
           {conversations.length === 0 ? (
@@ -1169,20 +1187,7 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
                 </button>
               )}
               {convo && threadActions && <div className="mrc-head-actions">{threadActions}</div>}
-              {!mobile && headerSlot && <div className="mrc-head-slot">{headerSlot}</div>}
             </div>
-            {convo && (
-              <button
-                type="button"
-                className="mrc-thread-uuid"
-                onClick={() => copyConversationId(convo.id)}
-                aria-label="Copy conversation ID"
-                title="Click to copy the conversation ID"
-              >
-                ID: {convo.id}
-                {copiedId === convo.id && <span className="mrc-thread-uuid-copied">Copied!</span>}
-              </button>
-            )}
           </div>
 
           {/* Which thread a reply will go to. With several similar-looking rows
@@ -1223,6 +1228,17 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
                   </span>
                 ))
               })()}
+              <button
+                type="button"
+                className="mrc-thread-uuid"
+                onClick={() => copyConversationId(convo.id)}
+                aria-label="Copy conversation ID"
+                title="Click to copy the conversation ID"
+              >
+                <span className="mrc-contact-key">ID</span>
+                <span className="mrc-contact-id">{convo.id}</span>
+                {copiedId === convo.id && <span className="mrc-thread-uuid-copied">Copied</span>}
+              </button>
               {convo.customerId && (
                 <Link className="mrc-contact-link" href={`/customers/${convo.customerId}`} aria-label="Open customer profile">
                   <span className="mrc-contact-key">Account</span>

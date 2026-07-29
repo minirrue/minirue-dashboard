@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 140,
+    date: '2026-07-29',
+    area: 'Support',
+    summary:
+      'The conversation header is just the conversation again. The status and brand filters moved above the message list — they filter that list, so that is where they belong — and the online status and reply time moved to their own strip at the top, since they apply to the whole shop rather than to one chat. The conversation ID moved into the customer details panel. The “Attachments” button is gone with guest chat.',
+  },
+  {
     id: 136,
     date: '2026-07-29',
     area: 'Everywhere',
