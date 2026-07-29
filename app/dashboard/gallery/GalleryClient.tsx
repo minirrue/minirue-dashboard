@@ -9,7 +9,7 @@ import {
   listItems,
   renameFolder,
   updateItemAltText,
-  uploadItem, organiseGallery } from '@/lib/gallery/api';
+  uploadItem } from '@/lib/gallery/api';
 import type { GalleryFolder, GalleryItem } from '@/lib/gallery/types';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
@@ -30,6 +30,7 @@ interface FolderListProps {
   folders: GalleryFolder[];
   selectedId: string | null;
   onSelect: (folder: GalleryFolder) => void;
+  onOpen: (folder: GalleryFolder) => void;
   onRename: (id: string, name: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
@@ -38,12 +39,14 @@ function FolderRow({
   folder,
   selected,
   onSelect,
+  onOpen,
   onRename,
   onDelete,
 }: {
   folder: GalleryFolder;
   selected: boolean;
   onSelect: () => void;
+  onOpen: () => void;
   onRename: (name: string) => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
@@ -137,6 +140,18 @@ function FolderRow({
         <span className="dash-gallery-folder-count">{folder.itemCount}</span>
       </button>
       <div className="dash-gallery-folder-actions">
+        {/* Open steps INTO the folder to show its subfolders; clicking the
+            folder name still selects it to show its images. Two different
+            things, so two controls rather than one overloaded click. */}
+        <button
+          type="button"
+          className="dash-btn-ghost"
+          onClick={onOpen}
+          disabled={busy}
+          data-trace-id={`${TRACE}::EL-BTN-open-gallery-folder@${folder.id}`}
+        >
+          Open
+        </button>
         <button
           type="button"
           className="dash-btn-ghost"
@@ -161,7 +176,7 @@ function FolderRow({
   );
 }
 
-function FolderList({ folders, selectedId, onSelect, onRename, onDelete }: FolderListProps) {
+function FolderList({ folders, selectedId, onSelect, onOpen, onRename, onDelete }: FolderListProps) {
   if (folders.length === 0) {
     return <p className="dash-help-text">No folders yet.</p>;
   }
@@ -173,6 +188,7 @@ function FolderList({ folders, selectedId, onSelect, onRename, onDelete }: Folde
           folder={folder}
           selected={selectedId === folder.id}
           onSelect={() => onSelect(folder)}
+          onOpen={() => onOpen(folder)}
           onRename={(name) => onRename(folder.id, name)}
           onDelete={() => onDelete(folder.id)}
         />
@@ -464,11 +480,23 @@ export default function GalleryClient() {
 
   const [previewItem, setPreviewItem] = useState<GalleryItem | null>(null);
 
+  /**
+   * Where in the tree we are. `[]` is the top level; each entry is a folder we
+   * have opened. The backend has supported nested folders since the module
+   * shipped — listFolders(parentId) and createFolder({parentId}) both take one
+   * and are covered by tests — and this screen simply never passed it, so
+   * every folder was forced to the top level.
+   */
+  const [folderPath, setFolderPath] = useState<GalleryFolder[]>([]);
+  const currentParent = folderPath.length
+    ? folderPath[folderPath.length - 1]
+    : null;
+
   const loadFolders = useCallback(async () => {
     setLoadError(null);
     setLoading(true);
     try {
-      const res = await listFolders();
+      const res = await listFolders(currentParent?.id);
       setFolders(res);
     } catch (e) {
       const err = e as ApiError;
@@ -476,11 +504,27 @@ export default function GalleryClient() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentParent?.id]);
 
   useMountedEffect(() => {
     loadFolders();
   }, [loadFolders]);
+
+  /** Step into a folder: it becomes the new parent and we list its children. */
+  function enterFolder(folder: GalleryFolder) {
+    setFolderPath((prev) => [...prev, folder]);
+    setSelectedFolder(null);
+    setItems([]);
+    setShowAddForm(false);
+  }
+
+  /** Jump to a point in the breadcrumb. `-1` is the top level. */
+  function goToDepth(depth: number) {
+    setFolderPath((prev) => prev.slice(0, depth + 1));
+    setSelectedFolder(null);
+    setItems([]);
+    setShowAddForm(false);
+  }
 
   const loadFolderContents = useCallback(async (folder: GalleryFolder) => {
     setItemsLoading(true);
@@ -501,30 +545,6 @@ export default function GalleryClient() {
     loadFolderContents(folder);
   }
 
-  const [organising, setOrganising] = useState(false);
-  const [organiseNotice, setOrganiseNotice] = useState<string | null>(null);
-
-  async function handleOrganise() {
-    setOrganising(true);
-    setOrganiseNotice(null);
-    try {
-      const result = await organiseGallery();
-      setOrganiseNotice(
-        result.movedCount === 0 && result.foldersCreated === 0
-          ? `Everything is already filed. ${result.skippedUnused} image(s) are not used by any product, so they were left where they are.`
-          : `Filed ${result.movedCount} image(s) into ${result.foldersCreated} new folder(s). ${result.skippedUnused} image(s) are not used by any product and were left alone.`,
-      );
-      // The tree changed underneath us, so reload rather than guess at it.
-      await loadFolders();
-    } catch (err) {
-      setOrganiseNotice(
-        err instanceof Error ? err.message : 'Could not organise the gallery.',
-      );
-    } finally {
-      setOrganising(false);
-    }
-  }
-
   async function handleCreateFolder(e: React.FormEvent) {
     e.preventDefault();
     if (!newFolderName.trim()) {
@@ -534,7 +554,12 @@ export default function GalleryClient() {
     setAdding(true);
     setAddError(null);
     try {
-      await createFolder({ name: newFolderName.trim() });
+      // Created inside whatever folder is open, which is what makes a tree
+      // rather than a flat list.
+      await createFolder({
+        name: newFolderName.trim(),
+        parentId: currentParent?.id,
+      });
       setNewFolderName('');
       setShowAddForm(false);
       await loadFolders();
@@ -590,18 +615,6 @@ export default function GalleryClient() {
       <div className="dash-page-header" data-trace-id={`${TRACE}::EL-REGION-gallery-page-header`}>
         <h1 className="dash-page-title">Gallery</h1>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {/* Files images into Category / Brand folders instead of leaving the
-              gallery as one flat pile. Safe to press repeatedly — it reuses
-              folders and only moves what is not already in place. */}
-          <button
-            type="button"
-            className="dash-btn-secondary"
-            onClick={handleOrganise}
-            disabled={organising}
-            data-trace-id={`${TRACE}::EL-BTN-organise-gallery`}
-          >
-            {organising ? 'Organising…' : 'Organise by category'}
-          </button>
           {!showAddForm && (
             <button
               type="button"
@@ -614,12 +627,6 @@ export default function GalleryClient() {
           )}
         </div>
       </div>
-
-      {organiseNotice && (
-        <p className="dash-help-text" role="status" style={{ marginTop: 8 }}>
-          {organiseNotice}
-        </p>
-      )}
 
       {showAddForm && (
         <form
@@ -669,6 +676,31 @@ export default function GalleryClient() {
       <div className="dash-gallery-layout">
         <div className="dash-card" data-trace-id={`${TRACE}::EL-REGION-gallery-folder-panel`}>
           <h2 className="dash-section-title">Folders</h2>
+          {/* Where we are in the tree. Always shows "All folders" as the root
+              so there is a way back even one level deep. */}
+          <nav className="dash-gallery-breadcrumb" aria-label="Folder path">
+            <button
+              type="button"
+              className="dash-btn-ghost"
+              onClick={() => goToDepth(-1)}
+              disabled={folderPath.length === 0}
+            >
+              All folders
+            </button>
+            {folderPath.map((f, i) => (
+              <span key={f.id} className="dash-gallery-breadcrumb-step">
+                <span aria-hidden="true">/</span>
+                <button
+                  type="button"
+                  className="dash-btn-ghost"
+                  onClick={() => goToDepth(i)}
+                  disabled={i === folderPath.length - 1}
+                >
+                  {f.name}
+                </button>
+              </span>
+            ))}
+          </nav>
           {loading ? (
             <p className="dash-help-text">Loading folders…</p>
           ) : loadError ? (
@@ -683,6 +715,7 @@ export default function GalleryClient() {
               folders={folders}
               selectedId={selectedFolder?.id ?? null}
               onSelect={handleSelectFolder}
+              onOpen={enterFolder}
               onRename={handleRenameTopLevel}
               onDelete={handleDeleteTopLevel}
             />

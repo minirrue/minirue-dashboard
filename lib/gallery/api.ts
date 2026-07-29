@@ -78,15 +78,3 @@ export async function deleteItem(id: string): Promise<void> {
   await apiFetch<void>(`${BASE}/items/${id}`, { method: 'DELETE', auth: true });
 }
 
-/**
- * Builds `Category / Brand` folders and files every image a product uses into the
- * right one. Idempotent, and images no product uses are left where they are —
- * there is nothing to infer a category from (backend 0.43.0).
- */
-export async function organiseGallery(): Promise<{
-  movedCount: number;
-  foldersCreated: number;
-  skippedUnused: number;
-}> {
-  return apiFetch(`${BASE}/organise`, { method: 'POST', auth: true });
-}

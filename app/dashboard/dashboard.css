@@ -3065,3 +3065,36 @@
   /* No image to enlarge, so no button and no pointer affordance. */
   cursor: default;
 }
+
+/* ── Gallery folder breadcrumb ──
+   The backend has supported nested folders since the module shipped —
+   listFolders(parentId) and createFolder({parentId}) both take one and are
+   covered by tests — and this screen never passed one, so every folder was
+   forced to the top level and the gallery stayed a flat pile. This is the way
+   back out once you can step in. */
+.dash-gallery-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--mr-fg-3);
+}
+.dash-gallery-breadcrumb .dash-btn-ghost {
+  padding: 2px 6px;
+  font-size: 12px;
+}
+/* The segment you are already on is not a link anywhere. */
+.dash-gallery-breadcrumb .dash-btn-ghost:disabled {
+  color: var(--mr-fg);
+  font-weight: 600;
+  opacity: 1;
+  cursor: default;
+}
+.dash-gallery-breadcrumb-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
