@@ -28,7 +28,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 describe('checkServerHealth', () => {
   it('is online when the API answers 200 and reports ok', async () => {
     mockFetch(async () => jsonResponse({ status: 'ok', ts: '2026-07-29T00:00:00.000Z' }));
-    await expect(checkServerHealth()).resolves.toBe('online');
+    await expect(checkServerHealth()).resolves.toMatchObject({ status: 'online' });
   });
 
   it('probes /health at the root, not under /v1', async () => {
@@ -46,14 +46,14 @@ describe('checkServerHealth', () => {
 
   it('is degraded on 503 — the API answered, it just is not well', async () => {
     mockFetch(async () => jsonResponse({ status: 'error', db: 'unreachable' }, 503));
-    await expect(checkServerHealth()).resolves.toBe('degraded');
+    await expect(checkServerHealth()).resolves.toMatchObject({ status: 'degraded' });
   });
 
   it('is degraded when a 200 does not actually say ok', async () => {
     // A proxy or a holding page can return 200 with the app behind it gone.
     // Trusting the status code alone would paint that green.
     mockFetch(async () => jsonResponse({ hello: 'world' }));
-    await expect(checkServerHealth()).resolves.toBe('degraded');
+    await expect(checkServerHealth()).resolves.toMatchObject({ status: 'degraded' });
   });
 
   it('is degraded when a 200 body is not JSON at all', async () => {
@@ -64,14 +64,14 @@ describe('checkServerHealth', () => {
         throw new SyntaxError('Unexpected token < in JSON');
       },
     } as unknown as Response));
-    await expect(checkServerHealth()).resolves.toBe('degraded');
+    await expect(checkServerHealth()).resolves.toMatchObject({ status: 'degraded' });
   });
 
   it('is offline when the request rejects', async () => {
     mockFetch(async () => {
       throw new TypeError('Failed to fetch');
     });
-    await expect(checkServerHealth()).resolves.toBe('offline');
+    await expect(checkServerHealth()).resolves.toMatchObject({ status: 'offline', latencyMs: null });
   });
 
   it('is offline when the server hangs past the timeout', async () => {
@@ -82,6 +82,33 @@ describe('checkServerHealth', () => {
           init?.signal?.addEventListener('abort', () => reject(new Error('aborted')));
         }),
     );
-    await expect(checkServerHealth(20)).resolves.toBe('offline');
+    await expect(checkServerHealth(20)).resolves.toMatchObject({ status: 'offline', latencyMs: null });
+  });
+
+  it('reports a round-trip time whenever the server answered', async () => {
+    mockFetch(async () => jsonResponse({ status: 'ok' }));
+    const { latencyMs } = await checkServerHealth();
+    expect(typeof latencyMs).toBe('number');
+    expect(latencyMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it('still times an unhealthy answer — a slow 503 is worth seeing', async () => {
+    mockFetch(async () => jsonResponse({ status: 'error' }, 503));
+    const { status, latencyMs } = await checkServerHealth();
+    expect(status).toBe('degraded');
+    expect(typeof latencyMs).toBe('number');
+  });
+
+  it('measures the wait, not a constant', async () => {
+    // Guards against the timer being read twice at the same instant, which
+    // would make every reading 0 and the whole figure meaningless.
+    mockFetch(
+      async () =>
+        new Promise<Response>((resolve) =>
+          setTimeout(() => resolve(jsonResponse({ status: 'ok' })), 30),
+        ),
+    );
+    const { latencyMs } = await checkServerHealth();
+    expect(latencyMs).toBeGreaterThanOrEqual(20);
   });
 });

@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 143,
+    date: '2026-07-29',
+    area: 'Left menu',
+    summary:
+      'Next to the server dot at the bottom of the left menu you can now see how long the server takes to answer, in milliseconds. It turns amber if it gets slow and red if it gets very slow, so you can tell "the shop feels sluggish today" apart from "something is broken". Only you and other admins see this — staff and partners still see whether the server is up, which is the part that affects their work. It is not shown on the sign-in page, since there is nobody to show it to yet.',
+  },
+  {
     id: 142,
     date: '2026-07-29',
     area: 'Reviews (new tab) & product photos',

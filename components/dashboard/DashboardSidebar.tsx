@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { canAccessDashboardRoute } from '@/lib/auth/roles';
+import { canAccessDashboardRoute, isAdminRole } from '@/lib/auth/roles';
 import UserMenu from './UserMenu';
 import ServerStatus from './ServerStatus';
 import { useNotificationCounts } from '@/lib/hooks/use-notification-counts';
@@ -447,7 +447,10 @@ export default function DashboardSidebar({
           a status shown only in the topbar would be invisible on desktop,
           which is where this dashboard is actually used. */}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-        <ServerStatus variant="full" />
+        {/* Latency is admin-only: STAFF and partners have no action to take on
+            it and no sense of whether a number is bad, so for them it is noise
+            that reads like a warning. Everyone still sees up/down. */}
+        <ServerStatus variant="full" showLatency={isAdminRole(userRole)} />
       </div>
       <UserMenu userName={userName} userRole={userRole} />
     </div>

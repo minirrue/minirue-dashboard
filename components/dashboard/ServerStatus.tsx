@@ -33,7 +33,31 @@ interface ServerStatusProps {
    * "is it me or is it them?" is the whole reason someone is looking.
    */
   variant?: 'dot' | 'full';
+  /**
+   * Show the round-trip time beside the label.
+   *
+   * Off by default, and deliberately not shown on the login page: before anyone
+   * has signed in there is no one to show it to, and "is it up?" is the only
+   * question that page needs answered. Inside the dashboard it is gated to
+   * admins — see isAdminRole().
+   */
+  showLatency?: boolean;
   className?: string;
+}
+
+/**
+ * Thresholds for colouring the latency figure. Deliberately generous: this is a
+ * round trip to a server that runs a database query before answering, over
+ * whatever connection the admin happens to be on, so a few hundred ms is normal
+ * and colouring it red would cry wolf.
+ */
+const LATENCY_WARN_MS = 600;
+const LATENCY_BAD_MS = 1500;
+
+function latencyColor(ms: number): string {
+  if (ms >= LATENCY_BAD_MS) return 'var(--mr-danger, #8E1418)';
+  if (ms >= LATENCY_WARN_MS) return 'var(--mr-warning, #B8832A)';
+  return 'var(--mr-ink-500, #6B6B6B)';
 }
 
 const PRESENTATION: Record<
@@ -69,8 +93,12 @@ function agoLabel(checkedAt: number | null): string {
   return `Checked ${Math.round(seconds / 60)}m ago.`;
 }
 
-export default function ServerStatus({ variant = 'full', className }: ServerStatusProps) {
-  const { status, checkedAt, refresh } = useServerHealth();
+export default function ServerStatus({
+  variant = 'full',
+  showLatency = false,
+  className,
+}: ServerStatusProps) {
+  const { status, checkedAt, latencyMs, refresh } = useServerHealth();
   const view = PRESENTATION[status ?? 'checking'];
   const healthy = status === 'online';
   const quiet = healthy || status === null;
@@ -85,7 +113,16 @@ export default function ServerStatus({ variant = 'full', className }: ServerStat
       // interrupt someone mid-sentence in a form field.
       role="status"
       aria-live="polite"
-      title={`${view.label}. ${view.hint} ${agoLabel(checkedAt)}`.trim()}
+      title={[
+        `${view.label}.`,
+        view.hint,
+        showLatency && latencyMs !== null
+          ? `Round trip ${latencyMs} ms, including the server's own database check.`
+          : '',
+        agoLabel(checkedAt),
+      ]
+        .filter(Boolean)
+        .join(' ')}
       data-server-status={status ?? 'checking'}
       data-trace-id="PG-DASHBOARD-OPS-001::EL-BTN-server-status"
       style={{
@@ -139,6 +176,24 @@ export default function ServerStatus({ variant = 'full', className }: ServerStat
       >
         {view.label}
       </span>
+
+      {/* Round-trip time. Only rendered where it was asked for and only when
+          there was a round trip to measure — an offline server has no latency,
+          and printing the timeout as one would be inventing a number. */}
+      {showLatency && !labelHidden && latencyMs !== null && (
+        <span
+          style={{
+            fontFamily: "'Jost', sans-serif",
+            fontSize: 11,
+            letterSpacing: '0.08em',
+            whiteSpace: 'nowrap',
+            fontVariantNumeric: 'tabular-nums',
+            color: latencyColor(latencyMs),
+          }}
+        >
+          · {latencyMs} ms
+        </span>
+      )}
     </button>
   );
 }

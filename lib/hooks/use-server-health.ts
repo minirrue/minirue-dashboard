@@ -8,6 +8,8 @@ export interface ServerHealthSnapshot {
   status: ServerHealth | null;
   /** Epoch ms of the last completed probe, for a "checked N ago" hint. */
   checkedAt: number | null;
+  /** Round-trip ms of the last probe; null when there was no round trip. */
+  latencyMs: number | null;
 }
 
 export interface ServerHealthState extends ServerHealthSnapshot {
@@ -28,7 +30,7 @@ const POLL_MS = 20_000;
  * is a subscription to it.
  */
 const listeners = new Set<(s: ServerHealthSnapshot) => void>();
-let snapshot: ServerHealthSnapshot = { status: null, checkedAt: null };
+let snapshot: ServerHealthSnapshot = { status: null, checkedAt: null, latencyMs: null };
 let timer: ReturnType<typeof setInterval> | null = null;
 let inFlight = false;
 
@@ -43,8 +45,8 @@ async function probe(): Promise<void> {
   if (inFlight) return;
   inFlight = true;
   try {
-    const status = await checkServerHealth();
-    publish({ status, checkedAt: Date.now() });
+    const { status, latencyMs } = await checkServerHealth();
+    publish({ status, latencyMs, checkedAt: Date.now() });
   } finally {
     inFlight = false;
   }
@@ -52,7 +54,8 @@ async function probe(): Promise<void> {
 
 // The browser knowing it is offline is instant and free; waiting up to a full
 // poll interval to show it would be needlessly slow.
-const onOffline = () => publish({ status: 'offline', checkedAt: Date.now() });
+const onOffline = () =>
+  publish({ status: 'offline', latencyMs: null, checkedAt: Date.now() });
 const onWake = () => void probe();
 
 function startPolling(): void {
