@@ -28,7 +28,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Three small fixes. The product photo on an order was being squashed into a thin strip by the narrow column — it is a proper square again. The InstaPay reference, sender and reference now show a small pencil when you hover the row, because a dash in a table reads as “nothing here” rather than “you can type here”. And a top-level gallery folder no longer accepts photos: it holds folders, and dropping files straight into it is what left everything in one pile.',
   },
   {
-    id: 143,
+    id: 146,
     date: '2026-07-29',
     area: 'Photos & files',
     summary:
