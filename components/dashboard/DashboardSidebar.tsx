@@ -199,6 +199,9 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
       { label: 'Workspace', href: '/collab/workspace', icon: <IconBarChart /> },
       { label: 'My orders', href: '/collab/orders', icon: <IconShoppingBag />, requiresCollabModule: 'ORDERS' },
       { label: 'My products', href: '/collab/products', icon: <IconPackage />, requiresCollabModule: 'PRODUCTS' },
+      // Gated on PRODUCTS to match the backend route: a category exists to file
+      // products under, so a partner without product access cannot use one.
+      { label: 'My categories', href: '/collab/categories', icon: <IconPackage />, requiresCollabModule: 'PRODUCTS' },
       { label: 'Brand profile', href: '/collab/brand', icon: <IconPalette /> },
       { label: 'My analytics', href: '/collab/analytics', icon: <IconTrendingUp />, requiresCollabModule: 'ANALYTICS' },
       { label: 'Support', href: '/collab/support', icon: <IconUsers /> },

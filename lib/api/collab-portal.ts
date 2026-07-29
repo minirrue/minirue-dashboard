@@ -141,3 +141,51 @@ export async function apiUpdateWorkspaceProfile(data: UpdateWorkspaceProfile): P
     body: JSON.stringify(data),
   });
 }
+
+/* ── A partner's own categories ──
+   Each space keeps its own list and manages it itself (owner decision,
+   2026-07-29). The backend takes the space from the authenticated caller and
+   never from the body, so there is no space id to send from here — a partner
+   can only ever reach their own. */
+
+export interface CollabCategory {
+  id: string;
+  name: string;
+  slug: string;
+  parentId: string | null;
+  sortOrder: number;
+  children?: CollabCategory[];
+}
+
+export async function apiCollabCategories(): Promise<{ data: CollabCategory[] }> {
+  return apiFetch('/collab/categories', { auth: true });
+}
+
+export async function apiCollabCreateCategory(data: {
+  name: string;
+  parent_id?: string;
+}): Promise<CollabCategory> {
+  return apiFetch('/collab/categories', {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiCollabUpdateCategory(
+  id: string,
+  data: { name?: string; sort_order?: number },
+): Promise<CollabCategory> {
+  return apiFetch(`/collab/categories/${id}`, {
+    method: 'PATCH',
+    auth: true,
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiCollabDeleteCategory(id: string): Promise<void> {
+  await apiFetch<void>(`/collab/categories/${id}`, {
+    method: 'DELETE',
+    auth: true,
+  });
+}

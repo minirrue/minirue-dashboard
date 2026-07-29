@@ -106,6 +106,7 @@ const nextConfig: NextConfig = {
       { source: "/collab/products/new", destination: "/dashboard/collab/products/new" },
       { source: "/collab/products/:id/edit", destination: "/dashboard/collab/products/:id/edit" },
       { source: "/collab/brand", destination: "/dashboard/collab/brand" },
+      { source: "/collab/categories", destination: "/dashboard/collab/categories" },
       { source: "/collab/analytics", destination: "/dashboard/collab/analytics" },
       { source: "/collab/support", destination: "/dashboard/collab/support" },
       { source: "/gallery", destination: "/dashboard/gallery" },

@@ -275,8 +275,14 @@ export interface ManagedBrand {
 export type DeleteMode = 'soft' | 'hard';
 
 /** Category → Brand → item counts, for the navigation tree. */
-export async function loadTree(): Promise<TreeCategoryNodeDto[]> {
-  const res = await apiFetch<{ data: TreeCategoryNodeDto[] }>(`${ADMIN}/tree`, {
+/**
+ * `space` = 'house' for MiniRue's own tree, a collaborator id for a partner's,
+ * or omitted for every space at once. Omitting it is what made this screen file
+ * a partner under MiniRue's Perfumes as though they were a label inside it.
+ */
+export async function loadTree(space?: string): Promise<TreeCategoryNodeDto[]> {
+  const qs = space ? `?space=${encodeURIComponent(space)}` : '';
+  const res = await apiFetch<{ data: TreeCategoryNodeDto[] }>(`${ADMIN}/tree${qs}`, {
     auth: true,
   });
   return res.data;

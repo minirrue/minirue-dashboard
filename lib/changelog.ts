@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 133,
+    date: '2026-07-29',
+    area: 'Catalogue',
+    summary:
+      'Partners now have their own Categories page and can name their own — Helia’s “Jewellery” is hers, separate from yours, and appears on her shop page. The Catalogue overview now shows one seller at a time instead of merging everyone, which is what made a partner look like a label filed inside one of your categories. The wording there was also wrong: a category and a brand are two separate labels on a product — what it is, and who made it — not one inside the other.',
+  },
+  {
     id: 132,
     date: '2026-07-29',
     area: 'Storefront',

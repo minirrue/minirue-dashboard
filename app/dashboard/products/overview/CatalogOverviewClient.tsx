@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import CatalogSubnav from '@/components/dashboard/CatalogSubnav';
 import { loadTree, listAdminAttributes } from '@/lib/catalog/api';
+import { apiListCollaborators } from '@/lib/api/collaborators';
 import type { TreeCategoryNode, AttributeRecord } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
 
@@ -35,6 +36,37 @@ export default function CatalogOverviewClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  /**
+   * Which seller's catalogue is shown. 'house' is MiniRue's own.
+   *
+   * Without this the tree merged every space at once, so a partner's brand
+   * appeared as a chip under one of MiniRue's categories — which is exactly
+   * what made Helia look like a label filed inside Perfumes. Each seller keeps
+   * their own categories now, so they get their own tree.
+   */
+  const [space, setSpace] = useState<string>('house');
+  const [partners, setPartners] = useState<Array<{ id: string; label: string }>>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiListCollaborators({ limit: 100 })
+      .then((res) => {
+        if (cancelled) return;
+        setPartners(
+          (res.items ?? []).map((c) => ({
+            id: c.id,
+            label: c.brandName?.trim() || c.brandSlug,
+          })),
+        );
+      })
+      .catch(() => {
+        // The selector falls back to MiniRue only. A partner list that will
+        // not load must not take the catalogue map down with it.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,7 +75,7 @@ export default function CatalogOverviewClient() {
     // Two independent reads. Settle both before rendering so the "answers"
     // lines never flash empty and then fill in — a partial map reads as a
     // broken one.
-    Promise.all([loadTree(), listAdminAttributes()])
+    Promise.all([loadTree(space), listAdminAttributes()])
       .then(([treeRes, attrRes]) => {
         if (cancelled) return;
         setTree(Array.isArray(treeRes) ? treeRes : []);
@@ -58,7 +90,7 @@ export default function CatalogOverviewClient() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [space]);
 
   const totalProducts = useMemo(
     () => tree.reduce((n, c) => n + c.itemCount, 0),
@@ -107,17 +139,49 @@ export default function CatalogOverviewClient() {
         </div>
       ) : (
         <>
-          <p className="dash-muted" style={{ marginTop: -8, marginBottom: 20 }}>
-            {totalProducts} product{totalProducts === 1 ? '' : 's'} across{' '}
-            {tree.length} categor{tree.length === 1 ? 'y' : 'ies'}.
-          </p>
+          {/* Each seller keeps their own categories, so each gets their own
+              tree. Merging them was what made a partner's brand appear as a
+              chip under one of MiniRue's categories. */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: 12,
+              flexWrap: 'wrap',
+              marginTop: -8,
+              marginBottom: 20,
+            }}
+          >
+            <label className="dash-field" style={{ margin: 0 }}>
+              <span className="dash-label">Seller</span>
+              <select
+                className="dash-input"
+                value={space}
+                onChange={(e) => setSpace(e.target.value)}
+                data-trace-id="PG-CATALOGUE-OVERVIEW-001::EL-SELECT-space"
+              >
+                <option value="house">MiniRue</option>
+                {partners.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="dash-muted" style={{ margin: 0 }}>
+              {totalProducts} product{totalProducts === 1 ? '' : 's'} across{' '}
+              {tree.length} categor{tree.length === 1 ? 'y' : 'ies'}.
+            </p>
+          </div>
 
           {tree.length === 0 ? (
             <div className="dash-card">
               <p style={{ marginTop: 0 }}>Your catalogue is empty.</p>
               <p className="dash-muted">
-                Start by making a category (say, Perfumes), then a brand inside
-                it, then the products.
+                Start by making a category (say, Perfumes) and a brand (say,
+                Creed), then the products. A category and a brand are two
+                separate labels on a product — what it is, and who made it —
+                not one inside the other.
               </p>
               <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                 <Link href="/catalogue/categories" className="dash-btn-secondary">
