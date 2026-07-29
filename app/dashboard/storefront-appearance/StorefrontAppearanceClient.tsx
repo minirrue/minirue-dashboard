@@ -23,6 +23,7 @@ import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import SectionCard from './SectionCard';
 import HeroEditor from './editors/HeroEditor';
+import LinkTargetField from './pickers/LinkTargetField';
 import RibbonEditor from './editors/RibbonEditor';
 import ProductGridEditor from './editors/ProductGridEditor';
 import JournalEditor from './editors/JournalEditor';
@@ -328,19 +329,27 @@ export default function StorefrontAppearanceClient() {
                 }
               />
             </label>
-            <label className="dash-field">
-              <span className="dash-label">Link URL (optional)</span>
-              <input
-                className="dash-input"
-                value={layout.announcement.linkUrl ?? ''}
-                placeholder="https://…"
-                onChange={(e) =>
+            {/* This was the one CTA-style field in the whole Storefront
+                section with no picker at all — a raw text box, so the only way
+                to point the announcement at a page you had written was to type
+                its address from memory and hope it matched. LinkTargetField
+                reverse-infers the kind of an already-saved href, so existing
+                announcements keep working with no migration. */}
+            <div className="dash-field">
+              <span className="dash-label">Link (optional)</span>
+              <LinkTargetField
+                href={layout.announcement.linkUrl ?? ''}
+                pages={layout.pages ?? []}
+                onChange={(href) =>
                   patch({
-                    announcement: { ...layout.announcement, linkUrl: e.target.value.trim() || null },
+                    announcement: {
+                      ...layout.announcement,
+                      linkUrl: href.trim() || null,
+                    },
                   })
                 }
               />
-            </label>
+            </div>
             {/* The announcement bar's background is no longer editable here
                 (2026-07-24) — its colour is owned by the storefront theme.
                 `layout.announcement.background` is still saved untouched, so

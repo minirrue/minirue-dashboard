@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 132,
+    date: '2026-07-29',
+    area: 'Storefront',
+    summary:
+      'The announcement bar’s link is now picked from a list — one of your own pages, a category, a brand, or a web address — instead of being a box you typed an address into from memory. Anything already set keeps working. Page addresses are also now checked against partner shop addresses when you save, so a page cannot quietly take over a partner’s page.',
+  },
+  {
     id: 131,
     date: '2026-07-29',
     area: 'Storefront appearance → Menu',

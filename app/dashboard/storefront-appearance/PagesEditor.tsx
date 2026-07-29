@@ -10,6 +10,21 @@ import type { StorefrontPage } from '@/lib/api/storefront';
  * these slugs would save fine and then be permanently unreachable.
  * Mirrors the top-level folders in apps/minirue-frontend/app.
  */
+/**
+ * Advisory only, and deliberately so.
+ *
+ * The authority is the server: since minirue-backend@0.48.0 the whole root
+ * namespace is guarded in one place, because partner spaces live at /<slug>
+ * too — so a page named `helia` would shadow a partner's shop, which this list
+ * has no way of knowing. Saving one is refused with a message naming the
+ * clash.
+ *
+ * This copy stays only to catch the obvious cases before a round trip. It was
+ * previously the ONLY check, and a hand-maintained mirror of the route tree is
+ * the wrong place for the real rule: the routes it mirrors include a group,
+ * (auth), whose members are not top-level folders and so do not show up when
+ * you read the directory.
+ */
 const RESERVED_SLUGS = new Set([
   'account', 'brands', 'cart', 'categories', 'checkout', 'login', 'logout',
   'orders', 'pages', 'products', 'search', 'signup', 'forgot',
@@ -112,6 +127,7 @@ export default function PagesEditor({
                 <p className="dash-inline-error">
                   &quot;{trimmedSlug}&quot; is a built-in storefront address — the shop&apos;s own
                   page would win and this one would never be reachable. Pick another slug.
+                  Partner shop addresses are checked when you save.
                 </p>
               )}
               {!slugInvalid && slugDuplicate && (
