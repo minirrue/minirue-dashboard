@@ -1696,13 +1696,6 @@
   color: var(--mr-st-muted-fg);
   font-weight: 500;
 }
-.dash-catalog-explainer-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-top: 4px;
-}
-
 /* Marks a product-variant field that comes from the category's global
    variants — always present, cannot be removed, must be answered. */
 .dash-pill-applied {
@@ -3142,6 +3135,75 @@
   align-items: center;
   gap: 2px;
   min-width: 0;
+}
+
+/* ── Gallery subfolder tree ──
+   What a top-level folder actually contains. Photos are only allowed one level
+   down, so the Items grid that used to sit here was empty by construction — it
+   read as "this folder is empty" about a folder holding six subfolders. Rows,
+   not tiles: the useful information is the name and how much is in it, and a
+   list scans far faster than a grid of identical folder icons. */
+.dash-gallery-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dash-gallery-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  /* Comfortably past the 44px tap floor without making six folders scroll. */
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--mr-radius-md);
+  background: transparent;
+  font: inherit;
+  color: var(--mr-fg);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--mr-dur-fast) var(--mr-ease-out),
+    border-color var(--mr-dur-fast) var(--mr-ease-out);
+}
+.dash-gallery-tree-row:hover {
+  background: var(--mr-dash-surface-2, rgba(0, 0, 0, 0.03));
+  border-color: var(--mr-dash-hair);
+}
+.dash-gallery-tree-row:focus-visible {
+  outline: 2px solid var(--mr-gold-500);
+  outline-offset: -2px;
+}
+.dash-gallery-tree-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--mr-gold-500);
+}
+.dash-gallery-tree-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+/* The count gives way before the name does — which folder it is matters more
+   than how full it is. */
+.dash-gallery-tree-count {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--mr-fg-3);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-gallery-tree-row {
+    transition: none;
+  }
 }
 
 /* ── Support presence bar ──

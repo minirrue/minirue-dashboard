@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 147,
+    date: '2026-07-29',
+    area: 'Support, Gallery & Erase data',
+    summary:
+      'The shop chat was returning an error for everyone. The cause was that a database update never actually ran on the live server, so the chat was looking for records that were not there yet — updates now run when the server starts, so this cannot happen again quietly. “Erase the ticked data” was failing for a related reason: support conversations, reviews and wishlists were added after that screen was built and were never on its list, so it refused to delete. They are now erased with everything else — worth knowing, because before this a successful erase was silently keeping every customer conversation. Opening a top-level gallery folder now shows the folders inside it instead of an empty photo list. The “How variants work” note under Catalogue is gone.',
+  },
+  {
     id: 143,
     date: '2026-07-29',
     area: 'Orders & Gallery',

@@ -473,6 +473,16 @@ export default function GalleryClient() {
   const [itemsLoading, setItemsLoading] = useState(false);
   const [itemsError, setItemsError] = useState<string | null>(null);
 
+  /**
+   * What sits inside the selected folder.
+   *
+   * A top-level folder cannot hold photos, so showing it an Items list meant
+   * showing an empty grid every time — the panel said "nothing here" about a
+   * folder that might hold six subfolders. This is what goes there instead.
+   */
+  const [childFolders, setChildFolders] = useState<GalleryFolder[]>([]);
+  const [childrenLoading, setChildrenLoading] = useState(false);
+
   const [showAddForm, setShowAddForm] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
@@ -527,6 +537,24 @@ export default function GalleryClient() {
   }
 
   const loadFolderContents = useCallback(async (folder: GalleryFolder) => {
+    // A top-level folder shows its subfolders; a subfolder shows its photos.
+    // Only one of the two requests is ever worth making.
+    if (!folder.parentId) {
+      setChildrenLoading(true);
+      setItems([]);
+      try {
+        setChildFolders(await listFolders(folder.id));
+      } catch {
+        // The tree is a navigation aid, not the page — an empty one with the
+        // folder still selected beats an error where the folders should be.
+        setChildFolders([]);
+      } finally {
+        setChildrenLoading(false);
+      }
+      return;
+    }
+
+    setChildFolders([]);
     setItemsLoading(true);
     setItemsError(null);
     try {
@@ -734,26 +762,75 @@ export default function GalleryClient() {
                   flat pile in the first place — the level exists to group, and
                   something dropped straight into it belongs to no group. */}
               {selectedFolder.parentId ? (
-                <UploadDropzone folderId={selectedFolder.id} onUploaded={handleItemUploaded} />
-              ) : (
+                <>
+                  <UploadDropzone
+                    folderId={selectedFolder.id}
+                    onUploaded={handleItemUploaded}
+                  />
+                  <h3 className="dash-section-subtitle">Items</h3>
+                  {itemsLoading ? (
+                    <p className="dash-help-text">Loading items…</p>
+                  ) : itemsError ? (
+                    <p className="dash-inline-error">{itemsError}</p>
+                  ) : (
+                    <ItemGrid
+                      items={items}
+                      onDelete={handleDeleteItem}
+                      onPreview={setPreviewItem}
+                      onRenameAlt={handleRenameItemAlt}
+                    />
+                  )}
+                </>
+              ) : childrenLoading ? (
+                <p className="dash-help-text">Loading…</p>
+              ) : childFolders.length === 0 ? (
                 <p className="dash-help-text" style={{ marginTop: 0 }}>
-                  Photos go inside a subfolder. Open <strong>{selectedFolder.name}</strong>{' '}
-                  and make one, then upload there.
+                  Nothing inside <strong>{selectedFolder.name}</strong> yet. Open it
+                  and make a folder — photos go in there, not here.
                 </p>
-              )}
-
-              <h3 className="dash-section-subtitle">Items</h3>
-              {itemsLoading ? (
-                <p className="dash-help-text">Loading items…</p>
-              ) : itemsError ? (
-                <p className="dash-inline-error">{itemsError}</p>
               ) : (
-                <ItemGrid
-                  items={items}
-                  onDelete={handleDeleteItem}
-                  onPreview={setPreviewItem}
-                  onRenameAlt={handleRenameItemAlt}
-                />
+                /* The tree. A top-level folder holds folders, so this is what
+                   belongs in the panel — an Items grid here was always empty by
+                   construction, which read as "this folder is empty" about a
+                   folder that might hold six subfolders. */
+                <ul className="dash-gallery-tree" aria-label={`Inside ${selectedFolder.name}`}>
+                  {childFolders.map((child) => (
+                    <li key={child.id}>
+                      <button
+                        type="button"
+                        className="dash-gallery-tree-row"
+                        onClick={() => {
+                          // Step INTO the parent, so the folder list on the left
+                          // and the breadcrumb agree with what is now selected.
+                          // Selecting the child without moving the path would
+                          // show a folder that is not in the visible list.
+                          setFolderPath((prev) => [...prev, selectedFolder]);
+                          setSelectedFolder(child);
+                          loadFolderContents(child);
+                        }}
+                      >
+                        <span className="dash-gallery-tree-icon" aria-hidden="true">
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={1.8}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+                          </svg>
+                        </span>
+                        <span className="dash-gallery-tree-name">{child.name}</span>
+                        <span className="dash-gallery-tree-count">
+                          {child.itemCount} {child.itemCount === 1 ? 'photo' : 'photos'}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               )}
             </>
           )}

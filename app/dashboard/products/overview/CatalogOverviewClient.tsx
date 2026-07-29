@@ -302,37 +302,10 @@ export default function CatalogOverviewClient() {
             </div>
           )}
 
-          {/* Plain-words explainer — the distinction the user kept having to
-              re-derive. Kept on the map so it is next to the thing it explains. */}
-          <section
-            className="dash-card"
-            style={{ marginTop: 20 }}
-            data-trace-id={`${TRACE}::EL-REGION-variant-explainer`}
-          >
-            <h2 style={{ marginTop: 0, fontSize: 17 }}>How variants work</h2>
-            <div className="dash-catalog-explainer-grid">
-              <div>
-                <strong>Global variant</strong>
-                <p className="dash-muted" style={{ margin: '4px 0 0' }}>
-                  A question every product in a category has to answer — bottle
-                  size, price. You set the question once; each product fills in
-                  its own answer. Manage these on{' '}
-                  <Link href="/catalogue/global-variants" className="dash-link">
-                    Global variants
-                  </Link>
-                  .
-                </p>
-              </div>
-              <div>
-                <strong>Custom variant</strong>
-                <p className="dash-muted" style={{ margin: '4px 0 0' }}>
-                  A question only one product has — scent notes, spray type.
-                  Most products do not have it, so you add it to just the one
-                  product, on its own edit page.
-                </p>
-              </div>
-            </div>
-          </section>
+          {/* The "How variants work" explainer used to sit here. Removed at the
+              owner's request: it was written for someone meeting the idea for
+              the first time, and it sat permanently under a screen the same
+              person opens every day. */}
         </>
       )}
     </>
