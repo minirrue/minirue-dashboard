@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 142,
+    date: '2026-07-29',
+    area: 'Reviews (new tab) & product photos',
+    summary:
+      'Customers can now leave a star rating and a few words on a product, and there is a new Reviews tab under Operations where you decide what goes on the shop. Nothing a customer writes appears on a product page until you approve it there — you can also take an approved one back down, or let a rejected one through, at any time. Only customers who have actually received the product can write one, so every review is marked as a verified purchase and there is nothing to stop being flooded with. Separately, when editing a product you can now mark one photo as "Set as closing" — that photo ends the product page, instead of the "Available sizes" panel that just repeated the size the shopper already picked. You cannot pick the cover photo for this, because a photo only does one job and the shop would lose its thumbnail.',
+  },
+  {
     id: 141,
     date: '2026-07-29',
     area: 'Left menu & notifications',

@@ -92,7 +92,9 @@ export interface ProductMedia {
   /** COVER = the thumbnail shoppers see outside the product (grids, cart, share
    * previews). CAROUSEL = the images inside the product's gallery. Exactly one
    * COVER per product; the first image uploaded becomes it automatically. */
-  role: 'COVER' | 'CAROUSEL';
+  /** COVER = the thumbnail shown outside the product. CLOSING = the photograph
+   * that ends the product page. CAROUSEL = everything else in the gallery. */
+  role: 'COVER' | 'CAROUSEL' | 'CLOSING';
   url?: string | null;
   width: number | null;
   height: number | null;

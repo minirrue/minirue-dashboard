@@ -238,6 +238,10 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
     section: 'Operations',
     items: [
       { label: 'Support', href: '/support', icon: <IconUsers /> },
+      // Moderation work, so it sits with support rather than with the
+      // catalogue: nothing a shopper writes reaches a product page until
+      // somebody here says yes.
+      { label: 'Reviews', href: '/reviews', icon: <IconStar /> },
       { label: 'Fulfillment', href: '/fulfillment', icon: <IconTruck /> },
       { label: 'Refunds', href: '/refunds', icon: <IconRefreshCcw /> },
       { label: 'Inventory', href: '/inventory', icon: <IconPackage />, maintenance: true },

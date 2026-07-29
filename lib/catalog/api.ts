@@ -598,6 +598,21 @@ export async function setProductMediaCover(
   return mapMedia(raw);
 }
 
+/** Makes one image the photograph that ends the product page. The previous
+ * closing image drops back into the carousel — at most one per product. The
+ * cover cannot be chosen; the backend refuses it, because a product only has
+ * one role per image and it would lose its thumbnail everywhere else. */
+export async function setProductMediaClosing(
+  productId: string,
+  mediaId: string,
+): Promise<ProductMedia> {
+  const raw = await apiFetch<BackendMedia>(
+    `${ADMIN}/products/${productId}/media/${mediaId}/closing`,
+    { method: 'PATCH', auth: true },
+  );
+  return mapMedia(raw);
+}
+
 /**
  * Sets the available quantity for one variant. The warehouse module is out of
  * service, so this is how stock gets recorded — an absolute quantity, not a

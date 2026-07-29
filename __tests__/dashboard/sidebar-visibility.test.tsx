@@ -61,6 +61,16 @@ describe('sidebar visibility', () => {
     expect(visible).toContain('/orders');
   });
 
+  it('lets support staff moderate reviews, and nobody outside the shop', () => {
+    // Moderating reviews is the same job as answering customers, so it is
+    // staffed like /support rather than like the catalogue.
+    expect(visibleTo(Role.STAFF)).toContain('/reviews');
+    expect(visibleTo(Role.ADMIN)).toContain('/reviews');
+    expect(visibleTo(Role.SUPERADMIN)).toContain('/reviews');
+    expect(visibleTo(Role.COLLAB)).not.toContain('/reviews');
+    expect(visibleTo(Role.CUSTOMER)).not.toContain('/reviews');
+  });
+
   it('shows Accounts to the super admin and to nobody else', () => {
     for (const role of ROLE_VALUES) {
       expect(visibleTo(role).includes('/admin')).toBe(role === Role.SUPERADMIN);

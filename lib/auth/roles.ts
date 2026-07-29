@@ -40,6 +40,9 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   // Customer support inbox — staff/admin/superadmin handle it; collaborators
   // get their own inbox at /collab/support instead.
   '/support': ADMIN_AND_SUPPORT,
+  // Review moderation — the same people who answer customers decide what goes
+  // on a product page, so it is staffed like support rather than like refunds.
+  '/reviews': ADMIN_AND_SUPPORT,
   '/loyalty': ADMIN_ONLY,
   '/settings': ADMIN_ONLY,
   '/info': STAFF_ROLES,
@@ -81,6 +84,18 @@ export function isMaintenanceRoute(path: string): boolean {
 
 export function isStaffRole(role: string): boolean {
   return isRole(role) && (STAFF_ROLES.includes(role) || COLLAB_ROLES.includes(role));
+}
+
+/**
+ * SUPERADMIN or ADMIN — the two roles that run the shop rather than work in it.
+ *
+ * For operational detail that would be noise, or misread as a problem, by
+ * anyone else: STAFF seeing a latency figure climb has no action to take and no
+ * context for whether the number is bad. Reuses the same ADMIN_ONLY list the
+ * route table is built from, so "who counts as an admin" has one definition.
+ */
+export function isAdminRole(role: string | undefined | null): boolean {
+  return !!role && isRole(role) && ADMIN_ONLY.includes(role);
 }
 
 export function normalizeDashboardPath(path: string): string {

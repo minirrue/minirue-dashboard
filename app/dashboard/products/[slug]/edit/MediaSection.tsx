@@ -5,6 +5,7 @@ import {
   cloudinaryPreviewUrl,
   createProductMedia,
   setProductMediaCover,
+  setProductMediaClosing,
 } from '@/lib/catalog/api';
 import type { ProductMedia } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
@@ -37,6 +38,7 @@ export default function MediaSection({ productId, productName, media, onMediaCha
   const [previewMedia, setPreviewMedia] = useState<ProductMedia | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [coverSaving, setCoverSaving] = useState<string | null>(null);
+  const [closingSaving, setClosingSaving] = useState<string | null>(null);
   const cropImage = useImageCrop();
 
   /** Promote one image to the cover thumbnail; the old cover joins the carousel. */
@@ -57,6 +59,42 @@ export default function MediaSection({ productId, productName, media, onMediaCha
       setError(err.message || 'Failed to set the cover image.');
     } finally {
       setCoverSaving(null);
+    }
+  }
+
+  /**
+   * Mark the photograph that ends the product page. The previous one drops back
+   * into the carousel — at most one per product, same as the cover.
+   *
+   * The cover is excluded because an image holds one role: promoting it here
+   * would strip the product's thumbnail from the shop grid, the bag and link
+   * previews without saying so. The backend refuses it too; this just means the
+   * button is never offered in the first place.
+   */
+  async function handleSetClosing(m: ProductMedia) {
+    if (m.role === 'CLOSING' || m.role === 'COVER' || m.variantId) return;
+    setError(null);
+    setClosingSaving(m.id);
+    try {
+      await setProductMediaClosing(productId, m.id);
+      onMediaChange(
+        media.map((x) => ({
+          ...x,
+          role:
+            x.id === m.id
+              ? 'CLOSING'
+              : x.variantId || x.role === 'COVER'
+                ? x.role
+                : x.role === 'CLOSING'
+                  ? 'CAROUSEL'
+                  : x.role,
+        })),
+      );
+    } catch (e) {
+      const err = e as ApiError;
+      setError(err.message || 'Failed to set the closing image.');
+    } finally {
+      setClosingSaving(null);
     }
   }
 
@@ -160,19 +198,36 @@ export default function MediaSection({ productId, productName, media, onMediaCha
                   <strong style={{ display: 'block', color: 'var(--mr-dash-accent, #8a6d3b)' }}>
                     Cover thumbnail
                   </strong>
+                ) : m.role === 'CLOSING' ? (
+                  <strong style={{ display: 'block', color: 'var(--mr-dash-accent, #8a6d3b)' }}>
+                    Closes the page
+                  </strong>
                 ) : m.variantId ? (
                   <span style={{ display: 'block' }}>Variant image</span>
                 ) : (
-                  <button
-                    type="button"
-                    className="dash-btn-ghost"
-                    style={{ display: 'block', padding: '2px 0', fontSize: 11 }}
-                    disabled={coverSaving !== null}
-                    onClick={() => handleSetCover(m)}
-                    data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-set-cover-image@${m.id}`}
-                  >
-                    {coverSaving === m.id ? 'Setting…' : 'Set as cover'}
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="dash-btn-ghost"
+                      style={{ display: 'block', padding: '2px 0', fontSize: 11 }}
+                      disabled={coverSaving !== null}
+                      onClick={() => handleSetCover(m)}
+                      data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-set-cover-image@${m.id}`}
+                    >
+                      {coverSaving === m.id ? 'Setting…' : 'Set as cover'}
+                    </button>
+                    <button
+                      type="button"
+                      className="dash-btn-ghost"
+                      style={{ display: 'block', padding: '2px 0', fontSize: 11 }}
+                      disabled={closingSaving !== null}
+                      onClick={() => handleSetClosing(m)}
+                      title="The photograph the product page ends on"
+                      data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-set-closing-image@${m.id}`}
+                    >
+                      {closingSaving === m.id ? 'Setting…' : 'Set as closing'}
+                    </button>
+                  </>
                 )}
                 {m.galleryItemId ? 'From Gallery' : m.cloudinaryPublicId}
               </figcaption>
