@@ -43,3 +43,24 @@ export async function apiAdminRejectInstapay(
     body: JSON.stringify({ reason }),
   });
 }
+
+/**
+ * Correct the reference fields an admin types in by hand.
+ *
+ * Omit a key to leave it alone; send null to clear it. Status is deliberately
+ * not editable — it is derived from verify/reject and from refunds, and typing
+ * it would let this card contradict the order's own status.
+ */
+export async function apiAdminUpdatePaymentReference(
+  attemptId: string,
+  patch: {
+    instapayReference?: string | null;
+    payerName?: string | null;
+    gatewayReference?: string | null;
+  },
+): Promise<AdminPaymentAttempt> {
+  return apiFetch<AdminPaymentAttempt>(
+    `/admin/payments/attempts/${attemptId}/reference`,
+    { method: 'PATCH', auth: true, body: JSON.stringify(patch) },
+  );
+}

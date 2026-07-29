@@ -3046,3 +3046,22 @@
     font-size: var(--mr-text-lg);
   }
 }
+
+/* ── Order line thumbnail ──
+   Was an inline 36x45: an odd portrait ratio that crop-mangled square product
+   shots, at a size too small to tell two bottles apart. Square matches how the
+   gallery and the payment receipt already render, and 64px is large enough to
+   recognise a bottle without inflating the row. */
+.dash-order-item-thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--mr-dash-border, #e5e0d8);
+  background: var(--mr-dash-sub, #f4f1ec);
+  display: block;
+}
+.dash-order-item-thumb--empty {
+  /* No image to enlarge, so no button and no pointer affordance. */
+  cursor: default;
+}

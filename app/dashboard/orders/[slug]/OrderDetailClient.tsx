@@ -4,11 +4,17 @@ import React, {useState, useCallback } from 'react';
 import Link from 'next/link';
 import { apiAdminGetOrder, apiAdminTransitionStatus, apiAdminCancelOrder } from '@/lib/api/orders';
 import type { Order, OrderStatus, OrderItem } from '@/lib/api/orders';
-import { apiAdminListOrderPayments, apiAdminVerifyInstapay, apiAdminRejectInstapay } from '@/lib/api/payments';
+import {
+  apiAdminListOrderPayments,
+  apiAdminVerifyInstapay,
+  apiAdminRejectInstapay,
+  apiAdminUpdatePaymentReference,
+} from '@/lib/api/payments';
+import EditableCell from '@/components/dashboard/EditableCell';
 import type { AdminPaymentAttempt } from '@/lib/api/payments';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
-import { ImagePreviewModal } from '@/components/dashboard/ImagePreviewModal';
+import { ImagePreviewModal, EnlargeableImage } from '@/components/dashboard/ImagePreviewModal';
 import FulfillmentControl from '@/components/dashboard/FulfillmentControl';
 import { formatOrderRef } from '@/lib/orders/order-format';
 
@@ -109,6 +115,9 @@ export default function OrderDetailClient({ id }: { id: string }) {
   const [payments, setPayments] = useState<AdminPaymentAttempt[]>([]);
   const [paymentBusy, setPaymentBusy] = useState<string | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  // Which order line's image is open full-size. Held by id rather than by URL
+  // so two lines sharing one product image cannot both open at once.
+  const [itemPreview, setItemPreview] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -159,6 +168,31 @@ export default function OrderDetailClient({ id }: { id: string }) {
       setActionError((e as ApiError).message ?? 'Payment action failed');
     } finally {
       setPaymentBusy(null);
+    }
+  };
+
+  /**
+   * Save one reference field on one payment.
+   *
+   * Rethrows on failure so EditableCell can stay open with what the admin
+   * typed still in it — swallowing the error would close the input and leave
+   * them unsure whether it saved.
+   */
+  const savePaymentField = async (
+    attemptId: string,
+    patch: {
+      instapayReference?: string | null;
+      payerName?: string | null;
+      gatewayReference?: string | null;
+    },
+  ) => {
+    setActionError(null);
+    try {
+      const updated = await apiAdminUpdatePaymentReference(attemptId, patch);
+      setPayments((prev) => prev.map((p) => (p.id === attemptId ? updated : p)));
+    } catch (e) {
+      setActionError((e as ApiError).message ?? 'Could not save the payment reference');
+      throw e;
     }
   };
 
@@ -289,35 +323,25 @@ export default function OrderDetailClient({ id }: { id: string }) {
               <tbody>
                 {items.map((item) => (
                   <tr key={item.id}>
-                    {/* The thumbnail is what makes two orders distinguishable at
-                        a glance; the table was text-only before. */}
+                    {/* 64px square, and clickable. It was 36x45 — an odd
+                        portrait ratio that crop-mangled square product shots,
+                        at a size too small to tell two bottles apart — and it
+                        was the only image on this page with no preview, while
+                        the payment receipt right below it already had one. */}
                     <td>
                       {item.productSnapshot.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <EnlargeableImage
                           src={item.productSnapshot.imageUrl}
-                          alt=""
-                          width={36}
-                          height={45}
-                          style={{
-                            width: 36,
-                            height: 45,
-                            objectFit: 'cover',
-                            borderRadius: 4,
-                            border: '1px solid var(--mr-dash-border, #e5e0d8)',
-                            display: 'block',
-                          }}
+                          alt={item.productSnapshot.name}
+                          className="dash-order-item-thumb"
+                          previewOpen={itemPreview === item.id}
+                          onOpenPreview={() => setItemPreview(item.id)}
+                          onClosePreview={() => setItemPreview(null)}
                         />
                       ) : (
                         <div
                           aria-hidden
-                          style={{
-                            width: 36,
-                            height: 45,
-                            borderRadius: 4,
-                            border: '1px solid var(--mr-dash-border, #e5e0d8)',
-                            background: 'var(--mr-dash-sub, #f4f1ec)',
-                          }}
+                          className="dash-order-item-thumb dash-order-item-thumb--empty"
                         />
                       )}
                     </td>
@@ -386,16 +410,37 @@ export default function OrderDetailClient({ id }: { id: string }) {
                       {order.totalCurrency} {(p.amountCents / 100).toLocaleString('en-EG', { minimumFractionDigits: 2 })}
                     </td>
                     <td style={{ color: 'var(--mr-fg-3)' }}>{formatDate(p.createdAt)}</td>
+                    {/* These three are copied by hand off a transfer
+                        screenshot, so they arrive late or wrong. They were
+                        static text with no endpoint behind them; click to
+                        edit, Enter or blur to save, Escape to abandon. */}
                     <td style={{ color: 'var(--mr-fg-3)', fontSize: 12 }}>
-                      {p.instapayReference ?? '—'}
+                      <EditableCell
+                        value={p.instapayReference ?? null}
+                        ariaLabel="Instapay reference"
+                        maxLength={120}
+                        onSave={(next) => savePaymentField(p.id, { instapayReference: next })}
+                      />
                     </td>
                     <td style={{ color: 'var(--mr-fg-3)', fontSize: 12 }}>
-                      {p.payerName ?? '—'}
+                      <EditableCell
+                        value={p.payerName ?? null}
+                        ariaLabel="Sender name"
+                        maxLength={160}
+                        onSave={(next) => savePaymentField(p.id, { payerName: next })}
+                      />
                       {p.transferredAt && (
                         <div style={{ color: 'var(--mr-fg-4)' }}>{formatDate(p.transferredAt)}</div>
                       )}
                     </td>
-                    <td style={{ color: 'var(--mr-fg-4)', fontSize: 12 }}>{p.gatewayReference ?? '—'}</td>
+                    <td style={{ color: 'var(--mr-fg-4)', fontSize: 12 }}>
+                      <EditableCell
+                        value={p.gatewayReference ?? null}
+                        ariaLabel="Payment reference"
+                        maxLength={120}
+                        onSave={(next) => savePaymentField(p.id, { gatewayReference: next })}
+                      />
+                    </td>
                     <td>
                       {receiptUrl && (
                         <button

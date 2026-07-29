@@ -21,6 +21,27 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 130,
+    date: '2026-07-29',
+    area: 'Support',
+    summary:
+      'The “Resolved” label no longer gets cut off at the edge of a conversation row. Labels now wrap onto a second line and the row grows to fit them, so nothing is hidden however many a conversation has. Photos sent in a chat now open in a preview over the page instead of a new browser tab, so you do not lose your place.',
+  },
+  {
+    id: 129,
+    date: '2026-07-29',
+    area: 'Orders',
+    summary:
+      'Product photos on an order are bigger, square and no longer stretched, and you can click one to see it full size — the same as the payment receipt beside it already did. The photos are also fetched at the size actually shown rather than full resolution, so the page loads lighter.',
+  },
+  {
+    id: 128,
+    date: '2026-07-29',
+    area: 'Orders',
+    summary:
+      'You can now correct the InstaPay reference, the sender name and the reference on a payment — click the value, type, and press Enter. These are copied by hand off a transfer screenshot so they often arrive late or wrong, and there was previously no way to fix them. The payment status stays automatic and cannot be typed over.',
+  },
+  {
     id: 127,
     date: '2026-07-29',
     area: 'Notifications',

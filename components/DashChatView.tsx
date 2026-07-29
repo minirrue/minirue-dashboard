@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useBreakpoint } from '@/hooks/useMotion'
+import { EnlargeableImage } from '@/components/dashboard/ImagePreviewModal'
 
 export interface MessageAttachment {
   url: string
@@ -234,11 +235,12 @@ const STYLES = `
   align-items: center;
   gap: 12px;
   width: 100%;
-  height: 80px;
+  /* min-height, not a locked height: when the chips wrap to a second line the
+     row grows to fit them. It used to be pinned at exactly 80px with
+     overflow: hidden, which is what turned an overflowing chip into an
+     invisible one. */
   min-height: 80px;
-  max-height: 80px;
-  padding: 0 18px;
-  overflow: hidden;
+  padding: 10px 18px;
   background: transparent;
   border: 0;
   border-bottom: 1px solid var(--mr-dash-hair);
@@ -318,7 +320,21 @@ const STYLES = `
 }
 .mrc-row[data-unread="true"] .mrc-row-preview { color: var(--mr-ink-700); font-weight: 500; }
 .mrc-row-preview[data-empty="true"] { color: var(--mr-ink-400); font-style: italic; }
-.mrc-row-chips { display: flex; align-items: center; gap: 6px; }
+/* Four chips can be present at once — GENERAL/ITEM + Guest/Customer + a brand
+   name + RESOLVED/CLOSED. This was a nowrap flex row with no width cap whose
+   children were all flex-shrink: 0, so their combined width could exceed the
+   row's content box and the last chip (RESOLVED) was pushed past the row's
+   right padding and clipped by .mrc-row's overflow: hidden. Wrapping and
+   min-width: 0 give them somewhere to go; the row's own height rule below
+   lets it grow to match rather than hiding the second line. */
+.mrc-row-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  row-gap: 4px;
+  min-width: 0;
+}
 .mrc-replying {
   padding: 7px 14px;
   font-family: var(--mr-font-label);
@@ -334,7 +350,19 @@ const STYLES = `
   color: var(--mr-cream-100);
   background: var(--mr-ink-700);
 }
-.mrc-brand, .mrc-closed { flex-shrink: 0; }
+/* The brand chip is the only one carrying arbitrary-length text, so it is the
+   one that gives way — a long partner name ellipsises rather than pushing the
+   status chip out of the row. The status chip never shrinks: it is the thing
+   an admin is scanning for. */
+.mrc-closed { flex-shrink: 0; }
+.mrc-brand {
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .mrc-brand {
   font-family: var(--mr-font-label);
   font-size: 8.5px;
@@ -913,6 +941,10 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
   const [contactOpen, setContactOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  // Which attachment is open full-size, keyed `messageIndex:attachmentIndex`
+  // so two identical images in a thread cannot both open at once. Message has
+  // no id — optimistic sends exist before the server assigns one.
+  const [attPreview, setAttPreview] = useState<string | null>(null)
   const { mobile } = useBreakpoint()
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -1231,11 +1263,20 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
                           <div className="mrc-bubble">
                             {msg.attachments && msg.attachments.length > 0 && (
                               <div className="mrc-atts" data-has-text={Boolean(msg.text)}>
+                                {/* Opens in the same overlay every other image
+                                    in the dashboard uses. It used to open a raw
+                                    browser tab, which loses the conversation
+                                    you were reading. */}
                                 {msg.attachments.map((att, ai) => (
-                                  <a key={ai} href={att.url} target="_blank" rel="noopener noreferrer">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={att.url} alt="Attachment" className="mrc-att-img" />
-                                  </a>
+                                  <EnlargeableImage
+                                    key={ai}
+                                    src={att.url}
+                                    alt="Attachment"
+                                    className="mrc-att-img"
+                                    previewOpen={attPreview === `${i}:${ai}`}
+                                    onOpenPreview={() => setAttPreview(`${i}:${ai}`)}
+                                    onClosePreview={() => setAttPreview(null)}
+                                  />
                                 ))}
                               </div>
                             )}
