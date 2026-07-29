@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 141,
+    date: '2026-07-29',
+    area: 'Collaborators',
+    summary:
+      'Partners now have their own support desk, and you can hand one the running of it with the new Support box under Access. They can then say whether they are answering and what reply time to show — for themselves only, not for the shop. Until now that was a single switch for the whole business, so a partner could never be open while MiniRue was closed.',
+  },
+  {
     id: 145,
     date: '2026-07-29',
     area: 'Reviews',

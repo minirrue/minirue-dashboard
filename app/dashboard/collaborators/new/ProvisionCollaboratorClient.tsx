@@ -28,6 +28,11 @@ const MODULE_OPTIONS: Array<{ value: CollaboratorModule; label: string }> = [
 
   { value: 'ANALYTICS', label: 'Analytics' },
 
+  // Also lets them set whether their own support desk is open and what reply
+  // time it shows — a real per-partner setting since every space got its own
+  // desk (backend 0.55.0).
+  { value: 'SUPPORT', label: 'Support' },
+
 ];
 
 

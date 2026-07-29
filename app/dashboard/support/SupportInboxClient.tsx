@@ -16,6 +16,7 @@ import {
   SUPPORT_KEYS,
 } from '@/lib/hooks/use-support';
 import { useUser } from '@/lib/hooks/use-auth';
+import { apiCollabOverview } from '@/lib/api/collab-portal';
 import { Role } from '@/lib/auth/role';
 import { apiSupportSend } from '@/lib/api/support';
 import type { PresenceDto, MessageAttachmentDto } from '@/lib/api/support';
@@ -416,6 +417,12 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   const [statusFilter, setStatusFilter] = useState('');
   const [brandFilter, setBrandFilter] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  /**
+   * A partner's own module grants, used only to decide whether to draw the
+   * presence controls. Empty for admins, who never need them — the role alone
+   * answers for them.
+   */
+  const [collabModules, setCollabModules] = useState<string[]>([]);
   const [mergeNotice, setMergeNotice] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingOutgoing[]>([]);
   const qc = useQueryClient();
@@ -446,6 +453,24 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   // doesn't have to separately dismiss it in the notification centre).
   const { items: notifications, markRead: markNotificationRead, refresh: refreshNotifications } = useAdminNotifications({ enabled: true });
 
+  // Only a partner needs this: the grant decides whether they can set their
+  // own desk's status. An admin's role already answers, so no request is made.
+  useEffect(() => {
+    if (user?.role !== Role.COLLAB) return;
+    let cancelled = false;
+    apiCollabOverview()
+      .then((o) => {
+        if (!cancelled) setCollabModules(o.modules ?? []);
+      })
+      .catch(() => {
+        // No grant assumed. The server refuses without it regardless, so the
+        // worst case is a partner not seeing controls they were entitled to.
+        if (!cancelled) setCollabModules([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.role]);
   useEffect(() => {
     if (!activeId) return;
     const matches = notifications.filter((n) => {
@@ -492,9 +517,20 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const canEditPresence = user?.role === Role.SUPERADMIN || user?.role === Role.ADMIN;
+  /**
+   * Who may set the presence shown here.
+   *
+   * A partner qualifies with the Support module granted — it is their own
+   * desk, not the shop's, since backend 0.55.0. The server checks the grant
+   * too; this only decides whether to draw the controls.
+   */
+  const canEditPresence =
+    user?.role === Role.SUPERADMIN ||
+    user?.role === Role.ADMIN ||
+    (user?.role === Role.COLLAB && collabModules.includes('SUPPORT'));
   // Same admin gate the presence controls use — merging is an admin-only action.
-  const isAdmin = canEditPresence;
+  const isAdmin =
+    user?.role === Role.SUPERADMIN || user?.role === Role.ADMIN;
 
   // Auto-dismisses the "merged" inline confirmation after a few seconds.
   useEffect(() => {

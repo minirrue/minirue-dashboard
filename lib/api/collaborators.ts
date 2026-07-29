@@ -1,6 +1,13 @@
 import { apiFetch } from './client';
 
-export type CollaboratorModule = 'ORDERS' | 'PRODUCTS' | 'ANALYTICS';
+/**
+ * What a partner can reach in their own dashboard.
+ *
+ * SUPPORT (backend 0.55.0) also lets them say whether their support desk is
+ * open and what reply time it advertises — only meaningful since every space
+ * got its own desk, before which that was one switch for the whole shop.
+ */
+export type CollaboratorModule = 'ORDERS' | 'PRODUCTS' | 'ANALYTICS' | 'SUPPORT';
 export type CollaboratorStatus = 'PENDING_ACTIVATION' | 'ACTIVE' | 'SUSPENDED' | 'ARCHIVED';
 
 export interface CollaboratorListItem {

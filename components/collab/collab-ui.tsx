@@ -9,6 +9,7 @@ const MODULE_LABELS: Record<CollaboratorModule, string> = {
   ORDERS: 'Orders',
   PRODUCTS: 'Products',
   ANALYTICS: 'Analytics',
+  SUPPORT: 'Support',
 };
 
 export function formatModuleLabel(mod: CollaboratorModule | CollabModule): string {

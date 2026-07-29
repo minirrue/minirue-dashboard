@@ -1,6 +1,6 @@
 import { apiFetch } from './client';
 
-export type CollabModule = 'ORDERS' | 'PRODUCTS' | 'ANALYTICS';
+export type CollabModule = 'ORDERS' | 'PRODUCTS' | 'ANALYTICS' | 'SUPPORT';
 
 export interface UpdateWorkspaceProfile {
   brandSlug: string;
