@@ -400,14 +400,27 @@
     transform: scale(var(--mr-scale-press));
   }
 
-  .dash-notif-dot {
+  /* Replaces .dash-notif-dot. The unread count was always fetched correctly
+     and discarded to render a 6px dot, so the bell could say "something
+     happened" but never "how much" — which is the part that decides whether
+     you open it now or later. Sized to hold "99+" without the pill deforming;
+     tabular-nums stops the badge twitching as the count changes. */
+  .dash-notif-count {
     position: absolute;
-    top: 6px;
-    right: 6px;
-    width: 6px;
-    height: 6px;
+    top: 2px;
+    right: 2px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    box-sizing: border-box;
     border-radius: var(--mr-radius-pill);
     background: var(--mr-crimson-500);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
     animation: mr-breath 3s var(--mr-ease-ios) infinite;
   }
 

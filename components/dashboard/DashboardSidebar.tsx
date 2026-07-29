@@ -401,7 +401,13 @@ export default function DashboardSidebar({
           <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 9a6 6 0 0 1 12 0v5l2 3H4l2-3V9zM10 19a2 2 0 0 0 4 0" />
           </svg>
-          {unreadCount > 0 && <span className="dash-notif-dot" aria-hidden="true" />}
+          {/* aria-hidden stays: the count is already announced on the button
+              label above, so reading it twice would be worse, not better. */}
+          {unreadCount > 0 && (
+            <span className="dash-notif-count" aria-hidden="true">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
         </button>
       )}
     </div>

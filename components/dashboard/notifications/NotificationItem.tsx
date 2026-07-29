@@ -44,7 +44,10 @@ function resolveHref(n: AdminNotification): string | null {
     case 'REFUND': return '/refunds';
     case 'INVENTORY': return '/inventory';
     case 'COLLAB': return '/collab';
-    default: return null;
+    // Never null: a notification with nowhere to go renders as an inert row
+    // with no View button, which reads as broken rather than as informational.
+    // The notification centre is always a truthful destination.
+    default: return '/notifications';
   }
 }
 

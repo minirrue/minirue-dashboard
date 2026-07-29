@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 127,
+    date: '2026-07-29',
+    area: 'Notifications',
+    summary:
+      'The bell now shows how many unread notifications you have, instead of a plain red dot — it always knew the number and just was not showing it. Support notifications now name the customer, quote what they actually wrote, and say which brand it is for, instead of all reading “New support message from a customer”. Every notification opens the screen it is about when you tap it.',
+  },
+  {
     id: 126,
     date: '2026-07-29',
     area: 'Customers',
