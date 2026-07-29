@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 141,
+    date: '2026-07-29',
+    area: 'Left menu & notifications',
+    summary:
+      'Each section in the left menu now carries its own unread count, so you can see that three of them are support messages and one is an order without opening the bell. Support messages count against Support only — they used to be filed as customer notifications, which meant Support and Customers would have shown the same number and both been wrong. Older support messages have been moved across too, so the counts are right straight away. The number on the bell now sits on the top-right corner of it instead of on top of the bell drawing.',
+  },
+  {
     id: 140,
     date: '2026-07-29',
     area: 'Support',

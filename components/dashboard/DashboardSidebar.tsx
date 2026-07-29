@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { canAccessDashboardRoute } from '@/lib/auth/roles';
 import UserMenu from './UserMenu';
 import ServerStatus from './ServerStatus';
+import { useNotificationCounts } from '@/lib/hooks/use-notification-counts';
+import { formatNavCount, navUnreadCount } from '@/lib/notifications/nav-counts';
 import { Sparkle } from '../primitives';
 import { CHANGELOG } from '@/lib/changelog';
 import { hasUnreadChangelog } from '@/lib/changelog-read-state';
@@ -349,6 +351,9 @@ export default function DashboardSidebar({
   // Fetches the true unread count on mount, so the bell dot reflects reality
   // before the drawer is ever opened (it used to only update after opening).
   const [unreadCount, setUnreadCount] = useUnreadNotificationCount();
+  // Per-tab unread counts, from the same request that feeds the bell above —
+  // so a number on Support and the number on the bell can never contradict.
+  const { byCategory } = useNotificationCounts();
 
   const renderNav = () => (
     <nav className="dash-sidebar-nav" onClick={onMobileDrawerClose}>
@@ -356,28 +361,42 @@ export default function DashboardSidebar({
         <section className="dash-sidebar-group" key={group.section} aria-label={group.section}>
           <div className="dash-sidebar-section">{group.section}</div>
           <div className="dash-sidebar-group-items">
-            {group.items.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="dash-sidebar-link"
-                data-active={
-                  activePath === item.href ||
-                  (!hasNestedSibling(item.href) && activePath.startsWith(`${item.href}/`))
-                    ? 'true'
-                    : undefined
-                }
-              >
-                <span className="dash-sidebar-link-icon">{item.icon}</span>
-                <span className="dash-sidebar-link-label">{item.label}</span>
-                {item.maintenance && (
-                  <span className="dash-sidebar-link-badge">Maintenance</span>
-                )}
-                {item.href === '/info' && showInfoDot && (
-                  <span className="dash-sidebar-link-dot" aria-label="New updates" />
-                )}
-              </Link>
-            ))}
+            {group.items.map((item) => {
+              const unread = navUnreadCount(item.href, byCategory);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="dash-sidebar-link"
+                  data-active={
+                    activePath === item.href ||
+                    (!hasNestedSibling(item.href) && activePath.startsWith(`${item.href}/`))
+                      ? 'true'
+                      : undefined
+                  }
+                >
+                  <span className="dash-sidebar-link-icon">{item.icon}</span>
+                  <span className="dash-sidebar-link-label">{item.label}</span>
+                  {/* Unread for THIS section only. The label says what the
+                      number means, because a bare "3" beside Support could be
+                      three of anything. */}
+                  {unread > 0 && (
+                    <span
+                      className="dash-sidebar-link-count"
+                      aria-label={`${unread} unread in ${item.label}`}
+                    >
+                      {formatNavCount(unread)}
+                    </span>
+                  )}
+                  {item.maintenance && (
+                    <span className="dash-sidebar-link-badge">Maintenance</span>
+                  )}
+                  {item.href === '/info' && showInfoDot && (
+                    <span className="dash-sidebar-link-dot" aria-label="New updates" />
+                  )}
+                </Link>
+              );
+            })}
           </div>
         </section>
       ))}

@@ -1,8 +1,13 @@
 import { apiFetch } from './client';
 
+// Mirrors the backend's list in
+// src/notifications/interfaces/notification.interfaces.ts. SUPPORT is split out
+// of CUSTOMER so the sidebar can count chat messages against the Support tab
+// and account events against Customers, instead of showing both the same
+// combined number.
 export const NOTIFICATION_CATEGORIES = [
   'ORDER', 'PAYMENT', 'FULFILLMENT', 'REFUND',
-  'INVENTORY', 'CUSTOMER', 'COLLAB', 'SYSTEM',
+  'INVENTORY', 'CUSTOMER', 'SUPPORT', 'COLLAB', 'SYSTEM',
 ] as const;
 export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
 
