@@ -154,6 +154,9 @@ export interface CollabCategory {
   slug: string;
   parentId: string | null;
   sortOrder: number;
+  /** Already a servable URL at tile size — the client never sees a media id. */
+  imageUrl?: string | null;
+  imageMediaId?: string | null;
   children?: CollabCategory[];
 }
 
@@ -174,7 +177,12 @@ export async function apiCollabCreateCategory(data: {
 
 export async function apiCollabUpdateCategory(
   id: string,
-  data: { name?: string; sort_order?: number },
+  data: {
+    name?: string;
+    sort_order?: number;
+    /** A Gallery item id for the shop tile; null clears it. */
+    image_media_id?: string | null;
+  },
 ): Promise<CollabCategory> {
   return apiFetch(`/collab/categories/${id}`, {
     method: 'PATCH',

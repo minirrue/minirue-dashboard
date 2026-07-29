@@ -10,6 +10,7 @@ import {
 } from '@/lib/api/collab-portal';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import ImageField from '@/components/dashboard/ImageField';
 
 const TRACE = 'PG-COLLAB-CATEGORIES-001';
 
@@ -83,6 +84,24 @@ export default function CollabCategoriesClient() {
       await load();
     } catch (err) {
       setRowError((err as ApiError).message ?? 'Could not rename that category.');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  /**
+   * The shop shows categories as picture tiles, so a category without one
+   * renders as an empty square. Saved immediately rather than behind an edit
+   * mode — picking an image is the whole interaction.
+   */
+  async function handleImage(id: string, mediaId: string | null) {
+    setBusyId(id);
+    setRowError(null);
+    try {
+      await apiCollabUpdateCategory(id, { image_media_id: mediaId });
+      await load();
+    } catch (err) {
+      setRowError((err as ApiError).message ?? 'Could not save that image.');
     } finally {
       setBusyId(null);
     }
@@ -207,6 +226,12 @@ export default function CollabCategoriesClient() {
                   </>
                 ) : (
                   <>
+                    <ImageField
+                      label=""
+                      imageUrl={c.imageUrl ?? null}
+                      disabled={busyId === c.id}
+                      onChange={(mediaId) => void handleImage(c.id, mediaId)}
+                    />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600 }}>{c.name}</div>
                       {/* The address it will have on the shop — the thing that

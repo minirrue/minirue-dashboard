@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 135,
+    date: '2026-07-29',
+    area: 'Catalogue',
+    summary:
+      'Categories can now be given a picture, chosen from your Gallery like any product photo. The shop shows categories and brands as picture tiles, so until now they drew as empty squares. Partners can set the picture on their own categories from their dashboard.',
+  },
+  {
     id: 134,
     date: '2026-07-29',
     area: 'Collaborators',
