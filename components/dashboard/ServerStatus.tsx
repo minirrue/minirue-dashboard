@@ -41,7 +41,7 @@ const PRESENTATION: Record<
   { color: string; label: string; hint: string }
 > = {
   online: {
-    color: 'var(--mr-success, #3F6B4A)',
+    color: 'var(--mr-status-online, #16A34A)',
     label: 'Server online',
     hint: 'The API answered and reported itself healthy.',
   },

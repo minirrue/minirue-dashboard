@@ -77,6 +77,13 @@
   --mr-warning: #B8832A;
   --mr-danger:  #8E1418;
 
+  /* The server-health dot is 8px across, and --mr-success (#3F6B4A) is a deep
+     olive that reads as grey-brown at that size — the one thing a "server is
+     fine" light must not look like. This is the same idea at a saturation that
+     is unmistakably green at a glance. Deliberately its own token: tuning the
+     dot must never restyle every success badge in the dashboard. */
+  --mr-status-online: #16A34A;
+
   /* ── Semantic surfaces ── */
   --mr-bg:          var(--mr-cream-200);
   --mr-bg-raised:   var(--mr-cream-100);
