@@ -66,3 +66,9 @@ minirue-dashboard PAGE /dashboard/collab/support
 # an attribution would record coverage that does not exist. Story pending per §18/§21 (vault
 # decoupled).
 minirue-dashboard PAGE /dashboard/collab/categories
+
+# 2026-07-29 — the Reviews moderation screen, where an admin approves or rejects what customers
+# write about a product. Exempted alongside the backend review routes it calls, for the same
+# reason: new product surface with no existing story describing it. Story pending per §18/§21
+# (vault decoupled).
+minirue-dashboard PAGE /dashboard/reviews
