@@ -1827,6 +1827,23 @@
   background: var(--mr-st-danger-bg);
   color: var(--mr-st-danger-fg);
 }
+/* Payment attempt states (payment_attempt_status). Neither had a tone, so a
+   collected payment rendered as a bare unstyled pill beside a green Delivered
+   order. `refunded` — the value migration 0033 added — reads danger because it
+   is money leaving again, the one state on this card an admin must never skim
+   past. MiniRue has no partial refund, so there is no in-between tone.
+
+   An ORDER at REFUNDED does not use this rule: both order maps translate it to
+   the `cancelled` tone (same danger palette) on the grounds that neither is
+   money we kept. Kept as-is so the order chip and the payment chip match. */
+.dash-status[data-status="succeeded"] {
+  background: var(--mr-st-ok-bg);
+  color: var(--mr-st-ok-fg);
+}
+.dash-status[data-status="refunded"] {
+  background: var(--mr-st-danger-bg);
+  color: var(--mr-st-danger-fg);
+}
 /* Account states (Accounts screen). Active = ok/green; suspended is a
    deliberate paused state, not an error, so it reads amber (warn), not red. */
 .dash-status[data-status="active"] {

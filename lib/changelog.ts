@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 125,
+    date: '2026-07-29',
+    area: 'Orders & Refunds',
+    summary:
+      'Refunding an order now actually marks it refunded everywhere. Until today the money was recorded on the Refunds tab while the Orders list, the order page and its history all still said Delivered, and the payment still said Succeeded — so a refunded order looked like a sale you kept. The refund now shows on the order, is written into the order’s history with who did it and why, and turns the payment red.',
+  },
+  {
     id: 124,
     date: '2026-07-25',
     area: 'Settings',
