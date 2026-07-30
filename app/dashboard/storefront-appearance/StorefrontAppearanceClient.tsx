@@ -29,6 +29,7 @@ import ProductGridEditor from './editors/ProductGridEditor';
 import JournalEditor from './editors/JournalEditor';
 import CollabShowcaseEditor from './editors/CollabShowcaseEditor';
 import NavbarEditor from './editors/NavbarEditor';
+import MobileMenuEditor from './editors/MobileMenuEditor';
 import FooterEditor from './editors/FooterEditor';
 import PagesEditor from './PagesEditor';
 import ProductSectionEditor from './editors/ProductSectionEditor';
@@ -41,7 +42,17 @@ const SECTION_TYPES: SectionType[] = [
   'journal',
 ];
 
-type Tab = 'page' | 'navbar' | 'footer' | 'announcement' | 'productSection' | 'pages';
+type Tab = 'page' | 'navbar' | 'mobileMenu' | 'footer' | 'announcement' | 'productSection' | 'pages';
+
+const TAB_LABELS: Record<Tab, string> = {
+  page: 'Home page',
+  navbar: 'Navbar',
+  mobileMenu: 'Mobile menu',
+  footer: 'Footer',
+  announcement: 'Announcement',
+  productSection: 'Product section',
+  pages: 'Pages',
+};
 
 export default function StorefrontAppearanceClient() {
   const [layout, setLayout] = useState<StorefrontLayout | null>(null);
@@ -52,6 +63,7 @@ export default function StorefrontAppearanceClient() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [droppedNavItemCount, setDroppedNavItemCount] = useState(0);
+  const [droppedMobileMenuItemCount, setDroppedMobileMenuItemCount] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,19 +99,25 @@ export default function StorefrontAppearanceClient() {
     setSaveError(null);
     setSaved(false);
     setDroppedNavItemCount(0);
+    setDroppedMobileMenuItemCount(0);
     try {
       // Normalize on a copy — never mutate the on-screen layout. An
       // unfinished hero CTA target (kind picked, id not yet chosen) would
       // otherwise fail the backend's `.uuid()` check and block saving
       // every other change on the page, so it's coerced to a safe
-      // default; an unfinished nav item (no target or no label) can't be
-      // sensibly defaulted, so it's dropped and the admin is told.
-      const { layout: toSave, droppedNavItemCount: dropped } =
-        normalizeStorefrontLayoutForSave(layout);
+      // default; an unfinished nav item or mobile-menu tile (no target or
+      // no label) can't be sensibly defaulted, so it's dropped and the
+      // admin is told.
+      const {
+        layout: toSave,
+        droppedNavItemCount: dropped,
+        droppedMobileMenuItemCount: droppedMobileMenu,
+      } = normalizeStorefrontLayoutForSave(layout);
       const result = await apiSaveStorefrontLayout(toSave);
       setLayout(result);
       setSaved(true);
       setDroppedNavItemCount(dropped);
+      setDroppedMobileMenuItemCount(droppedMobileMenu);
     } catch (e) {
       setSaveError((e as ApiError).message ?? 'Failed to save');
     } finally {
@@ -199,18 +217,14 @@ export default function StorefrontAppearanceClient() {
       </div>
 
       <div className="dash-tabstrip">
-        {(['page', 'navbar', 'footer', 'announcement', 'productSection', 'pages'] as Tab[]).map((t) => (
+        {(['page', 'navbar', 'mobileMenu', 'footer', 'announcement', 'productSection', 'pages'] as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
             className={tab === t ? 'dash-btn-secondary' : 'dash-btn-ghost'}
             onClick={() => setTab(t)}
           >
-            {t === 'page'
-              ? 'Home page'
-              : t === 'productSection'
-                ? 'Product section'
-                : t.charAt(0).toUpperCase() + t.slice(1)}
+            {TAB_LABELS[t]}
           </button>
         ))}
       </div>
@@ -229,6 +243,15 @@ export default function StorefrontAppearanceClient() {
             : `${droppedNavItemCount} unfinished menu items were removed on save`}
           {' '}— it had no page picked or no label, so there was nothing to show shoppers. Check
           the Navbar tab if that wasn&apos;t intended.
+        </p>
+      )}
+      {saved && droppedMobileMenuItemCount > 0 && (
+        <p className="dash-inline-error">
+          {droppedMobileMenuItemCount === 1
+            ? '1 unfinished mobile-menu tile was removed on save'
+            : `${droppedMobileMenuItemCount} unfinished mobile-menu tiles were removed on save`}
+          {' '}— it had no destination picked or no label. Check the Mobile menu tab if that
+          wasn&apos;t intended.
         </p>
       )}
 
@@ -274,6 +297,13 @@ export default function StorefrontAppearanceClient() {
 
       {tab === 'navbar' && (
         <NavbarEditor navbar={layout.navbar} onChange={(navbar) => patch({ navbar })} />
+      )}
+
+      {tab === 'mobileMenu' && (
+        <MobileMenuEditor
+          mobileMenu={layout.mobileMenu}
+          onChange={(mobileMenu) => patch({ mobileMenu })}
+        />
       )}
 
       {tab === 'footer' && (

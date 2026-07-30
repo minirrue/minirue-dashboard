@@ -144,6 +144,54 @@ export interface NavbarConfig {
   showAccount: boolean;
 }
 
+/** Mirrors the storefront's `components/ui/Icon.tsx` glyph names exactly —
+ * that file lives in the sibling minirue-frontend repo, so this list is kept
+ * in sync by hand. The editor can only offer these, never a free string. */
+export type MobileMenuIcon =
+  | 'search' | 'user' | 'bag' | 'heart' | 'close' | 'arrowRight' | 'arrowLeft'
+  | 'minus' | 'plus' | 'check' | 'gift' | 'truck' | 'menu' | 'x' | 'grid' | 'external'
+  | 'share' | 'chevronRight' | 'chevronLeft' | 'chevronDown' | 'home';
+
+export const MOBILE_MENU_ICONS: MobileMenuIcon[] = [
+  'home', 'search', 'user', 'bag', 'heart', 'grid', 'gift', 'truck', 'check',
+  'menu', 'x', 'external', 'share', 'plus', 'minus', 'close',
+  'arrowRight', 'arrowLeft', 'chevronRight', 'chevronLeft', 'chevronDown',
+];
+
+/** Same discriminated-union shape as `NavItem`/`CtaTarget`, plus five
+ * built-ins that are not links: `home`/`cart`/`brands` are fixed routes,
+ * `search` opens the search sheet, `account` depends on sign-in state. */
+export type MobileMenuTarget =
+  | { kind: 'home' }
+  | { kind: 'search' }
+  | { kind: 'account' }
+  | { kind: 'cart' }
+  | { kind: 'brands' }
+  | { kind: 'category'; categoryId: string }
+  | { kind: 'brand'; brandId: string }
+  | { kind: 'product'; productId: string }
+  | { kind: 'collaborator'; collaboratorId: string }
+  | { kind: 'link'; href: string };
+
+export interface MobileMenuShortcut {
+  id: string;
+  label: string;
+  icon: MobileMenuIcon;
+  target: MobileMenuTarget;
+}
+
+/** The bottom pill. No `id` — there is only ever one, `null` hides it. */
+export interface MobileMenuFooterButton {
+  label: string;
+  icon: MobileMenuIcon;
+  target: MobileMenuTarget;
+}
+
+export interface MobileMenuConfig {
+  shortcuts: MobileMenuShortcut[];
+  footerButton: MobileMenuFooterButton | null;
+}
+
 export type SocialNetwork =
   | 'instagram' | 'tiktok' | 'facebook' | 'x' | 'youtube' | 'whatsapp' | 'pinterest';
 
@@ -200,6 +248,7 @@ export interface StorefrontLayout {
   faviconUrl: string | null;
   sections: StorefrontSection[];
   navbar: NavbarConfig;
+  mobileMenu: MobileMenuConfig;
   footer: FooterConfig;
   pages: StorefrontPage[];
 }
@@ -335,10 +384,43 @@ function isIncompleteNavItem(item: NavItem): boolean {
   }
 }
 
+/** Same "missing target id/href" check as a nav item, for a mobile-menu
+ * target. The five built-in kinds (home/search/account/cart/brands) need
+ * nothing beyond the kind itself, so they can never be incomplete. */
+function isIncompleteMobileMenuTarget(target: MobileMenuTarget): boolean {
+  switch (target.kind) {
+    case 'category':
+      return isBlank(target.categoryId);
+    case 'brand':
+      return isBlank(target.brandId);
+    case 'product':
+      return isBlank(target.productId);
+    case 'collaborator':
+      return isBlank(target.collaboratorId);
+    case 'link':
+      return isBlank(target.href);
+    case 'home':
+    case 'search':
+    case 'account':
+    case 'cart':
+    case 'brands':
+      return false;
+  }
+}
+
+function isIncompleteMobileMenuItem(item: {
+  label: string;
+  target: MobileMenuTarget;
+}): boolean {
+  return isBlank(item.label) || isIncompleteMobileMenuTarget(item.target);
+}
+
 export interface NormalizeResult {
   layout: StorefrontLayout;
   /** Count of navbar items dropped for being unfinished. */
   droppedNavItemCount: number;
+  /** Count of mobile-menu shortcuts/footer button dropped for being unfinished. */
+  droppedMobileMenuItemCount: number;
 }
 
 /**
@@ -376,11 +458,32 @@ export function normalizeStorefrontLayoutForSave(layout: StorefrontLayout): Norm
     items: cleanNavList(next.navbar.items),
   };
 
+  let droppedMobileMenuItemCount = 0;
+  // Defensive, not just decorative: `mobileMenu` is required in the type, but
+  // a layout object built by code written before this field existed (an
+  // older in-memory fixture, or a stale page that hasn't reloaded) still has
+  // it `undefined` at runtime. Falling back rather than crashing here means
+  // saving anything else on such a page still succeeds.
+  const mobileMenuSource = next.mobileMenu ?? { shortcuts: [], footerButton: null };
+  const cleanShortcuts = mobileMenuSource.shortcuts.filter((item) => {
+    if (isIncompleteMobileMenuItem(item)) {
+      droppedMobileMenuItemCount += 1;
+      return false;
+    }
+    return true;
+  });
+  let footerButton = mobileMenuSource.footerButton;
+  if (footerButton && isIncompleteMobileMenuItem(footerButton)) {
+    droppedMobileMenuItemCount += 1;
+    footerButton = null;
+  }
+  next.mobileMenu = { shortcuts: cleanShortcuts.slice(0, 3), footerButton };
+
   next.pages = next.pages.filter(
     (page) => !isBlank(page.title) && SLUG_PATTERN.test(page.slug),
   );
 
-  return { layout: next, droppedNavItemCount };
+  return { layout: next, droppedNavItemCount, droppedMobileMenuItemCount };
 }
 
 export function moveSection(

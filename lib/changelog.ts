@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 151,
+    date: '2026-07-30',
+    area: 'Storefront appearance',
+    summary:
+      'The phone menu is now yours to design. A new "Mobile menu" tab under Storefront appearance lets you set the icon tiles at the top (up to 3) and the button pinned to the bottom, picking from the same icons the storefront already uses and pointing each one at Home, Search, your Account, the Cart, the Brands page, or any category, brand, product or collaborator page. Before, that row was fixed to Home/Search/Account and the bottom button always said Account too — the same destination shown twice. Shops that never open this new tab see no change; the old row is exactly what ships as the default. Tapping a category with subcategories now opens them, not just the ones with pinned products, and the socials in the phone menu are in colour now.',
+  },
+  {
     id: 150,
     date: '2026-07-30',
     area: 'Gallery & photos',
