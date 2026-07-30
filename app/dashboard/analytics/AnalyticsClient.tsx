@@ -1,256 +1,185 @@
 'use client';
 
-import React, {useState, useCallback } from 'react';
-import {
-  apiGetAnalyticsOverview,
-  apiGetRevenueSeries,
-  apiGetTopProducts,
-  apiGetOrdersFunnel,
-} from '@/lib/api/analytics';
-import type { AnalyticsOverview, RevenuePoint, TopProduct, OrdersFunnel } from '@/lib/api/analytics';
-import type { ApiError } from '@/lib/api/client';
-import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import React, { useMemo, useReducer, useState } from 'react';
+import AnalyticsSubnav from '@/components/dashboard/AnalyticsSubnav';
+import OverviewGrid, { ANALYTICS_OVERVIEW_WIDGETS, buildDefaultOverviewLayout } from './OverviewGrid';
+import AddWidgetPanel from './AddWidgetPanel';
+import { useAnalyticsRange, useAudienceSummary } from '@/lib/hooks/use-analytics';
+import type { AnalyticsRangeState } from '@/lib/hooks/use-analytics';
+import { layoutReducer, loadLayout, saveLayout } from '@/lib/analytics/layout-store';
+import type { AnalyticsFreshness } from '@/lib/api/analytics-insights';
 
-function egp(cents: number): string {
-  return `EGP ${(cents / 100).toLocaleString('en-EG', { minimumFractionDigits: 2 })}`;
-}
-function egpShort(cents: number): string {
-  const val = cents / 100;
-  if (val >= 1_000_000) return `EGP ${(val / 1_000_000).toFixed(1)}M`;
-  if (val >= 1_000) return `EGP ${(val / 1_000).toFixed(1)}K`;
-  return egp(cents);
-}
+/**
+ * Lane 12 rewrite. Replaces the old hard-coded 8-tile + bar-table + funnel +
+ * top-5 screen with `AnalyticsSubnav` + a header (range/compare, a freshness
+ * indicator, the Edit layout toggle) + the registry-driven `OverviewGrid`.
+ * See `OverviewGrid.tsx` for the widget composition and `OverviewGrid`'s own
+ * header comment for the widgets the brief names that have no backing data
+ * anywhere in this app yet.
+ */
 
-function StatCard({ title, value, sub }: { title: string; value: string; sub?: string }) {
+/** Same shape/behaviour as every sibling analytics screen's local
+ * `RangeControl` (`AcquisitionClient.tsx`, `EventsExplorerClient.tsx`, …) —
+ * this is "the shared date-range + compare control" the brief refers to;
+ * there is no separate shared component file to import, only a shared
+ * convention, so it is reproduced here rather than invented differently. */
+function RangeControl({
+  range,
+  onChange,
+}: {
+  range: AnalyticsRangeState;
+  onChange: (next: Partial<AnalyticsRangeState>) => void;
+}) {
   return (
-    <div className="dash-card dash-stat-card">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <span className="dash-section-title" style={{ margin: 0 }}>{title}</span>
-        <span style={{ fontSize: 26, fontWeight: 600, color: 'var(--mr-fg)', lineHeight: 1 }}>{value}</span>
-        {sub && <span style={{ fontSize: 12, color: 'var(--mr-fg-4)' }}>{sub}</span>}
-      </div>
+    <div className="dash-filters" style={{ marginBottom: 0 }}>
+      <label className="dash-field" style={{ maxWidth: 160 }}>
+        <span className="dash-label">From</span>
+        <input
+          type="date"
+          className="dash-input"
+          value={range.from}
+          max={range.to}
+          onChange={(e) => onChange({ from: e.target.value })}
+        />
+      </label>
+      <label className="dash-field" style={{ maxWidth: 160 }}>
+        <span className="dash-label">To</span>
+        <input
+          type="date"
+          className="dash-input"
+          value={range.to}
+          min={range.from}
+          onChange={(e) => onChange({ to: e.target.value })}
+        />
+      </label>
+      <label className="dash-checkbox-label" style={{ marginLeft: 8 }}>
+        <input
+          type="checkbox"
+          className="dash-checkbox"
+          checked={range.compare}
+          onChange={(e) => onChange({ compare: e.target.checked })}
+        />
+        Compare to previous period
+      </label>
     </div>
   );
 }
 
-function SkeletonCard() {
+/** Small, always-on freshness note next to the range control — distinct from
+ * the louder degraded banner below, which only appears when something is
+ * actually behind. */
+function FreshnessIndicator({ freshness }: { freshness: AnalyticsFreshness }) {
+  if (!freshness.rollupLastOkAt) return null;
+  const minutesAgo = Math.max(0, Math.round((Date.now() - new Date(freshness.rollupLastOkAt).getTime()) / 60_000));
+  const label = minutesAgo === 0 ? 'just now' : `${minutesAgo} minute${minutesAgo === 1 ? '' : 's'} ago`;
   return (
-    <div className="dash-card dash-stat-card">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-        <span className="dash-skeleton" style={{ width: 100, height: 13 }} />
-        <span className="dash-skeleton" style={{ width: 140, height: 28 }} />
-      </div>
-    </div>
+    <p style={{ fontSize: 12, color: 'var(--mr-fg-3)', margin: 0 }}>
+      Updated {label}
+    </p>
   );
 }
 
-function RevenueChart({ points }: { points: RevenuePoint[] }) {
-  const safePoints = Array.isArray(points) ? points : [];
-  const max = Math.max(...safePoints.map((p) => p.total_cents || 0), 1);
-  const visible = safePoints.slice(-30);
-
+/** Page-level banner for a stale rollup or ingest lag — every figure below
+ * is still real data, just possibly behind, and the operator needs to know
+ * by how much rather than discover it later. Only fires on an actual lag
+ * (`staleBuckets > 0` with a rollup that has succeeded at least once) — a
+ * rollup that has never run is the "empty" state each widget already
+ * renders on its own, not a degradation banner. */
+function CollectionDegradedBanner({ staleBuckets }: { staleBuckets: number }) {
   return (
-    <div className="dash-card" style={{ padding: '16px 20px' }}>
-      <p className="dash-section-title" style={{ marginBottom: 12 }}>Revenue — last 30 days</p>
-      {visible.length === 0 ? (
-        <p style={{ color: 'var(--mr-fg-4)', fontSize: 14 }}>No revenue data available.</p>
-      ) : (
-        <div className="dash-table-wrap">
-          <table className="dash-revenue-chart">
-            <tbody>
-              {visible.map((p) => (
-                <tr key={p.date}>
-                  <td style={{ color: 'var(--mr-fg-3)', fontSize: 12, whiteSpace: 'nowrap', paddingRight: 12 }}>
-                    {new Date(p.date).toLocaleDateString('en-EG', { month: 'short', day: 'numeric' })}
-                  </td>
-                  <td className="dash-revenue-bar-cell">
-                    <div className="dash-revenue-bar-track">
-                      <div className="dash-revenue-bar-fill" style={{ transform: `scaleX(${(p.total_cents / max).toFixed(4)})` }} />
-                    </div>
-                  </td>
-                  <td style={{ textAlign: 'right', paddingLeft: 12, color: 'var(--mr-fg-2)', whiteSpace: 'nowrap' }}>
-                    {egpShort(p.total_cents)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TopProductsTable({ products: rawProducts }: { products: TopProduct[] }) {
-  const products = Array.isArray(rawProducts) ? rawProducts : [];
-  if (products.length === 0) {
-    return (
-      <div className="dash-card">
-        <p style={{ color: 'var(--mr-fg-4)', fontSize: 14, textAlign: 'center', padding: '20px 0' }}>No product sales data yet.</p>
-      </div>
-    );
-  }
-  return (
-    <div className="dash-card" style={{ padding: 0, overflow: 'hidden' }}>
-      <div style={{ padding: '16px 20px 0' }}>
-        <p className="dash-section-title">Top 5 Products</p>
-      </div>
-      <div className="dash-table-wrap">
-        <table className="dash-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Product</th>
-              <th style={{ textAlign: 'right' }}>Units Sold</th>
-              <th style={{ textAlign: 'right' }}>Revenue</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.slice(0, 5).map((p, i) => (
-              <tr key={p.product_id}>
-                <td style={{ color: 'var(--mr-fg-4)', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</td>
-                <td>{p.product_name}</td>
-                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{Number(p.quantity_sold).toLocaleString()}</td>
-                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{egp(p.revenue_cents)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function OrdersFunnelPanel({ funnel }: { funnel: OrdersFunnel }) {
-  const steps = [
-    { label: 'Carts created', value: funnel.carts_created || 0 },
-    { label: 'Orders placed', value: funnel.orders_placed || 0 },
-    { label: 'Orders paid', value: funnel.orders_paid || 0 },
-    { label: 'Orders fulfilled', value: funnel.orders_fulfilled || 0 },
-  ];
-  const max = Math.max(...steps.map((s) => s.value), 1);
-
-  return (
-    <div className="dash-card" style={{ padding: '16px 20px' }}>
-      <p className="dash-section-title" style={{ marginBottom: 12 }}>Checkout funnel</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {steps.map((step) => (
-          <div key={step.label} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 140px) 1fr auto', gap: 12, alignItems: 'center' }}>
-            <span style={{ fontSize: 13, color: 'var(--mr-fg-3)' }}>{step.label}</span>
-            <div className="dash-revenue-bar-track">
-              <div
-                className="dash-revenue-bar-fill"
-                style={{ transform: `scaleX(${(step.value / max).toFixed(4)})`, opacity: 0.85 }}
-              />
-            </div>
-            <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--mr-fg-2)', minWidth: 48, textAlign: 'right' }}>
-              {step.value.toLocaleString()}
-            </span>
-          </div>
-        ))}
-      </div>
-      <p style={{ marginTop: 14, fontSize: 12, color: 'var(--mr-fg-4)' }}>
-        Cart → paid: {(funnel.conversion_to_paid || 0).toFixed(1)}% · Paid → fulfilled: {(funnel.conversion_to_fulfilled || 0).toFixed(1)}%
+    <div className="dash-degraded-banner" role="status">
+      <span className="dash-status" data-status="warn">
+        <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+        </svg>
+        Data behind
+      </span>
+      <p style={{ margin: 0, fontSize: 13, color: 'var(--mr-fg-2)' }}>
+        {staleBuckets} bucket{staleBuckets === 1 ? '' : 's'} in this range {staleBuckets === 1 ? 'is' : 'are'} still
+        catching up — figures below may be behind until the rollup finishes.
       </p>
     </div>
   );
 }
 
 export default function AnalyticsClient() {
-  const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
-  const [revenue, setRevenue] = useState<RevenuePoint[]>([]);
-  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
-  const [funnel, setFunnel] = useState<OrdersFunnel | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { range, setRange } = useAnalyticsRange();
+  const [editMode, setEditMode] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [ov, rev, top, fn] = await Promise.all([
-        apiGetAnalyticsOverview(),
-        apiGetRevenueSeries('30d'),
-        apiGetTopProducts(5),
-        apiGetOrdersFunnel(),
-      ]);
-      setOverview(ov);
-      setRevenue(rev);
-      setTopProducts(top);
-      setFunnel(fn);
-    } catch (e) {
-      setError((e as ApiError).message ?? 'Failed to load analytics');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Stable across the component's lifetime — the registry/composed-widget
+  // list doesn't change at runtime, so this only needs to be computed once.
+  const defaultLayout = useMemo(() => buildDefaultOverviewLayout(), []);
+  const [layout, dispatch] = useReducer(layoutReducer, defaultLayout, loadLayout);
 
-  useMountedEffect(() => { load(); }, [load]);
+  // Every dispatch flows straight into localStorage — `saveLayout` is a
+  // synchronous, side-effect-free write, so doing it inline (rather than in
+  // a useEffect) avoids a render's worth of lag between an edit and it
+  // surviving a refresh, and there is no cleanup to skip on unmount.
+  function dispatchAndPersist(action: Parameters<typeof dispatch>[0]) {
+    const next = layoutReducer(layout, action);
+    dispatch(action);
+    saveLayout(next);
+  }
 
-  const totalOrders = overview?.orders
-    ? Object.values(overview.orders).reduce((a, b) => a + (b || 0), 0)
-    : 0;
+  // `useAudienceSummary` is already fetched by the first default widget —
+  // React Query dedupes by key, so reading it again here for the header's
+  // freshness indicator and the degraded banner is a cache hit, not a
+  // second request. This component doesn't need a widget-shaped query of
+  // its own.
+  const freshnessProbe = useAudienceSummary(range);
+  const freshness = freshnessProbe.data?.freshness;
+  const degraded = !!freshness?.rollupLastOkAt && freshness.staleBuckets > 0;
+
+  function handleAdd(id: string) {
+    const widget = ANALYTICS_OVERVIEW_WIDGETS.find((w) => w.id === id);
+    dispatchAndPersist({ type: 'add', id, size: widget?.defaultSize });
+  }
+
+  function handleReset() {
+    dispatchAndPersist({ type: 'reset', defaults: defaultLayout });
+  }
 
   return (
     <>
+      <AnalyticsSubnav />
+
       <div className="dash-page-header">
-        <h1 className="dash-page-title">Analytics</h1>
+        <h1 className="dash-page-title">Analytics overview</h1>
+        <button
+          type="button"
+          className={editMode ? 'dash-btn-primary' : 'dash-btn-secondary'}
+          onClick={() => setEditMode((v) => !v)}
+          aria-pressed={editMode}
+        >
+          {editMode ? 'Done editing' : 'Edit layout'}
+        </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 16, marginBottom: 20 }}>
-        {loading ? (
-          <><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /></>
-        ) : error ? (
-          <div className="dash-card" style={{ gridColumn: '1/-1' }}>
-            <p className="dash-inline-error">{error}</p>
-            <button className="dash-btn-secondary" style={{ marginTop: 12 }} onClick={load}>Retry</button>
-          </div>
-        ) : overview ? (
-          <>
-            <StatCard title="Revenue Today" value={egpShort(overview.revenue?.today_cents || 0)} sub={`This week: ${egpShort(overview.revenue?.week_cents || 0)}`} />
-            <StatCard title="Revenue This Month" value={egpShort(overview.revenue?.month_cents || 0)} />
-            <StatCard title="Total Orders" value={totalOrders.toLocaleString()} sub={`${overview.orders?.delivered_count || 0} delivered`} />
-            <StatCard title="New Customers (Week)" value={(overview.customers?.new_week || 0).toLocaleString()} sub={`${overview.customers?.total_active || 0} total active`} />
-            <StatCard title="Refunded This Month" value={egpShort(overview?.refunds?.month_cents ?? 0)} sub={`${overview?.refunds?.count ?? 0} refunds today`} />
-            <StatCard title="Net Revenue This Month" value={egpShort(overview?.revenue?.net_month_cents ?? 0)} sub={`after ${egp(overview?.refunds?.month_cents ?? 0)} refunded`} />
-            {/* Expected, not banked. Its own card so it can never be mistaken for
-                confirmed revenue — every figure above counts only paid orders. */}
-            <StatCard
-              title="Awaiting Payment Confirmation"
-              value={egpShort(overview?.pending_revenue?.total_cents ?? 0)}
-              sub={`${overview?.pending_revenue?.order_count ?? 0} order${
-                (overview?.pending_revenue?.order_count ?? 0) === 1 ? '' : 's'
-              } · excluded from revenue`}
-            />
-            {/* Projected, not banked. Labelled so it can never be read as confirmed revenue. */}
-            <StatCard
-              title="Projected This Month"
-              value={egpShort(
-                (overview?.revenue?.month_cents ?? 0) + (overview?.pending_revenue?.month_cents ?? 0),
-              )}
-              sub={`${egp(overview?.revenue?.month_cents ?? 0)} in · ${egp(
-                overview?.pending_revenue?.month_cents ?? 0,
-              )} still to clear`}
-            />
-          </>
-        ) : null}
+      <div className="dash-analytics-toolbar">
+        <RangeControl range={range} onChange={setRange} />
+        {freshness ? <FreshnessIndicator freshness={freshness} /> : null}
       </div>
 
-      {!loading && !error && (
-        <div style={{ marginBottom: 20 }}>
-          <RevenueChart points={revenue} />
-        </div>
-      )}
+      {degraded && freshness ? <CollectionDegradedBanner staleBuckets={freshness.staleBuckets} /> : null}
 
-      {!loading && !error && funnel && (
-        <div style={{ marginBottom: 20 }}>
-          <OrdersFunnelPanel funnel={funnel} />
-        </div>
-      )}
+      <OverviewGrid
+        widgets={ANALYTICS_OVERVIEW_WIDGETS}
+        layout={layout}
+        params={range}
+        editMode={editMode}
+        dispatch={dispatchAndPersist}
+      />
 
-      {!loading && !error && (
-        <TopProductsTable products={topProducts} />
-      )}
+      {editMode ? (
+        <div style={{ marginTop: 20 }}>
+          <AddWidgetPanel
+            widgets={ANALYTICS_OVERVIEW_WIDGETS}
+            layout={layout}
+            onAdd={handleAdd}
+            onReset={handleReset}
+          />
+        </div>
+      ) : null}
     </>
   );
 }

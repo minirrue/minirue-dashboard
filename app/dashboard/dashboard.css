@@ -3699,3 +3699,202 @@ tr:hover .dash-editable-pencil {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ============================================================
+   Lane 12 — Analytics overview widget grid
+   ============================================================ */
+
+/* Two generic status keys the business-status `.dash-status[data-status=…]`
+   set above doesn't have yet — used by the reconciliation widget, which
+   needs a plain ok/danger read rather than a domain-specific one. Same
+   token pairs, same markup contract, just not tied to an order/product
+   lifecycle name. */
+.dash-status[data-status="ok"] {
+  background: var(--mr-st-ok-bg);
+  color: var(--mr-st-ok-fg);
+}
+.dash-status[data-status="warn"] {
+  background: var(--mr-st-warn-bg);
+  color: var(--mr-st-warn-fg);
+}
+.dash-status[data-status="danger"] {
+  background: var(--mr-st-danger-bg);
+  color: var(--mr-st-danger-fg);
+}
+
+/* Visible focus ring on the whole-card link — widgets are keyboard targets,
+   not mouse-only affordances, and `.dash-card`/`.dash-metric` never resets
+   `outline` themselves. */
+a.dash-card:focus-visible {
+  outline: 2px solid var(--mr-gold-500);
+  outline-offset: 2px;
+}
+
+/* Shared empty/no-data-in-range copy inside a widget's own render (loading
+   and error are handled once, centrally, by `AnalyticsWidgetCard`). */
+.dash-widget-empty {
+  font-size: 13px;
+  color: var(--mr-fg-3);
+  margin: 0;
+}
+
+/* ── Header toolbar (range + compare + freshness) ── */
+.dash-analytics-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.dash-analytics-toolbar > .dash-filters {
+  margin-bottom: 0;
+}
+
+/* ── Collection-degraded banner — a stale rollup or ingest lag, not "no
+   data yet" (each widget already renders that itself). Warm, not alarming:
+   the warn pair, not danger — the data is real, just behind. ── */
+.dash-degraded-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  background: var(--mr-dash-surface);
+  border: 1px solid var(--mr-st-warn-fg);
+  border-radius: var(--mr-dash-card-radius);
+}
+
+/* ── Widget grid ──
+   `repeat(auto-fit, minmax(min(280px,100%),1fr))` per DESIGN.md's
+   responsive-grid pattern — no breakpoints, `minmax(0,…)` guard on each slot
+   so a long label can't force horizontal overflow. */
+.dash-widget-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 16px;
+}
+.dash-widget-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.dash-widget-sm { grid-column: span 1; }
+.dash-widget-md { grid-column: span 2; }
+.dash-widget-lg { grid-column: span 3; }
+.dash-widget-full { grid-column: 1 / -1; }
+
+/* Drop-target affordance — a static outline, not motion, so it costs
+   nothing under prefers-reduced-motion. */
+.dash-widget-slot.is-drag-over .dash-card {
+  outline: 2px dashed var(--mr-gold-400);
+  outline-offset: 2px;
+}
+
+/* The only motion in the grid: a ~200ms settle after a reorder, communicating
+   that a widget moved and nothing else. transform/opacity only, --mr-ease-
+   snappy, collapses to ~0 under prefers-reduced-motion via the global rule
+   in mr-tokens.css. */
+@keyframes dash-widget-settle {
+  from { opacity: 0.55; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.dash-widget-slot.just-moved {
+  animation: dash-widget-settle var(--mr-dur-fast) var(--mr-ease-snappy) both;
+}
+
+/* ── Per-widget edit toolbar ── */
+.dash-widget-editbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--mr-dash-sub);
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+}
+.dash-widget-editbar-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--mr-fg-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dash-widget-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--mr-fg-3);
+  cursor: grab;
+  border-radius: var(--mr-radius-sm);
+  flex-shrink: 0;
+}
+.dash-widget-drag-handle:hover {
+  color: var(--mr-fg);
+  background: var(--mr-dash-hair);
+}
+.dash-widget-drag-handle:active {
+  cursor: grabbing;
+}
+.dash-widget-size-btn {
+  min-width: 32px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.dash-widget-remove-btn {
+  padding: 4px 6px;
+  flex-shrink: 0;
+}
+.dash-widget-remove-btn:hover:not(:disabled) {
+  color: var(--mr-st-danger-fg);
+  background: var(--mr-st-danger-bg);
+}
+
+/* ── Add-widget panel ── */
+.dash-widget-add-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.dash-widget-add-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+.dash-widget-add-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--mr-dash-hair);
+}
+.dash-widget-add-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mr-fg);
+}
+.dash-widget-add-desc {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--mr-fg-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-widget-slot.just-moved {
+    animation: none;
+  }
+}

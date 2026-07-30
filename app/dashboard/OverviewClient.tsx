@@ -11,6 +11,7 @@ import { apiAdminListOrders } from '@/lib/api/orders';
 import { canAccessDashboardRoute } from '@/lib/auth/roles';
 import { useUser } from '@/lib/hooks/use-auth';
 import DashboardRoleWelcome from '@/components/dashboard/DashboardRoleWelcome';
+import DashboardCard from '@/components/dashboard/DashboardCard';
 import type { AnalyticsOverview, RevenuePoint, TopProduct } from '@/lib/api/analytics';
 import type { Order } from '@/lib/api/orders';
 import type { ApiError } from '@/lib/api/client';
@@ -21,22 +22,6 @@ function egpShort(cents: number): string {
   if (val >= 1_000_000) return `EGP ${(val / 1_000_000).toFixed(1)}M`;
   if (val >= 1_000) return `EGP ${(val / 1_000).toFixed(1)}K`;
   return `EGP ${val.toLocaleString('en-EG', { minimumFractionDigits: 2 })}`;
-}
-
-/* ── sparkline geometry — matches design viewBox 0 0 140 28 ── */
-function sparkPoints(values: number[]): string {
-  if (values.length < 2) return '';
-  const max = Math.max(...values);
-  const min = Math.min(...values);
-  const span = max - min || 1;
-  const n = values.length;
-  return values
-    .map((v, i) => {
-      const x = (i / (n - 1)) * 140;
-      const y = 26 - ((v - min) / span) * 24; // padded 2..26, inverted
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(' ');
 }
 
 type Trend = 'up' | 'down';
@@ -56,56 +41,17 @@ const ORDER_STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
   CANCELLED:  { bg: 'var(--mr-st-danger-bg)', fg: 'var(--mr-st-danger-fg)' },
 };
 
-/* ── trend arrow ────────────────────────────────────────── */
-function TrendArrow({ up }: { up: boolean }) {
-  return (
-    <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-      {up ? <path d="M12 19V5M5 12l7-7 7 7" /> : <path d="M12 5v14M5 12l7 7 7-7" />}
-    </svg>
-  );
-}
-
-/* ── metric card — design AnimatedMetric, real data ─────── */
+/* ── metric card props — Lane 12 folds this card into the shared
+   `DashboardCard` (components/dashboard/DashboardCard.tsx); this type just
+   keeps this file's own metric-building code typed. ── */
 interface MetricProps {
-  eyebrow: string;
+  title: string;
   value: string;
   index: number;
-  spark?: string;
-  delta?: string | null;
+  sparkline?: number[];
+  delta?: string;
   trend?: Trend;
   sub?: string;
-}
-function MetricCard({ eyebrow, value, index, spark, delta, trend = 'up', sub }: MetricProps) {
-  return (
-    <div className="dash-metric" style={{ animationDelay: `${100 + index * 60}ms` }}>
-      <div className="dash-metric-eyebrow">{eyebrow}</div>
-      <div className="dash-metric-row">
-        <div className="dash-metric-value mr-num">{value}</div>
-        {delta ? (
-          <span className="dash-metric-delta" data-trend={trend}>
-            <TrendArrow up={trend === 'up'} />
-            {delta}
-          </span>
-        ) : null}
-      </div>
-      {spark ? (
-        <svg className="dash-metric-spark" viewBox="0 0 140 28" preserveAspectRatio="none">
-          <polyline
-            points={spark}
-            fill="none"
-            stroke={trend === 'down' ? 'var(--mr-crimson-500)' : 'var(--mr-gold-500)'}
-            strokeWidth="1.5"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-        </svg>
-      ) : sub ? (
-        <div className="dash-metric-sub">{sub}</div>
-      ) : (
-        <div style={{ height: 28 }} />
-      )}
-    </div>
-  );
 }
 
 /* ── skeletons ──────────────────────────────────────────── */
@@ -200,24 +146,24 @@ export default function OverviewClient() {
   const displayName = user.name?.trim() || user.email.split('@')[0];
 
   /* ── metric cards (real data) ── */
-  const revSpark = sparkPoints(series.map((p) => p.total_cents));
+  const revSpark = series.map((p) => p.total_cents);
   const revDelta =
     series.length >= 2 ? pctChange(series[0].total_cents, series[series.length - 1].total_cents) : null;
 
   const metrics: MetricProps[] = overview
     ? [
         {
-          eyebrow: 'Revenue · 7d',
+          title: 'Revenue · 7d',
           value: egpShort(overview.revenue.week_cents),
-          spark: revSpark || undefined,
-          delta: revDelta?.label ?? null,
+          sparkline: revSpark.length > 1 ? revSpark : undefined,
+          delta: revDelta?.label,
           trend: revDelta?.trend ?? 'up',
           index: 0,
         },
         {
-          eyebrow: 'Revenue · today',
+          title: 'Revenue · today',
           value: egpShort(overview.revenue.today_cents),
-          spark: revSpark || undefined,
+          sparkline: revSpark.length > 1 ? revSpark : undefined,
           trend: revDelta?.trend ?? 'up',
           index: 1,
         },
@@ -225,7 +171,7 @@ export default function OverviewClient() {
         // into revenue, so nobody reads unverified receipts as banked cash — and
         // so a day of real sales awaiting confirmation stops reading as zero.
         {
-          eyebrow: 'Awaiting payment',
+          title: 'Awaiting payment',
           value: egpShort(overview.pending_revenue?.total_cents ?? 0),
           sub: `${overview.pending_revenue?.order_count ?? 0} order${
             (overview.pending_revenue?.order_count ?? 0) === 1 ? '' : 's'
@@ -233,13 +179,13 @@ export default function OverviewClient() {
           index: 2,
         },
         {
-          eyebrow: 'Pending orders',
+          title: 'Pending orders',
           value: String(overview.orders.pending_count),
           sub: `${overview.orders.processing_count} processing · ${overview.orders.shipped_count} shipped`,
           index: 3,
         },
         {
-          eyebrow: 'New customers · 7d',
+          title: 'New customers · 7d',
           value: String(overview.customers.new_week),
           sub: `${overview.customers.new_today} today · ${overview.customers.total_active} active`,
           index: 4,
@@ -276,7 +222,7 @@ export default function OverviewClient() {
       {metrics.length > 0 && (
         <div className="dash-metric-grid">
           {metrics.map((m) => (
-            <MetricCard key={m.eyebrow} {...m} />
+            <DashboardCard key={m.title} {...m} />
           ))}
         </div>
       )}
