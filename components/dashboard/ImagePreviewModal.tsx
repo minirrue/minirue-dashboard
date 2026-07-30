@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import UploadPreviewImage from './UploadPreviewImage';
 
 /**
  * Full-size tap-to-enlarge preview — same overlay/frame the Gallery module
@@ -58,6 +59,7 @@ export function EnlargeableImage({
   onOpenPreview,
   onClosePreview,
   traceId,
+  localFile,
 }: {
   src: string;
   alt: string;
@@ -66,6 +68,15 @@ export function EnlargeableImage({
   onOpenPreview: () => void;
   onClosePreview: () => void;
   traceId?: string;
+  /**
+   * Task FF (2026-07-30): bytes already in the browser for THIS image — the
+   * File/Blob just picked or cropped, whose upload `src` is the eventual
+   * result of. Passing this shows the local picture immediately instead of a
+   * guaranteed-cold-miss remote fetch. Omit for an image being displayed on
+   * first paint (no local bytes exist), which keeps the previous plain
+   * retry-only behaviour unchanged.
+   */
+  localFile?: File | Blob | null;
 }) {
   return (
     <>
@@ -76,8 +87,7 @@ export function EnlargeableImage({
         aria-label="View full size"
         data-trace-id={traceId}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={alt} className={className} />
+        <UploadPreviewImage src={src} localFile={localFile} alt={alt} className={className} />
       </button>
       {previewOpen && <ImagePreviewModal src={src} alt={alt} onClose={onClosePreview} />}
     </>

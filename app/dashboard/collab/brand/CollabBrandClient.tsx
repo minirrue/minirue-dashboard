@@ -71,6 +71,11 @@ export default function CollabBrandClient() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
   const avatarFileRef = useRef<HTMLInputElement>(null);
+  // Task FF (2026-07-30): cropped bytes for an avatar/logo just uploaded THIS
+  // session, so each tile renders locally instead of a guaranteed-cold-miss
+  // remote fetch — see UploadPreviewImage.
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+  const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
 
 
 
@@ -175,6 +180,8 @@ export default function CollabBrandClient() {
 
       setBrand(updated);
 
+      setPendingLogoFile(file);
+
     } catch (err) {
 
       const apiErr = err as ApiError;
@@ -208,6 +215,8 @@ export default function CollabBrandClient() {
       const updated = await apiUploadMyAvatar(file);
 
       queryClient.setQueryData(['auth', 'me'], updated);
+
+      setPendingAvatarFile(file);
 
     } catch (err) {
 
@@ -296,6 +305,8 @@ export default function CollabBrandClient() {
               <EnlargeableImage
 
                 src={user.avatarUrl}
+
+                localFile={pendingAvatarFile}
 
                 alt="Your avatar"
 
@@ -407,6 +418,8 @@ export default function CollabBrandClient() {
               <EnlargeableImage
 
                 src={brand.logoUrl}
+
+                localFile={pendingLogoFile}
 
                 alt={displayName ? `${displayName} logo` : 'Brand logo'}
 

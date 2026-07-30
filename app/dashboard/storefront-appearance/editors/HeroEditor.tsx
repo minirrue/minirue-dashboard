@@ -5,7 +5,7 @@ import { newId } from '@/lib/api/storefront';
 import type { HeroSection, HeroSlide } from '@/lib/api/storefront';
 import GalleryPickerModal, { uploadDeviceFileToGallery } from '@/components/dashboard/GalleryPickerModal';
 import ImageCropModal from '@/components/dashboard/ImageCropModal';
-import RetryingImage from '@/components/dashboard/RetryingImage';
+import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
 import { getItem } from '@/lib/gallery/api';
 import type { ApiError } from '@/lib/api/client';
 import CtaTargetField from './CtaTargetField';
@@ -15,11 +15,16 @@ import CtaTargetField from './CtaTargetField';
  *  slide's background colour when no image is set. */
 function HeroImageFrame({
   url,
+  localFile,
   background,
   ratio,
   muted,
 }: {
   url?: string;
+  /** Cropped bytes for THIS image if it was just uploaded this session —
+   *  see UploadPreviewImage. Omitted (or no match) for an image resolved
+   *  from a slide that already had one set on load. */
+  localFile?: File | null;
   background: string;
   ratio: string;
   muted?: boolean;
@@ -39,8 +44,9 @@ function HeroImageFrame({
       }}
     >
       {url && (
-        <RetryingImage
+        <UploadPreviewImage
           src={url}
+          localFile={localFile}
           alt=""
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
@@ -106,6 +112,11 @@ export default function HeroEditor({
     chainMobile: boolean;
   } | null>(null);
   const [urlById, setUrlById] = useState<Record<string, string>>({});
+  // Task FF (2026-07-30): cropped bytes for an image gallery item id that was
+  // just uploaded THIS session, so its hero preview frame renders from local
+  // bytes instead of a guaranteed-cold-miss remote fetch. Never populated for
+  // ids resolved from a slide that already had an image set on load.
+  const [localFileById, setLocalFileById] = useState<Record<string, File>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingRef = useRef<{ slideId: string; slot: Slot; chainMobile: boolean } | null>(null);
 
@@ -147,6 +158,7 @@ export default function HeroEditor({
       const croppedFile = new File([blob], `${base}-${slot}.${ext}`, { type: blob.type });
       const item = await uploadDeviceFileToGallery(croppedFile, 'Storefront');
       rememberUrl(item.id, item.url);
+      setLocalFileById((m) => ({ ...m, [item.id]: croppedFile }));
       patchSlide(slideId, { [slotField(slot)]: item.id } as Partial<HeroSlide>);
       if (chainMobile && slot === 'desktop') {
         // "One photo, crop for both": re-open the cropper on the same file for
@@ -308,6 +320,7 @@ export default function HeroEditor({
                   <span className="dash-label">Desktop image (landscape)</span>
                   <HeroImageFrame
                     url={urlById[slide.imageGalleryItemId ?? '']}
+                    localFile={localFileById[slide.imageGalleryItemId ?? '']}
                     background={slide.background}
                     ratio="16 / 9"
                   />
@@ -337,6 +350,10 @@ export default function HeroEditor({
                     url={
                       urlById[slide.mobileImageGalleryItemId ?? ''] ??
                       urlById[slide.imageGalleryItemId ?? '']
+                    }
+                    localFile={
+                      localFileById[slide.mobileImageGalleryItemId ?? ''] ??
+                      localFileById[slide.imageGalleryItemId ?? '']
                     }
                     background={slide.background}
                     ratio="3 / 4"

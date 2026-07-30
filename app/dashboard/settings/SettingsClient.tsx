@@ -14,6 +14,7 @@ import SuperAdminPanel from '@/components/dashboard/SuperAdminPanel';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 import { GenericAvatarIcon } from '@/components/GenericAvatarIcon';
+import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
 
 /**
  * Exported (not just used locally) so the profile-by-role tests can render it
@@ -31,10 +32,26 @@ export function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => voi
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  // Task FF (2026-07-30): the cropped bytes for an avatar just uploaded THIS
+  // session, so the tile renders locally instead of a guaranteed-cold-miss
+  // remote fetch of the exact bytes the browser is already holding.
+  // `pendingAvatarUrlRef` records the avatarUrl that local file belongs to —
+  // if `user.avatarUrl` ever changes to something else WITHOUT going through
+  // handleAvatarChange (e.g. this same card re-rendering for a different
+  // account via "sign in as"), the stale local bytes must stop showing.
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+  const pendingAvatarUrlRef = useRef<string | null>(null);
 
   useMountedEffect(() => {
     if (user?.name) setName(user.name);
   }, [user?.name]);
+
+  useMountedEffect(() => {
+    if (pendingAvatarUrlRef.current !== null && user?.avatarUrl !== pendingAvatarUrlRef.current) {
+      setPendingAvatarFile(null);
+      pendingAvatarUrlRef.current = null;
+    }
+  }, [user?.avatarUrl]);
 
   const handleSaveName = async () => {
     if (!name.trim()) return;
@@ -64,6 +81,8 @@ export function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => voi
     try {
       const updated = await apiUploadMyAvatar(cropped);
       queryClient.setQueryData(['auth', 'me'], updated);
+      pendingAvatarUrlRef.current = updated.avatarUrl ?? null;
+      setPendingAvatarFile(cropped);
     } catch (err) {
       setAvatarError((err as ApiError).message ?? 'Failed to upload avatar');
     } finally {
@@ -131,8 +150,12 @@ export function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => voi
               title="Change avatar"
             >
               {user.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <UploadPreviewImage
+                  src={user.avatarUrl}
+                  localFile={pendingAvatarFile}
+                  alt=""
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
               ) : (
                 <GenericAvatarIcon size={32} style={{ margin: '20px auto' }} />
               )}

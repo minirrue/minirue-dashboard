@@ -16,7 +16,7 @@ import type { GalleryFolder, GalleryItem, GallerySearchResult } from '@/lib/gall
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
-import RetryingImage from '@/components/dashboard/RetryingImage';
+import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
 
 const TRACE = 'PG-DASHBOARD-GAL-001';
 
@@ -203,7 +203,7 @@ function FolderList({ folders, selectedId, onSelect, onOpen, onRename, onDelete 
 /* ── Upload dropzone (drag-drop + click-to-browse) ── */
 interface UploadDropzoneProps {
   folderId: string;
-  onUploaded: (item: GalleryItem) => void;
+  onUploaded: (item: GalleryItem, file: File) => void;
 }
 
 function UploadDropzone({ folderId, onUploaded }: UploadDropzoneProps) {
@@ -224,7 +224,7 @@ function UploadDropzone({ folderId, onUploaded }: UploadDropzoneProps) {
           const cropped = await cropImage(file, { title: `Crop ${file.name}` });
           if (!cropped) continue;
           const item = await uploadItem(folderId, cropped);
-          onUploaded(item);
+          onUploaded(item, cropped);
         }
       } catch (e) {
         const err = e as ApiError;
@@ -418,6 +418,7 @@ function ItemGrid({
   onRenameAlt,
   onExchange,
   exchangingId,
+  localFiles,
 }: {
   items: GalleryItem[];
   onDelete: (id: string) => Promise<void>;
@@ -425,6 +426,11 @@ function ItemGrid({
   onRenameAlt: (id: string, altText: string) => Promise<void>;
   onExchange: (id: string, file: File) => void;
   exchangingId: string | null;
+  /** Cropped bytes for items uploaded or exchanged THIS session, keyed by
+   *  item id — lets the thumbnail render from local bytes instead of a
+   *  guaranteed-cold-miss remote fetch. Items already in the folder on first
+   *  paint have no entry and fall back to plain retry. */
+  localFiles: Record<string, File>;
 }) {
   // One shared hidden input, retargeted per card via a ref map — matches
   // MediaSection.tsx's pattern for "Exchange" (task-w2.3-brief.md, Part A)
@@ -465,8 +471,9 @@ function ItemGrid({
             {item.kind === 'video' ? (
               <video src={item.url} className="dash-gallery-item-media" muted />
             ) : (
-              <RetryingImage
+              <UploadPreviewImage
                 src={item.url}
+                localFile={localFiles[item.id] ?? null}
                 alt={item.altText ?? ''}
                 className="dash-gallery-item-media"
               />
@@ -535,6 +542,10 @@ export default function GalleryClient() {
   // "Exchange" (task-w2.3-brief.md, Part A) — which item card is mid-replace,
   // shown as a busy state on its own button.
   const [exchangingId, setExchangingId] = useState<string | null>(null);
+
+  // Task FF (2026-07-30): cropped bytes for an item uploaded or exchanged
+  // THIS session, keyed by item id — see ItemGrid's `localFiles` prop.
+  const [pendingLocalFiles, setPendingLocalFiles] = useState<Record<string, File>>({});
 
   // Gallery search (task-w2.3-brief.md, Part B) — overlays the normal
   // folder-browsing panel while a query is present; an empty query goes
@@ -686,11 +697,12 @@ export default function GalleryClient() {
     }
   }
 
-  function handleItemUploaded(item: GalleryItem) {
+  function handleItemUploaded(item: GalleryItem, file: File) {
     setItems((prev) => [item, ...prev]);
     setFolders((prev) =>
       prev.map((f) => (f.id === item.folderId ? { ...f, itemCount: f.itemCount + 1 } : f)),
     );
+    setPendingLocalFiles((prev) => ({ ...prev, [item.id]: file }));
   }
 
   /**
@@ -711,6 +723,7 @@ export default function GalleryClient() {
       if (!cropped) return;
       const updated = await exchangeItem(id, cropped);
       setItems((prev) => prev.map((item) => (item.id === id ? updated : item)));
+      setPendingLocalFiles((prev) => ({ ...prev, [id]: cropped }));
     } catch (e) {
       const err = e as ApiError;
       setItemsError(err.message ?? 'Failed to exchange item.');
@@ -830,8 +843,7 @@ export default function GalleryClient() {
                           {item.kind === 'video' ? (
                             <video src={item.url} className="dash-gallery-item-media" muted />
                           ) : (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
+                            <UploadPreviewImage
                               src={item.url}
                               alt={item.altText ?? ''}
                               className="dash-gallery-item-media"
@@ -984,6 +996,7 @@ export default function GalleryClient() {
                       onRenameAlt={handleRenameItemAlt}
                       onExchange={handleExchangeItem}
                       exchangingId={exchangingId}
+                      localFiles={pendingLocalFiles}
                     />
                   )}
                 </>

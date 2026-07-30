@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import GalleryPickerModal from './GalleryPickerModal';
-import RetryingImage from './RetryingImage';
+import UploadPreviewImage from './UploadPreviewImage';
 import { exchangeItem } from '@/lib/gallery/api';
 import { useImageCrop } from './ImageCropProvider';
 import type { ApiError } from '@/lib/api/client';
@@ -57,6 +57,23 @@ export default function ImageField({
   const [exchangeError, setExchangeError] = useState<string | null>(null);
   const exchangeInputRef = useRef<HTMLInputElement>(null);
   const cropImage = useImageCrop();
+  // Task FF (2026-07-30): the cropped bytes for a JUST-exchanged image, so
+  // its thumbnail renders locally instead of a guaranteed-cold-miss remote
+  // fetch. `pendingForMediaId` records which `mediaId` that local file
+  // belongs to — if this instance is reused for a DIFFERENT thing (the
+  // caller passes a new `mediaId` without remounting the component, e.g.
+  // switching which category is selected) the stale local bytes must not
+  // keep showing under the new item.
+  const [pendingLocalFile, setPendingLocalFile] = useState<File | null>(null);
+  const pendingForMediaId = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (pendingForMediaId.current !== undefined && pendingForMediaId.current !== mediaId) {
+      setPendingLocalFile(null);
+      pendingForMediaId.current = undefined;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mediaId]);
 
   /**
    * Replaces the CURRENT gallery item's bytes in place — `mediaId` never
@@ -81,6 +98,8 @@ export default function ImageField({
       if (!cropped) return;
       const updated = await exchangeItem(mediaId, cropped);
       onChange(mediaId, updated);
+      pendingForMediaId.current = mediaId;
+      setPendingLocalFile(cropped);
     } catch (e) {
       const err = e as ApiError;
       setExchangeError(err.message || 'Failed to exchange image.');
@@ -105,8 +124,9 @@ export default function ImageField({
           }}
         >
           {imageUrl ? (
-            <RetryingImage
+            <UploadPreviewImage
               src={imageUrl}
+              localFile={pendingLocalFile}
               alt=""
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
@@ -136,7 +156,10 @@ export default function ImageField({
             <button
               type="button"
               className="dash-btn-ghost"
-              onClick={() => onChange(null, null)}
+              onClick={() => {
+                setPendingLocalFile(null);
+                onChange(null, null);
+              }}
               disabled={disabled}
             >
               Remove
@@ -162,6 +185,10 @@ export default function ImageField({
       {picking && (
         <GalleryPickerModal
           onSelect={(item) => {
+            // A different EXISTING item, not bytes just uploaded here — clear
+            // any stale local preview from a previous Exchange so this
+            // doesn't keep showing the wrong photo.
+            setPendingLocalFile(null);
             onChange(item.id, item);
             setPicking(false);
           }}

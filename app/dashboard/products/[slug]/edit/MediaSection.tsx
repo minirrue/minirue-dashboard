@@ -15,7 +15,7 @@ import GalleryPickerModal, {
 } from '@/components/dashboard/GalleryPickerModal';
 import type { GalleryItem } from '@/lib/gallery/types';
 import { ImagePreviewModal } from '@/components/dashboard/ImagePreviewModal';
-import RetryingImage from '@/components/dashboard/RetryingImage';
+import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 
 interface Props {
@@ -51,6 +51,13 @@ export default function MediaSection({ productId, productName, media, onMediaCha
   const exchangeInputRef = useRef<HTMLInputElement>(null);
   const [exchangeTargetId, setExchangeTargetId] = useState<string | null>(null);
   const [exchanging, setExchanging] = useState<string | null>(null);
+
+  // Task FF (2026-07-30): the cropped bytes for a media row that was JUST
+  // uploaded or exchanged in this session, keyed by media id — so its
+  // thumbnail can render from local bytes instead of a guaranteed-cold-miss
+  // remote URL. Rows never touched this session (the product's existing
+  // media on first paint) have no entry here and fall back to plain retry.
+  const [pendingLocalFiles, setPendingLocalFiles] = useState<Record<string, File>>({});
 
   /** Promote one image to the cover thumbnail; the old cover joins the carousel. */
   async function handleSetCover(m: ProductMedia) {
@@ -129,6 +136,7 @@ export default function MediaSection({ productId, productName, media, onMediaCha
         sortOrder: media.length,
       });
       onMediaChange([...media, asset]);
+      setPendingLocalFiles((prev) => ({ ...prev, [asset.id]: cropped }));
     } catch (e) {
       const err = e as ApiError;
       setError(err.message || 'Failed to upload image.');
@@ -157,6 +165,7 @@ export default function MediaSection({ productId, productName, media, onMediaCha
       onMediaChange(
         media.map((x) => (x.id === mediaId ? { ...x, url: updated.url } : x)),
       );
+      setPendingLocalFiles((prev) => ({ ...prev, [mediaId]: cropped }));
     } catch (e) {
       const err = e as ApiError;
       setError(err.message || 'Failed to exchange image.');
@@ -232,8 +241,9 @@ export default function MediaSection({ productId, productName, media, onMediaCha
                 data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-enlarge-product-image@${m.id}`}
                 style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
               >
-                <RetryingImage
+                <UploadPreviewImage
                   src={previewUrl(m)}
+                  localFile={pendingLocalFiles[m.id] ?? null}
                   alt={m.altText ?? ''}
                   data-trace-id={`PG-DASHBOARD-CAT-003::EL-IMG-product-image@${m.id}`}
                   style={{
