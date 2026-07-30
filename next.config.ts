@@ -8,13 +8,21 @@ const isProd = process.env.NODE_ENV === "production";
 // injects inline hydration scripts. TODO(security): move to a nonce-based
 // script-src via proxy/middleware and drop 'unsafe-inline'. Dev adds
 // 'unsafe-eval' + ws/http so HMR keeps working.
+// LOCAL TOOLING ONLY — allows the impeccable live-mode picker script to load
+// from its local helper on http://localhost:8400. Derived from the same `isProd`
+// flag as every other dev-only directive here, so a production build emits the
+// empty string and this origin never reaches a real CSP header. connect-src
+// already permits `http:` in dev, so no second allowance is needed.
+// To drop live-mode support entirely, delete this constant and its use below.
+const impeccableLiveDevOrigin = isProd ? "" : " http://localhost:8400";
+
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self'",
-  `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
+  `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}${impeccableLiveDevOrigin}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",

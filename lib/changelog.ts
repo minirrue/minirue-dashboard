@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 153,
+    date: '2026-07-30',
+    area: 'Support',
+    summary:
+      'On a phone you can now set the shop to Offline. The four buttons — Online, Idle, Away, Offline — were sized for a mouse and ran off the side of a phone screen, so the last one simply could not be reached; they now share one row across the screen and are big enough to hit with a thumb, as are the reply-time box, the search box and the refresh button. The top of the Messages screen is tidier too: the online/reply-time strip, the "Messages" heading with its search box, and the two filters used to sit in three separate stacked boxes with gaps and dividers between them, and are now one block, which hands the space back to the list of customers so you see more of them at once. Clicking a conversation also works properly again — the archive button sat inside the row button, which browsers quietly rearrange, and each row now responds to the keyboard as well. Elsewhere in the dashboard, the bar at the top of the screen lifts off the page with a soft shadow once you scroll, so it reads as sitting above the content instead of being pasted onto it.',
+  },
+  {
     id: 152,
     date: '2026-07-30',
     area: 'Support',

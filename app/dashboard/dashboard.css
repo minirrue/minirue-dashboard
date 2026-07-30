@@ -344,6 +344,29 @@
     animation-delay: 60ms;
   }
 
+  /* Elevation only once content is actually underneath. The bar is sticky, so
+     at rest the hairline is enough; the moment the page scrolls beneath it the
+     hairline stops reading as a layer boundary and the bar looks pasted on. A
+     scroll-driven animation expresses exactly that — bound to scroll position
+     rather than to time — so it fades in on the way down and back out on the
+     way up, with no scroll listener, no state, and no re-render.
+     `scroll(nearest)` picks whichever ancestor actually scrolls, which differs
+     per route here. Browsers without scroll timelines keep the plain hairline
+     rather than inheriting a shadow that never goes away. */
+  @supports (animation-timeline: scroll()) {
+    .dash-topbar {
+      animation: mr-fade-up 0.4s var(--mr-ease-out) both,
+                 dash-topbar-elevate linear both;
+      animation-delay: 60ms, 0s;
+      animation-timeline: auto, scroll(nearest);
+      animation-range: normal, 0 20px;
+    }
+  }
+  @keyframes dash-topbar-elevate {
+    from { box-shadow: 0 0 0 0 rgba(11, 11, 11, 0); }
+    to { box-shadow: 0 6px 16px -8px rgba(11, 11, 11, 0.22); }
+  }
+
   /* No eyebrow/title/breadcrumb block anymore — just the mobile menu
      toggle + notification bell, right-aligned in a much shorter bar.
      Desktop has its own notification bell in the sidebar brand row now
@@ -3212,16 +3235,24 @@
    appeared above one conversation and moved every time you clicked a different
    row. Three altitudes shared that strip: this, the inbox filters, and the
    actions for the open thread. Each now sits where its scope actually is. */
+/* Flush against the inbox below it, not a floating card. The inbox runs
+   edge-to-edge (`.dash-content:has(.mrc-shell)` zeroes the content padding), so
+   a rounded, margin-separated strip above it read as a detached card with a
+   dead 12px band under it — and the panes below, being `flex: 1`, were the ones
+   paying for that band. Square corners and a single shared hairline make the
+   status strip and the inbox one block; the panes take back the height. Only
+   `border-bottom` survives: a left/right border would leave vertical hairlines
+   on the viewport edge, and a top border would double the topbar's own rule. */
 .mrc-presence-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  justify-content: space-between;
-  flex-wrap: wrap;
+  gap: 14px;
+  width: 100%;
   padding: 10px 16px;
-  margin-bottom: 12px;
-  border: 1px solid var(--mr-dash-hair);
-  border-radius: var(--mr-radius-md);
+  margin-bottom: 0;
+  border: 0;
+  border-bottom: 1px solid var(--mr-dash-hair);
+  border-radius: 0;
   background: var(--mr-dash-surface);
 }
 .mrc-presence-bar-label {
@@ -3234,15 +3265,198 @@
   color: var(--mr-ink-500);
   flex-shrink: 0;
 }
-/* Everything that isn't the label — the presence switch + reply-time field,
-   and (for the team) the desk switcher — clustered on the right of the same
-   row (W2.1). `justify-content: space-between` above pins this group away
-   from the label without it needing its own margin-left: auto. */
+/* Everything that isn't the label — the presence switch and the reply-time
+   field. This used to be pinned to the right by `justify-content:
+   space-between` on the bar, which left a dead gap down the middle of a
+   full-width strip. It now claims every pixel the label does not, and the
+   reply-time input inside it grows to fill whatever the switch leaves. */
 .mrc-presence-bar-controls {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Presence switch ──
+   Four mutually-exclusive states shown at once, as a real radiogroup, rather
+   than a <select> that hid three of the four behind a click and had nowhere to
+   show what each one meant. */
+.mrc-presence-seg {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--mr-dash-bg);
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+  flex-shrink: 0;
+}
+.mrc-presence-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: var(--mr-radius-sm);
+  background: transparent;
+  font-family: var(--mr-font-ui);
+  font-size: 12px;
+  line-height: 1;
+  /* ink-500, never ink-400: at 12px this is body-size text, and ink-400
+     measures 3.36:1 on this surface — under the 4.5:1 bar. */
+  color: var(--mr-fg-3);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--mr-dur-quick) var(--mr-ease-snappy),
+              color var(--mr-dur-quick) var(--mr-ease-snappy);
+}
+.mrc-presence-opt:hover:not([data-selected='true']):not(:disabled) {
+  background: var(--mr-dash-sub);
+  color: var(--mr-fg-2);
+}
+.mrc-presence-opt:focus-visible {
+  outline: 2px solid var(--mr-accent);
+  outline-offset: 1px;
+}
+.mrc-presence-opt:active:not(:disabled) { transform: scale(var(--mr-scale-press)); }
+.mrc-presence-opt[data-selected='true'] {
+  background: var(--mr-dash-surface);
+  color: var(--mr-fg);
+  font-weight: 500;
+  box-shadow: var(--mr-shadow-xs);
+}
+/* Disabled only while the write is in flight. */
+.mrc-presence-opt:disabled { opacity: .55; cursor: progress; }
+
+/* Status dots use palette tokens, not the off-palette hex this row used to
+   carry (#4CAF50 / #FFC107 / #FF9800 / #9E9E9E — all banned by DESIGN.md).
+   Away is a ring rather than a fill so it stays distinguishable from Offline
+   without inventing a fifth hue. */
+.mrc-presence-opt-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--mr-ink-300);
+}
+.mrc-presence-opt[data-status='ONLINE'] .mrc-presence-opt-dot  { background: var(--mr-status-online); }
+.mrc-presence-opt[data-status='IDLE'] .mrc-presence-opt-dot    { background: var(--mr-warning); }
+.mrc-presence-opt[data-status='AWAY'] .mrc-presence-opt-dot    {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--mr-fg-3);
+}
+.mrc-presence-opt[data-status='OFFLINE'] .mrc-presence-opt-dot { background: var(--mr-ink-300); }
+
+/* ── Reply-time field ── */
+.mrc-presence-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.mrc-presence-field-label {
+  font-family: var(--mr-font-label);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mr-fg-3);
+  flex-shrink: 0;
+}
+.mrc-presence-input {
+  width: 100%;
+  font-family: var(--mr-font-ui);
+  font-size: 12px;
+  color: var(--mr-fg);
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+  padding: 7px 10px;
+  background: var(--mr-dash-bg);
+  transition: border-color var(--mr-dur-quick) var(--mr-ease-snappy),
+              box-shadow var(--mr-dur-quick) var(--mr-ease-snappy);
+}
+/* The muted default lands ~3.4:1 here; placeholders need the same 4.5:1 as
+   body text. */
+.mrc-presence-input::placeholder { color: var(--mr-fg-3); }
+.mrc-presence-input:focus {
+  outline: none;
+  border-color: var(--mr-accent);
+  box-shadow: 0 0 0 3px var(--mr-gold-100);
+}
+
+/* Below ~900px the strip stops being one row: the field drops to its own line
+   rather than crushing the switch. */
+@media (max-width: 900px) {
+  .mrc-presence-bar { flex-wrap: wrap; }
+  .mrc-presence-bar-controls { flex-wrap: wrap; }
+  .mrc-presence-field { flex-basis: 100%; }
+}
+
+/* ── Phone ──
+   The switch carried `flex-shrink: 0` so four options at their natural width
+   could never give way: at 390px the row ran to 417px and "Offline" sat off
+   the side of the screen, unreachable — you could not take the desk offline
+   from a phone. Wrapping the bar did not help, because the segment itself was
+   the thing that would not fit. It becomes a full-width row of four equal
+   columns instead, which both fits and gives each option a real target: they
+   were 24px tall against a 44px minimum, and this is a control you reach for
+   one-handed, mid-shift, to say whether the shop is answering.
+
+   The two micro-labels go screen-reader-only here rather than display:none —
+   stacked, each was costing a whole row to name a control that already names
+   itself ("Online / Idle / Away / Offline", and a placeholder that reads
+   "Typical reply time"). Assistive tech still gets them; the phone gets the
+   pixels, which belong to the conversation list underneath. */
+@media (max-width: 640px) {
+  .mrc-presence-bar-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .mrc-presence-seg {
+    flex-shrink: 1;
+    width: 100%;
+  }
+  .mrc-presence-opt {
+    flex: 1 1 0;
+    justify-content: center;
+    min-height: 44px;
+    padding: 6px 8px;
+  }
+  .mrc-presence-field { min-width: 0; }
+  .mrc-presence-input { min-height: 44px; }
+
+  .mrc-presence-bar-label,
+  .mrc-presence-field-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* 26px was a mouse-sized hit area on a touch surface. */
+  .mrc-refresh-btn {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  /* The whole box is the tap target (it focuses the input within), so it is
+     the box that has to clear the minimum, not the 19px text node inside it. */
+  .mrc-search {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mrc-presence-opt,
+  .mrc-presence-input { transition: none; }
+  .mrc-presence-opt:active:not(:disabled) { transform: none; }
 }
 
 /* ── Watching another desk ──

@@ -230,6 +230,18 @@ function presenceReadOnly(presence: PresenceDto | undefined): ReactNode {
   );
 }
 
+/**
+ * Presence as a segmented control rather than a <select>.
+ *
+ * Four mutually-exclusive states that all fit on one row is exactly what a
+ * radio group is for: a <select> hides three of the four behind a click and
+ * leaves no room to show what each one means. This renders them as a real
+ * radiogroup (aria-checked is honest, each option is directly clickable) and
+ * carries the status colour on a dot beside each label.
+ *
+ * Styling lives entirely in the variant's scoped CSS via these class names, so
+ * the same component lays out inline or stacked without a second copy.
+ */
 function PresenceControls({ presence }: { presence: PresenceDto | undefined }) {
   const setPresence = useSetPresence();
   const [replyTimeText, setReplyTimeText] = useState('');
@@ -238,40 +250,50 @@ function PresenceControls({ presence }: { presence: PresenceDto | undefined }) {
     setReplyTimeText(presence?.replyTimeText ?? '');
   }, [presence?.replyTimeText]);
 
+  const current = presence?.status ?? 'OFFLINE';
+  const busy = setPresence.isPending;
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-      <select
-        value={presence?.status ?? 'OFFLINE'}
-        onChange={(e) => setPresence.mutate({ status: e.target.value })}
-        aria-label="Set presence status"
-        style={{
-          fontFamily: 'Inter Tight, sans-serif', fontSize: 12, color: 'var(--mr-ink-900)',
-          border: '1px solid var(--mr-dash-hair)', borderRadius: 8, padding: '6px 10px',
-          background: 'var(--mr-dash-bg)', cursor: 'pointer', flexShrink: 0,
-        }}
-      >
-        {PRESENCE_OPTIONS.map((status) => (
-          <option key={status} value={status}>
-            {status.charAt(0) + status.slice(1).toLowerCase()}
-          </option>
-        ))}
-      </select>
-      <input
-        value={replyTimeText}
-        onChange={(e) => setReplyTimeText(e.target.value)}
-        onBlur={() => {
-          if (replyTimeText !== (presence?.replyTimeText ?? '')) {
-            setPresence.mutate({ replyTimeText });
-          }
-        }}
-        placeholder="Typical reply time (e.g. within an hour)"
-        aria-label="Typical reply time"
-        style={{
-          fontFamily: 'Inter Tight, sans-serif', fontSize: 12, color: 'var(--mr-ink-900)',
-          border: '1px solid var(--mr-dash-hair)', borderRadius: 8, padding: '6px 10px',
-          background: 'var(--mr-dash-bg)', flex: '1 1 200px', minWidth: 0,
-        }}
-      />
+    <div className="mrc-presence-bar-controls">
+      <div className="mrc-presence-seg" role="radiogroup" aria-label="Set presence status">
+        {PRESENCE_OPTIONS.map((status) => {
+          const selected = status === current;
+          return (
+            <button
+              key={status}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              disabled={busy}
+              className="mrc-presence-opt"
+              data-selected={selected ? 'true' : 'false'}
+              data-status={status}
+              // Re-selecting the current status would fire a pointless write.
+              onClick={() => { if (!selected) setPresence.mutate({ status }); }}
+            >
+              <span className="mrc-presence-opt-dot" aria-hidden="true" />
+              <span className="mrc-presence-opt-text">
+                {status.charAt(0) + status.slice(1).toLowerCase()}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <label className="mrc-presence-field">
+        <span className="mrc-presence-field-label">Reply time</span>
+        <input
+          className="mrc-presence-input"
+          value={replyTimeText}
+          onChange={(e) => setReplyTimeText(e.target.value)}
+          onBlur={() => {
+            if (replyTimeText !== (presence?.replyTimeText ?? '')) {
+              setPresence.mutate({ replyTimeText });
+            }
+          }}
+          placeholder="Typical reply time (e.g. within an hour)"
+          aria-label="Typical reply time"
+        />
+      </label>
     </div>
   );
 }
@@ -648,9 +670,7 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   const presenceBar = showPresence ? (
     <div className="mrc-presence-bar">
       <span className="mrc-presence-bar-label">Support status</span>
-      <div className="mrc-presence-bar-controls">
-        {canEditPresence ? <PresenceControls presence={presence} /> : presenceReadOnly(presence)}
-      </div>
+      {canEditPresence ? <PresenceControls presence={presence} /> : presenceReadOnly(presence)}
     </div>
   ) : null;
 

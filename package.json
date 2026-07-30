@@ -1,9 +1,9 @@
 {
   "name": "minirue-dashboard",
-  "version": "0.56.0",
+  "version": "0.57.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --turbopack --port 3021",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

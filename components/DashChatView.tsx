@@ -231,6 +231,23 @@ const STYLES = `
   border-right: 0;
 }
 
+/* Desktop pane order: people (left) -> thread (CENTRE) -> conversations (right).
+   Done with the flex order property rather than by moving the JSX, so the
+   stepped/tablet flow, the back-arrow state machine and every ref/handler stay
+   exactly as they were — below 1024px only one pane renders at a time, so order
+   is inert there. The thread already carries flex: 1, so putting it between two
+   fixed-width columns makes it the growing centre.
+   NB: this whole stylesheet is a JS template literal — no backticks in comments. */
+.mrc-shell[data-stepped="false"] .mrc-rail { order: 1; }
+.mrc-shell[data-stepped="false"] .mrc-thread { order: 2; }
+.mrc-shell[data-stepped="false"] .mrc-rooms {
+  order: 3;
+  /* The divider has to follow the pane: as the right-hand column its hairline
+     belongs on its leading edge, otherwise the shell ends on a stray rule. */
+  border-right: 0;
+  border-left: 1px solid var(--mr-dash-hair);
+}
+
 /* ── People rail (pane 1) ── */
 .mrc-rail {
   display: flex;
@@ -535,6 +552,12 @@ const STYLES = `
   transition: background var(--mr-dur-fast) var(--mr-ease-snappy);
 }
 .mrc-room-row:hover { background: var(--mr-dash-sub); }
+/* The row used to be a <button> and got a focus ring for free; as a focusable
+   list item it needs one declared, or keyboard users lose their place. */
+.mrc-room-row:focus-visible {
+  outline: 2px solid var(--mr-gold-400);
+  outline-offset: -2px;
+}
 .mrc-room-row[data-active="true"] { background: var(--mr-cream-200); }
 .mrc-room-row[data-unread="true"] { box-shadow: inset 3px 0 0 0 var(--mr-gold-500); }
 .mrc-room-row[data-archived="true"] { opacity: 0.66; }
@@ -1049,11 +1072,44 @@ const STYLES = `
 }
 
 /* ── Inbox filters, above the list they filter, at every width ── */
+/* Continuous with .mrc-rail-head above, not a second band under it. Three
+   things used to separate them: the head's own bottom hairline, a
+   --mr-dash-sub tint here, and 12px of top padding. The negative margin lifts
+   this element over that hairline and the rail's own surface colour paints
+   over it, so the seam is gone rather than merely thinner, and the head's
+   existing 14px bottom padding becomes the single gap — the same interval the
+   title already uses above the search field. 20px sides (not 18px) put the
+   selects on the search box's edges; they were two pixels inside it. Every
+   pixel reclaimed goes to the conversation list, which is what the rail is
+   actually for. */
 .mrc-rail-controls {
   flex-shrink: 0;
-  padding: 12px 18px;
+  margin-top: -1px;
+  padding: 0 20px 12px;
   border-bottom: 1px solid var(--mr-dash-hair);
-  background: var(--mr-dash-sub);
+  background: var(--mr-dash-surface);
+}
+/* One filter concept, one row. .dash-filters is built for full-width listing
+   pages (Orders, Products, Customers): its 140px control floor overflowed this
+   ~316px rail and wrapped the two selects onto separate rows, reading as two
+   unrelated settings, and its 16px bottom margin — there to clear a table —
+   stacked on this container's own 12px padding for 28px of dead band above the
+   people list. Columns that divide whatever width the rail has cannot wrap, so
+   status and desk stay one group and the list keeps the height. Unlayered, like
+   the rest of this sheet, so it beats dash-filters' own @layer rules. */
+.mrc-rail-controls .dash-filters {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin-bottom: 0;
+}
+/* minmax(0, 1fr) only holds if the children stop asserting a min-width. A
+   collaborator sees one select here rather than two, and grid-auto-flow means
+   that single control fills the row instead of leaving a hole. */
+.mrc-rail-controls .dash-filters > .dash-input:not(.dash-input-search) {
+  width: 100%;
+  min-width: 0;
 }
 
 @media (max-width: 640px) {
@@ -1278,11 +1334,28 @@ export function DashChatView({
   const showRooms = !tablet || step === 1
   const showThread = !tablet || step === 2
 
+  /**
+   * The row is a focusable list item, NOT a button, because it contains the
+   * archive/restore buttons. A <button> inside a <button> is invalid HTML: the
+   * parser re-parents the inner one out of the row, so React's hydration warning
+   * was reporting a DOM the browser had already rewritten — the action button
+   * ended up outside the row it belongs to. Suppressing the warning would keep
+   * that rewrite. Enter and Space are handled explicitly since a div does not
+   * get them for free.
+   */
   const renderRoomRow = (c: Conversation, group: RoomGroup) => (
-    <button
+    <div
       key={c.id}
       role="listitem"
+      tabIndex={0}
       onClick={() => selectRoom(c.id)}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          selectRoom(c.id)
+        }
+      }}
       data-active={activeId === c.id}
       data-unread={c.unread > 0}
       data-archived={group === 'archived'}
@@ -1327,7 +1400,7 @@ export function DashChatView({
         <span>·</span>
         <span>{c.time}</span>
       </span>
-    </button>
+    </div>
   )
 
   return (
