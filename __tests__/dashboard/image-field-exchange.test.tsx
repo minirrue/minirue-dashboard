@@ -20,6 +20,17 @@ jest.mock('@/components/dashboard/GalleryPickerModal', () => ({
   default: () => null,
 }));
 
+// The owner's rule is every upload — including a replace — goes through the
+// crop step. Mock the crop provider's hook directly (rather than relying on
+// its outside-a-provider passthrough) so these tests can prove Exchange
+// actually calls it, with what aspect and title, before exchangeItem ever
+// runs — not just that the upload eventually happens.
+const mockCropImage = jest.fn();
+jest.mock('@/components/dashboard/ImageCropProvider', () => ({
+  __esModule: true,
+  useImageCrop: () => mockCropImage,
+}));
+
 import { exchangeItem } from '@/lib/gallery/api';
 
 function makeItem(over: Partial<GalleryItem> = {}): GalleryItem {
@@ -40,6 +51,10 @@ function makeItem(over: Partial<GalleryItem> = {}): GalleryItem {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // Default: crop resolves to the same file it was given, i.e. "the admin
+  // didn't cancel". Individual tests override this to prove call order/args
+  // or to simulate a cancelled crop.
+  mockCropImage.mockImplementation((file: File) => Promise.resolve(file));
 });
 
 describe('ImageField — Exchange', () => {
@@ -87,6 +102,94 @@ describe('ImageField — Exchange', () => {
         expect.objectContaining({ url: 'https://storage.example/replaced.webp' }),
       ),
     );
+  });
+
+  // Regression test for the defect this task closes: Exchange used to call
+  // exchangeItem directly, skipping the crop step that every "add a new
+  // image" path already goes through — same picture, two different
+  // behaviours depending on which button was pressed.
+  it('crops the replacement file through the shared crop step BEFORE calling exchangeItem, with a square aspect by default', async () => {
+    (exchangeItem as jest.Mock).mockResolvedValue(makeItem());
+    const callOrder: string[] = [];
+    mockCropImage.mockImplementation((file: File) => {
+      callOrder.push('crop');
+      return Promise.resolve(file);
+    });
+    (exchangeItem as jest.Mock).mockImplementation(() => {
+      callOrder.push('exchangeItem');
+      return Promise.resolve(makeItem());
+    });
+
+    const { container } = render(
+      <ImageField imageUrl="https://storage.example/current.webp" mediaId="item-1" onChange={jest.fn()} />,
+    );
+
+    const user = userEvent.setup();
+    const file = new File(['bytes'], 'new.png', { type: 'image/png' });
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, file);
+
+    await waitFor(() => expect(exchangeItem).toHaveBeenCalled());
+    expect(mockCropImage).toHaveBeenCalledWith(
+      file,
+      expect.objectContaining({ initialAspect: 1 }),
+    );
+    expect(callOrder).toEqual(['crop', 'exchangeItem']);
+  });
+
+  it('crops to a caller-supplied aspect ratio instead of the 1:1 default when given one', async () => {
+    (exchangeItem as jest.Mock).mockResolvedValue(makeItem());
+    const { container } = render(
+      <ImageField
+        imageUrl="https://storage.example/current.webp"
+        mediaId="item-1"
+        onChange={jest.fn()}
+        aspectRatio={4 / 5}
+      />,
+    );
+
+    const user = userEvent.setup();
+    const file = new File(['bytes'], 'new.png', { type: 'image/png' });
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, file);
+
+    await waitFor(() =>
+      expect(mockCropImage).toHaveBeenCalledWith(file, expect.objectContaining({ initialAspect: 4 / 5 })),
+    );
+  });
+
+  it('uploads the CROPPED file, not the original, to exchangeItem', async () => {
+    (exchangeItem as jest.Mock).mockResolvedValue(makeItem());
+    const croppedFile = new File(['cropped-bytes'], 'new-cropped.jpg', { type: 'image/jpeg' });
+    mockCropImage.mockResolvedValue(croppedFile);
+
+    const { container } = render(
+      <ImageField imageUrl="https://storage.example/current.webp" mediaId="item-1" onChange={jest.fn()} />,
+    );
+
+    const user = userEvent.setup();
+    const file = new File(['bytes'], 'new.png', { type: 'image/png' });
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, file);
+
+    await waitFor(() => expect(exchangeItem).toHaveBeenCalledWith('item-1', croppedFile));
+  });
+
+  it('cancelling the crop (crop step resolves null) never calls exchangeItem', async () => {
+    mockCropImage.mockResolvedValue(null);
+    const onChange = jest.fn();
+    const { container } = render(
+      <ImageField imageUrl="https://storage.example/current.webp" mediaId="item-1" onChange={onChange} />,
+    );
+
+    const user = userEvent.setup();
+    const file = new File(['bytes'], 'new.png', { type: 'image/png' });
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, file);
+
+    await waitFor(() => expect(mockCropImage).toHaveBeenCalled());
+    expect(exchangeItem).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('shows an inline error and never calls onChange when the exchange fails', async () => {

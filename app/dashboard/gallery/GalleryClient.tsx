@@ -505,6 +505,7 @@ function ItemGrid({
 
 /* ── Main page ── */
 export default function GalleryClient() {
+  const cropImage = useImageCrop();
   const [folders, setFolders] = useState<GalleryFolder[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -696,11 +697,19 @@ export default function GalleryClient() {
    * "Exchange" — the id, folder and alt text stay put; only the picture or
    * video changes (task-w2.3-brief.md, Part A). The item count never moves —
    * this replaces a photo, it doesn't add or remove one.
+   *
+   * Crops before uploading, same free-crop step UploadDropzone already uses
+   * for a brand-new item — Exchange used to call exchangeItem directly,
+   * skipping the crop that adding a fresh photo never skips. (Non-image
+   * files, i.e. video, pass through cropImage untouched — see
+   * ImageCropProvider.)
    */
   async function handleExchangeItem(id: string, file: File) {
     setExchangingId(id);
     try {
-      const updated = await exchangeItem(id, file);
+      const cropped = await cropImage(file, { title: `Crop replacement for ${file.name}` });
+      if (!cropped) return;
+      const updated = await exchangeItem(id, cropped);
       setItems((prev) => prev.map((item) => (item.id === id ? updated : item)));
     } catch (e) {
       const err = e as ApiError;

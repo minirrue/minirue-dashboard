@@ -4,6 +4,7 @@ import React, { useRef, useState } from 'react';
 import GalleryPickerModal from './GalleryPickerModal';
 import RetryingImage from './RetryingImage';
 import { exchangeItem } from '@/lib/gallery/api';
+import { useImageCrop } from './ImageCropProvider';
 import type { ApiError } from '@/lib/api/client';
 import type { GalleryItem } from '@/lib/gallery/types';
 
@@ -26,6 +27,7 @@ export default function ImageField({
   label = 'Image',
   helpText,
   disabled,
+  aspectRatio = 1,
 }: {
   /** Current image, or null. */
   imageUrl: string | null;
@@ -42,24 +44,42 @@ export default function ImageField({
   label?: string;
   helpText?: string;
   disabled?: boolean;
+  /**
+   * Crop aspect to open "Exchange" on. Every current caller (category tile,
+   * brand tile) renders this field's image square, so 1:1 is the sensible
+   * default — pass a different ratio for a field that isn't. Undefined would
+   * mean free-crop, which is never what a fixed tile wants.
+   */
+  aspectRatio?: number;
 }) {
   const [picking, setPicking] = useState(false);
   const [exchanging, setExchanging] = useState(false);
   const [exchangeError, setExchangeError] = useState<string | null>(null);
   const exchangeInputRef = useRef<HTMLInputElement>(null);
+  const cropImage = useImageCrop();
 
   /**
    * Replaces the CURRENT gallery item's bytes in place — `mediaId` never
    * changes, so whatever this image is attached to (a category's or brand's
    * `imageMediaId`) keeps pointing at the same row with no re-linking.
    * Distinct from "Change", which re-links to a DIFFERENT existing item.
+   *
+   * Crops before uploading, same as every other upload path in the
+   * dashboard (RULEBOOK: crop everywhere) — Exchange used to call
+   * exchangeItem directly, which let a replacement picture skip the step
+   * that adding a fresh image never skips.
    */
   async function handleExchange(file: File) {
     if (!mediaId) return;
     setExchangeError(null);
     setExchanging(true);
     try {
-      const updated = await exchangeItem(mediaId, file);
+      const cropped = await cropImage(file, {
+        initialAspect: aspectRatio,
+        title: `Crop replacement for ${file.name}`,
+      });
+      if (!cropped) return;
+      const updated = await exchangeItem(mediaId, cropped);
       onChange(mediaId, updated);
     } catch (e) {
       const err = e as ApiError;
