@@ -119,14 +119,27 @@ export default function CollaboratorDetailClient() {
   const [products, setProducts] = useState<ProductListItem[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState<string | null>(null);
+  // Tracks "a fetch for this tab has been kicked off", separately from
+  // products.length. Gating the fetch effect on length alone meant a failed
+  // request (403/500/network) left length at 0 forever, and the effect fired
+  // again on every re-render it caused — an endless retry loop that pinned
+  // productsLoading back to true almost immediately after each failure, which
+  // is what actually produced "stuck on Loading products… forever": the error
+  // state WAS being set, just for an imperceptible instant before the next
+  // retry started. Same shape of bug for brands/categories/activity below.
+  const [productsAttempted, setProductsAttempted] = useState(false);
   const [brands, setBrands] = useState<ManagedBrand[]>([]);
   const [brandsLoading, setBrandsLoading] = useState(false);
   const [brandsError, setBrandsError] = useState<string | null>(null);
+  const [brandsAttempted, setBrandsAttempted] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [categoriesAttempted, setCategoriesAttempted] = useState(false);
   const [activity, setActivity] = useState<CollaboratorActivityItem[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
+  const [activityError, setActivityError] = useState<string | null>(null);
+  const [activityAttempted, setActivityAttempted] = useState(false);
   const [deleteImpact, setDeleteImpact] = useState<CollaboratorDeleteImpact | null>(null);
   const [deleteImpactError, setDeleteImpactError] = useState<string | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -136,43 +149,48 @@ export default function CollaboratorDetailClient() {
   // this page are to change a setting, and extra reads on every one of them
   // buys nothing.
   useEffect(() => {
-    if (tab !== 'Products' || products.length > 0 || productsLoading) return;
+    if (tab !== 'Products' || productsAttempted) return;
+    setProductsAttempted(true);
     setProductsLoading(true);
     setProductsError(null);
     listProducts({ space: id, limit: 100 })
       .then((res) => setProducts(res.items))
       .catch((e) => setProductsError((e as { message?: string }).message ?? 'Could not load products.'))
       .finally(() => setProductsLoading(false));
-  }, [tab, id, products.length, productsLoading]);
+  }, [tab, id, productsAttempted]);
 
   useEffect(() => {
-    if (tab !== 'Brands' || brands.length > 0 || brandsLoading) return;
+    if (tab !== 'Brands' || brandsAttempted) return;
+    setBrandsAttempted(true);
     setBrandsLoading(true);
     setBrandsError(null);
     listManagedBrands({ space: id })
       .then(setBrands)
       .catch((e) => setBrandsError((e as { message?: string }).message ?? 'Could not load brands.'))
       .finally(() => setBrandsLoading(false));
-  }, [tab, id, brands.length, brandsLoading]);
+  }, [tab, id, brandsAttempted]);
 
   useEffect(() => {
-    if (tab !== 'Categories' || categories.length > 0 || categoriesLoading) return;
+    if (tab !== 'Categories' || categoriesAttempted) return;
+    setCategoriesAttempted(true);
     setCategoriesLoading(true);
     setCategoriesError(null);
     listCategories({ space: id })
       .then((res) => setCategories(res.items))
       .catch((e) => setCategoriesError((e as { message?: string }).message ?? 'Could not load categories.'))
       .finally(() => setCategoriesLoading(false));
-  }, [tab, id, categories.length, categoriesLoading]);
+  }, [tab, id, categoriesAttempted]);
 
   useEffect(() => {
-    if (tab !== 'Activity' || activity.length > 0 || activityLoading) return;
+    if (tab !== 'Activity' || activityAttempted) return;
+    setActivityAttempted(true);
     setActivityLoading(true);
+    setActivityError(null);
     apiGetCollaboratorActivity(id)
       .then((res) => setActivity(res.items ?? []))
-      .catch(() => setActivity([]))
+      .catch((e) => setActivityError((e as { message?: string }).message ?? 'Could not load activity.'))
       .finally(() => setActivityLoading(false));
-  }, [tab, id, activity.length, activityLoading]);
+  }, [tab, id, activityAttempted]);
 
   function handleCategoryUpdated(updated: Category) {
     setCategories((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
@@ -569,6 +587,11 @@ export default function CollaboratorDetailClient() {
               onCategoryDeleted={() => {
                 setCategories([]);
                 setCategoriesLoading(false);
+                // Deliberately re-arms the fetch effect above (rather than
+                // just clearing the list) so the tree reloads from the
+                // server after a delete, instead of sitting on a rebuilt-
+                // client-side view.
+                setCategoriesAttempted(false);
               }}
             />
           )}
@@ -583,6 +606,8 @@ export default function CollaboratorDetailClient() {
           </p>
           {activityLoading ? (
             <p className="dash-help-text">Loading activity…</p>
+          ) : activityError ? (
+            <p className="dash-inline-error">{activityError}</p>
           ) : activity.length === 0 ? (
             <p className="dash-help-text">Nothing has happened yet.</p>
           ) : (
@@ -697,7 +722,12 @@ export default function CollaboratorDetailClient() {
             disabled={settingsSaving}
             data-trace-id="PG-DASHBOARD-COLLAB-008::EL-CHECK-detail-storefront-visible"
           />
-          Brand page visible on storefront (<code className="collab-slug-code">/brands/{collab.brandSlug}</code>)
+          {/* A partner's space page lives at the root of the storefront,
+              /<slug> — never /brands/<slug>, which is not a route the
+              storefront serves (that path 404s; see app/brands/page.tsx in
+              minirue-frontend, which is a listing page with no [slug]
+              child). */}
+          Brand page visible on storefront (<code className="collab-slug-code">/{collab.brandSlug}</code>)
         </label>
         <p className="dash-help-text">
           When off, the brand page and its products are hidden from shoppers.

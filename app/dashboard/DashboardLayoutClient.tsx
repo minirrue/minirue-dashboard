@@ -100,9 +100,22 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
   }, [isLoading, mounted, pathname, router, user]);
 
   const userName = user?.name?.trim() || user?.email?.split('@')[0] || 'Admin';
+  // A role that cannot reach '/overview' (a COLLAB, or STAFF since
+  // 2026-07-30) lands there for one render right after sign-in — it is the
+  // universal post-login redirect target — and the effect above immediately
+  // sends them on to their real landing route. But effects run after the
+  // commit, so without this guard the access-denied branch below painted for
+  // that one render before the replace fired: every collaborator saw "you
+  // don't have access" for about a second on every sign-in, then the
+  // workspace rendered normally. Treat that specific, self-correcting case as
+  // still-resolving, same as the loading shell, rather than a real denial —
+  // a deliberate deep link to a route the role can't reach still falls
+  // through to accessDenied normally, since this only matches '/overview'.
+  const awaitingOverviewRedirect =
+    pathname === '/overview' && Boolean(user) && !canAccessDashboardRoute(user!.role, '/overview');
   const accessDenied =
-    Boolean(user) && !canAccessDashboardRoute(user!.role, activePath);
-  const showLoadingShell = !mounted || isLoading;
+    Boolean(user) && !awaitingOverviewRedirect && !canAccessDashboardRoute(user!.role, activePath);
+  const showLoadingShell = !mounted || isLoading || awaitingOverviewRedirect;
   const pathSegments = activePath.split('/').filter(Boolean);
   const isCollaboratorArea = pathSegments[0] === 'collab';
   const shellEyebrow = isCollaboratorArea ? 'Partner workspace' : 'MiniRue dashboard';
