@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
-import { apiAdminListOrders, type Order } from '@/lib/api/orders';
+import { apiAdminListOrders, apiAdminMarkCashCollected, type Order } from '@/lib/api/orders';
 import type { RefundTicketDto } from '@/lib/api/refunds';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
@@ -41,6 +41,8 @@ export default function RefundableOrdersPanel({
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
   const [refunding, setRefunding] = useState<Order | null>(null);
+  const [collectingCash, setCollectingCash] = useState<string | null>(null);
+  const [rowError, setRowError] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 300);
@@ -78,6 +80,24 @@ export default function RefundableOrdersPanel({
     onRefunded(ticket);
   }, [onRefunded]);
 
+  /**
+   * COD's missing "was this actually paid" action. After it succeeds the
+   * order is re-read from the server (not guessed at locally) so `paid` and
+   * the Refund button reflect the real, server-derived state.
+   */
+  const handleMarkCashCollected = useCallback(async (orderId: string) => {
+    setRowError(null);
+    setCollectingCash(orderId);
+    try {
+      const fresh = await apiAdminMarkCashCollected(orderId);
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? fresh : o)));
+    } catch (e) {
+      setRowError((e as ApiError).message ?? 'Could not record cash collected');
+    } finally {
+      setCollectingCash(null);
+    }
+  }, []);
+
   const visible = orders.filter((o) => {
     if (filter === 'REFUNDED') return Boolean(o.refundedAt);
     if (filter === 'NOT_REFUNDED') return !o.refundedAt;
@@ -108,6 +128,10 @@ export default function RefundableOrdersPanel({
           ))}
         </select>
       </div>
+
+      {rowError && (
+        <p className="dash-inline-error" style={{ marginBottom: 12 }}>{rowError}</p>
+      )}
 
       {loading ? (
         <div className="dash-card">
@@ -170,7 +194,7 @@ export default function RefundableOrdersPanel({
                             <span className="dash-status-dot" />
                             {egpFromCents(o.refundedAmountCents)} refunded
                           </span>
-                        ) : (
+                        ) : o.paid ? (
                           <button
                             type="button"
                             className="dash-btn-ghost"
@@ -178,6 +202,28 @@ export default function RefundableOrdersPanel({
                           >
                             Refund
                           </button>
+                        ) : (
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              className="dash-btn-ghost"
+                              disabled
+                              aria-disabled="true"
+                              title="No payment has been received for this order"
+                            >
+                              Not paid yet
+                            </button>
+                            {o.paymentMethod === 'COD' && (
+                              <button
+                                type="button"
+                                className="dash-btn-secondary"
+                                disabled={collectingCash === o.id}
+                                onClick={() => void handleMarkCashCollected(o.id)}
+                              >
+                                {collectingCash === o.id ? 'Recording…' : 'Mark cash collected'}
+                              </button>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>

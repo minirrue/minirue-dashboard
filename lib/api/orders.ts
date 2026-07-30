@@ -81,6 +81,17 @@ export interface Order {
   /** Task 8 (backend): set once the order's single refund ticket exists. */
   refundedAt: string | null;
   refundedAmountCents: number;
+  /**
+   * Server-derived from payment_attempts (backend orders-payment-state.ts) —
+   * only present on admin order reads (list + detail). True once a settled
+   * payment attempt exists for the order, including one that has since been
+   * refunded (the money did arrive). Never re-derive this on the client —
+   * the refund gate lives on the server; this field is a courtesy so the
+   * Refund button can reflect it without a second request.
+   */
+  paid?: boolean;
+  /** Most recent payment attempt's method, or null with no attempts yet. */
+  paymentMethod?: 'COD' | 'INSTAPAY' | 'GATEWAY' | 'MANUAL' | null;
   items: OrderItem[];
   statusHistory?: OrderStatusHistoryEntry[];
   createdAt: string;
@@ -190,5 +201,19 @@ export async function apiAdminMarkFulfilled(id: string, note?: string): Promise<
     method: 'POST',
     auth: true,
     body: JSON.stringify(note ? { note } : {}),
+  });
+}
+
+/**
+ * Records that a Cash-on-Delivery order's cash was physically collected —
+ * the action COD needs so the payment gate on refunds doesn't leave every
+ * COD order permanently un-refundable. Idempotent server-side: calling this
+ * again on an order that already has it recorded just returns the current
+ * state.
+ */
+export async function apiAdminMarkCashCollected(id: string): Promise<Order> {
+  return apiFetch<Order>(`/orders/admin/${id}/cash-collected`, {
+    method: 'PATCH',
+    auth: true,
   });
 }
