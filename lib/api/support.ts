@@ -58,6 +58,10 @@ export interface MessageDto {
   senderType: 'CUSTOMER' | 'STAFF' | 'ADMIN' | 'COLLAB' | 'SYSTEM';
   senderUserId: string | null;
   senderName?: string | null;
+  /** Resolved server-side: personal avatar -> (COLLAB) brand logo -> null.
+   * Null means the client shows the sender's initial letter, never a broken
+   * image or an empty gap. */
+  senderAvatarUrl?: string | null;
   body: string;
   attachments?: MessageAttachmentDto[];
   createdAt: string;

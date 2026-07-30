@@ -4,6 +4,8 @@ import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useBreakpoint } from '@/hooks/useMotion'
 import { EnlargeableImage } from '@/components/dashboard/ImagePreviewModal'
+import RetryingImage from '@/components/dashboard/RetryingImage'
+import { getInitials } from '@/lib/utils/getInitials'
 
 export interface MessageAttachment {
   url: string
@@ -13,6 +15,10 @@ export interface MessageAttachment {
 export interface Message {
   from: 'cx' | 'agent'
   name: string
+  /** Resolved server-side: personal avatar -> (COLLAB) brand logo -> null.
+   * Null/undefined renders the sender's initial letter — never a broken
+   * image, never an empty gap. */
+  senderAvatarUrl?: string | null
   text: string
   time: string
   /** Friendly day label ('Today', 'Yesterday', 'Jul 24') derived from the
@@ -193,6 +199,25 @@ function AvatarContent({ url, label }: { url?: string | null; label: string }) {
       <circle cx="12" cy="8" r="4" />
       <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
     </svg>
+  )
+}
+
+/** Per-message sender avatar, next to each bubble in the thread — separate
+ * from `AvatarContent` (people rail / thread header) because a message's
+ * fallback is the sender's INITIAL LETTER, not the generic person glyph:
+ * the backend already resolved personal avatar -> (COLLAB) brand logo ->
+ * null, and null means "draw an initial", never a broken image or an empty
+ * gap. Uses `RetryingImage`, not a bare `<img>`, for the photo case: a
+ * freshly-uploaded avatar is exactly the cold-cache case that component
+ * exists for. */
+function MessageAvatar({ url, name }: { url?: string | null; name: string }) {
+  if (url) {
+    return <RetryingImage src={url} alt={name} className="mrc-msg-avatar-photo" />
+  }
+  return (
+    <span className="mrc-msg-avatar-initial" data-testid="msg-avatar-initial" aria-label={`${name} — no photo`}>
+      {getInitials(name) || '?'}
+    </span>
   )
 }
 
@@ -867,6 +892,8 @@ const STYLES = `
   color: var(--mr-ink-700);
 }
 .mrc-msg-avatar[data-hidden="true"] { visibility: hidden; }
+.mrc-msg-avatar-photo { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+.mrc-msg-avatar-initial { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
 
 .mrc-bubble {
   padding: 10px 14px;
@@ -1687,11 +1714,13 @@ export function DashChatView({
                       )}
                       <div className="mrc-msg" data-side={isAgent ? 'agent' : 'cx'} data-grouped={grouped}>
                         <div className="mrc-bubble-row">
-                          {!isAgent && (
-                            <span className="mrc-msg-avatar" data-hidden={!lastOfGroup}>
-                              <AvatarContent url={activePerson?.avatarUrl} label={msg.name} />
-                            </span>
-                          )}
+                          {/* Per-message sender avatar (customer OR team/collab side) —
+                              the backend already resolved personal avatar -> brand logo ->
+                              null per message, so this reads msg.senderAvatarUrl rather
+                              than the conversation-level customer avatar used elsewhere. */}
+                          <span className="mrc-msg-avatar" data-hidden={!lastOfGroup}>
+                            <MessageAvatar url={msg.senderAvatarUrl} name={msg.name} />
+                          </span>
                           <div className="mrc-bubble">
                             {msg.attachments && msg.attachments.length > 0 && (
                               <div className="mrc-atts" data-has-text={Boolean(msg.text)}>

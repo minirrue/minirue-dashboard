@@ -182,6 +182,7 @@ function toMessage(dto: MessageDto): Message {
   return {
     from: isCustomer ? 'cx' : 'agent',
     name: dto.senderName ?? (isCustomer ? 'Customer' : 'MiniRue'),
+    senderAvatarUrl: dto.senderAvatarUrl ?? null,
     text: dto.body,
     time: new Date(dto.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     day: dayLabel(dto.createdAt),
@@ -617,6 +618,11 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
       ...activePending.map<Message>((p) => ({
         from: 'agent',
         name: senderName,
+        // Best-effort until the server round-trip replaces this bubble: the
+        // sender's own avatar if we know it (a COLLAB user's personal avatar
+        // in particular), else null — the same initial-letter fallback the
+        // real message would render server-side for STAFF/ADMIN anyway.
+        senderAvatarUrl: user?.avatarUrl ?? null,
         text: p.body,
         time: new Date(p.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         day: dayLabel(p.createdAt),
@@ -627,7 +633,7 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
     ];
     // retryPending is stable enough for render; pending drives the recompute.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threadData?.messages, pending, activeId, user?.name]);
+  }, [threadData?.messages, pending, activeId, user?.name, user?.avatarUrl]);
 
   /**
    * Search + status/desk filters for the people rail, wrapped in
