@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useUser } from '@/lib/hooks/use-auth';
 import {
   apiSupportConversations,
   apiSupportPeople,
@@ -17,59 +18,93 @@ import {
 } from '@/lib/api/support';
 import type { ConversationDto, MessageAttachmentDto, SupportPersonDto } from '@/lib/api/support';
 
+/**
+ * The signed-in viewer's own id, read from the same cached `/auth/me` query
+ * every other screen already shares (`useUser`) — this adds no extra
+ * request. `undefined` while that identity is still loading/unknown.
+ *
+ * Every query key below is built from this, and every query is gated on it,
+ * because the cache is otherwise keyed purely on filter *values*
+ * (status/brand/customerId) — and a collaborator's desk filter defaults to
+ * the same 'direct' sentinel the team's own MiniRue-desk view uses. Two
+ * different signed-in viewers making the "same" request (identical params)
+ * would land on the exact same cache entry, so a result cached under one
+ * identity could be served to a different one the instant a second identity
+ * queries with matching params — the fix is to make identity part of the
+ * key, not to trust that request params alone are unique per viewer.
+ */
+function useViewerId(): string | undefined {
+  const { data: user } = useUser();
+  return user?.userId;
+}
+
 export const SUPPORT_KEYS = {
-  people: (status?: string, collaboratorId?: string) =>
-    ['support', 'people', status ?? 'all', collaboratorId ?? 'all'] as const,
-  conversations: (status?: string, brand?: string, customerId?: string) =>
-    ['support', 'conversations', status ?? 'all', brand ?? 'all', customerId ?? 'all'] as const,
-  archivedConversations: (customerId: string, brand?: string) =>
-    ['support', 'conversations', 'trash', customerId, brand ?? 'all'] as const,
-  thread: (id: string) => ['support', 'thread', id] as const,
-  presence: () => ['support', 'presence'] as const,
+  people: (viewerId: string, status?: string, collaboratorId?: string) =>
+    ['support', 'people', viewerId, status ?? 'all', collaboratorId ?? 'all'] as const,
+  conversations: (viewerId: string, status?: string, brand?: string, customerId?: string) =>
+    ['support', 'conversations', viewerId, status ?? 'all', brand ?? 'all', customerId ?? 'all'] as const,
+  archivedConversations: (viewerId: string, customerId: string, brand?: string) =>
+    ['support', 'conversations', 'trash', viewerId, customerId, brand ?? 'all'] as const,
+  thread: (viewerId: string, id: string) => ['support', 'thread', viewerId, id] as const,
+  presence: (viewerId: string) => ['support', 'presence', viewerId] as const,
 };
+
+/** Placeholder segment for a query key belonging to nobody yet — always
+ * paired with `enabled: false` below, so it is never actually used to read
+ * or write a cache entry; it only keeps the key shape stable while React
+ * Query evaluates `enabled`. */
+const NO_VIEWER = '__unknown_viewer__';
 
 /**
  * Every non-archived room for the whole team inbox, or (with `customerId`)
  * just one customer's rooms — the W2.1 middle pane. `enabled` defaults to
  * true; pass false while no customer is selected so the query does not fire
  * with `customerId: undefined` (which would be the whole-inbox list, not
- * "this person has no rooms yet").
+ * "this person has no rooms yet"). Also gated on the viewer's own id being
+ * known — see `useViewerId` above.
  */
 export function useSupportConversations(
   opts: { status?: string; brand?: string; customerId?: string; enabled?: boolean } = {},
 ) {
   const { status, brand, customerId, enabled = true } = opts;
+  const viewerId = useViewerId();
   return useQuery({
-    queryKey: SUPPORT_KEYS.conversations(status, brand, customerId),
+    queryKey: SUPPORT_KEYS.conversations(viewerId ?? NO_VIEWER, status, brand, customerId),
     queryFn: () => apiSupportConversations({ status, brand, customerId }),
-    enabled,
+    enabled: enabled && !!viewerId,
     refetchOnWindowFocus: true,
   });
 }
 
 /** The archived (trashed) rooms for one customer — the collapsed "Archived
- * (n)" group in the rooms pane. Only fetched once a person is selected.
- * `brand` scopes to one desk, exactly like `useSupportConversations` — without
- * it, this list bled every desk's archived rooms for the selected customer
- * regardless of which desk was picked. */
+ * (n)" group in the rooms pane. Only fetched once a person is selected AND
+ * the viewer's own id is known. `brand` scopes to one desk, exactly like
+ * `useSupportConversations` — without it, this list bled every desk's
+ * archived rooms for the selected customer regardless of which desk was
+ * picked. */
 export function useSupportArchivedConversations(customerId: string | null, brand?: string) {
+  const viewerId = useViewerId();
   return useQuery({
-    queryKey: SUPPORT_KEYS.archivedConversations(customerId ?? '', brand),
+    queryKey: SUPPORT_KEYS.archivedConversations(viewerId ?? NO_VIEWER, customerId ?? '', brand),
     queryFn: () => apiSupportConversations({ customerId: customerId as string, view: 'trash', brand }),
-    enabled: !!customerId,
+    enabled: !!customerId && !!viewerId,
     refetchOnWindowFocus: true,
   });
 }
 
 /**
- * GET /support/people (W2.1) — one row per customer, the inbox's new first
+ * GET /support/people (W1.6) — one row per customer, the inbox's first
  * pane. `collaboratorId` scopes to one desk; ignored server-side for a
- * COLLAB viewer, whose rows are already scoped to their own desk.
+ * COLLAB viewer, whose rows are already scoped to their own desk
+ * (support.service.ts `listPeopleForViewer`). Gated on the viewer's own id
+ * being known, same as every other query here.
  */
 export function useSupportPeople(opts: { status?: string; collaboratorId?: string } = {}) {
+  const viewerId = useViewerId();
   return useQuery({
-    queryKey: SUPPORT_KEYS.people(opts.status, opts.collaboratorId),
+    queryKey: SUPPORT_KEYS.people(viewerId ?? NO_VIEWER, opts.status, opts.collaboratorId),
     queryFn: () => apiSupportPeople(opts),
+    enabled: !!viewerId,
     refetchOnWindowFocus: true,
   });
 }
@@ -85,6 +120,7 @@ export function useSupportPeople(opts: { status?: string; collaboratorId?: strin
  */
 export function useUpdateConversation() {
   const qc = useQueryClient();
+  const viewerId = useViewerId();
   return useMutation({
     mutationFn: ({
       id,
@@ -96,7 +132,7 @@ export function useUpdateConversation() {
     onSuccess: (_data, { id }) => {
       void qc.invalidateQueries({ queryKey: ['support', 'conversations'] });
       void qc.invalidateQueries({ queryKey: ['support', 'people'] });
-      void qc.invalidateQueries({ queryKey: SUPPORT_KEYS.thread(id) });
+      void qc.invalidateQueries({ queryKey: SUPPORT_KEYS.thread(viewerId ?? NO_VIEWER, id) });
     },
   });
 }
@@ -130,10 +166,11 @@ export function useRestoreConversation() {
 }
 
 export function useSupportThread(id: string | null) {
+  const viewerId = useViewerId();
   return useQuery({
-    queryKey: SUPPORT_KEYS.thread(id ?? ''),
+    queryKey: SUPPORT_KEYS.thread(viewerId ?? NO_VIEWER, id ?? ''),
     queryFn: () => apiSupportThread(id as string),
-    enabled: !!id,
+    enabled: !!id && !!viewerId,
     refetchOnWindowFocus: true,
   });
 }
@@ -148,12 +185,18 @@ export function useSupportThread(id: string | null) {
  */
 export function useSupportLiveSync(activeId: string | null, activePersonId: string | null, intervalMs = 5_000) {
   const qc = useQueryClient();
+  const viewerId = useViewerId();
   useEffect(() => {
+    // No signed-in viewer yet: there is nothing of theirs cached to refresh,
+    // and firing this against the placeholder key would be a no-op query
+    // key mismatch anyway — skip the whole loop rather than start it against
+    // an identity that might still change.
+    if (!viewerId) return;
     const refresh = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       void qc.invalidateQueries({ queryKey: ['support', 'people'] });
       void qc.invalidateQueries({ queryKey: ['support', 'conversations'] });
-      if (activeId) void qc.invalidateQueries({ queryKey: SUPPORT_KEYS.thread(activeId) });
+      if (activeId) void qc.invalidateQueries({ queryKey: SUPPORT_KEYS.thread(viewerId, activeId) });
     };
     const timer = window.setInterval(refresh, intervalMs);
     const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
@@ -166,16 +209,17 @@ export function useSupportLiveSync(activeId: string | null, activePersonId: stri
     // invalidation already covers the per-customer query key's prefix) but is
     // taken as a param so callers don't have to think about that.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qc, activeId, activePersonId, intervalMs]);
+  }, [qc, activeId, activePersonId, intervalMs, viewerId]);
 }
 
 export function useSendSupportMessage(id: string) {
   const qc = useQueryClient();
+  const viewerId = useViewerId();
   return useMutation({
     mutationFn: ({ body, attachments }: { body: string; attachments?: MessageAttachmentDto[] }) =>
       apiSupportSend(id, body, attachments),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: SUPPORT_KEYS.thread(id) });
+      void qc.invalidateQueries({ queryKey: SUPPORT_KEYS.thread(viewerId ?? NO_VIEWER, id) });
     },
   });
 }
@@ -209,9 +253,11 @@ export function useSupportUpload() {
 }
 
 export function useSupportPresence() {
+  const viewerId = useViewerId();
   return useQuery({
-    queryKey: SUPPORT_KEYS.presence(),
+    queryKey: SUPPORT_KEYS.presence(viewerId ?? NO_VIEWER),
     queryFn: apiSupportPresence,
+    enabled: !!viewerId,
     refetchInterval: 30_000,
   });
 }
@@ -221,7 +267,7 @@ export function useSetPresence() {
   return useMutation({
     mutationFn: (patch: { status?: string; replyTimeText?: string }) => apiSupportSetPresence(patch),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: SUPPORT_KEYS.presence() });
+      void qc.invalidateQueries({ queryKey: ['support', 'presence'] });
     },
   });
 }
