@@ -7,6 +7,7 @@ import {
   setProductMediaCover,
   setProductMediaClosing,
 } from '@/lib/catalog/api';
+import { exchangeItem } from '@/lib/gallery/api';
 import type { ProductMedia } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
 import GalleryPickerModal, {
@@ -40,6 +41,15 @@ export default function MediaSection({ productId, productName, media, onMediaCha
   const [coverSaving, setCoverSaving] = useState<string | null>(null);
   const [closingSaving, setClosingSaving] = useState<string | null>(null);
   const cropImage = useImageCrop();
+
+  // "Exchange" (task-w2.3-brief.md, Part A) — replaces a media row's picture
+  // in place via PATCH /gallery/items/:id/file, so the ProductMedia row's own
+  // id, role and sort order never change, only the bytes behind it. One
+  // shared hidden input, retargeted per row via `exchangeTargetId` rather
+  // than one input per card.
+  const exchangeInputRef = useRef<HTMLInputElement>(null);
+  const [exchangeTargetId, setExchangeTargetId] = useState<string | null>(null);
+  const [exchanging, setExchanging] = useState<string | null>(null);
 
   /** Promote one image to the cover thumbnail; the old cover joins the carousel. */
   async function handleSetCover(m: ProductMedia) {
@@ -104,12 +114,15 @@ export default function MediaSection({ productId, productName, media, onMediaCha
     try {
       // Device uploads still land in the user's own gallery — not
       // gallery-invisible — per spec Story 2, Acceptance Scenario 3.
-      // Folder is named exactly after this product, not a shared bucket.
+      // Auto-organised into category → brand → product (task-w2.3-brief.md,
+      // Part B) via the productId passed here — see
+      // uploadDeviceFileToGallery's own doc comment for the fallback when
+      // there's no product context.
       // Crop before upload — product photos share the app-wide crop step so a
       // cover and its carousel siblings can be framed consistently.
       const cropped = await cropImage(file, { title: `Crop ${file.name}` });
       if (!cropped) return;
-      const item: GalleryItem = await uploadDeviceFileToGallery(cropped, productName);
+      const item: GalleryItem = await uploadDeviceFileToGallery(cropped, productName, productId);
       const asset = await createProductMedia(productId, {
         galleryItemId: item.id,
         sortOrder: media.length,
@@ -120,6 +133,34 @@ export default function MediaSection({ productId, productName, media, onMediaCha
       setError(err.message || 'Failed to upload image.');
     } finally {
       setUploading(false);
+    }
+  }
+
+  /**
+   * "Exchange" — swaps this row's picture for a different file without
+   * touching its id, role, sort order or cover/closing status
+   * (task-w2.3-brief.md, Part A). Only offered when the row is gallery-backed
+   * (`galleryItemId` set); a handful of legacy rows still carry only a
+   * `cloudinaryPublicId` from before the Gallery module existed and have no
+   * gallery item to exchange.
+   */
+  async function handleExchange(mediaId: string, file: File) {
+    const target = media.find((x) => x.id === mediaId);
+    if (!target?.galleryItemId) return;
+    setError(null);
+    setExchanging(mediaId);
+    try {
+      const cropped = await cropImage(file, { title: `Crop replacement for ${file.name}` });
+      if (!cropped) return;
+      const updated = await exchangeItem(target.galleryItemId, cropped);
+      onMediaChange(
+        media.map((x) => (x.id === mediaId ? { ...x, url: updated.url } : x)),
+      );
+    } catch (e) {
+      const err = e as ApiError;
+      setError(err.message || 'Failed to exchange image.');
+    } finally {
+      setExchanging(null);
     }
   }
 
@@ -158,6 +199,19 @@ export default function MediaSection({ productId, productName, media, onMediaCha
           onClose={() => setPickerOpen(false)}
         />
       )}
+
+      <input
+        ref={exchangeInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/heic,image/heif,image/webp,video/mp4,video/quicktime"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file && exchangeTargetId) handleExchange(exchangeTargetId, file);
+          e.target.value = '';
+        }}
+        data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-media-exchange-file"
+      />
 
       {media.length > 0 && (
         <div
@@ -228,6 +282,22 @@ export default function MediaSection({ productId, productName, media, onMediaCha
                       {closingSaving === m.id ? 'Setting…' : 'Set as closing'}
                     </button>
                   </>
+                )}
+                {m.galleryItemId && (
+                  <button
+                    type="button"
+                    className="dash-btn-ghost"
+                    style={{ display: 'block', padding: '2px 0', fontSize: 11 }}
+                    disabled={exchanging !== null}
+                    onClick={() => {
+                      setExchangeTargetId(m.id);
+                      exchangeInputRef.current?.click();
+                    }}
+                    title="Replace this photo — everywhere it's used updates automatically"
+                    data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-exchange-product-image@${m.id}`}
+                  >
+                    {exchanging === m.id ? 'Exchanging…' : 'Exchange'}
+                  </button>
                 )}
                 {m.galleryItemId ? 'From Gallery' : m.cloudinaryPublicId}
               </figcaption>

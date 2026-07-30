@@ -229,6 +229,7 @@ export default function CollabCategoriesClient() {
                     <ImageField
                       label=""
                       imageUrl={c.imageUrl ?? null}
+                      mediaId={c.imageMediaId ?? null}
                       disabled={busyId === c.id}
                       onChange={(mediaId) => void handleImage(c.id, mediaId)}
                     />

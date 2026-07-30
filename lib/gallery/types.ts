@@ -25,3 +25,27 @@ export interface GalleryItem {
   altText: string | null;
   createdAt: string;
 }
+
+/**
+ * `GET /gallery/search` result shapes (task-w2.3-brief.md, Part B). Each
+ * result carries its full breadcrumb — root-first folder names — so the
+ * admin can see where a match lives without a second lookup.
+ */
+export interface GallerySearchItem extends GalleryItem {
+  breadcrumb: string[];
+}
+
+export interface GallerySearchFolder extends GalleryFolder {
+  breadcrumb: string[];
+}
+
+export interface GallerySearchResult {
+  items: GallerySearchItem[];
+  folders: GallerySearchFolder[];
+  meta: {
+    itemsTotal: number;
+    foldersTotal: number;
+    page: number;
+    limit: number;
+  };
+}

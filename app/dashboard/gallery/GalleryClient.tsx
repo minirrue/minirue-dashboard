@@ -5,12 +5,14 @@ import {
   createFolder,
   deleteFolder,
   deleteItem,
+  exchangeItem,
   listFolders,
   listItems,
   renameFolder,
+  searchGallery,
   updateItemAltText,
   uploadItem } from '@/lib/gallery/api';
-import type { GalleryFolder, GalleryItem } from '@/lib/gallery/types';
+import type { GalleryFolder, GalleryItem, GallerySearchResult } from '@/lib/gallery/types';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
@@ -413,17 +415,39 @@ function ItemGrid({
   onDelete,
   onPreview,
   onRenameAlt,
+  onExchange,
+  exchangingId,
 }: {
   items: GalleryItem[];
   onDelete: (id: string) => Promise<void>;
   onPreview: (item: GalleryItem) => void;
   onRenameAlt: (id: string, altText: string) => Promise<void>;
+  onExchange: (id: string, file: File) => void;
+  exchangingId: string | null;
 }) {
+  // One shared hidden input, retargeted per card via a ref map — matches
+  // MediaSection.tsx's pattern for "Exchange" (task-w2.3-brief.md, Part A)
+  // rather than one <input> per card.
+  const exchangeInputRef = useRef<HTMLInputElement>(null);
+  const [exchangeTargetId, setExchangeTargetId] = useState<string | null>(null);
+
   if (items.length === 0) {
     return <p className="dash-help-text">No items in this folder yet.</p>;
   }
   return (
     <div className="dash-gallery-item-grid" data-trace-id={`${TRACE}::EL-GRID-gallery-items`}>
+      <input
+        ref={exchangeInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/heic,image/heif,image/webp,video/mp4,video/quicktime"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file && exchangeTargetId) onExchange(exchangeTargetId, file);
+          e.target.value = '';
+        }}
+        data-trace-id={`${TRACE}::EL-INPUT-gallery-item-exchange-file`}
+      />
       {items.map((item) => (
         <div
           key={item.id}
@@ -447,6 +471,19 @@ function ItemGrid({
           <AltTextField item={item} onSave={(altText) => onRenameAlt(item.id, altText)} />
           <div className="dash-gallery-item-meta">
             <span>{formatDate(item.createdAt)}</span>
+            <button
+              type="button"
+              className="dash-btn-ghost"
+              disabled={exchangingId !== null}
+              onClick={() => {
+                setExchangeTargetId(item.id);
+                exchangeInputRef.current?.click();
+              }}
+              title="Replace this photo — everywhere it's used updates automatically"
+              data-trace-id={`${TRACE}::EL-BTN-exchange-gallery-item@${item.id}`}
+            >
+              {exchangingId === item.id ? 'Exchanging…' : 'Exchange'}
+            </button>
             <button
               type="button"
               className="dash-btn-ghost"
@@ -489,6 +526,19 @@ export default function GalleryClient() {
   const [adding, setAdding] = useState(false);
 
   const [previewItem, setPreviewItem] = useState<GalleryItem | null>(null);
+
+  // "Exchange" (task-w2.3-brief.md, Part A) — which item card is mid-replace,
+  // shown as a busy state on its own button.
+  const [exchangingId, setExchangingId] = useState<string | null>(null);
+
+  // Gallery search (task-w2.3-brief.md, Part B) — overlays the normal
+  // folder-browsing panel while a query is present; an empty query goes
+  // straight back to it.
+  const [query, setQuery] = useState('');
+  const [searchResult, setSearchResult] = useState<GallerySearchResult | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const isSearching = query.trim().length > 0;
 
   /**
    * Where in the tree we are. `[]` is the top level; each entry is a folder we
@@ -638,6 +688,56 @@ export default function GalleryClient() {
     );
   }
 
+  /**
+   * "Exchange" — the id, folder and alt text stay put; only the picture or
+   * video changes (task-w2.3-brief.md, Part A). The item count never moves —
+   * this replaces a photo, it doesn't add or remove one.
+   */
+  async function handleExchangeItem(id: string, file: File) {
+    setExchangingId(id);
+    try {
+      const updated = await exchangeItem(id, file);
+      setItems((prev) => prev.map((item) => (item.id === id ? updated : item)));
+    } catch (e) {
+      const err = e as ApiError;
+      setItemsError(err.message ?? 'Failed to exchange item.');
+    } finally {
+      setExchangingId(null);
+    }
+  }
+
+  /** Empty query returns to normal folder browsing — search overlays it,
+   * never replaces it permanently. */
+  async function runSearch(raw: string) {
+    setQuery(raw);
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      setSearchResult(null);
+      setSearchError(null);
+      return;
+    }
+    setSearching(true);
+    setSearchError(null);
+    try {
+      setSearchResult(await searchGallery(trimmed));
+    } catch (e) {
+      const err = e as ApiError;
+      setSearchError(err.message ?? 'Search failed.');
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  /** Jump straight to a search hit's folder and clear the query — same
+   * "step into the folder that owns this result" behaviour whether the hit
+   * was a folder or an item. */
+  function goToSearchResultFolder(folder: GalleryFolder) {
+    setQuery('');
+    setSearchResult(null);
+    setSelectedFolder(folder);
+    loadFolderContents(folder);
+  }
+
   return (
     <>
       <div className="dash-page-header" data-trace-id={`${TRACE}::EL-REGION-gallery-page-header`}>
@@ -656,6 +756,97 @@ export default function GalleryClient() {
         </div>
       </div>
 
+      <div style={{ marginBottom: 16, maxWidth: 420 }}>
+        <input
+          type="search"
+          className="dash-input"
+          placeholder="Search photos, videos and folders…"
+          value={query}
+          onChange={(e) => runSearch(e.target.value)}
+          data-trace-id={`${TRACE}::EL-INPUT-gallery-search`}
+        />
+      </div>
+
+      {isSearching ? (
+        <div className="dash-card" data-trace-id={`${TRACE}::EL-REGION-gallery-search-results`}>
+          <h2 className="dash-section-title">Search results</h2>
+          {searching ? (
+            <p className="dash-help-text">Searching…</p>
+          ) : searchError ? (
+            <p className="dash-inline-error">{searchError}</p>
+          ) : !searchResult || (searchResult.items.length === 0 && searchResult.folders.length === 0) ? (
+            <p className="dash-help-text">No matches for &ldquo;{query.trim()}&rdquo;.</p>
+          ) : (
+            <>
+              {searchResult.folders.length > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <h3 className="dash-section-subtitle">Folders</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {searchResult.folders.map((folder) => (
+                      <button
+                        key={folder.id}
+                        type="button"
+                        className="dash-btn-ghost"
+                        style={{ justifyContent: 'flex-start', textAlign: 'left' }}
+                        onClick={() => goToSearchResultFolder(folder)}
+                        data-trace-id={`${TRACE}::EL-BTN-search-result-folder@${folder.id}`}
+                      >
+                        📁 {folder.breadcrumb.join(' / ') || folder.name} ({folder.itemCount})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {searchResult.items.length > 0 && (
+                <div>
+                  <h3 className="dash-section-subtitle">Photos &amp; videos</h3>
+                  <div
+                    className="dash-gallery-item-grid"
+                    data-trace-id={`${TRACE}::EL-GRID-gallery-search-result-items`}
+                  >
+                    {searchResult.items.map((item) => (
+                      <div key={item.id} className="dash-gallery-item-card">
+                        <button
+                          type="button"
+                          className="dash-gallery-item-media-btn"
+                          onClick={() => setPreviewItem(item)}
+                          aria-label="View full size"
+                          title={item.breadcrumb.join(' / ')}
+                          data-trace-id={`${TRACE}::EL-BTN-preview-search-result-item@${item.id}`}
+                        >
+                          {item.kind === 'video' ? (
+                            <video src={item.url} className="dash-gallery-item-media" muted />
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={item.url}
+                              alt={item.altText ?? ''}
+                              className="dash-gallery-item-media"
+                            />
+                          )}
+                        </button>
+                        <p
+                          className="dash-help-text"
+                          style={{
+                            margin: '4px 0 0',
+                            fontSize: 11,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {item.breadcrumb.join(' / ')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      ) : (
+        <>
       {showAddForm && (
         <form
           className="dash-form-card"
@@ -778,6 +969,8 @@ export default function GalleryClient() {
                       onDelete={handleDeleteItem}
                       onPreview={setPreviewItem}
                       onRenameAlt={handleRenameItemAlt}
+                      onExchange={handleExchangeItem}
+                      exchangingId={exchangingId}
                     />
                   )}
                 </>
@@ -836,6 +1029,8 @@ export default function GalleryClient() {
           )}
         </div>
       </div>
+        </>
+      )}
 
       {previewItem && (
         <ItemPreviewModal item={previewItem} onClose={() => setPreviewItem(null)} />

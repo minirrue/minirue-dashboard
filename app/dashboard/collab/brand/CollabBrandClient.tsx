@@ -121,6 +121,15 @@ export default function CollabBrandClient() {
 
   const cropImage = useImageCrop();
 
+  // "Exchange" for the collaborator logo (task-w2.3-brief.md, Part A) is a
+  // labelling change over what was already here — POST /collab/brand/logo
+  // has always overwritten by key. What changed is the backend's key itself:
+  // it now suffixes a uuid and deletes the old object
+  // (collab-brand.service.ts's uploadLogo), because the fixed key
+  // `collaborators/{id}/logo.{ext}` this used to be served the STALE logo
+  // for up to 30 days through imgproxy's nginx cache, which has no
+  // query-string cache-buster. Same click here, but the new logo now
+  // actually appears.
   const onLogo = async (rawFile: File) => {
 
     setError(null);
@@ -285,7 +294,7 @@ export default function CollabBrandClient() {
 
             >
 
-              {logoUploading ? 'Uploading…' : 'Upload logo'}
+              {logoUploading ? 'Uploading…' : brand?.logoUrl ? 'Exchange logo' : 'Upload logo'}
 
             </button>
 

@@ -163,15 +163,26 @@ export async function apiFetch<T>(
  * itself from the `FormData` body). Always sends the auth token; gallery
  * uploads (and any future file-upload endpoint) require an authenticated
  * caller.
+ *
+ * `method` defaults to 'POST' (every existing caller before Exchange only
+ * ever created something new) — "Exchange" needs the SAME multipart
+ * plumbing but against `PATCH /gallery/items/:id/file`, so this takes a
+ * method rather than a second near-duplicate uploader function
+ * (task-w2.3-brief.md, Part A: `apiUpload` is "hardcoded to POST; teach it
+ * to accept a method rather than writing a second uploader").
  */
-export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+export async function apiUpload<T>(
+  path: string,
+  formData: FormData,
+  method: 'POST' | 'PATCH' = 'POST',
+): Promise<T> {
   const headers = new Headers();
   headers.set(CLIENT_HEADER, CLIENT_AUDIENCE);
   const token = getAccessToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
   const res = await fetch(`${BASE}${path}`, {
-    method: 'POST',
+    method,
     body: formData,
     headers,
     credentials: 'include',

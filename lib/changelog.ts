@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 150,
+    date: '2026-07-30',
+    area: 'Gallery & photos',
+    summary:
+      'Every photo can now be swapped for a better one without deleting it first. Exchange keeps the same entry, so the product, category or brand using that photo simply shows the new picture — nothing needs re-linking and nothing breaks. This also quietly fixes something worse: logos and profile pictures were being replaced by writing over the same file, and the picture service caches by file name, so the old logo could keep showing for up to a month after you changed it. New photos also file themselves now — uploading a product photo puts it under its category, then its brand, then the product, instead of dropping a folder named after the product beside the category it belongs in. Photos already in the gallery are left exactly where they are. And there is a search box: type anything and it looks across folder names, photo descriptions and product names at once, showing you where each result lives.',
+  },
+  {
     id: 149,
     date: '2026-07-30',
     area: 'Notifications',
