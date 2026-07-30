@@ -53,6 +53,26 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   output: "standalone",
   reactCompiler: true,
+  // The d3 packages behind components/dashboard/charts are ESM-only and ship a
+  // locked `exports` map, so there is no CJS build to fall back to. Next's own
+  // bundler handles them fine — this list exists for Jest. next/jest reads
+  // transpilePackages to build its transformIgnorePatterns, and it is the ONLY
+  // lever that works: setting transformIgnorePatterns in jest.config.ts is a
+  // no-op, because next/jest appends user patterns after its own
+  // `/node_modules/` rule, which still wins. Without this the chart tests fail
+  // with "Unexpected token 'export'".
+  transpilePackages: [
+    "d3-array",
+    "d3-color",
+    "d3-format",
+    "d3-interpolate",
+    "d3-path",
+    "d3-scale",
+    "d3-shape",
+    "d3-time",
+    "d3-time-format",
+    "internmap",
+  ],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
@@ -100,6 +120,20 @@ const nextConfig: NextConfig = {
       { source: "/inventory/receive", destination: "/dashboard/inventory/receive" },
       { source: "/inventory/warehouses", destination: "/dashboard/inventory/warehouses" },
       { source: "/analytics", destination: "/dashboard/analytics" },
+      // Analytics sub-screens (specs/2026-07-31-visitor-analytics, Lane 6).
+      // Same rule as everywhere else in this file: the app-router files live
+      // under /dashboard/analytics/*, only the public URL is clean. Missing
+      // an entry here means the page 404s in production even though it
+      // builds and appears in `next build` output — see CLAUDE.md.
+      { source: "/analytics/realtime", destination: "/dashboard/analytics/realtime" },
+      { source: "/analytics/visitors", destination: "/dashboard/analytics/visitors" },
+      { source: "/analytics/visitors/:visitorId", destination: "/dashboard/analytics/visitors/:visitorId" },
+      { source: "/analytics/pages", destination: "/dashboard/analytics/pages" },
+      { source: "/analytics/products", destination: "/dashboard/analytics/products" },
+      { source: "/analytics/products/:productId", destination: "/dashboard/analytics/products/:productId" },
+      { source: "/analytics/acquisition", destination: "/dashboard/analytics/acquisition" },
+      { source: "/analytics/checkout", destination: "/dashboard/analytics/checkout" },
+      { source: "/analytics/events", destination: "/dashboard/analytics/events" },
       { source: "/support", destination: "/dashboard/support" },
       { source: "/reviews", destination: "/dashboard/reviews" },
       { source: "/loyalty", destination: "/dashboard/loyalty" },
