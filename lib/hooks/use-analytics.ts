@@ -2,7 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import * as api from '@/lib/api/analytics-insights';
-import type { AnalyticsEnvelope, AnalyticsQueryParams } from '@/lib/api/analytics-insights';
+import type {
+  AnalyticsEnvelope,
+  AnalyticsQueryParams,
+  PageSort,
+  ProductSort,
+  SourceGroupBy,
+  TechDimension,
+} from '@/lib/api/analytics-insights';
 import type { ApiError } from '@/lib/api/client';
 
 /**
@@ -28,16 +35,18 @@ export const analyticsKeys = {
   audienceTimeseries: (p: AnalyticsQueryParams) => [...BASE_KEY, 'audience-timeseries', p] as const,
   live: (p: AnalyticsQueryParams) => [...BASE_KEY, 'live', p] as const,
   liveVisitors: (p: AnalyticsQueryParams) => [...BASE_KEY, 'live-visitors', p] as const,
-  topPages: (p: AnalyticsQueryParams) => [...BASE_KEY, 'pages-top', p] as const,
-  entryPages: (p: AnalyticsQueryParams) => [...BASE_KEY, 'pages-entry', p] as const,
-  exitPages: (p: AnalyticsQueryParams) => [...BASE_KEY, 'pages-exit', p] as const,
-  productsTop: (p: AnalyticsQueryParams) => [...BASE_KEY, 'products-top', p] as const,
+  topPages: (p: AnalyticsQueryParams, sortBy?: PageSort) => [...BASE_KEY, 'pages-top', p, sortBy] as const,
+  entryPages: (p: AnalyticsQueryParams, sortBy?: PageSort) => [...BASE_KEY, 'pages-entry', p, sortBy] as const,
+  exitPages: (p: AnalyticsQueryParams, sortBy?: PageSort) => [...BASE_KEY, 'pages-exit', p, sortBy] as const,
+  productsTop: (p: AnalyticsQueryParams, sortBy?: ProductSort) =>
+    [...BASE_KEY, 'products-top', p, sortBy] as const,
   productFunnel: (productId: string, p: AnalyticsQueryParams) =>
     [...BASE_KEY, 'product-funnel', productId, p] as const,
-  sources: (p: AnalyticsQueryParams) => [...BASE_KEY, 'sources', p] as const,
+  sources: (p: AnalyticsQueryParams, groupBy?: SourceGroupBy) =>
+    [...BASE_KEY, 'sources', p, groupBy] as const,
   campaignDetail: (campaign: string, p: AnalyticsQueryParams) =>
     [...BASE_KEY, 'campaign-detail', campaign, p] as const,
-  tech: (p: AnalyticsQueryParams) => [...BASE_KEY, 'tech', p] as const,
+  tech: (p: AnalyticsQueryParams, dimension?: TechDimension) => [...BASE_KEY, 'tech', p, dimension] as const,
   checkoutFunnel: (p: AnalyticsQueryParams) => [...BASE_KEY, 'checkout-funnel', p] as const,
   paymentsFunnel: (p: AnalyticsQueryParams) => [...BASE_KEY, 'payments-funnel', p] as const,
   abandonedCheckouts: (p: AnalyticsQueryParams) => [...BASE_KEY, 'checkout-abandoned', p] as const,
@@ -124,22 +133,22 @@ export function useLiveVisitors(params: AnalyticsQueryParams) {
 
 /* ── Pages ────────────────────────────────────────────────────────────── */
 
-export function useTopPages(params: AnalyticsQueryParams) {
-  return useEnvelopeQuery(analyticsKeys.topPages(params), () => api.apiGetTopPages(params));
+export function useTopPages(params: AnalyticsQueryParams, sortBy?: PageSort) {
+  return useEnvelopeQuery(analyticsKeys.topPages(params, sortBy), () => api.apiGetTopPages(params, sortBy));
 }
 
-export function useEntryPages(params: AnalyticsQueryParams) {
-  return useEnvelopeQuery(analyticsKeys.entryPages(params), () => api.apiGetEntryPages(params));
+export function useEntryPages(params: AnalyticsQueryParams, sortBy?: PageSort) {
+  return useEnvelopeQuery(analyticsKeys.entryPages(params, sortBy), () => api.apiGetEntryPages(params, sortBy));
 }
 
-export function useExitPages(params: AnalyticsQueryParams) {
-  return useEnvelopeQuery(analyticsKeys.exitPages(params), () => api.apiGetExitPages(params));
+export function useExitPages(params: AnalyticsQueryParams, sortBy?: PageSort) {
+  return useEnvelopeQuery(analyticsKeys.exitPages(params, sortBy), () => api.apiGetExitPages(params, sortBy));
 }
 
 /* ── Products ─────────────────────────────────────────────────────────── */
 
-export function useProductsTop(params: AnalyticsQueryParams) {
-  return useEnvelopeQuery(analyticsKeys.productsTop(params), () => api.apiGetProductsTop(params));
+export function useProductsTop(params: AnalyticsQueryParams, sortBy?: ProductSort) {
+  return useEnvelopeQuery(analyticsKeys.productsTop(params, sortBy), () => api.apiGetProductsTop(params, sortBy));
 }
 
 export function useProductFunnel(productId: string | undefined, params: AnalyticsQueryParams) {
@@ -152,8 +161,8 @@ export function useProductFunnel(productId: string | undefined, params: Analytic
 
 /* ── Acquisition ──────────────────────────────────────────────────────── */
 
-export function useSources(params: AnalyticsQueryParams) {
-  return useEnvelopeQuery(analyticsKeys.sources(params), () => api.apiGetSources(params));
+export function useSources(params: AnalyticsQueryParams, groupBy?: SourceGroupBy) {
+  return useEnvelopeQuery(analyticsKeys.sources(params, groupBy), () => api.apiGetSources(params, groupBy));
 }
 
 export function useCampaignDetail(campaign: string | undefined, params: AnalyticsQueryParams) {
@@ -164,8 +173,8 @@ export function useCampaignDetail(campaign: string | undefined, params: Analytic
   );
 }
 
-export function useTech(params: AnalyticsQueryParams) {
-  return useEnvelopeQuery(analyticsKeys.tech(params), () => api.apiGetTech(params));
+export function useTech(params: AnalyticsQueryParams, dimension?: TechDimension) {
+  return useEnvelopeQuery(analyticsKeys.tech(params, dimension), () => api.apiGetTech(params, dimension));
 }
 
 /* ── Checkout ─────────────────────────────────────────────────────────── */

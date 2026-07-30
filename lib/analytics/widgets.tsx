@@ -10,11 +10,11 @@ import type {
   AudienceSummary,
   AudienceTimeseriesPoint,
   LiveSummary,
-  PageMetric,
-  ProductMetric,
-  SourceMetric,
-  CheckoutFunnel,
-  SearchTerm,
+  PageRow,
+  ProductRow,
+  SourceRow,
+  CheckoutFunnelStep,
+  SearchRow,
 } from '@/lib/api/analytics-insights';
 import {
   useAudienceSummary,
@@ -85,17 +85,17 @@ function AudienceTrendRender({ data }: { data: AnalyticsEnvelope<AudienceTimeser
     <>
       <Sparkline values={points.map((p) => p.visitors)} />
       <span style={{ fontSize: 12, color: 'var(--mr-fg-4)' }}>
-        {points[points.length - 1].visitors.toLocaleString()} visitors on {points[points.length - 1].date}
+        {points[points.length - 1].visitors.toLocaleString()} visitors on {points[points.length - 1].bucket}
       </span>
     </>
   );
 }
 
 function RealtimeRender({ data }: { data: AnalyticsEnvelope<LiveSummary> }) {
-  return <StatLine value={data.data.activeVisitors.toLocaleString()} label="active right now" />;
+  return <StatLine value={data.data.onlineNow.toLocaleString()} label="active right now" />;
 }
 
-function TopPagesRender({ data }: { data: AnalyticsEnvelope<PageMetric[]> }) {
+function TopPagesRender({ data }: { data: AnalyticsEnvelope<PageRow[]> }) {
   const top = data.data.slice(0, 3);
   if (top.length === 0) {
     return <p style={{ fontSize: 13, color: 'var(--mr-fg-4)', margin: 0 }}>No page views in this range.</p>;
@@ -105,14 +105,14 @@ function TopPagesRender({ data }: { data: AnalyticsEnvelope<PageMetric[]> }) {
       {top.map((page) => (
         <li key={page.path} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--mr-fg-2)' }}>
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{page.path}</span>
-          <span className="mr-num">{page.views.toLocaleString()}</span>
+          <span className="mr-num">{page.pageviews.toLocaleString()}</span>
         </li>
       ))}
     </ul>
   );
 }
 
-function TopProductsRender({ data }: { data: AnalyticsEnvelope<ProductMetric[]> }) {
+function TopProductsRender({ data }: { data: AnalyticsEnvelope<ProductRow[]> }) {
   const top = data.data.slice(0, 3);
   if (top.length === 0) {
     return <p style={{ fontSize: 13, color: 'var(--mr-fg-4)', margin: 0 }}>No product activity in this range.</p>;
@@ -121,7 +121,7 @@ function TopProductsRender({ data }: { data: AnalyticsEnvelope<ProductMetric[]> 
     <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
       {top.map((product) => (
         <li key={product.productId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--mr-fg-2)' }}>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product.productName}</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product.name ?? product.productId}</span>
           <span className="mr-num">{product.purchases.toLocaleString()}</span>
         </li>
       ))}
@@ -129,7 +129,7 @@ function TopProductsRender({ data }: { data: AnalyticsEnvelope<ProductMetric[]> 
   );
 }
 
-function AcquisitionRender({ data }: { data: AnalyticsEnvelope<SourceMetric[]> }) {
+function AcquisitionRender({ data }: { data: AnalyticsEnvelope<SourceRow[]> }) {
   const top = data.data.slice(0, 3);
   if (top.length === 0) {
     return <p style={{ fontSize: 13, color: 'var(--mr-fg-4)', margin: 0 }}>No traffic sources in this range.</p>;
@@ -137,8 +137,8 @@ function AcquisitionRender({ data }: { data: AnalyticsEnvelope<SourceMetric[]> }
   return (
     <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
       {top.map((source) => (
-        <li key={source.source} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--mr-fg-2)' }}>
-          <span>{source.source}</span>
+        <li key={source.key} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--mr-fg-2)' }}>
+          <span>{source.key}</span>
           <span className="mr-num">{source.visitors.toLocaleString()}</span>
         </li>
       ))}
@@ -146,16 +146,18 @@ function AcquisitionRender({ data }: { data: AnalyticsEnvelope<SourceMetric[]> }
   );
 }
 
-function CheckoutFunnelRender({ data }: { data: AnalyticsEnvelope<CheckoutFunnel> }) {
-  const stages = data.data.stages;
-  if (stages.length === 0) {
+function CheckoutFunnelRender({ data }: { data: AnalyticsEnvelope<CheckoutFunnelStep[]> }) {
+  const steps = data.data;
+  if (steps.length === 0) {
     return <p style={{ fontSize: 13, color: 'var(--mr-fg-4)', margin: 0 }}>No checkout activity in this range.</p>;
   }
-  const last = stages[stages.length - 1];
-  return <StatLine value={`${last.rateFromStart.toFixed(1)}%`} label={`reach "${last.label}"`} />;
+  const first = steps[0];
+  const last = steps[steps.length - 1];
+  const reachRate = first.count > 0 ? (last.count / first.count) * 100 : 0;
+  return <StatLine value={`${reachRate.toFixed(1)}%`} label={`reach "${last.step}"`} />;
 }
 
-function SearchRender({ data }: { data: AnalyticsEnvelope<SearchTerm[]> }) {
+function SearchRender({ data }: { data: AnalyticsEnvelope<SearchRow[]> }) {
   const top = data.data.slice(0, 3);
   if (top.length === 0) {
     return <p style={{ fontSize: 13, color: 'var(--mr-fg-4)', margin: 0 }}>No searches in this range.</p>;
@@ -163,9 +165,9 @@ function SearchRender({ data }: { data: AnalyticsEnvelope<SearchTerm[]> }) {
   return (
     <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
       {top.map((term) => (
-        <li key={term.term} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--mr-fg-2)' }}>
-          <span>{term.term}</span>
-          <span className="mr-num">{term.searchCount.toLocaleString()}</span>
+        <li key={term.queryText} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--mr-fg-2)' }}>
+          <span>{term.queryText}</span>
+          <span className="mr-num">{term.searches.toLocaleString()}</span>
         </li>
       ))}
     </ul>

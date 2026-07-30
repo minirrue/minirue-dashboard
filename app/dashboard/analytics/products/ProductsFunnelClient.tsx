@@ -9,7 +9,7 @@ import { HorizontalBar } from '@/components/dashboard/charts';
 import { useAnalyticsRange, useProductsTop } from '@/lib/hooks/use-analytics';
 import type { AnalyticsRangeState } from '@/lib/hooks/use-analytics';
 import { egp } from '@/lib/api/analytics-insights';
-import type { AnalyticsFreshness, ProductMetric } from '@/lib/api/analytics-insights';
+import type { AnalyticsFreshness, ProductRow } from '@/lib/api/analytics-insights';
 
 function RangeControl({
   range,
@@ -77,18 +77,18 @@ function ScreenEmpty({ message }: { message: string }) {
   );
 }
 
-const PRODUCT_COLUMNS: Column<ProductMetric>[] = [
+const PRODUCT_COLUMNS: Column<ProductRow>[] = [
   {
-    key: 'productName',
+    key: 'name',
     label: 'Product',
     render: (row) => (
       <Link href={`/analytics/products/${encodeURIComponent(row.productId)}`} className="dash-link">
-        {row.productName}
+        {row.name ?? row.productId}
       </Link>
     ),
   },
   { key: 'views', label: 'Views', align: 'right', sortable: true },
-  { key: 'addToCart', label: 'Added to cart', align: 'right', sortable: true },
+  { key: 'addToCarts', label: 'Added to cart', align: 'right', sortable: true },
   { key: 'purchases', label: 'Purchases', align: 'right', sortable: true },
   {
     key: 'revenueMinor',
@@ -133,13 +133,13 @@ export default function ProductsFunnelClient() {
           <div style={{ margin: '20px 0' }}>
             <HorizontalBar
               data={rows.slice(0, 10)}
-              label={(p) => p.productName}
+              label={(p) => p.name ?? p.productId}
               value={(p) => p.purchases}
               title="Top products by purchases"
             />
           </div>
 
-          <DashboardTable<ProductMetric>
+          <DashboardTable<ProductRow>
             columns={PRODUCT_COLUMNS}
             data={rows}
             emptyMessage="No product activity in this range."

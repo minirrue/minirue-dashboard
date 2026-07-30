@@ -8,7 +8,7 @@ import type { Column } from '@/components/dashboard/DashboardTable';
 import { LineChart } from '@/components/dashboard/charts';
 import { useAnalyticsRange, useAudienceSummary, useAudienceTimeseries, useVisitors } from '@/lib/hooks/use-analytics';
 import type { AnalyticsRangeState } from '@/lib/hooks/use-analytics';
-import type { AnalyticsFreshness, VisitorSummary } from '@/lib/api/analytics-insights';
+import type { AnalyticsFreshness, VisitorListRow } from '@/lib/api/analytics-insights';
 
 function RangeControl({
   range,
@@ -79,7 +79,7 @@ function ScreenEmpty({ message }: { message: string }) {
   );
 }
 
-const VISITOR_COLUMNS: Column<VisitorSummary>[] = [
+const VISITOR_COLUMNS: Column<VisitorListRow>[] = [
   {
     key: 'visitorId',
     label: 'Visitor',
@@ -89,10 +89,11 @@ const VISITOR_COLUMNS: Column<VisitorSummary>[] = [
       </Link>
     ),
   },
-  { key: 'sessions', label: 'Sessions', align: 'right', sortable: true },
-  { key: 'pageviews', label: 'Pageviews', align: 'right', sortable: true },
-  { key: 'isReturning', label: 'Returning', render: (row) => (row.isReturning ? 'Yes' : 'No') },
-  { key: 'country', label: 'Country' },
+  { key: 'sessionCount', label: 'Sessions', align: 'right', sortable: true },
+  { key: 'pageviewCount', label: 'Pageviews', align: 'right', sortable: true },
+  { key: 'orderCount', label: 'Orders', align: 'right', sortable: true },
+  { key: 'firstChannel', label: 'First channel' },
+  { key: 'country', label: 'Country', render: (row) => row.country ?? '—' },
   {
     key: 'lastSeenAt',
     label: 'Last seen',
@@ -161,7 +162,9 @@ export default function VisitorsClient() {
               <div className="dash-card">
                 <span className="dash-section-title" style={{ margin: 0 }}>New visitor rate</span>
                 <p className="mr-num" style={{ fontSize: 26, fontWeight: 700, margin: '6px 0 0' }}>
-                  {(summary.data.data.newVisitorRate * 100).toFixed(1)}%
+                  {summary.data.data.visitors > 0
+                    ? `${((summary.data.data.newVisitors / summary.data.data.visitors) * 100).toFixed(1)}%`
+                    : '—'}
                 </p>
               </div>
             </div>
@@ -174,16 +177,16 @@ export default function VisitorsClient() {
           <div style={{ marginTop: 20, marginBottom: 20 }}>
             <LineChart
               data={points}
-              xLabel={(p) => p.date}
+              xLabel={(p) => p.bucket}
               series={[{ id: 'visitors', label: 'Visitors', y: (p) => p.visitors }]}
               title="Daily visitors"
             />
           </div>
 
           <p className="dash-section-title" style={{ marginBottom: 12 }}>All visitors</p>
-          <DashboardTable<VisitorSummary>
+          <DashboardTable<VisitorListRow>
             columns={VISITOR_COLUMNS}
-            data={visitors.data?.data ?? []}
+            data={visitors.data?.data.rows ?? []}
             emptyMessage="No visitors in this range."
             tableTraceId="PG-DASHBOARD-ANL-VISITORS::EL-TABLE-visitors"
             getRowTraceId={(row) => `PG-DASHBOARD-ANL-VISITORS::EL-ROW-visitor@${row.visitorId}`}

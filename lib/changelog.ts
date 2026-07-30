@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 171,
+    date: '2026-07-31',
+    area: 'Analytics',
+    summary:
+      'A new Analytics section has been added, with its own tab for visitors, pages, products, where people came from, and checkout — so you can see how many people are visiting, where they heard about you, and what they actually look at, without asking anyone to pull a report. Daily figures across the dashboard now count a day using Cairo time, so "today" actually means today — previously the day used to flip over at 2 or 3 in the morning Cairo time, so early risers would see yesterday\'s numbers still labelled "today". The main Analytics overview can also be rearranged: reorder its cards, resize them, or remove ones you don\'t use, and it remembers your layout next time you open it. A few figures that aren\'t measured yet (like a missing-events counter) are now labelled "not tracked yet" instead of quietly showing a zero that could be mistaken for "everything is fine".',
+  },
+  {
     id: 170,
     date: '2026-07-30',
     area: 'Account & sign-in',

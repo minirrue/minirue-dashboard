@@ -107,9 +107,9 @@ function relativeTime(iso: string): string {
 }
 
 const LIVE_VISITOR_COLUMNS: Column<LiveVisitor>[] = [
-  { key: 'currentPath', label: 'Current page' },
-  { key: 'country', label: 'Country' },
-  { key: 'device', label: 'Device' },
+  { key: 'path', label: 'Current page', render: (row) => row.path ?? '—' },
+  { key: 'country', label: 'Country', render: (row) => row.country ?? '—' },
+  { key: 'deviceType', label: 'Device', render: (row) => row.deviceType ?? '—' },
   {
     key: 'enteredAt',
     label: 'On site since',
@@ -157,21 +157,21 @@ export default function RealtimeClient() {
             style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 16, marginBottom: 8 }}
           >
             <div className="dash-card">
-              <span className="dash-section-title" style={{ margin: 0 }}>Active visitors</span>
+              <span className="dash-section-title" style={{ margin: 0 }}>Online now</span>
               <p className="mr-num" style={{ fontSize: 28, fontWeight: 700, margin: '6px 0 0' }}>
-                {summary.data.data.activeVisitors.toLocaleString()}
+                {summary.data.data.onlineNow.toLocaleString()}
               </p>
             </div>
             <div className="dash-card">
-              <span className="dash-section-title" style={{ margin: 0 }}>Active sessions</span>
-              <p className="mr-num" style={{ fontSize: 28, fontWeight: 700, margin: '6px 0 0' }}>
-                {summary.data.data.activeSessions.toLocaleString()}
+              <span className="dash-section-title" style={{ margin: 0 }}>Top page right now</span>
+              <p className="mr-num" style={{ fontSize: 20, fontWeight: 700, margin: '6px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {summary.data.data.byPath[0]?.path ?? '—'}
               </p>
             </div>
             <div className="dash-card">
-              <span className="dash-section-title" style={{ margin: 0 }}>Pageviews (last minute)</span>
+              <span className="dash-section-title" style={{ margin: 0 }}>Visitors, last minute</span>
               <p className="mr-num" style={{ fontSize: 28, fontWeight: 700, margin: '6px 0 0' }}>
-                {summary.data.data.pageviewsLastMinute.toLocaleString()}
+                {(summary.data.data.pulse[summary.data.data.pulse.length - 1]?.count ?? 0).toLocaleString()}
               </p>
             </div>
           </div>

@@ -7,8 +7,8 @@ import type { Column } from '@/components/dashboard/DashboardTable';
 import { Donut, BarChart } from '@/components/dashboard/charts';
 import { useAnalyticsRange, useSources, useTech, useCampaignDetail } from '@/lib/hooks/use-analytics';
 import type { AnalyticsRangeState } from '@/lib/hooks/use-analytics';
-import { egp } from '@/lib/api/analytics-insights';
-import type { AnalyticsFreshness, SourceMetric } from '@/lib/api/analytics-insights';
+import { egp, SOURCE_GROUP_BY } from '@/lib/api/analytics-insights';
+import type { AnalyticsFreshness, SourceGroupBy, SourceRow } from '@/lib/api/analytics-insights';
 
 function RangeControl({
   range,
@@ -76,6 +76,20 @@ function ScreenEmpty({ message }: { message: string }) {
   );
 }
 
+const GROUP_BY_LABEL: Record<SourceGroupBy, string> = {
+  channel: 'Channel',
+  source: 'Source',
+  medium: 'Medium',
+  campaign: 'Campaign',
+  referrer: 'Referrer',
+};
+
+/**
+ * `sources/campaigns/{campaign}` returns a daily series plus content/term/
+ * referrer breakdowns — there is no `landingPages` field (the original
+ * client guess invented one). Shown here as real totals plus the three real
+ * breakdown tables instead.
+ */
 function CampaignPanel({ campaign, range }: { campaign: string; range: AnalyticsRangeState }) {
   const detail = useCampaignDetail(campaign, range);
   if (detail.isLoading) {
@@ -84,50 +98,79 @@ function CampaignPanel({ campaign, range }: { campaign: string; range: Analytics
   if (detail.isError || !detail.data) {
     return <p className="dash-inline-error" style={{ margin: 0 }}>Couldn&apos;t load campaign detail.</p>;
   }
-  const { landingPages } = detail.data.data;
+  const { series, byContent, byTerm, byReferrer } = detail.data.data;
+  const totals = series.reduce(
+    (acc, day) => ({ sessions: acc.sessions + day.sessions, orders: acc.orders + day.orders, revenueMinor: acc.revenueMinor + day.revenueMinor }),
+    { sessions: 0, orders: 0, revenueMinor: 0 },
+  );
+
+  const breakdownColumns: Column<{ key: string; sessions: number; orders: number; revenueMinor: number }>[] = [
+    { key: 'key', label: 'Key' },
+    { key: 'sessions', label: 'Sessions', align: 'right', sortable: true },
+    { key: 'orders', label: 'Orders', align: 'right', sortable: true },
+    { key: 'revenueMinor', label: 'Revenue', align: 'right', sortable: true, render: (row) => egp(row.revenueMinor) },
+  ];
+
   return (
     <div>
-      <p className="dash-section-title" style={{ marginBottom: 8 }}>Landing pages for &quot;{campaign}&quot;</p>
-      {landingPages.length === 0 ? (
-        <p style={{ color: 'var(--mr-fg-4)', fontSize: 13, margin: 0 }}>No landing-page data in this range.</p>
+      <p className="dash-section-title" style={{ marginBottom: 8 }}>
+        &quot;{campaign}&quot; — {totals.sessions.toLocaleString()} sessions, {totals.orders.toLocaleString()} orders,{' '}
+        {egp(totals.revenueMinor)}
+      </p>
+      {byContent.length === 0 && byTerm.length === 0 && byReferrer.length === 0 ? (
+        <p style={{ color: 'var(--mr-fg-4)', fontSize: 13, margin: 0 }}>No breakdown data in this range.</p>
       ) : (
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {landingPages.map((page) => (
-            <li key={page.path} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-              <span>{page.path}</span>
-              <span className="mr-num">{page.views.toLocaleString()}</span>
-            </li>
-          ))}
-        </ul>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 12 }}>
+          <div>
+            <p style={{ fontSize: 12, color: 'var(--mr-fg-4)', margin: '0 0 6px' }}>By ad content</p>
+            <DashboardTable columns={breakdownColumns} data={byContent} pageSize={5} emptyMessage="No content breakdown." />
+          </div>
+          <div>
+            <p style={{ fontSize: 12, color: 'var(--mr-fg-4)', margin: '0 0 6px' }}>By search term</p>
+            <DashboardTable columns={breakdownColumns} data={byTerm} pageSize={5} emptyMessage="No term breakdown." />
+          </div>
+          <div>
+            <p style={{ fontSize: 12, color: 'var(--mr-fg-4)', margin: '0 0 6px' }}>By referrer</p>
+            <DashboardTable columns={breakdownColumns} data={byReferrer} pageSize={5} emptyMessage="No referrer breakdown." />
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
-const SOURCE_COLUMNS: (onSelect: (campaign: string | null) => void) => Column<SourceMetric>[] = (onSelect) => [
-  { key: 'source', label: 'Source' },
-  { key: 'medium', label: 'Medium', render: (row) => row.medium ?? '—' },
+const SOURCE_COLUMNS: (groupBy: SourceGroupBy, onSelect: (key: string) => void) => Column<SourceRow>[] = (
+  groupBy,
+  onSelect,
+) => [
   {
-    key: 'campaign',
-    label: 'Campaign',
+    key: 'key',
+    label: GROUP_BY_LABEL[groupBy],
     render: (row) =>
-      row.campaign ? (
-        <button className="dash-link" style={{ background: 'none', border: 0, cursor: 'pointer', padding: 0, font: 'inherit' }} onClick={() => onSelect(row.campaign!)}>
-          {row.campaign}
+      groupBy === 'campaign' ? (
+        <button
+          className="dash-link"
+          style={{ background: 'none', border: 0, cursor: 'pointer', padding: 0, font: 'inherit' }}
+          onClick={() => onSelect(row.key)}
+        >
+          {row.key}
         </button>
       ) : (
-        '—'
+        row.key
       ),
   },
   { key: 'visitors', label: 'Visitors', align: 'right', sortable: true },
-  { key: 'conversions', label: 'Conversions', align: 'right', sortable: true },
+  { key: 'sessions', label: 'Sessions', align: 'right', sortable: true },
+  { key: 'orders', label: 'Orders', align: 'right', sortable: true },
+  { key: 'bounceRate', label: 'Bounce rate', align: 'right', sortable: true, render: (row) => `${(row.bounceRate * 100).toFixed(1)}%` },
   { key: 'revenueMinor', label: 'Revenue', align: 'right', sortable: true, render: (row) => egp(row.revenueMinor) },
 ];
 
 export default function AcquisitionClient() {
   const { range, setRange } = useAnalyticsRange();
-  const sources = useSources(range);
-  const tech = useTech(range);
+  const [groupBy, setGroupBy] = useState<SourceGroupBy>('channel');
+  const sources = useSources(range, groupBy);
+  const tech = useTech(range, 'browser');
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
 
   const isLoading = sources.isLoading || tech.isLoading;
@@ -141,7 +184,7 @@ export default function AcquisitionClient() {
 
   const noHistory = sources.data ? !sources.data.freshness.rollupLastOkAt : false;
   const sourceRows = sources.data?.data ?? [];
-  const browsers = tech.data?.data.browsers ?? [];
+  const browsers = tech.data?.data ?? [];
 
   return (
     <>
@@ -168,19 +211,34 @@ export default function AcquisitionClient() {
             style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 16, margin: '20px 0' }}
           >
             <Donut
-              data={sourceRows.slice(0, 5).map((s) => ({ label: s.source, value: s.visitors }))}
-              title="Traffic by source"
+              data={sourceRows.slice(0, 5).map((s) => ({ label: s.key, value: s.visitors }))}
+              title={`Traffic by ${GROUP_BY_LABEL[groupBy].toLowerCase()}`}
             />
             <BarChart
               data={browsers}
-              category={(b) => b.name}
-              series={[{ id: 'count', label: 'Sessions', y: (b) => b.count }]}
+              category={(b) => b.key}
+              series={[{ id: 'sessions', label: 'Sessions', y: (b) => b.sessions }]}
               title="Browsers"
             />
           </div>
 
-          <DashboardTable<SourceMetric>
-            columns={SOURCE_COLUMNS(setSelectedCampaign)}
+          <div className="dash-tabstrip" style={{ marginBottom: 12 }}>
+            {SOURCE_GROUP_BY.map((g) => (
+              <button
+                key={g}
+                className={groupBy === g ? 'dash-btn-primary' : 'dash-btn-secondary'}
+                onClick={() => {
+                  setGroupBy(g);
+                  setSelectedCampaign(null);
+                }}
+              >
+                {GROUP_BY_LABEL[g]}
+              </button>
+            ))}
+          </div>
+
+          <DashboardTable<SourceRow>
+            columns={SOURCE_COLUMNS(groupBy, setSelectedCampaign)}
             data={sourceRows}
             emptyMessage="No traffic sources in this range."
             tableTraceId="PG-DASHBOARD-ANL-ACQUISITION::EL-TABLE-sources"

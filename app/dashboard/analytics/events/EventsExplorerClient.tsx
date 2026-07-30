@@ -12,7 +12,7 @@ import {
   usePurchaseReconciliation,
 } from '@/lib/hooks/use-analytics';
 import type { AnalyticsRangeState } from '@/lib/hooks/use-analytics';
-import type { AnalyticsFreshness, SearchTerm } from '@/lib/api/analytics-insights';
+import type { AnalyticsFreshness, SearchRow } from '@/lib/api/analytics-insights';
 
 function RangeControl({
   range,
@@ -80,11 +80,12 @@ function ScreenEmpty({ message }: { message: string }) {
   );
 }
 
-const SEARCH_COLUMNS: Column<SearchTerm>[] = [
-  { key: 'term', label: 'Search term' },
-  { key: 'searchCount', label: 'Searches', align: 'right', sortable: true },
-  { key: 'avgResultCount', label: 'Avg. results', align: 'right', sortable: true },
-  { key: 'conversions', label: 'Conversions', align: 'right', sortable: true },
+const SEARCH_COLUMNS: Column<SearchRow>[] = [
+  { key: 'queryText', label: 'Search term' },
+  { key: 'searches', label: 'Searches', align: 'right', sortable: true },
+  { key: 'zeroResultRate', label: 'Zero-result rate', align: 'right', sortable: true, render: (row) => `${(row.zeroResultRate * 100).toFixed(1)}%` },
+  { key: 'resultClicks', label: 'Result clicks', align: 'right', sortable: true },
+  { key: 'addToCarts', label: 'Added to cart', align: 'right', sortable: true },
 ];
 
 export default function EventsExplorerClient() {
@@ -131,22 +132,28 @@ export default function EventsExplorerClient() {
             {quality.data && (
               <>
                 <div className="dash-card">
-                  <span className="dash-section-title" style={{ margin: 0 }}>Duplicate events</span>
+                  <span className="dash-section-title" style={{ margin: 0 }}>Total events</span>
                   <p className="mr-num" style={{ fontSize: 22, fontWeight: 700, margin: '6px 0 0' }}>
-                    {(quality.data.data.duplicateEventRate * 100).toFixed(2)}%
+                    {quality.data.data.totalEvents.toLocaleString()}
                   </p>
                 </div>
                 <div className="dash-card">
-                  <span className="dash-section-title" style={{ margin: 0 }}>Missing session</span>
+                  <span className="dash-section-title" style={{ margin: 0 }}>Bot events</span>
                   <p className="mr-num" style={{ fontSize: 22, fontWeight: 700, margin: '6px 0 0' }}>
-                    {(quality.data.data.missingSessionRate * 100).toFixed(2)}%
+                    {quality.data.data.botEvents.toLocaleString()}
                   </p>
+                  <span style={{ fontSize: 12, color: 'var(--mr-fg-4)' }}>
+                    {quality.data.data.totalEvents > 0
+                      ? `${((quality.data.data.botEvents / quality.data.data.totalEvents) * 100).toFixed(2)}% of total`
+                      : 'No events in this range'}
+                  </span>
                 </div>
                 <div className="dash-card">
-                  <span className="dash-section-title" style={{ margin: 0 }}>Bot filtered</span>
-                  <p className="mr-num" style={{ fontSize: 22, fontWeight: 700, margin: '6px 0 0' }}>
-                    {(quality.data.data.botFilteredRate * 100).toFixed(2)}%
+                  <span className="dash-section-title" style={{ margin: 0 }}>Write-buffer drops</span>
+                  <p className="mr-num" style={{ fontSize: 22, fontWeight: 700, margin: '6px 0 0', color: 'var(--mr-fg-4)' }}>
+                    Not tracked yet
                   </p>
+                  <span style={{ fontSize: 12, color: 'var(--mr-fg-4)' }}>No persisted counter exists for this yet.</span>
                 </div>
               </>
             )}
@@ -154,10 +161,12 @@ export default function EventsExplorerClient() {
               <div className="dash-card">
                 <span className="dash-section-title" style={{ margin: 0 }}>Purchase reconciliation</span>
                 <p className="mr-num" style={{ fontSize: 22, fontWeight: 700, margin: '6px 0 0' }}>
-                  {reconciliation.data.data.matched.toLocaleString()} matched
+                  {reconciliation.data.data.healthy ? 'Reconciled' : 'Discrepancy found'}
                 </p>
                 <span style={{ fontSize: 12, color: 'var(--mr-fg-4)' }}>
-                  {reconciliation.data.data.unmatched.toLocaleString()} unmatched
+                  {reconciliation.data.data.orders.count.toLocaleString()} orders ·{' '}
+                  {reconciliation.data.data.purchaseEvents.count.toLocaleString()} tracked purchases ·{' '}
+                  {reconciliation.data.data.attribution.count.toLocaleString()} attributed
                 </span>
               </div>
             )}
@@ -169,13 +178,13 @@ export default function EventsExplorerClient() {
           <div style={{ marginBottom: 20 }}>
             <BarChart
               data={terms.slice(0, 10)}
-              category={(t) => t.term}
-              series={[{ id: 'searches', label: 'Searches', y: (t) => t.searchCount }]}
+              category={(t) => t.queryText}
+              series={[{ id: 'searches', label: 'Searches', y: (t) => t.searches }]}
               title="Top search terms"
             />
           </div>
 
-          <DashboardTable<SearchTerm>
+          <DashboardTable<SearchRow>
             columns={SEARCH_COLUMNS}
             data={terms}
             emptyMessage="No searches in this range."

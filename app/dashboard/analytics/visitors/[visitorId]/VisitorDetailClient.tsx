@@ -106,13 +106,13 @@ export default function VisitorDetailClient({ visitorId }: { visitorId: string }
             <div className="dash-card">
               <span className="dash-section-title" style={{ margin: 0 }}>Sessions</span>
               <p className="mr-num" style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0' }}>
-                {detail.data.data.sessions.toLocaleString()}
+                {detail.data.data.sessionCount.toLocaleString()}
               </p>
             </div>
             <div className="dash-card">
               <span className="dash-section-title" style={{ margin: 0 }}>Pageviews</span>
               <p className="mr-num" style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0' }}>
-                {detail.data.data.pageviews.toLocaleString()}
+                {detail.data.data.pageviewCount.toLocaleString()}
               </p>
             </div>
             <div className="dash-card">
@@ -124,16 +124,16 @@ export default function VisitorDetailClient({ visitorId }: { visitorId: string }
             <div className="dash-card">
               <span className="dash-section-title" style={{ margin: 0 }}>Total revenue</span>
               <p className="mr-num" style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0' }}>
-                {egp(detail.data.data.totalRevenueMinor)}
+                {egp(detail.data.data.revenueMinor)}
               </p>
             </div>
           </div>
 
           <p style={{ fontSize: 13, color: 'var(--mr-fg-3)', marginBottom: 20 }}>
-            First seen {formatDate(detail.data.data.firstSeenAt)} · Last seen {formatDate(detail.data.data.lastSeenAt)} ·{' '}
-            {detail.data.data.isReturning ? 'Returning visitor' : 'New visitor'}
+            First seen {formatDate(detail.data.data.firstSeenAt)} · Last seen {formatDate(detail.data.data.lastSeenAt)}
+            {' · '}First channel: {detail.data.data.firstChannel}
             {detail.data.data.country && ` · ${detail.data.data.country}`}
-            {detail.data.data.device && ` · ${detail.data.data.device}`}
+            {detail.data.data.isBot && ' · Flagged as bot traffic'}
           </p>
 
           <p className="dash-section-title" style={{ marginBottom: 12 }}>Journey</p>
@@ -152,8 +152,9 @@ export default function VisitorDetailClient({ visitorId }: { visitorId: string }
                     style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--mr-dash-hair)' }}
                   >
                     <span style={{ fontSize: 13, color: 'var(--mr-fg-2)' }}>
-                      {event.type}
+                      {event.eventName}
                       {event.path && <span style={{ color: 'var(--mr-fg-4)' }}> — {event.path}</span>}
+                      {event.valueMinor != null && <span style={{ color: 'var(--mr-fg-4)' }}> · {egp(event.valueMinor)}</span>}
                     </span>
                     <span style={{ fontSize: 12, color: 'var(--mr-fg-4)', whiteSpace: 'nowrap' }}>
                       {formatDate(event.occurredAt)}

@@ -14,7 +14,13 @@ import {
 } from '@/lib/hooks/use-analytics';
 import type { AnalyticsRangeState } from '@/lib/hooks/use-analytics';
 import { egp } from '@/lib/api/analytics-insights';
-import type { AbandonedCheckout, AnalyticsFreshness, FunnelStage } from '@/lib/api/analytics-insights';
+import type {
+  AbandonedRow,
+  AnalyticsFreshness,
+  CartFunnelStep,
+  CheckoutFunnelStep,
+  PaymentMethodRow,
+} from '@/lib/api/analytics-insights';
 
 function RangeControl({
   range,
@@ -85,22 +91,54 @@ function ScreenEmpty({ message }: { message: string }) {
 }
 
 // `Funnel` is a self-contained dash-card (title, table toggle, and its own
-// "No data for this period." empty state via ChartFrame) — this just adapts
-// this API's `FunnelStage` (label/count/rateFromStart/dropOffRate) to the
-// chart's own `{ label, value }`, which derives rate-from-start and
+// "No data for this period." empty state via ChartFrame) — this adapts the
+// real `{ step, count }` step shape (`CartFunnelStep`/`CheckoutFunnelStep`)
+// to the chart's own `{ label, value }`, which derives rate-from-start and
 // drop-off itself from stage order.
-function FunnelCard({ title, stages }: { title: string; stages: FunnelStage[] }) {
-  return <Funnel stages={stages.map((s) => ({ label: s.label, value: s.count }))} title={title} />;
+function CartOrCheckoutFunnelCard({
+  title,
+  steps,
+}: {
+  title: string;
+  steps: (CartFunnelStep | CheckoutFunnelStep)[];
+}) {
+  return <Funnel stages={steps.map((s) => ({ label: s.step, value: s.count }))} title={title} />;
 }
 
-const ABANDONED_COLUMNS: Column<AbandonedCheckout>[] = [
-  { key: 'email', label: 'Email', render: (row) => row.email ?? '—' },
-  { key: 'lastStepReached', label: 'Last step' },
-  { key: 'cartValueMinor', label: 'Cart value', align: 'right', sortable: true, render: (row) => egp(row.cartValueMinor) },
+const ABANDONED_COLUMNS: Column<AbandonedRow>[] = [
   {
-    key: 'abandonedAt',
-    label: 'Abandoned',
-    render: (row) => new Date(row.abandonedAt).toLocaleString('en-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+    key: 'cartId',
+    label: 'Cart',
+    render: (row) => row.cartId ?? row.visitorId ?? row.userId ?? '—',
+  },
+  { key: 'stage', label: 'Stage reached' },
+  { key: 'valueMinor', label: 'Cart value', align: 'right', sortable: true, render: (row) => egp(row.valueMinor) },
+  { key: 'channel', label: 'Channel', render: (row) => row.channel ?? '—' },
+  { key: 'contactable', label: 'Contactable', render: (row) => (row.contactable ? 'Yes' : 'No') },
+  {
+    key: 'lastSeenAt',
+    label: 'Last seen',
+    render: (row) => new Date(row.lastSeenAt).toLocaleString('en-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+  },
+];
+
+/**
+ * `funnel/payments` is a per-payment-method breakdown, not a funnel — see
+ * lane-16 report. `successRate` is `null` for COD (pending-until-delivery
+ * makes a "success rate" meaningless over any dashboard window) and renders
+ * as "not applicable", never as 0%.
+ */
+const PAYMENT_COLUMNS: Column<PaymentMethodRow>[] = [
+  { key: 'method', label: 'Method' },
+  { key: 'gateway', label: 'Gateway' },
+  { key: 'attempts', label: 'Attempts', align: 'right', sortable: true },
+  { key: 'orders', label: 'Orders', align: 'right', sortable: true },
+  { key: 'amountMinor', label: 'Amount', align: 'right', sortable: true, render: (row) => egp(row.amountMinor) },
+  {
+    key: 'successRate',
+    label: 'Success rate',
+    align: 'right',
+    render: (row) => (row.successRate == null ? 'Not applicable' : `${(row.successRate * 100).toFixed(1)}%`),
   },
 ];
 
@@ -150,13 +188,20 @@ export default function CheckoutFunnelClient() {
           <div
             style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 16, margin: '20px 0' }}
           >
-            <FunnelCard title="Cart funnel" stages={cart.data?.data.stages ?? []} />
-            <FunnelCard title="Checkout funnel" stages={checkout.data?.data.stages ?? []} />
-            <FunnelCard title="Payments funnel" stages={payments.data?.data.stages ?? []} />
+            <CartOrCheckoutFunnelCard title="Cart funnel" steps={cart.data?.data ?? []} />
+            <CartOrCheckoutFunnelCard title="Checkout funnel" steps={checkout.data?.data ?? []} />
           </div>
 
-          <p className="dash-section-title" style={{ marginBottom: 12 }}>Abandoned checkouts</p>
-          <DashboardTable<AbandonedCheckout>
+          <p className="dash-section-title" style={{ marginBottom: 12 }}>Payment methods</p>
+          <DashboardTable<PaymentMethodRow>
+            columns={PAYMENT_COLUMNS}
+            data={payments.data?.data ?? []}
+            emptyMessage="No payment attempts in this range."
+            tableTraceId="PG-DASHBOARD-ANL-CHECKOUT::EL-TABLE-payment-methods"
+          />
+
+          <p className="dash-section-title" style={{ margin: '20px 0 12px' }}>Abandoned checkouts</p>
+          <DashboardTable<AbandonedRow>
             columns={ABANDONED_COLUMNS}
             data={abandoned.data?.data ?? []}
             emptyMessage="No abandoned checkouts in this range."

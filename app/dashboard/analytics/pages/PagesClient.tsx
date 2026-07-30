@@ -7,7 +7,7 @@ import type { Column } from '@/components/dashboard/DashboardTable';
 import { HorizontalBar } from '@/components/dashboard/charts';
 import { useAnalyticsRange, useTopPages, useEntryPages, useExitPages } from '@/lib/hooks/use-analytics';
 import type { AnalyticsRangeState } from '@/lib/hooks/use-analytics';
-import type { AnalyticsFreshness, PageMetric } from '@/lib/api/analytics-insights';
+import type { AnalyticsFreshness, PageRow } from '@/lib/api/analytics-insights';
 
 function RangeControl({
   range,
@@ -78,15 +78,18 @@ function ScreenEmpty({ message }: { message: string }) {
   );
 }
 
-const PAGE_COLUMNS: Column<PageMetric>[] = [
+const PAGE_COLUMNS: Column<PageRow>[] = [
   { key: 'path', label: 'Page' },
-  { key: 'views', label: 'Views', align: 'right', sortable: true },
+  { key: 'pageviews', label: 'Views', align: 'right', sortable: true },
   { key: 'uniqueVisitors', label: 'Unique visitors', align: 'right', sortable: true },
+  { key: 'entries', label: 'Entries', align: 'right', sortable: true },
+  { key: 'exits', label: 'Exits', align: 'right', sortable: true },
   {
-    key: 'rate',
-    label: 'Rate',
+    key: 'bounceRate',
+    label: 'Bounce rate',
     align: 'right',
-    render: (row) => (row.rate != null ? `${(row.rate * 100).toFixed(1)}%` : '—'),
+    sortable: true,
+    render: (row) => `${(row.bounceRate * 100).toFixed(1)}%`,
   },
 ];
 
@@ -140,7 +143,7 @@ export default function PagesClient() {
             <HorizontalBar
               data={topRows.slice(0, 10)}
               label={(p) => p.path}
-              value={(p) => p.views}
+              value={(p) => p.pageviews}
               title="Top pages by views"
             />
           </div>
@@ -166,7 +169,7 @@ export default function PagesClient() {
             </button>
           </div>
 
-          <DashboardTable<PageMetric>
+          <DashboardTable<PageRow>
             columns={PAGE_COLUMNS}
             data={tableForTab}
             emptyMessage="No data in this range."
