@@ -2294,6 +2294,12 @@
   height: 80px;
   flex-shrink: 0;
 }
+/* Task 17: a collaborator's personal avatar reuses the brand-logo tile's
+   sizing/frame but renders as a circle (matching the admin Profile card's
+   avatar), not the brand logo's rounded square. */
+.collab-avatar {
+  border-radius: 50%;
+}
 .collab-brand-logo-uploading {
   position: absolute;
   inset: 0;

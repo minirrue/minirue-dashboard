@@ -30,6 +30,9 @@ import {
 
 import type { ApiError } from '@/lib/api/client';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
+import { useQueryClient } from '@tanstack/react-query';
+import { useUser } from '@/lib/hooks/use-auth';
+import { apiUploadMyAvatar } from '@/lib/api/auth';
 
 
 
@@ -54,6 +57,18 @@ export default function CollabBrandClient() {
   const [logoPreviewOpen, setLogoPreviewOpen] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Task 17: a collaborator's PERSONAL avatar, separate from their brand's
+  // logo above. The logo is their brand identity (storefront-facing); the
+  // avatar is them (support-conversation-facing) — a collaborator ends up
+  // with both, reusing the same `/auth/me/avatar` upload path the admin
+  // Profile card uses (SettingsClient.tsx's handleAvatarChange).
+  const { data: user } = useUser();
+  const queryClient = useQueryClient();
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
+  const avatarFileRef = useRef<HTMLInputElement>(null);
 
 
 
@@ -174,6 +189,40 @@ export default function CollabBrandClient() {
 
 
 
+  const onAvatar = async (rawFile: File) => {
+
+    setAvatarError(null);
+
+    // Same crop step as the admin Profile card — avatars render as a circle,
+    // so the cropper opens 1:1, and the collaborator can still switch ratios.
+    const file = await cropImage(rawFile, { title: 'Crop your photo', initialAspect: 1 });
+
+    if (!file) return;
+
+    setAvatarUploading(true);
+
+    try {
+
+      const updated = await apiUploadMyAvatar(file);
+
+      queryClient.setQueryData(['auth', 'me'], updated);
+
+    } catch (err) {
+
+      const apiErr = err as ApiError;
+
+      setAvatarError(apiErr.message || 'Avatar upload failed');
+
+    } finally {
+
+      setAvatarUploading(false);
+
+    }
+
+  };
+
+
+
   if (loading)
     return <CollabLoadingBlock traceId="PG-DASHBOARD-COLLAB-003::EL-REGION-brand-loading" />;
 
@@ -225,6 +274,124 @@ export default function CollabBrandClient() {
         onSubmit={onSave}
         data-trace-id="PG-DASHBOARD-COLLAB-003::EL-FORM-brand-form"
       >
+
+        {/* Task 17: a collaborator's own avatar, distinct from the brand logo
+            below — the avatar is them (it follows them into support
+            conversations); the logo is their brand's storefront mark. */}
+        <p className="dash-label" data-trace-id="PG-DASHBOARD-COLLAB-003::EL-REGION-avatar-label">
+          Your avatar
+        </p>
+
+        <div
+          className="collab-brand-logo-row"
+          data-trace-id="PG-DASHBOARD-COLLAB-003::EL-REGION-avatar-display"
+        >
+
+          <div className="collab-brand-logo-wrap">
+
+            {user?.avatarUrl ? (
+
+              <EnlargeableImage
+
+                src={user.avatarUrl}
+
+                alt="Your avatar"
+
+                className="collab-brand-logo collab-avatar"
+
+                previewOpen={avatarPreviewOpen}
+
+                onOpenPreview={() => setAvatarPreviewOpen(true)}
+
+                onClosePreview={() => setAvatarPreviewOpen(false)}
+
+                traceId="PG-DASHBOARD-COLLAB-003::EL-BTN-enlarge-avatar"
+
+              />
+
+            ) : (
+
+              <div className="collab-brand-logo collab-avatar collab-brand-logo--placeholder" aria-hidden>
+
+                {displayName.charAt(0).toUpperCase() || '?'}
+
+              </div>
+
+            )}
+
+            {avatarUploading && (
+
+              <div
+                className="collab-brand-logo-uploading"
+                role="status"
+                aria-label="Uploading avatar"
+                data-trace-id="PG-DASHBOARD-COLLAB-003::EL-REGION-avatar-uploading"
+              >
+                <span aria-hidden="true" className="collab-brand-logo-spinner" />
+              </div>
+
+            )}
+
+          </div>
+
+          <div>
+
+            <button
+
+              type="button"
+
+              className="dash-btn-secondary"
+
+              onClick={() => avatarFileRef.current?.click()}
+
+              disabled={avatarUploading}
+
+              data-trace-id="PG-DASHBOARD-COLLAB-003::EL-BTN-upload-avatar"
+
+            >
+
+              {avatarUploading ? 'Uploading…' : user?.avatarUrl ? 'Exchange avatar' : 'Upload avatar'}
+
+            </button>
+
+            <input
+
+              ref={avatarFileRef}
+
+              type="file"
+
+              accept="image/*"
+
+              hidden
+
+              onChange={(e) => {
+
+                const f = e.target.files?.[0];
+
+                if (f) void onAvatar(f);
+
+              }}
+
+              data-trace-id="PG-DASHBOARD-COLLAB-003::EL-INPUT-avatar-file"
+
+            />
+
+          </div>
+
+        </div>
+
+        {avatarError ? (
+          <p
+            className="dash-inline-error"
+            data-trace-id="PG-DASHBOARD-COLLAB-003::EL-REGION-avatar-inline-error"
+          >
+            {avatarError}
+          </p>
+        ) : null}
+
+        <p className="dash-label" data-trace-id="PG-DASHBOARD-COLLAB-003::EL-REGION-brand-logo-label">
+          Brand logo
+        </p>
 
         <div
           className="collab-brand-logo-row"

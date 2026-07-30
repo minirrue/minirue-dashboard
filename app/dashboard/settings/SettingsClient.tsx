@@ -7,13 +7,19 @@ import type { ApiError } from '@/lib/api/client';
 import { useUser } from '@/lib/hooks/use-auth';
 import { apiUpdateMyProfile, apiUploadMyAvatar } from '@/lib/api/auth';
 import { useQueryClient } from '@tanstack/react-query';
+import { Role } from '@/lib/auth/role';
 import RoleBadge from '@/components/dashboard/RoleBadge';
 import DataResetPanel from '@/components/dashboard/DataResetPanel';
 import SuperAdminPanel from '@/components/dashboard/SuperAdminPanel';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 
-function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => void }) {
+/**
+ * Exported (not just used locally) so the profile-by-role tests can render it
+ * directly with a mocked `useUser()` rather than standing up the whole
+ * Settings page.
+ */
+export function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => void }) {
   const { data: user, isLoading } = useUser();
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
@@ -95,48 +101,56 @@ function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => void }) {
     );
   }
 
+  // Super Admin is a platform-level account, not a store persona: it has no
+  // face to put on a support message and no store to put a logo on. The name
+  // field and RoleBadge stay for every role (a Super Admin still needs to set
+  // their own name) — only the avatar and brand-logo tiles are role-gated.
+  const isSuperAdmin = user.role === Role.SUPERADMIN;
+
   return (
     <div className="dash-form-card" style={{ marginBottom: 20 }}>
       <h2 className="dash-section-title" style={{ marginBottom: 16 }}>Profile</h2>
       <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-          <button
-            type="button"
-            className="dash-enlargeable-image-btn"
-            onClick={() => avatarInputRef.current?.click()}
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: '50%',
-              overflow: 'hidden',
-              border: '1px solid var(--mr-dash-hair)',
-              background: 'var(--mr-dash-sub)',
-              padding: 0,
-              cursor: 'pointer',
-            }}
-            title="Change avatar"
-          >
-            {user.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} style={{ margin: '20px auto' }}>
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            )}
-          </button>
-          <input
-            ref={avatarInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            style={{ display: 'none' }}
-            onChange={handleAvatarChange}
-          />
-          <span className="dash-help-text" style={{ fontSize: 11 }}>
-            {uploadingAvatar ? 'Uploading…' : 'Tap to change'}
-          </span>
-        </div>
+        {!isSuperAdmin && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              className="dash-enlargeable-image-btn"
+              onClick={() => avatarInputRef.current?.click()}
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: '50%',
+                overflow: 'hidden',
+                border: '1px solid var(--mr-dash-hair)',
+                background: 'var(--mr-dash-sub)',
+                padding: 0,
+                cursor: 'pointer',
+              }}
+              title="Change avatar"
+            >
+              {user.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} style={{ margin: '20px auto' }}>
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+              )}
+            </button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              style={{ display: 'none' }}
+              onChange={handleAvatarChange}
+            />
+            <span className="dash-help-text" style={{ fontSize: 11 }}>
+              {uploadingAvatar ? 'Uploading…' : 'Tap to change'}
+            </span>
+          </div>
+        )}
 
         <div style={{ flex: '1 1 200px', minWidth: 0, maxWidth: '100%' }}>
           <div className="dash-field" style={{ marginBottom: 12 }}>
@@ -164,41 +178,49 @@ function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => void }) {
           <RoleBadge role={user.role} />
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-          <button
-            type="button"
-            className="dash-enlargeable-image-btn"
-            onClick={() => logoInputRef.current?.click()}
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: 'var(--mr-radius-sm)',
-              overflow: 'hidden',
-              border: '1px solid var(--mr-dash-hair)',
-              background: 'var(--mr-dash-sub)',
-              padding: 0,
-              cursor: 'pointer',
-            }}
-            title="Change brand logo"
-          >
-            {/* Logo preview intentionally left blank here — form below shows the live value */}
-            <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} style={{ margin: '20px auto' }}>
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <path d="M21 15l-5-5L5 21" />
-            </svg>
-          </button>
-          <input
-            ref={logoInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/svg+xml,image/webp"
-            style={{ display: 'none' }}
-            onChange={handleLogoChange}
-          />
-          <span className="dash-help-text" style={{ fontSize: 11 }}>
-            {uploadingLogo ? 'Uploading…' : 'Brand logo'}
-          </span>
-        </div>
+        {/* This tile edits the STORE's logo (StoreSettings.brand.logoUrl below),
+            not a personal picture — that is precisely why it has no business
+            on a platform-level Super Admin account, which belongs to no
+            single store. Collaborators get their own equivalent (their own
+            brand's logo) in CollabBrandClient.tsx, alongside a personal
+            avatar of their own. */}
+        {!isSuperAdmin && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              className="dash-enlargeable-image-btn"
+              onClick={() => logoInputRef.current?.click()}
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: 'var(--mr-radius-sm)',
+                overflow: 'hidden',
+                border: '1px solid var(--mr-dash-hair)',
+                background: 'var(--mr-dash-sub)',
+                padding: 0,
+                cursor: 'pointer',
+              }}
+              title="Change brand logo"
+            >
+              {/* Logo preview intentionally left blank here — form below shows the live value */}
+              <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} style={{ margin: '20px auto' }}>
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <path d="M21 15l-5-5L5 21" />
+              </svg>
+            </button>
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/svg+xml,image/webp"
+              style={{ display: 'none' }}
+              onChange={handleLogoChange}
+            />
+            <span className="dash-help-text" style={{ fontSize: 11 }}>
+              {uploadingLogo ? 'Uploading…' : 'Brand logo'}
+            </span>
+          </div>
+        )}
       </div>
       {avatarError && <p className="dash-inline-error">{avatarError}</p>}
     </div>
