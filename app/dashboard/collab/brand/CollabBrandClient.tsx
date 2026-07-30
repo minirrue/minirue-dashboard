@@ -71,13 +71,41 @@ export default function CollabBrandClient() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
   const avatarFileRef = useRef<HTMLInputElement>(null);
-  // Task FF (2026-07-30): cropped bytes for an avatar/logo just uploaded THIS
-  // session, so each tile renders locally instead of a guaranteed-cold-miss
-  // remote fetch — see UploadPreviewImage.
+  // Task FF (2026-07-30), hardened 2026-07-31: cropped bytes for an
+  // avatar/logo just uploaded THIS session, so each tile renders locally
+  // instead of a guaranteed-cold-miss remote fetch — see UploadPreviewImage.
+  // `uploadedAvatarUrl`/`uploadedLogoUrl` are the URLs OUR OWN uploads just
+  // produced, tracked in state as a fallback `src` — see ProfileForm.tsx
+  // (storefront) for the component test that proved gating render solely on
+  // the query-derived `user`/`brand` value can, if that value lags even one
+  // render behind the upload, discard local bytes and show the generic
+  // icon/placeholder over a photo that really did arrive.
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
   const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
+  const [uploadedAvatarUrl, setUploadedAvatarUrl] = useState<string | null>(null);
+  const [uploadedLogoUrl, setUploadedLogoUrl] = useState<string | null>(null);
 
 
+
+  // Only clear on a CONFLICTING truthy value — never merely because the
+  // query-derived value hasn't caught up to ours yet, which would silently
+  // reproduce the "upload succeeded, still shows the placeholder" bug.
+  useEffect(() => {
+    if (uploadedAvatarUrl !== null && user?.avatarUrl && user.avatarUrl !== uploadedAvatarUrl) {
+      setPendingAvatarFile(null);
+      setUploadedAvatarUrl(null);
+    }
+  }, [user?.avatarUrl, uploadedAvatarUrl]);
+
+  useEffect(() => {
+    if (uploadedLogoUrl !== null && brand?.logoUrl && brand.logoUrl !== uploadedLogoUrl) {
+      setPendingLogoFile(null);
+      setUploadedLogoUrl(null);
+    }
+  }, [brand?.logoUrl, uploadedLogoUrl]);
+
+  const avatarSrc = user?.avatarUrl ?? uploadedAvatarUrl;
+  const logoSrc = brand?.logoUrl ?? uploadedLogoUrl;
 
   useEffect(() => {
 
@@ -180,6 +208,8 @@ export default function CollabBrandClient() {
 
       setBrand(updated);
 
+      setUploadedLogoUrl(updated.logoUrl ?? null);
+
       setPendingLogoFile(file);
 
     } catch (err) {
@@ -215,6 +245,8 @@ export default function CollabBrandClient() {
       const updated = await apiUploadMyAvatar(file);
 
       queryClient.setQueryData(['auth', 'me'], updated);
+
+      setUploadedAvatarUrl(updated.avatarUrl ?? null);
 
       setPendingAvatarFile(file);
 
@@ -300,11 +332,11 @@ export default function CollabBrandClient() {
 
           <div className="collab-brand-logo-wrap">
 
-            {user?.avatarUrl ? (
+            {avatarSrc ? (
 
               <EnlargeableImage
 
-                src={user.avatarUrl}
+                src={avatarSrc}
 
                 localFile={pendingAvatarFile}
 
@@ -363,7 +395,7 @@ export default function CollabBrandClient() {
 
             >
 
-              {avatarUploading ? 'Uploading…' : user?.avatarUrl ? 'Exchange avatar' : 'Upload avatar'}
+              {avatarUploading ? 'Uploading…' : avatarSrc ? 'Exchange avatar' : 'Upload avatar'}
 
             </button>
 
@@ -413,11 +445,11 @@ export default function CollabBrandClient() {
 
           <div className="collab-brand-logo-wrap">
 
-            {brand?.logoUrl ? (
+            {logoSrc ? (
 
               <EnlargeableImage
 
-                src={brand.logoUrl}
+                src={logoSrc}
 
                 localFile={pendingLogoFile}
 
@@ -439,7 +471,7 @@ export default function CollabBrandClient() {
 
               <div className="collab-brand-logo collab-brand-logo--placeholder" aria-hidden>
 
-                {displayName.charAt(0).toUpperCase() || '?'}
+                <GenericAvatarIcon size="55%" />
 
               </div>
 
@@ -476,7 +508,7 @@ export default function CollabBrandClient() {
 
             >
 
-              {logoUploading ? 'Uploading…' : brand?.logoUrl ? 'Exchange logo' : 'Upload logo'}
+              {logoUploading ? 'Uploading…' : logoSrc ? 'Exchange logo' : 'Upload logo'}
 
             </button>
 

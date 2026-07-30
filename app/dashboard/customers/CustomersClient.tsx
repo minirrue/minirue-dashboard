@@ -33,11 +33,24 @@ function TierBadge({ tier }: { tier: TierLevel }) {
   );
 }
 
-function displayName(row: CustomerListItem): string {
-  if (row.displayName) return row.displayName;
+/**
+ * First name then last name — the owner explicitly asked for the real name
+ * here, not the customer's chosen display name (a row was showing just
+ * "Youssef" for a customer whose full name is "Youssef Abdelrahman", because
+ * this used to prefer `displayName`). Falls back to `displayName`, then a
+ * truncated id, only when both real names are blank.
+ */
+function fullName(row: Pick<CustomerListItem, 'firstName' | 'lastName' | 'displayName' | 'customerId'>): string {
   const full = `${row.firstName} ${row.lastName}`.trim();
-  return full || row.customerId.slice(0, 8);
+  if (full) return full;
+  if (row.displayName) return row.displayName;
+  return row.customerId.slice(0, 8);
 }
+
+/** Row shape augmented with the precomputed sort/search key so DashboardTable's
+ * generic `row[col.key]` sort can order by the same full name being rendered —
+ * `displayName` alone sorted almost nothing, since most rows have it unset. */
+type CustomerRow = CustomerListItem & { _fullName: string };
 
 function SkeletonRows() {
   return (
@@ -79,14 +92,14 @@ const TIER_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'PLATINUM', label: 'Platinum' },
 ];
 
-const COLUMNS: Column<CustomerListItem>[] = [
+const COLUMNS: Column<CustomerRow>[] = [
   {
-    key: 'displayName',
+    key: '_fullName',
     label: 'Name',
     sortable: true,
     render: (row) => (
       <Link href={`/customers/${row.customerId}`} className="dash-link">
-        {displayName(row)}
+        {row._fullName}
       </Link>
     ),
   },
@@ -155,13 +168,27 @@ export default function CustomersClient() {
     load(tierFilter ? (tierFilter as TierLevel) : undefined);
   }, [load, tierFilter]);
 
+  // First and last name are matched individually — not just as the combined
+  // "First Last" string — so a bare surname search ("Abdelrahman") finds a
+  // customer even when it's the only word typed. displayName is still checked
+  // too, since an admin may know the customer only by their chosen nickname.
+  const withFullName: CustomerRow[] = allCustomers.map((c) => ({
+    ...c,
+    _fullName: fullName(c),
+  }));
+
   const customers = search.trim()
-    ? allCustomers.filter((c) => {
-        const name = displayName(c).toLowerCase();
+    ? withFullName.filter((c) => {
         const q = search.trim().toLowerCase();
-        return name.includes(q) || c.customerId.includes(q);
+        return (
+          c.firstName.toLowerCase().includes(q) ||
+          c.lastName.toLowerCase().includes(q) ||
+          (c.displayName ?? '').toLowerCase().includes(q) ||
+          c._fullName.toLowerCase().includes(q) ||
+          c.customerId.includes(q)
+        );
       })
-    : allCustomers;
+    : withFullName;
 
   return (
     <>
@@ -204,7 +231,7 @@ export default function CustomersClient() {
           </button>
         </div>
       ) : (
-        <DashboardTable<CustomerListItem>
+        <DashboardTable<CustomerRow>
           columns={COLUMNS}
           data={customers}
           pageSize={25}

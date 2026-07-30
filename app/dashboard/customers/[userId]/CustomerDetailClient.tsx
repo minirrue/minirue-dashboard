@@ -35,6 +35,8 @@ import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import FulfillmentControl from '@/components/dashboard/FulfillmentControl';
 import { formatOrderRef } from '@/lib/orders/order-format';
+import { EnlargeableImage } from '@/components/dashboard/ImagePreviewModal';
+import { GenericAvatarIcon } from '@/components/GenericAvatarIcon';
 
 const TIER_OPTIONS: TierLevel[] = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM'];
 const ADDRESS_LABELS: CustomerAddressInput['label'][] = ['HOME', 'WORK', 'OTHER'];
@@ -116,6 +118,10 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Tap-to-preview state for the customer's uploaded photo (owner request
+  // 2026-07-30) — same pattern as the collaborator brand/avatar tiles.
+  const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
 
   // Account status (block / unblock)
   const [statusBusy, setStatusBusy] = useState(false);
@@ -508,6 +514,37 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
               <h2 className="dash-section-title" style={{ marginBottom: 16 }}>
                 Profile
               </h2>
+              {/* Real photo when the customer uploaded one, tap-to-enlarge; a
+                  generic silhouette otherwise — never an initial letter (owner
+                  request 2026-07-30, raised repeatedly about letter avatars
+                  elsewhere in the app). Reuses the same circular tile classes
+                  and EnlargeableImage/GenericAvatarIcon components already
+                  used for the collaborator avatar/brand-logo tiles. */}
+              <div
+                className="collab-brand-logo-wrap"
+                style={{ marginBottom: 16 }}
+                data-trace-id="PG-DASHBOARD-ACCT-002::EL-REGION-customer-avatar"
+              >
+                {customer.avatarUrl ? (
+                  <EnlargeableImage
+                    src={customer.avatarUrl}
+                    alt={`${displayName(customer)} photo`}
+                    className="collab-brand-logo collab-avatar"
+                    previewOpen={avatarPreviewOpen}
+                    onOpenPreview={() => setAvatarPreviewOpen(true)}
+                    onClosePreview={() => setAvatarPreviewOpen(false)}
+                    traceId="PG-DASHBOARD-ACCT-002::EL-BTN-enlarge-customer-avatar"
+                  />
+                ) : (
+                  <div
+                    className="collab-brand-logo collab-avatar collab-brand-logo--placeholder"
+                    aria-hidden
+                    data-testid="customer-avatar-generic"
+                  >
+                    <GenericAvatarIcon size="55%" />
+                  </div>
+                )}
+              </div>
               <p style={{ margin: '6px 0', fontSize: 14, color: 'var(--mr-fg-2)' }}>
                 <strong>Customer ID:</strong> {customer.customerId}
               </p>
