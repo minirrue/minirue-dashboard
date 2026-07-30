@@ -37,15 +37,38 @@ export interface ConversationContact {
 
 export type CustomerPresence = 'ONLINE' | 'IDLE' | 'OFFLINE'
 
+/**
+ * Pane 1 — one row per customer, from `GET /support/people`. Unread and
+ * "how many rooms" are rolled up across every (non-archived) room that
+ * person has, which is the whole point of a people rail: unlimited rooms
+ * per person no longer means unlimited rows in the inbox (W2.1).
+ */
+export interface Person {
+  id: string
+  name: string
+  avatarUrl?: string | null
+  /** Friendly last-activity stamp, already formatted by the caller (time
+   * today, short date otherwise — see `relativeStamp` in the inbox). */
+  time: string
+  /** Rolled up across every one of this person's rooms. */
+  unread: number
+  presence: CustomerPresence
+  /** Non-archived room count, shown in the rooms pane header ("Youssef · 3
+   * chats"). */
+  chatCount: number
+}
+
 export interface Conversation {
   id: string
   name: string
   /** Real latest-message preview (already truncated). Empty string when the
    * thread has no messages yet — the row then shows a muted placeholder. */
   preview: string
+  /** What the rooms-pane row headlines with: the product name ("About
+   * No.1") for an ITEM room, otherwise the latest message preview. */
+  subject: string
   time: string
   unread: number
-  avatar: string
   /** Three-state live presence of the customer — drives the coloured avatar
    * dot on the row and in the thread header, plus the header label. */
   presence: CustomerPresence
@@ -53,39 +76,63 @@ export interface Conversation {
    * enquiry (GENERAL). Shown as a small label in the list row. */
   kind: 'GENERAL' | 'ITEM'
   /** The customer's account id, when they're a registered customer (not a
-   * guest). Drives the Guest/Customer badge and the tap-through profile link. */
+   * guest). Drives the tap-through profile link. */
   customerId?: string
-  /** Full contact info the customer provided (guest checkout details, or
-   * whatever is known for a logged-in customer). Revealed on tap in the
+  /** Full contact info the customer provided. Revealed on tap in the
    * thread header. Blank fields are omitted from display. */
   contact?: ConversationContact
-  /** The brand the shopper addressed, or undefined for MiniRue direct. Shown as
-   * a chip so a mixed inbox is readable at a glance. */
+  /** The brand the shopper addressed, or undefined for MiniRue direct. */
   brandName?: string
+  /** The collaborator this room is tagged to, or undefined for MiniRue
+   * direct — drives the watch-only composer gate (a team member may read
+   * any desk but must not post as a partner). */
+  collaboratorId?: string
   /** Drives the row's closed treatment and the "which thread am I replying to"
    * banner — a closed thread refuses new messages server-side. */
   status?: 'OPEN' | 'PENDING' | 'RESOLVED' | 'CLOSED'
+  /** Set once the room is archived (moved to trash); drives which of the
+   * rooms-pane's three groups (live / history / archived) it renders in. */
+  archivedAt?: string | null
 }
 
 export interface DashChatViewProps {
+  /** Pane 1 — from `GET /support/people`. */
+  people: Person[]
+  activePersonId: string | null
+  onSelectPerson: (id: string) => void
+  /** Search + status/desk filters for the people list, rendered directly
+   * above it. The caller wraps these in `.dash-filters`. */
+  peopleControls?: ReactNode
+
+  /** Pane 2 — this person's rooms, from `GET /support/conversations?customerId=`. */
   conversations: Conversation[]
   activeId: string | null
   onSelect: (id: string) => void
+  /** Archives / restores a room. Omit either to hide that action (e.g. a
+   * read-only viewer). */
+  onArchive?: (id: string) => void
+  onRestore?: (id: string) => void
+  /** The id currently mid-archive/restore, so its row can show a disabled
+   * state instead of double-firing on a slow connection. */
+  archiveActionPendingId?: string | null
+
+  /** Pane 3 — thread (unchanged). */
   messages: Message[]
   onSend: (text: string, attachments?: MessageAttachment[]) => void
-  /** Filters for the conversation list, rendered directly above it. */
-  railControls?: ReactNode
   /** Per-conversation actions rendered in the thread header (right side), only
-   * while a conversation is open. Used for the admin "Merge into…" action. */
+   * while a conversation is open. */
   threadActions?: ReactNode
   /** Uploads a picked/pasted image and resolves to its hosted URL. Omit to
    * hide attachment controls entirely (e.g. a read-only view). */
   onUploadImage?: (file: File) => Promise<string>
-  /** Refetches the conversation list (and the open thread, if any). Omit to
-   * hide the refresh button entirely. */
+  /** Refetches the people rail, this person's rooms, and the open thread. */
   onRefresh?: () => void
   /** Shows a spinning refresh icon while a manual refresh is in flight. */
   refreshing?: boolean
+  /** Disables the composer with `composerDisabledReason` in its place —
+   * watching a partner's desk you may read but not post to. */
+  composerDisabled?: boolean
+  composerDisabledReason?: ReactNode
 }
 
 /** Three-state customer presence: dot colour + human label. */
@@ -99,6 +146,54 @@ interface PendingAttachment {
   previewUrl: string
   url: string | null
   uploading: boolean
+}
+
+/** A room's coarse bucket in the rooms pane: live work first, then history,
+ * then a collapsed archived group. */
+type RoomGroup = 'live' | 'history' | 'archived'
+
+function roomGroupOf(c: Conversation): RoomGroup {
+  if (c.archivedAt) return 'archived'
+  if (c.status === 'RESOLVED' || c.status === 'CLOSED') return 'history'
+  return 'live'
+}
+
+function roomStatusLabel(status: Conversation['status']): string {
+  if (status === 'RESOLVED') return '✓ Resolved'
+  if (status === 'CLOSED') return 'Closed'
+  if (status === 'PENDING') return 'Pending'
+  return 'Open'
+}
+
+/** Real photo when the customer has one; a generic profile glyph otherwise.
+ * There was never an image path here before (defect 3) — initials were the
+ * only rendering, guest or not. Sized entirely by its circular parent
+ * (`.mrc-avatar` / `.mrc-id-avatar` / `.mrc-msg-avatar`), so it drops into
+ * any of the three existing avatar slots unchanged. */
+function AvatarContent({ url, label }: { url?: string | null; label: string }) {
+  if (url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={url} alt={label} className="mrc-avatar-photo" />
+    )
+  }
+  return (
+    <svg
+      data-testid="avatar-generic"
+      className="mrc-avatar-generic"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      role="img"
+      aria-label={`${label} — no photo`}
+    >
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
+    </svg>
+  )
 }
 
 const STYLES = `
@@ -127,8 +222,16 @@ const STYLES = `
   background: var(--mr-dash-surface);
   font-family: var(--mr-font-ui);
 }
+/* Below 1024px the three panes become three full-width steps (people →
+   rooms → thread) with back arrows, rather than three squeezed columns —
+   see DashChatView's tablet/step state. */
+.mrc-shell[data-stepped="true"] .mrc-rail,
+.mrc-shell[data-stepped="true"] .mrc-rooms {
+  width: 100%;
+  border-right: 0;
+}
 
-/* ── Conversation rail ── */
+/* ── People rail (pane 1) ── */
 .mrc-rail {
   display: flex;
   flex-direction: column;
@@ -236,11 +339,7 @@ const STYLES = `
   align-items: center;
   gap: 12px;
   width: 100%;
-  /* min-height, not a locked height: when the chips wrap to a second line the
-     row grows to fit them. It used to be pinned at exactly 80px with
-     overflow: hidden, which is what turned an overflowing chip into an
-     invisible one. */
-  min-height: 80px;
+  min-height: 68px;
   padding: 10px 18px;
   background: transparent;
   border: 0;
@@ -266,6 +365,7 @@ const STYLES = `
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   font-family: var(--mr-font-serif);
   font-size: 15px;
   background: var(--mr-cream-300);
@@ -276,6 +376,8 @@ const STYLES = `
   background: var(--mr-gold-500);
   color: var(--mr-cream-100);
 }
+.mrc-avatar-photo { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+.mrc-avatar-generic { width: 55%; height: 55%; }
 .mrc-dot {
   position: absolute;
   bottom: -1px;
@@ -321,105 +423,6 @@ const STYLES = `
 }
 .mrc-row[data-unread="true"] .mrc-row-preview { color: var(--mr-ink-700); font-weight: 500; }
 .mrc-row-preview[data-empty="true"] { color: var(--mr-ink-400); font-style: italic; }
-/* Four chips can be present at once — GENERAL/ITEM + Guest/Customer + a brand
-   name + RESOLVED/CLOSED. This was a nowrap flex row with no width cap whose
-   children were all flex-shrink: 0, so their combined width could exceed the
-   row's content box and the last chip (RESOLVED) was pushed past the row's
-   right padding and clipped by .mrc-row's overflow: hidden. Wrapping and
-   min-width: 0 give them somewhere to go; the row's own height rule below
-   lets it grow to match rather than hiding the second line. */
-.mrc-row-chips {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  row-gap: 4px;
-  min-width: 0;
-}
-.mrc-replying {
-  padding: 7px 14px;
-  font-family: var(--mr-font-label);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--mr-ink-500);
-  background: var(--mr-dash-sub);
-  border-bottom: 1px solid var(--mr-dash-hair);
-}
-.mrc-replying strong { color: var(--mr-ink-900); font-weight: 600; }
-.mrc-replying[data-closed="true"] {
-  color: var(--mr-cream-100);
-  background: var(--mr-ink-700);
-}
-/* The brand chip is the only one carrying arbitrary-length text, so it is the
-   one that gives way — a long partner name ellipsises rather than pushing the
-   status chip out of the row. The status chip never shrinks: it is the thing
-   an admin is scanning for. */
-.mrc-closed { flex-shrink: 0; }
-.mrc-brand {
-  flex-shrink: 1;
-  min-width: 0;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.mrc-brand {
-  font-family: var(--mr-font-label);
-  font-size: 8.5px;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: 2px 6px;
-  border-radius: var(--mr-radius-sm);
-  line-height: 1.3;
-  color: var(--mr-ink-500);
-  background: transparent;
-  border: 1px dashed var(--mr-dash-hair);
-}
-.mrc-closed {
-  font-family: var(--mr-font-label);
-  font-size: 8.5px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: 2px 6px;
-  border-radius: var(--mr-radius-sm);
-  line-height: 1.3;
-  color: var(--mr-ink-100, #fff);
-  background: var(--mr-ink-700);
-}
-/* A resolved or closed row is history: dimmed so live work stands out. */
-.mrc-row[data-closed="true"] { opacity: 0.62; }
-.mrc-row[data-closed="true"]:hover { opacity: 1; }
-/* New vs seen: an unread row gets a gold spine, not just bolder text. */
-.mrc-row[data-unread="true"] { box-shadow: inset 3px 0 0 0 var(--mr-gold-500); }
-.mrc-kind, .mrc-acct {
-  flex-shrink: 0;
-  font-family: var(--mr-font-label);
-  font-size: 8.5px;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: 2px 6px;
-  border-radius: var(--mr-radius-sm);
-  line-height: 1.3;
-}
-.mrc-kind {
-  color: var(--mr-ink-400);
-  background: var(--mr-dash-sub);
-  border: 1px solid var(--mr-dash-hair);
-}
-.mrc-acct[data-type="customer"] {
-  color: var(--mr-gold-700);
-  background: var(--mr-gold-100);
-  border: 1px solid var(--mr-gold-200);
-}
-.mrc-acct[data-type="guest"] {
-  color: var(--mr-ink-500);
-  background: transparent;
-  border: 1px solid var(--mr-dash-hair);
-}
 .mrc-badge {
   flex-shrink: 0;
   min-width: 18px;
@@ -436,7 +439,7 @@ const STYLES = `
   justify-content: center;
 }
 
-.mrc-rail-empty, .mrc-list-empty {
+.mrc-rail-empty, .mrc-list-empty, .mrc-rooms-empty {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -469,6 +472,134 @@ const STYLES = `
   line-height: 1.5;
   max-width: 30ch;
 }
+
+/* ── Rooms pane (pane 2) — one person's rooms: live, then history, then a
+   collapsed archived group. No avatar here — the whole pane is one person,
+   already identified in its header. ── */
+.mrc-rooms {
+  display: flex;
+  flex-direction: column;
+  width: 296px;
+  flex-shrink: 0;
+  min-height: 0;
+  background: var(--mr-dash-surface);
+  border-right: 1px solid var(--mr-dash-hair);
+}
+.mrc-rooms-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid var(--mr-dash-hair);
+  flex-shrink: 0;
+}
+.mrc-rooms-title {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mr-font-serif);
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--mr-ink-900);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mrc-rooms-count {
+  flex-shrink: 0;
+  font-family: var(--mr-font-label);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mr-ink-400);
+}
+.mrc-rooms-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.mrc-room-row {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 18px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--mr-dash-hair);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--mr-dur-fast) var(--mr-ease-snappy);
+}
+.mrc-room-row:hover { background: var(--mr-dash-sub); }
+.mrc-room-row[data-active="true"] { background: var(--mr-cream-200); }
+.mrc-room-row[data-unread="true"] { box-shadow: inset 3px 0 0 0 var(--mr-gold-500); }
+.mrc-room-row[data-archived="true"] { opacity: 0.66; }
+.mrc-room-row[data-archived="true"]:hover { opacity: 1; }
+.mrc-room-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.mrc-room-subject {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--mr-ink-900);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mrc-room-row[data-unread="true"] .mrc-room-subject { font-weight: 700; }
+.mrc-room-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--mr-ink-500);
+}
+.mrc-room-status { font-weight: 600; }
+.mrc-room-status[data-tone="live"] { color: var(--mr-gold-700); }
+.mrc-room-status[data-tone="done"] { color: var(--mr-ink-500); }
+.mrc-room-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.mrc-room-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  color: var(--mr-ink-400);
+  cursor: pointer;
+  transition: background var(--mr-dur-fast) var(--mr-ease-snappy), color var(--mr-dur-fast) var(--mr-ease-snappy);
+}
+.mrc-room-action-btn:hover { background: var(--mr-dash-hair); color: var(--mr-ink-700); }
+.mrc-room-action-btn:disabled { opacity: 0.5; cursor: default; }
+.mrc-room-divider { height: 1px; background: var(--mr-dash-hair); margin: 0; }
+.mrc-room-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 11px 18px;
+  border: 0;
+  border-top: 1px solid var(--mr-dash-hair);
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--mr-font-label);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mr-ink-500);
+}
+.mrc-room-group-toggle:hover { background: var(--mr-dash-sub); }
+.mrc-room-group-toggle svg { transition: transform var(--mr-dur-fast) var(--mr-ease-out); flex-shrink: 0; }
+.mrc-room-group-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
 
 /* ── Thread pane ── */
 .mrc-thread {
@@ -521,7 +652,7 @@ const STYLES = `
   font-size: 11px;
 }
 .mrc-back {
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   width: 34px;
@@ -560,6 +691,7 @@ const STYLES = `
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   font-family: var(--mr-font-serif);
   font-size: 15px;
   background: var(--mr-gold-500);
@@ -592,6 +724,22 @@ const STYLES = `
 .mrc-head-slot { margin-left: auto; flex-shrink: 0; }
 .mrc-head-actions { margin-left: auto; flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
 .mrc-head-actions + .mrc-head-slot { margin-left: 10px; }
+
+.mrc-replying {
+  padding: 7px 14px;
+  font-family: var(--mr-font-label);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mr-ink-500);
+  background: var(--mr-dash-sub);
+  border-bottom: 1px solid var(--mr-dash-hair);
+}
+.mrc-replying strong { color: var(--mr-ink-900); font-weight: 600; }
+.mrc-replying[data-closed="true"] {
+  color: var(--mr-cream-100);
+  background: var(--mr-ink-700);
+}
 
 .mrc-contact {
   flex-shrink: 0;
@@ -689,6 +837,7 @@ const STYLES = `
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   font-family: var(--mr-font-serif);
   font-size: 11px;
   background: var(--mr-cream-300);
@@ -884,10 +1033,22 @@ const STYLES = `
 .mrc-send[data-ready="true"]:hover { transform: scale(1.08); }
 .mrc-send[data-ready="true"]:active { transform: scale(var(--mr-scale-press)); }
 
-/* ── Inbox filters, above the list they filter, at every width ──
-   These used to sit in the THREAD header on desktop — controls for the whole
-   inbox stacked above a single conversation — and only moved here on mobile.
-   Mobile had it right. */
+/* Watch-only desk: the team may read but not post — see canPostOnChannel on
+   the server. Replaces the composer entirely rather than just disabling the
+   send button, so the reason is never missed. */
+.mrc-composer-disabled {
+  flex-shrink: 0;
+  padding: 14px 22px;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--mr-dash-hair);
+  background: var(--mr-dash-sub);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--mr-ink-500);
+  text-align: center;
+}
+
+/* ── Inbox filters, above the list they filter, at every width ── */
 .mrc-rail-controls {
   flex-shrink: 0;
   padding: 12px 18px;
@@ -895,15 +1056,7 @@ const STYLES = `
   background: var(--mr-dash-sub);
 }
 
-/* ── Small viewport: narrower rail (height is handled by the flex fill) ── */
-@media (max-width: 760px) {
-  .mrc-rail { width: 288px; }
-}
-
-/* ── True mobile: single pane, edge-to-edge chat app ── */
 @media (max-width: 640px) {
-  .mrc-rail { width: 100%; border-right: 0; }
-  .mrc-back { display: flex; }
   .mrc-bubble-row { max-width: 84%; }
   .mrc-thread { animation: mrc-slide-in 0.32s var(--mr-ease-out) both; }
 }
@@ -943,43 +1096,121 @@ const STYLES = `
 @keyframes mrc-expand { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .mrc-shell *, .mrc-thread, .mrc-row, .mrc-msg, .mrc-contact {
+  .mrc-shell *, .mrc-thread, .mrc-row, .mrc-room-row, .mrc-msg, .mrc-contact {
     animation: none !important;
     transition-duration: 0.01ms !important;
   }
 }
 `
 
-export function DashChatView({ conversations, activeId, onSelect, messages, onSend, railControls, threadActions, onUploadImage, onRefresh, refreshing }: DashChatViewProps) {
+export function DashChatView({
+  people,
+  activePersonId,
+  onSelectPerson,
+  peopleControls,
+  conversations,
+  activeId,
+  onSelect,
+  onArchive,
+  onRestore,
+  archiveActionPendingId,
+  messages,
+  onSend,
+  threadActions,
+  onUploadImage,
+  onRefresh,
+  refreshing,
+  composerDisabled,
+  composerDisabledReason,
+}: DashChatViewProps) {
   const [input, setInput] = useState('')
   const [pending, setPending] = useState<PendingAttachment[]>([])
   const [contactOpen, setContactOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [archivedExpanded, setArchivedExpanded] = useState(false)
   // Which attachment is open full-size, keyed `messageIndex:attachmentIndex`
   // so two identical images in a thread cannot both open at once. Message has
   // no id — optimistic sends exist before the server assigns one.
   const [attPreview, setAttPreview] = useState<string | null>(null)
-  const { mobile } = useBreakpoint()
+  const { tablet } = useBreakpoint()
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Below 1024px the three panes become three full-width steps with back
+  // arrows (0 = people, 1 = rooms, 2 = thread) instead of three squeezed
+  // columns. Transitions are driven explicitly by the click handlers below
+  // (selectPerson/selectRoom/back*), never by an effect watching activeId —
+  // an effect keyed on props would fight manual "back" navigation, since
+  // going back does not clear the underlying selection.
+  const [step, setStep] = useState<0 | 1 | 2>(0)
+  const awaitingAutoRoomRef = useRef(false)
+
+  useEffect(() => {
+    // Runs on mount and whenever the layout crosses the 1024px line — lands
+    // on whatever is already selected (e.g. a `?c=` deep link) rather than
+    // always resetting to the people pane.
+    if (!tablet) return
+    if (activeId) setStep(2)
+    else if (activePersonId) setStep(1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tablet])
+
+  useEffect(() => {
+    // Selecting a person auto-opens their newest room (one click, not two —
+    // see the inbox's auto-select effect). On a stepped layout that means
+    // jumping straight to the thread the moment that room id arrives, not
+    // stopping on the now-empty-feeling rooms step in between.
+    if (awaitingAutoRoomRef.current && activeId) {
+      awaitingAutoRoomRef.current = false
+      if (tablet) setStep(2)
+    }
+  }, [activeId, tablet])
+
+  const selectPerson = (id: string) => {
+    onSelectPerson(id)
+    setArchivedExpanded(false)
+    if (tablet) {
+      setStep(1)
+      awaitingAutoRoomRef.current = true
+    }
+  }
+
+  const selectRoom = (id: string) => {
+    onSelect(id)
+    awaitingAutoRoomRef.current = false
+    if (tablet) setStep(2)
+  }
+
+  const backToPeople = () => setStep(0)
+  const backToRooms = () => setStep(1)
+
+  const activePerson = people.find(p => p.id === activePersonId)
   const convo = conversations.find(c => c.id === activeId)
   const canSend = input.trim().length > 0 || pending.some(p => p.url && !p.uploading)
-  const unreadTotal = useMemo(() => conversations.reduce((n, c) => n + (c.unread > 0 ? 1 : 0), 0), [conversations])
+  const unreadTotal = useMemo(() => people.reduce((n, p) => n + (p.unread > 0 ? 1 : 0), 0), [people])
 
-  // Search matches the customer's name, the message preview, and the
-  // conversation's UUID — so pasting/typing part of an id finds the thread.
-  const filteredConversations = useMemo(() => {
+  // Search matches the customer's name — pane 1 is people, not rooms, so
+  // there is no message text or per-room id to also match against here.
+  const filteredPeople = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return conversations
-    return conversations.filter(c =>
-      c.name.toLowerCase().includes(q) ||
-      c.preview.toLowerCase().includes(q) ||
-      c.id.toLowerCase().includes(q)
-    )
-  }, [conversations, search])
+    if (!q) return people
+    return people.filter(p => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q))
+  }, [people, search])
+
+  const { liveRooms, historyRooms, archivedRooms } = useMemo(() => {
+    const live: Conversation[] = []
+    const history: Conversation[] = []
+    const archived: Conversation[] = []
+    for (const c of conversations) {
+      const g = roomGroupOf(c)
+      if (g === 'live') live.push(c)
+      else if (g === 'history') history.push(c)
+      else archived.push(c)
+    }
+    return { liveRooms: live, historyRooms: history, archivedRooms: archived }
+  }, [conversations])
 
   const copyConversationId = (id: string) => {
     navigator.clipboard?.writeText(id).then(() => {
@@ -1043,15 +1274,68 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
     onSend(txt, ready.length ? ready.map(p => ({ url: p.url as string, kind: 'image' as const })) : undefined)
   }
 
-  const showRail = !mobile || !activeId
-  const showThread = !mobile || Boolean(activeId)
+  const showPeople = !tablet || step === 0
+  const showRooms = !tablet || step === 1
+  const showThread = !tablet || step === 2
+
+  const renderRoomRow = (c: Conversation, group: RoomGroup) => (
+    <button
+      key={c.id}
+      role="listitem"
+      onClick={() => selectRoom(c.id)}
+      data-active={activeId === c.id}
+      data-unread={c.unread > 0}
+      data-archived={group === 'archived'}
+      className="mrc-room-row"
+    >
+      <span className="mrc-room-top">
+        <span className="mrc-room-subject">{c.subject}</span>
+        {group === 'archived' ? (
+          onRestore && (
+            <span className="mrc-room-actions">
+              <button
+                type="button"
+                className="mrc-room-action-btn"
+                disabled={archiveActionPendingId === c.id}
+                onClick={(e) => { e.stopPropagation(); onRestore(c.id) }}
+                aria-label={`Restore conversation with ${c.name}`}
+                title="Restore"
+              >
+                <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" /></svg>
+              </button>
+            </span>
+          )
+        ) : (
+          onArchive && (
+            <span className="mrc-room-actions">
+              <button
+                type="button"
+                className="mrc-room-action-btn"
+                disabled={archiveActionPendingId === c.id}
+                onClick={(e) => { e.stopPropagation(); onArchive(c.id) }}
+                aria-label={`Archive conversation with ${c.name}`}
+                title="Archive"
+              >
+                <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8M10 13h4" /></svg>
+              </button>
+            </span>
+          )
+        )}
+      </span>
+      <span className="mrc-room-meta">
+        <span className="mrc-room-status" data-tone={group === 'live' ? 'live' : 'done'}>{roomStatusLabel(c.status)}</span>
+        <span>·</span>
+        <span>{c.time}</span>
+      </span>
+    </button>
+  )
 
   return (
-    <div className="mrc-shell">
+    <div className="mrc-shell" data-stepped={tablet ? 'true' : 'false'}>
       <style>{STYLES}</style>
 
-      {/* ── Conversation rail ── */}
-      {showRail && (
+      {/* ── Pane 1: People rail ── */}
+      {showPeople && (
         <aside className="mrc-rail">
           <div className="mrc-rail-head">
             <div className="mrc-rail-title-row">
@@ -1082,22 +1366,17 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Search conversations or paste an ID"
-                aria-label="Search conversations"
+                placeholder="Search customers"
+                aria-label="Search customers"
               />
             </div>
           </div>
 
-          {/* Filters belong to the list they filter, so they live above it —
-              at every width. They used to sit in the THREAD header on desktop,
-              which put controls for the whole inbox above a single
-              conversation, and only moved here on mobile. Mobile had it
-              right. */}
-          {railControls && (
-            <div className="mrc-rail-controls">{railControls}</div>
+          {peopleControls && (
+            <div className="mrc-rail-controls">{peopleControls}</div>
           )}
 
-          {conversations.length === 0 ? (
+          {people.length === 0 ? (
             <div className="mrc-rail-empty">
               <span className="mrc-empty-glyph">
                 <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
@@ -1105,50 +1384,38 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
               <span className="mrc-empty-title">No messages yet</span>
               <span className="mrc-empty-copy">When a customer starts a conversation from the storefront, it will appear here.</span>
             </div>
-          ) : filteredConversations.length === 0 ? (
+          ) : filteredPeople.length === 0 ? (
             <div className="mrc-list-empty">
               <span className="mrc-empty-glyph">
                 <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
               </span>
               <span className="mrc-empty-title">No matches</span>
-              <span className="mrc-empty-copy">No conversation matches "{search}".</span>
+              <span className="mrc-empty-copy">No customer matches "{search}".</span>
             </div>
           ) : (
             <div className="mrc-list" role="list">
-              {filteredConversations.map((c, i) => (
+              {filteredPeople.map((p, i) => (
                 <button
-                  key={c.id}
+                  key={p.id}
                   role="listitem"
-                  onClick={() => onSelect(c.id)}
-                  data-active={activeId === c.id}
-                  data-unread={c.unread > 0}
-                  data-closed={c.status === 'RESOLVED' || c.status === 'CLOSED'}
+                  onClick={() => selectPerson(p.id)}
+                  data-active={activePersonId === p.id}
+                  data-unread={p.unread > 0}
                   className="mrc-row"
                   style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
                 >
                   <span className="mrc-avatar-wrap">
-                    <span className="mrc-avatar">{c.avatar}</span>
-                    <span className="mrc-dot" style={{ background: PRESENCE[c.presence].color }} />
+                    <span className="mrc-avatar"><AvatarContent url={p.avatarUrl} label={p.name} /></span>
+                    <span className="mrc-dot" style={{ background: PRESENCE[p.presence].color }} />
                   </span>
                   <span className="mrc-row-body">
                     <span className="mrc-row-top">
-                      <span className="mrc-row-name">{c.name}</span>
-                      <span className="mrc-row-time">{c.time}</span>
+                      <span className="mrc-row-name">{p.name}</span>
+                      <span className="mrc-row-time">{p.time}</span>
                     </span>
                     <span className="mrc-row-mid">
-                      <span className="mrc-row-preview" data-empty={!c.preview}>{c.preview || 'No messages yet'}</span>
-                      {c.unread > 0 && <span className="mrc-badge">{c.unread}</span>}
-                    </span>
-                    <span className="mrc-row-chips">
-                      <span className="mrc-kind">{c.kind}</span>
-                      <span className="mrc-acct" data-type={c.customerId ? 'customer' : 'guest'}>{c.customerId ? 'Customer' : 'Guest'}</span>
-                      {/* Which brand this belongs to. Untagged threads are MiniRue's
-                          own, and are labelled rather than left blank so an empty
-                          chip cannot be mistaken for missing data. */}
-                      <span className="mrc-brand">{c.brandName || 'MiniRue'}</span>
-                      {(c.status === 'RESOLVED' || c.status === 'CLOSED') && (
-                        <span className="mrc-closed">{c.status}</span>
-                      )}
+                      <span className="mrc-row-preview">{p.chatCount} {p.chatCount === 1 ? 'chat' : 'chats'}</span>
+                      {p.unread > 0 && <span className="mrc-badge">{p.unread}</span>}
                     </span>
                   </span>
                 </button>
@@ -1158,13 +1425,69 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
         </aside>
       )}
 
-      {/* ── Thread pane ── */}
+      {/* ── Pane 2: this person's rooms ── */}
+      {showRooms && (
+        <aside className="mrc-rooms">
+          <div className="mrc-rooms-head">
+            {tablet && (
+              <button className="mrc-back" onClick={backToPeople} aria-label="Back to customers">
+                <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+              </button>
+            )}
+            {activePerson ? (
+              <>
+                <span className="mrc-rooms-title">{activePerson.name}</span>
+                <span className="mrc-rooms-count">{activePerson.chatCount} {activePerson.chatCount === 1 ? 'chat' : 'chats'}</span>
+              </>
+            ) : (
+              <span className="mrc-rooms-title">Rooms</span>
+            )}
+          </div>
+
+          {!activePerson ? (
+            <div className="mrc-rooms-empty">
+              <span className="mrc-empty-glyph">
+                <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+              </span>
+              <span className="mrc-empty-title">Select a customer</span>
+              <span className="mrc-empty-copy">Choose a customer from the list to see their conversations.</span>
+            </div>
+          ) : liveRooms.length === 0 && historyRooms.length === 0 && archivedRooms.length === 0 ? (
+            <div className="mrc-rooms-empty">
+              <span className="mrc-empty-title">No conversations</span>
+              <span className="mrc-empty-copy">This customer has no rooms on this desk.</span>
+            </div>
+          ) : (
+            <div className="mrc-rooms-list" role="list">
+              {liveRooms.map(c => renderRoomRow(c, 'live'))}
+              {liveRooms.length > 0 && historyRooms.length > 0 && <div className="mrc-room-divider" />}
+              {historyRooms.map(c => renderRoomRow(c, 'history'))}
+              {archivedRooms.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    className="mrc-room-group-toggle"
+                    onClick={() => setArchivedExpanded(v => !v)}
+                    aria-expanded={archivedExpanded}
+                  >
+                    <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                    Archived ({archivedRooms.length})
+                  </button>
+                  {archivedExpanded && archivedRooms.map(c => renderRoomRow(c, 'archived'))}
+                </>
+              )}
+            </div>
+          )}
+        </aside>
+      )}
+
+      {/* ── Pane 3: Thread ── */}
       {showThread && (
         <section className="mrc-thread">
           <div className="mrc-thread-head">
             <div className="mrc-thread-head-row">
-              {mobile && (
-                <button className="mrc-back" onClick={() => onSelect('')} aria-label="Back to conversations">
+              {tablet && (
+                <button className="mrc-back" onClick={backToRooms} aria-label="Back to conversations">
                   <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
                 </button>
               )}
@@ -1175,7 +1498,7 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
                   aria-expanded={contactOpen}
                   aria-label="Show customer contact details"
                 >
-                  <span className="mrc-id-avatar">{convo.avatar}</span>
+                  <span className="mrc-id-avatar"><AvatarContent url={activePerson?.avatarUrl} label={convo.name} /></span>
                   <span className="mrc-id-text">
                     <span className="mrc-id-name">{convo.name}</span>
                     <span className="mrc-id-status">
@@ -1274,7 +1597,9 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
                       <div className="mrc-msg" data-side={isAgent ? 'agent' : 'cx'} data-grouped={grouped}>
                         <div className="mrc-bubble-row">
                           {!isAgent && (
-                            <span className="mrc-msg-avatar" data-hidden={!lastOfGroup}>{convo.avatar}</span>
+                            <span className="mrc-msg-avatar" data-hidden={!lastOfGroup}>
+                              <AvatarContent url={activePerson?.avatarUrl} label={msg.name} />
+                            </span>
                           )}
                           <div className="mrc-bubble">
                             {msg.attachments && msg.attachments.length > 0 && (
@@ -1337,6 +1662,11 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
           {/* Hidden entirely on a closed thread: the send would be refused by the
               server anyway, so offering it would only produce an error. */}
           {convo && convo.status !== "RESOLVED" && convo.status !== "CLOSED" && (
+            composerDisabled ? (
+              <div className="mrc-composer-disabled" role="status">
+                {composerDisabledReason ?? 'You may read this desk but not reply here.'}
+              </div>
+            ) : (
             <div className="mrc-composer">
               {pending.length > 0 && (
                 <div className="mrc-pending">
@@ -1387,6 +1717,7 @@ export function DashChatView({ conversations, activeId, onSelect, messages, onSe
                 </button>
               </div>
             </div>
+            )
           )}
         </section>
       )}

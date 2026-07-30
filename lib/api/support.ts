@@ -41,6 +41,10 @@ export interface ConversationDto {
    * until someone knows who they are talking to.
    */
   guestAttachmentsAllowedAt?: string | null;
+  /** Set when the conversation was archived (moved to trash); null = live/visible
+   * in the normal inbox. Cleared on restore. */
+  archivedAt?: string | null;
+  archivedBy?: string | null;
 }
 
 export interface MessageAttachmentDto {
@@ -70,13 +74,59 @@ export interface PresenceDto {
  * `brand` slices the team inbox by the brand a thread is tagged to: a collaborator
  * id, or the literal 'direct' for untagged MiniRue threads. Ignored for a COLLAB
  * viewer, whose list is already scoped to their own brand.
+ *
+ * `customerId` is the W2.1 middle pane: every room ONE customer has on this
+ * desk — `support.repository.ts:52`'s filter has existed since it was written
+ * and this is the first caller. `view: 'trash'` is the archived group; omitted
+ * (the default) is the live/history inbox.
  */
-export const apiSupportConversations = (status?: string, brand?: string) => {
+export const apiSupportConversations = (opts: {
+  status?: string;
+  brand?: string;
+  customerId?: string;
+  view?: 'trash';
+} = {}) => {
   const qs = new URLSearchParams();
-  if (status) qs.set('status', status);
-  if (brand) qs.set('brand', brand);
+  if (opts.status) qs.set('status', opts.status);
+  if (opts.brand) qs.set('brand', opts.brand);
+  if (opts.customerId) qs.set('customerId', opts.customerId);
+  if (opts.view) qs.set('view', opts.view);
   const suffix = qs.toString() ? `?${qs.toString()}` : '';
   return apiFetch<ConversationDto[]>(`/support/conversations${suffix}`, { auth: true });
+};
+
+/**
+ * GET /support/people (W1.6/W2.1) — one row per customer, unread rolled up
+ * across every one of their (non-archived) rooms, most recent activity
+ * first. `collaboratorId` scopes to one desk; ignored for a COLLAB viewer,
+ * whose rows are already scoped to their own desk server-side.
+ */
+export interface SupportPersonDto {
+  customerId: string;
+  name: string | null;
+  email: string | null;
+  avatarUrl: string | null;
+  presence: 'ONLINE' | 'IDLE' | 'OFFLINE' | null;
+  /** Non-archived rooms only. */
+  conversationCount: number;
+  /** Rolled up across every room counted in `conversationCount`. */
+  unreadCount: number;
+  lastMessageAt: string | null;
+  lastMessageSnippet: string | null;
+  lastMessageSenderType: 'CUSTOMER' | 'STAFF' | 'ADMIN' | 'SUPERADMIN' | 'COLLAB' | 'SYSTEM' | null;
+}
+
+export const apiSupportPeople = (opts: {
+  collaboratorId?: string;
+  status?: string;
+  view?: 'trash';
+} = {}) => {
+  const qs = new URLSearchParams();
+  if (opts.collaboratorId) qs.set('collaboratorId', opts.collaboratorId);
+  if (opts.status) qs.set('status', opts.status);
+  if (opts.view) qs.set('view', opts.view);
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  return apiFetch<SupportPersonDto[]>(`/support/people${suffix}`, { auth: true });
 };
 
 /**
@@ -122,15 +172,22 @@ export const apiSupportUpload = (file: File) => {
 export const apiSupportMarkRead = (id: string) =>
   apiFetch<void>(`/support/conversations/${id}/read`, { method: 'POST', auth: true });
 
-/** Admin action: merges `sourceId` INTO `intoId` — the source conversation is
- * absorbed (all its messages move over) and removed; `intoId` survives. Returns
- * the enriched surviving conversation. */
-export const apiSupportMergeConversation = (sourceId: string, intoId: string) =>
-  apiFetch<ConversationDto>(`/support/conversations/${sourceId}/merge`, {
-    method: 'POST',
-    auth: true,
-    body: JSON.stringify({ intoId }),
-  });
+/**
+ * Archive / restore / hard-delete — live on the server since this batch
+ * (`archivedAt`/`archivedBy` columns, `?view=trash`) but never called from the
+ * dashboard until now (W2.1). Archiving and restoring are open to STAFF/ADMIN
+ * and a COLLAB tidying their own desk (the server's `requireVisible` already
+ * stops them reaching anyone else's); hard delete is ADMIN-only and requires
+ * the conversation to already be archived.
+ */
+export const apiSupportArchiveConversation = (id: string) =>
+  apiFetch<void>(`/support/conversations/${id}/archive`, { method: 'POST', auth: true });
+
+export const apiSupportRestoreConversation = (id: string) =>
+  apiFetch<void>(`/support/conversations/${id}/restore`, { method: 'POST', auth: true });
+
+export const apiSupportDeleteConversation = (id: string) =>
+  apiFetch<void>(`/support/conversations/${id}`, { method: 'DELETE', auth: true });
 
 export const apiSupportPresence = () => apiFetch<PresenceDto>('/support/presence', { auth: true });
 

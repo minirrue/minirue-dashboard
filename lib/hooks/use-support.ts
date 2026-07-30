@@ -4,28 +4,69 @@ import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   apiSupportConversations,
+  apiSupportPeople,
   apiSupportThread,
   apiSupportSend,
   apiSupportPresence,
   apiSupportSetPresence,
   apiSupportUpload,
   apiSupportMarkRead,
-  apiSupportMergeConversation,
   apiSupportUpdateConversation,
+  apiSupportArchiveConversation,
+  apiSupportRestoreConversation,
 } from '@/lib/api/support';
-import type { ConversationDto, MessageAttachmentDto } from '@/lib/api/support';
+import type { ConversationDto, MessageAttachmentDto, SupportPersonDto } from '@/lib/api/support';
 
 export const SUPPORT_KEYS = {
-  conversations: (status?: string, brand?: string) =>
-    ['support', 'conversations', status ?? 'all', brand ?? 'all'] as const,
+  people: (status?: string, collaboratorId?: string) =>
+    ['support', 'people', status ?? 'all', collaboratorId ?? 'all'] as const,
+  conversations: (status?: string, brand?: string, customerId?: string) =>
+    ['support', 'conversations', status ?? 'all', brand ?? 'all', customerId ?? 'all'] as const,
+  archivedConversations: (customerId: string) =>
+    ['support', 'conversations', 'trash', customerId] as const,
   thread: (id: string) => ['support', 'thread', id] as const,
   presence: () => ['support', 'presence'] as const,
 };
 
-export function useSupportConversations(status?: string, brand?: string) {
+/**
+ * Every non-archived room for the whole team inbox, or (with `customerId`)
+ * just one customer's rooms — the W2.1 middle pane. `enabled` defaults to
+ * true; pass false while no customer is selected so the query does not fire
+ * with `customerId: undefined` (which would be the whole-inbox list, not
+ * "this person has no rooms yet").
+ */
+export function useSupportConversations(
+  opts: { status?: string; brand?: string; customerId?: string; enabled?: boolean } = {},
+) {
+  const { status, brand, customerId, enabled = true } = opts;
   return useQuery({
-    queryKey: SUPPORT_KEYS.conversations(status, brand),
-    queryFn: () => apiSupportConversations(status, brand),
+    queryKey: SUPPORT_KEYS.conversations(status, brand, customerId),
+    queryFn: () => apiSupportConversations({ status, brand, customerId }),
+    enabled,
+    refetchOnWindowFocus: true,
+  });
+}
+
+/** The archived (trashed) rooms for one customer — the collapsed "Archived
+ * (n)" group in the rooms pane. Only fetched once a person is selected. */
+export function useSupportArchivedConversations(customerId: string | null) {
+  return useQuery({
+    queryKey: SUPPORT_KEYS.archivedConversations(customerId ?? ''),
+    queryFn: () => apiSupportConversations({ customerId: customerId as string, view: 'trash' }),
+    enabled: !!customerId,
+    refetchOnWindowFocus: true,
+  });
+}
+
+/**
+ * GET /support/people (W2.1) — one row per customer, the inbox's new first
+ * pane. `collaboratorId` scopes to one desk; ignored server-side for a
+ * COLLAB viewer, whose rows are already scoped to their own desk.
+ */
+export function useSupportPeople(opts: { status?: string; collaboratorId?: string } = {}) {
+  return useQuery({
+    queryKey: SUPPORT_KEYS.people(opts.status, opts.collaboratorId),
+    queryFn: () => apiSupportPeople(opts),
     refetchOnWindowFocus: true,
   });
 }
@@ -51,7 +92,36 @@ export function useUpdateConversation() {
     }) => apiSupportUpdateConversation(id, patch),
     onSuccess: (_data, { id }) => {
       void qc.invalidateQueries({ queryKey: ['support', 'conversations'] });
+      void qc.invalidateQueries({ queryKey: ['support', 'people'] });
       void qc.invalidateQueries({ queryKey: SUPPORT_KEYS.thread(id) });
+    },
+  });
+}
+
+/**
+ * Archive / restore a room — the feature shipped on the server with zero
+ * callers (W2.1). Invalidates every conversation list variant (live, trash,
+ * per-customer) plus the people rollup, since archiving changes a person's
+ * `conversationCount`/`unreadCount` too.
+ */
+export function useArchiveConversation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiSupportArchiveConversation(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['support', 'conversations'] });
+      void qc.invalidateQueries({ queryKey: ['support', 'people'] });
+    },
+  });
+}
+
+export function useRestoreConversation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiSupportRestoreConversation(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['support', 'conversations'] });
+      void qc.invalidateQueries({ queryKey: ['support', 'people'] });
     },
   });
 }
@@ -67,16 +137,18 @@ export function useSupportThread(id: string | null) {
 
 /**
  * Single unified live-sync loop for the whole support inbox. One timer drives
- * BOTH the conversation list and the currently-open thread so they always
- * refresh together — no two competing intervals. Pauses while the tab is
- * hidden and does one immediate refresh when it becomes visible again.
- * (No sockets — the storefront is on Vercel; the backend SSE is role-guarded.)
+ * the people rollup, the currently-open person's rooms (live + archived) and
+ * the currently-open thread together — no competing intervals. Pauses while
+ * the tab is hidden and does one immediate refresh when it becomes visible
+ * again. (No sockets — the storefront is on Vercel; the backend SSE is
+ * role-guarded.)
  */
-export function useSupportLiveSync(activeId: string | null, intervalMs = 5_000) {
+export function useSupportLiveSync(activeId: string | null, activePersonId: string | null, intervalMs = 5_000) {
   const qc = useQueryClient();
   useEffect(() => {
     const refresh = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      void qc.invalidateQueries({ queryKey: ['support', 'people'] });
       void qc.invalidateQueries({ queryKey: ['support', 'conversations'] });
       if (activeId) void qc.invalidateQueries({ queryKey: SUPPORT_KEYS.thread(activeId) });
     };
@@ -87,7 +159,11 @@ export function useSupportLiveSync(activeId: string | null, intervalMs = 5_000) 
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [qc, activeId, intervalMs]);
+    // activePersonId isn't read above (the broad 'support','conversations'
+    // invalidation already covers the per-customer query key's prefix) but is
+    // taken as a param so callers don't have to think about that.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qc, activeId, activePersonId, intervalMs]);
 }
 
 export function useSendSupportMessage(id: string) {
@@ -118,20 +194,7 @@ export function useSupportMarkRead() {
     },
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: ['support', 'conversations'] });
-    },
-  });
-}
-
-/** Admin "merge into…" mutation: absorbs `sourceId` into `intoId`. On success
- * it refreshes the whole conversation list (the source row is gone, the survivor
- * moved) so callers can then select the survivor and clear the dead thread. */
-export function useMergeConversations() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ sourceId, intoId }: { sourceId: string; intoId: string }) =>
-      apiSupportMergeConversation(sourceId, intoId),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['support', 'conversations'] });
+      void qc.invalidateQueries({ queryKey: ['support', 'people'] });
     },
   });
 }
@@ -159,3 +222,5 @@ export function useSetPresence() {
     },
   });
 }
+
+export type { SupportPersonDto };

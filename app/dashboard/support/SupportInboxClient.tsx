@@ -1,19 +1,21 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { DashChatView, type Conversation, type Message, type MessageAttachment } from '@/components/DashChatView';
+import { DashChatView, type Conversation, type Message, type MessageAttachment, type Person } from '@/components/DashChatView';
 import {
+  useSupportPeople,
   useSupportConversations,
+  useSupportArchivedConversations,
   useSupportThread,
   useSupportLiveSync,
   useSupportPresence,
   useSetPresence,
   useSupportUpload,
   useSupportMarkRead,
-  useMergeConversations,
   useUpdateConversation,
-  SUPPORT_KEYS,
+  useArchiveConversation,
+  useRestoreConversation,
 } from '@/lib/hooks/use-support';
 import { useUser } from '@/lib/hooks/use-auth';
 import { apiCollabOverview } from '@/lib/api/collab-portal';
@@ -21,20 +23,22 @@ import { apiSupportChannels, type SupportChannel } from '@/lib/api/support';
 import { Role } from '@/lib/auth/role';
 import { apiSupportSend } from '@/lib/api/support';
 import type { PresenceDto, MessageAttachmentDto } from '@/lib/api/support';
-import type { ConversationDto, MessageDto } from '@/lib/api/support';
+import type { ConversationDto, MessageDto, SupportPersonDto } from '@/lib/api/support';
 import { useAdminNotifications } from '@/components/dashboard/notifications/useAdminNotifications';
 import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
 import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
 
-function initials(name: string): string {
-  return (
-    name
-      .split(' ')
-      .filter(Boolean)
-      .slice(0, 2)
-      .map(part => part[0]?.toUpperCase() ?? '')
-      .join('') || '?'
-  );
+/** Last-activity stamp: clock time for today, a short date otherwise — used
+ * for both the people rail and the rooms pane, so "12:27 AM" only ever means
+ * "today" and anything older reads as a date, never a stale-looking clock. */
+function relativeStamp(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay =
+    d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  return sameDay
+    ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
 function guestPhoneDisplay(dto: ConversationDto): string | undefined {
@@ -43,6 +47,18 @@ function guestPhoneDisplay(dto: ConversationDto): string | undefined {
 }
 
 const TEAM_SENDER_TYPES = new Set(['STAFF', 'ADMIN', 'SUPERADMIN', 'COLLAB', 'SYSTEM']);
+
+/** What a rooms-pane row headlines with: the product for an ITEM room
+ * ("About No.1"), otherwise the latest message preview. `subjectSnapshot`
+ * is an untyped record straight off the wire — same shape the storefront's
+ * NewChatComposer/SubjectPicker already read `name` off of. */
+function roomSubject(dto: ConversationDto): string {
+  if (dto.type === 'ITEM') {
+    const name = typeof dto.subjectSnapshot?.['name'] === 'string' ? (dto.subjectSnapshot['name'] as string) : null;
+    return name ? `About ${name}` : dto.lastMessagePreview || 'Product enquiry';
+  }
+  return dto.lastMessagePreview || 'New conversation';
+}
 
 function toConversation(dto: ConversationDto): Conversation {
   const name = dto.customerName || dto.guestName || 'Customer';
@@ -55,18 +71,14 @@ function toConversation(dto: ConversationDto): Conversation {
     !!dto.lastMessageSenderType && TEAM_SENDER_TYPES.has(dto.lastMessageSenderType);
   const unread =
     lastFromTeam || (dto.teamReadAt && dto.teamReadAt >= dto.lastMessageAt) ? 0 : 1;
-  const rawPreview = dto.lastMessagePreview ?? null;
-  const preview = rawPreview
-    ? (dto.lastMessageSenderType && TEAM_SENDER_TYPES.has(dto.lastMessageSenderType) ? `You: ${rawPreview}` : rawPreview)
-    : '';
   const presence = dto.customerPresence ?? (dto.customerOnline ? 'ONLINE' : 'OFFLINE');
   return {
     id: dto.id,
     name,
-    preview,
-    time: new Date(dto.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    preview: dto.lastMessagePreview ?? '',
+    subject: roomSubject(dto),
+    time: relativeStamp(dto.lastMessageAt),
     unread,
-    avatar: initials(name),
     presence,
     kind: dto.type === 'ITEM' ? 'ITEM' : 'GENERAL',
     customerId: dto.customerId ?? undefined,
@@ -76,7 +88,21 @@ function toConversation(dto: ConversationDto): Conversation {
       phone: dto.customerPhone ?? guestPhoneDisplay(dto),
     },
     brandName: dto.brandName ?? undefined,
+    collaboratorId: dto.collaboratorId ?? undefined,
     status: dto.status,
+    archivedAt: dto.archivedAt ?? null,
+  };
+}
+
+function toPerson(dto: SupportPersonDto): Person {
+  return {
+    id: dto.customerId,
+    name: dto.name || dto.email || 'Customer',
+    avatarUrl: dto.avatarUrl,
+    time: dto.lastMessageAt ? relativeStamp(dto.lastMessageAt) : '',
+    unread: dto.unreadCount,
+    presence: dto.presence ?? 'OFFLINE',
+    chatCount: dto.conversationCount,
   };
 }
 
@@ -98,7 +124,6 @@ function ThreadStateActions({
   const update = useUpdateConversation();
   const closed =
     conversation.status === 'RESOLVED' || conversation.status === 'CLOSED';
-  // Only a GUEST thread can be granted: a signed-in customer is never gated.
 
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -134,7 +159,6 @@ function ThreadStateActions({
           {update.isPending ? 'Resolving…' : 'Resolve & close'}
         </button>
       )}
-
     </div>
   );
 }
@@ -252,173 +276,12 @@ function PresenceControls({ presence }: { presence: PresenceDto | undefined }) {
   );
 }
 
-/**
- * Admin-only "Merge into…" action shown in the thread header. Absorbs the
- * currently-open conversation (`sourceId`) into a target conversation the admin
- * pastes in, then removes the source. Destructive + irreversible, so it is
- * gated behind an explicit in-place confirm dialog. On success it hands the
- * survivor id back to the inbox so it can select it.
- */
-function MergeConversationAction({
-  sourceId,
-  onMerged,
-}: {
-  sourceId: string;
-  onMerged: (survivorId: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [intoId, setIntoId] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const merge = useMergeConversations();
-
-  const close = () => {
-    if (merge.isPending) return;
-    setOpen(false);
-    setIntoId('');
-    setError(null);
-  };
-
-  const confirm = () => {
-    const target = intoId.trim();
-    if (!target) {
-      setError('Enter the ID of the conversation to keep.');
-      return;
-    }
-    if (target === sourceId) {
-      setError('That is this conversation. Enter a different target ID.');
-      return;
-    }
-    setError(null);
-    merge.mutate(
-      { sourceId, intoId: target },
-      {
-        onSuccess: (survivor) => {
-          setOpen(false);
-          setIntoId('');
-          onMerged(survivor.id ?? target);
-        },
-        onError: () => {
-          setError('Merge failed — check the target ID exists and try again.');
-        },
-      },
-    );
-  };
-
-  const btnStyle: React.CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 6,
-    fontFamily: 'Inter Tight, sans-serif',
-    fontSize: 12,
-    fontWeight: 500,
-    color: 'var(--mr-ink-700)',
-    border: '1px solid var(--mr-dash-hair)',
-    borderRadius: 8,
-    padding: '6px 10px',
-    background: 'var(--mr-dash-bg)',
-    cursor: 'pointer',
-  };
-
-  return (
-    <>
-      <button type="button" onClick={() => setOpen(true)} style={btnStyle} title="Merge this conversation into another">
-        <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M7 3v6a5 5 0 0 0 5 5 5 5 0 0 0 5-5V3M12 14v7" />
-        </svg>
-        Merge into…
-      </button>
-
-      {open && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="mrc-merge-title"
-          onKeyDown={(e) => { if (e.key === 'Escape') close(); }}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 60, display: 'flex',
-            alignItems: 'center', justifyContent: 'center', padding: 16,
-            background: 'rgba(20, 16, 10, 0.42)',
-          }}
-          onClick={close}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: 'min(440px, 100%)', background: 'var(--mr-dash-surface)',
-              border: '1px solid var(--mr-dash-hair)', borderRadius: 'var(--mr-radius-lg, 14px)',
-              boxShadow: 'var(--mr-shadow-lg, 0 20px 50px rgba(0,0,0,0.25))',
-              padding: 22, display: 'flex', flexDirection: 'column', gap: 14,
-            }}
-          >
-            <h2 id="mrc-merge-title" style={{ fontFamily: 'var(--mr-font-serif)', fontSize: 19, fontWeight: 500, color: 'var(--mr-ink-900)', margin: 0, lineHeight: 1.2 }}>
-              Merge into another conversation
-            </h2>
-            <p style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: 12.5, lineHeight: 1.55, color: 'var(--mr-ink-500)', margin: 0 }}>
-              This moves all messages from <strong>this</strong> conversation into the target conversation and removes this one — cannot be undone. Paste the ID of the conversation you want to <strong>keep</strong>.
-            </p>
-            <label style={{ fontFamily: 'var(--mr-font-label)', fontSize: 9, fontWeight: 500, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--mr-ink-400)' }}>
-              Target conversation ID (survivor)
-              <input
-                autoFocus
-                value={intoId}
-                onChange={(e) => { setIntoId(e.target.value); setError(null); }}
-                onKeyDown={(e) => { if (e.key === 'Enter') confirm(); }}
-                placeholder="Paste the conversation ID to keep"
-                aria-label="Target conversation ID"
-                style={{
-                  marginTop: 6, width: '100%', boxSizing: 'border-box',
-                  fontFamily: 'var(--mr-font-mono, monospace)', fontSize: 12.5, letterSpacing: 'normal',
-                  textTransform: 'none', color: 'var(--mr-ink-900)',
-                  border: '1px solid var(--mr-dash-hair)', borderRadius: 8, padding: '9px 11px',
-                  background: 'var(--mr-dash-bg)',
-                }}
-              />
-            </label>
-            {error && (
-              <span role="alert" style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: 12, color: 'var(--mr-crimson-500)' }}>
-                {error}
-              </span>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
-              <button
-                type="button"
-                onClick={close}
-                disabled={merge.isPending}
-                style={{
-                  fontFamily: 'Inter Tight, sans-serif', fontSize: 12.5, fontWeight: 500,
-                  color: 'var(--mr-ink-700)', border: '1px solid var(--mr-dash-hair)',
-                  borderRadius: 8, padding: '8px 14px', background: 'var(--mr-dash-bg)', cursor: 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirm}
-                disabled={merge.isPending}
-                style={{
-                  fontFamily: 'Inter Tight, sans-serif', fontSize: 12.5, fontWeight: 600,
-                  color: 'var(--mr-cream-100)', border: 0, borderRadius: 8, padding: '8px 14px',
-                  background: 'var(--mr-ink-900)', cursor: merge.isPending ? 'default' : 'pointer',
-                  opacity: merge.isPending ? 0.7 : 1,
-                }}
-              >
-                {merge.isPending ? 'Merging…' : 'Merge conversations'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
 export default function SupportInboxClient({ showPresence = false }: SupportInboxClientProps) {
+  const [activePersonId, setActivePersonId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
-  // Two filters: work state, and which brand the thread belongs to. 'direct' is
-  // MiniRue's own threads — the ones no partner owns.
+  // Two filters: work state, and which desk the room belongs to.
   const [statusFilter, setStatusFilter] = useState('');
-  const [brandFilter, setBrandFilter] = useState('');
+  const [deskFilter, setDeskFilter] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   /**
    * A partner's own module grants, used only to decide whether to draw the
@@ -428,26 +291,41 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   const [collabModules, setCollabModules] = useState<string[]>([]);
   /** Every desk this user may open — including ones with no threads yet. */
   const [channels, setChannels] = useState<SupportChannel[]>([]);
-  const [mergeNotice, setMergeNotice] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingOutgoing[]>([]);
   const qc = useQueryClient();
-  const { data: conversationDtos, refetch: refetchConversations } =
-    useSupportConversations(statusFilter || undefined, brandFilter || undefined);
+
+  const { data: peopleDtos } = useSupportPeople({
+    status: statusFilter || undefined,
+    collaboratorId: deskFilter || undefined,
+  });
+  const { data: roomDtos } = useSupportConversations({
+    customerId: activePersonId ?? undefined,
+    enabled: !!activePersonId,
+  });
+  const { data: archivedRoomDtos } = useSupportArchivedConversations(activePersonId);
   const { data: threadData, refetch: refetchThread } = useSupportThread(activeId);
-  // Single unified live loop: one timer refreshes both the list and the open
-  // thread together (replaces the two separate query intervals).
-  useSupportLiveSync(activeId);
+  // Single unified live loop: one timer refreshes the people rollup, this
+  // person's rooms and the open thread together (replaces the two separate
+  // query intervals the two-pane inbox had).
+  useSupportLiveSync(activeId, activePersonId);
   const { data: presence } = useSupportPresence();
   const uploadImage = useSupportUpload();
   const { data: user } = useUser();
   const markRead = useSupportMarkRead();
+  const archiveMutation = useArchiveConversation();
+  const restoreMutation = useRestoreConversation();
 
-  // Powers the rail's refresh button: refetches the conversation list and,
-  // if a thread is open, that thread too.
+  // Powers the rail's refresh button: refetches the people rail, this
+  // person's rooms (live + archived), and, if a thread is open, that thread too.
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await Promise.all([refetchConversations(), activeId ? refetchThread() : Promise.resolve()]);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['support', 'people'] }),
+        qc.invalidateQueries({ queryKey: ['support', 'conversations'] }),
+        activeId ? refetchThread() : Promise.resolve(),
+      ]);
     } finally {
       setRefreshing(false);
     }
@@ -530,7 +408,38 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   }, []);
 
   /**
-   * Who may set the presence shown here.
+   * Selecting a person is the one-click path: it clears the currently open
+   * room so the auto-select effect below opens their newest one the moment
+   * that person's rooms load. A manual room switch within the same person
+   * (clicking a different row in pane 2) goes through `onSelect` directly,
+   * below, and never touches `activePersonId`.
+   */
+  const selectPerson = (id: string) => {
+    setActivePersonId(id);
+    setActiveId(null);
+  };
+
+  // The common case must stay one click: once a person's rooms have loaded,
+  // if nothing is open yet for them, open the newest one (rooms come back
+  // sorted lastMessageAt DESC — see support.repository.ts `listConversations`).
+  // Guarded on `activeId` so this never fights a room the user (or the deep
+  // link effect above) already picked.
+  useEffect(() => {
+    if (!activePersonId || activeId) return;
+    const rooms = roomDtos ?? [];
+    if (rooms.length) setActiveId(rooms[0].id);
+  }, [activePersonId, roomDtos, activeId]);
+
+  // A `?c=` deep link (or any other path that sets activeId without going
+  // through selectPerson) has a room but no person yet — infer it from the
+  // thread once it loads, without touching activeId itself.
+  useEffect(() => {
+    const cid = threadData?.conversation?.customerId;
+    if (cid && cid !== activePersonId) setActivePersonId(cid);
+  }, [threadData?.conversation?.customerId, activePersonId]);
+
+  /**
+   * Who may say whether a desk is open.
    *
    * A partner qualifies with the Support module granted — it is their own
    * desk, not the shop's, since backend 0.55.0. The server checks the grant
@@ -540,16 +449,23 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
     user?.role === Role.SUPERADMIN ||
     user?.role === Role.ADMIN ||
     (user?.role === Role.COLLAB && collabModules.includes('SUPPORT'));
-  // Same admin gate the presence controls use — merging is an admin-only action.
-  const isAdmin =
-    user?.role === Role.SUPERADMIN || user?.role === Role.ADMIN;
+  // Gate for the desk-filter selects: only the team benefits from slicing a
+  // combined inbox by brand — a collaborator's list is already scoped to
+  // their own desk server-side.
+  const isAdmin = user?.role === Role.SUPERADMIN || user?.role === Role.ADMIN;
+  // canPostOnChannel (support.visibility.ts) says the whole team may read
+  // any desk but a partner's own desk only THAT partner may post to — never
+  // just admin/superadmin. Broader than `isAdmin` on purpose: it decides the
+  // composer gate, not which admin-only UI to draw.
+  const isTeamRole =
+    user?.role === Role.SUPERADMIN || user?.role === Role.ADMIN || user?.role === Role.STAFF;
 
-  // Auto-dismisses the "merged" inline confirmation after a few seconds.
+  // Auto-dismisses the inline confirmation toast after a few seconds.
   useEffect(() => {
-    if (!mergeNotice) return;
-    const t = window.setTimeout(() => setMergeNotice(null), 4000);
+    if (!actionNotice) return;
+    const t = window.setTimeout(() => setActionNotice(null), 4000);
     return () => window.clearTimeout(t);
-  }, [mergeNotice]);
+  }, [actionNotice]);
 
   // Fires the POST for a pending item and moves it to 'sent' (recording the
   // real id, so the poll can dedup it) or 'failed'. Uses the item's OWN
@@ -561,8 +477,9 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
         setPending((prev) =>
           prev.map((p) => (p.tempId === item.tempId ? { ...p, status: 'sent', realId: dto.id } : p)),
         );
-        void qc.invalidateQueries({ queryKey: SUPPORT_KEYS.thread(item.conversationId) });
+        void qc.invalidateQueries({ queryKey: ['support', 'thread', item.conversationId] });
         void qc.invalidateQueries({ queryKey: ['support', 'conversations'] });
+        void qc.invalidateQueries({ queryKey: ['support', 'people'] });
       })
       .catch(() => {
         setPending((prev) => prev.map((p) => (p.tempId === item.tempId ? { ...p, status: 'failed' } : p)));
@@ -589,47 +506,60 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
     postPending({ ...item, status: 'sending' });
   };
 
+  // Every room this person has, live + archived merged into one list — the
+  // rooms pane buckets them into live/history/archived groups itself from
+  // each room's own `status`/`archivedAt`.
+  const allRoomDtos = useMemo(
+    () => [...(roomDtos ?? []), ...(archivedRoomDtos ?? [])],
+    [roomDtos, archivedRoomDtos],
+  );
   // The raw DTO for the open thread: the view model deliberately drops fields the
-  // chat list has no use for, but the actions need the real status and grant.
-  const activeConversationDto = (conversationDtos ?? []).find((c) => c.id === activeId);
+  // rooms pane has no use for, but the actions need the real status and grant.
+  const activeConversationDto = allRoomDtos.find((c) => c.id === activeId);
 
   /**
    * Every partner desk, from the channel list — not derived from whatever
    * conversations happen to be loaded. That derivation meant a partner with no
    * threads yet had no option, so their desk could not be opened to see that it
    * was empty, which is exactly the question "has anyone messaged Helia".
-   *
-   * Falls back to the old derivation if the channel list did not load, so the
-   * filter never goes completely blank.
    */
-  const brandOptions = channels.length
-    ? channels
-        .filter((ch) => ch.collaboratorId)
-        .map((ch) => ({ id: ch.collaboratorId as string, name: ch.name }))
-    : Array.from(
-        new Map(
-          (conversationDtos ?? [])
-            .filter((c) => c.collaboratorId && c.brandName)
-            .map((c) => [c.collaboratorId as string, c.brandName as string]),
-        ).entries(),
-      ).map(([id, name]) => ({ id, name }));
+  const brandOptions = channels
+    .filter((ch) => ch.collaboratorId)
+    .map((ch) => ({ id: ch.collaboratorId as string, name: ch.name }));
 
   /**
-   * Watching someone else's desk. An admin may READ any desk but must not
-   * reply as that partner — the customer would see a reply from a brand
-   * written by someone who does not work there. The server refuses the post
-   * either way (canPostOnChannel); this is what says so before they type.
+   * Watching someone else's desk. The whole team may READ any desk but must
+   * not reply as that partner — the customer would see a reply from a brand
+   * written by someone who does not work there (support.visibility.ts
+   * canPostOnChannel). Driven by the OPEN ROOM's own collaboratorId, not by
+   * whatever the desk filter happens to be set to, so it stays correct even
+   * when browsing "All desks".
    */
-  const watchedBrand =
-    isAdmin && brandFilter && brandFilter !== 'direct'
-      ? (brandOptions.find((b) => b.id === brandFilter)?.name ?? 'this partner')
-      : null;
+  const activeIsForeignDesk = isTeamRole && !!activeConversationDto?.collaboratorId;
+  const watchedBrandName = activeConversationDto?.brandName ?? 'this partner';
+  const composerDisabledReason = activeIsForeignDesk ? (
+    <>
+      Watching <strong>{watchedBrandName}</strong>&apos;s desk — read only. Only {watchedBrandName} can reply here.
+    </>
+  ) : undefined;
 
-  const conversations = (conversationDtos ?? []).map(toConversation).map(
+  const people = (peopleDtos ?? []).map(toPerson);
+  const conversations = allRoomDtos.map(toConversation).map(
     // The conversation you're currently viewing never shows a red unread badge —
     // you're already looking at it, so a message arriving in it isn't "unread".
     (c) => (c.id === activeId ? { ...c, unread: 0 } : c),
   );
+
+  const archiveActionPendingId =
+    (archiveMutation.isPending ? (archiveMutation.variables as string) : null) ??
+    (restoreMutation.isPending ? (restoreMutation.variables as string) : null);
+
+  const handleArchive = (id: string) => {
+    archiveMutation.mutate(id, { onSuccess: () => setActionNotice('Conversation archived.') });
+  };
+  const handleRestore = (id: string) => {
+    restoreMutation.mutate(id, { onSuccess: () => setActionNotice('Conversation restored.') });
+  };
 
   // Display = server messages CONCAT this conversation's pending items that
   // aren't yet in the server list. Dedup rule: once a pending item has a
@@ -659,11 +589,19 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadData?.messages, pending, activeId, user?.name]);
 
-  const filterControls = (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+  /**
+   * Search + status/desk filters for the people rail, wrapped in
+   * `.dash-filters` — the same wrapper every other admin list (Orders,
+   * Products, Customers, Fulfillment) uses. Before this batch the two
+   * selects here sat in a bare inline-styled div and stacked at every
+   * screen width; `.dash-filters` overrides `.dash-input`'s `width: 100%`
+   * to an auto width with a sane min-width, so they sit inline until they
+   * actually run out of room.
+   */
+  const peopleControls = (
+    <div className="dash-filters">
       <select
         className="dash-input"
-        style={{ maxWidth: 150 }}
         aria-label="Filter by status"
         value={statusFilter}
         onChange={(e) => setStatusFilter(e.target.value)}
@@ -675,17 +613,15 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
         <option value="CLOSED">Closed</option>
       </select>
       {/* Only the team sees this: a collaborator's list is already scoped to their
-          own brand by the server, so a brand filter there would be meaningless. */}
+          own brand by the server, so a desk filter there would be meaningless. */}
       {isAdmin && (
         <select
           className="dash-input"
-          style={{ maxWidth: 170 }}
-          aria-label="Filter by brand"
-          value={brandFilter}
-          onChange={(e) => setBrandFilter(e.target.value)}
+          aria-label="Filter by desk"
+          value={deskFilter}
+          onChange={(e) => setDeskFilter(e.target.value)}
         >
-          <option value="">All brands</option>
-          <option value="direct">MiniRue direct</option>
+          <option value="">All desks</option>
           {brandOptions.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
@@ -697,46 +633,44 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   );
 
   /**
-   * Three different altitudes used to share one strip in the THREAD header:
-   * actions for this conversation, filters for the whole inbox, and presence
-   * for the whole shop. Each now sits where its scope is.
+   * Shop-wide, and ONLY shop-wide: whether support is open, and the reply time
+   * shown to customers. One row, label left, controls right.
    *
-   * Filters go above the list they filter — which is where mobile already put
-   * them; only desktop was wrong.
-   */
-  const railControls = filterControls;
-
-  /**
-   * Presence and reply time are shop-wide, not per-thread and not per-list, so
-   * they sit above everything in their own strip.
+   * The desk switcher deliberately does NOT live here. It was briefly rendered
+   * in both this strip and the people-rail filter row, bound to the same
+   * `deskFilter` state — two identical selects on one screen, where changing
+   * either visibly moved the other, which reads as a bug rather than a
+   * convenience. Choosing which desk to LOOK AT is a filter over the list, so
+   * it belongs with the other filters, in `.dash-filters`, the same place every
+   * other admin list in this dashboard puts them. What is left here is the only
+   * thing that is genuinely shop-wide rather than list-scoped.
    */
   const presenceBar = showPresence ? (
     <div className="mrc-presence-bar">
       <span className="mrc-presence-bar-label">Support status</span>
-      {canEditPresence ? (
-        <PresenceControls presence={presence} />
-      ) : (
-        presenceReadOnly(presence)
-      )}
+      <div className="mrc-presence-bar-controls">
+        {canEditPresence ? <PresenceControls presence={presence} /> : presenceReadOnly(presence)}
+      </div>
     </div>
   ) : null;
 
   return (
     <>
       {presenceBar}
-      {watchedBrand && (
-        <div className="mrc-watch-bar" role="status">
-          Watching <strong>{watchedBrand}</strong>&apos;s desk — read only. Only{' '}
-          {watchedBrand} can reply here.
-        </div>
-      )}
       <DashChatView
+        people={people}
+        activePersonId={activePersonId}
+        onSelectPerson={selectPerson}
+        peopleControls={peopleControls}
         conversations={conversations}
         activeId={activeId}
         onSelect={(id) => {
           setActiveId(id || null);
           if (id) markRead.mutate(id);
         }}
+        onArchive={handleArchive}
+        onRestore={handleRestore}
+        archiveActionPendingId={archiveActionPendingId}
         messages={messages}
         onSend={(text, attachments) => {
           if (!activeId) return;
@@ -748,31 +682,15 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
         }}
         onRefresh={handleRefresh}
         refreshing={refreshing}
-        railControls={railControls}
+        composerDisabled={activeIsForeignDesk}
+        composerDisabledReason={composerDisabledReason}
         threadActions={
-          activeId ? (
-            <>
-              {activeConversationDto && (
-                <ThreadStateActions
-                  conversation={activeConversationDto}
-                  onNotice={setMergeNotice}
-                />
-              )}
-              {isAdmin && (
-                <MergeConversationAction
-                  sourceId={activeId}
-                  onMerged={(survivorId) => {
-                    setActiveId(survivorId);
-                    markRead.mutate(survivorId);
-                    setMergeNotice('Conversations merged. Now viewing the surviving conversation.');
-                  }}
-                />
-              )}
-            </>
+          activeId && activeConversationDto ? (
+            <ThreadStateActions conversation={activeConversationDto} onNotice={setActionNotice} />
           ) : null
         }
       />
-      {mergeNotice && (
+      {actionNotice && (
         <div
           role="status"
           style={{
@@ -784,7 +702,7 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
             padding: '11px 16px', boxShadow: 'var(--mr-shadow-lg, 0 16px 40px rgba(0,0,0,0.28))',
           }}
         >
-          {mergeNotice}
+          {actionNotice}
         </div>
       )}
     </>

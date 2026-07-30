@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 152,
+    date: '2026-07-30',
+    area: 'Support',
+    summary:
+      'The Messages screen is now a list of people, not a list of messages. Click someone and every conversation they have ever had with you opens beside their name — live ones first, older ones under them, archived folded away at the bottom — and you pick which to read from there. This matters because pressing "New conversation" in the shop now genuinely starts a new one, so a single customer can have several, and the old screen would have shown them as several separate rows of the same person. The two filters at the top sit on one line instead of stacking in an empty box. Whether a conversation is resolved is shown beside what it is about, rather than thrown in with the tags. You can archive a conversation and get it back again — that was built months ago and had no button anywhere. And you can switch to any partner desk to read it, including a desk nobody has messaged yet; you can read anything, but only that partner can reply on theirs. "Merge into" is gone: grouping by person is what it was really for.',
+  },
+  {
     id: 151,
     date: '2026-07-30',
     area: 'Storefront appearance',
