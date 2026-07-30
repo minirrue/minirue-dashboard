@@ -70,6 +70,12 @@ export default function ReviewsClient() {
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [acting, setActing] = useState<string | null>(null);
+  // A failed video load and a healthy-but-unstarted one look identical — both
+  // are just the poster-less black rectangle until the play button is hit.
+  // Tracking failures per media id turns "presigned URL broken" into
+  // something visible on this page instead of only discoverable by clicking
+  // play and getting nothing.
+  const [failedMedia, setFailedMedia] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -240,13 +246,34 @@ export default function ReviewsClient() {
                                     }}
                                   />
                                 </a>
+                              ) : failedMedia[m.id] ? (
+                                <span
+                                  key={m.id}
+                                  className="dash-muted"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    width: 128,
+                                    height: 72,
+                                    borderRadius: 'var(--mr-radius-sm)',
+                                    border: '1px solid var(--mr-dash-hair)',
+                                    padding: '0 8px',
+                                    fontSize: 'var(--mr-text-xs)',
+                                  }}
+                                >
+                                  This video could not be loaded.
+                                </span>
                               ) : (
                                 <video
                                   key={m.id}
                                   src={m.url}
                                   controls
+                                  playsInline
                                   preload="metadata"
                                   width={128}
+                                  onError={() =>
+                                    setFailedMedia((f) => ({ ...f, [m.id]: true }))
+                                  }
                                   style={{
                                     height: 72,
                                     borderRadius: 'var(--mr-radius-sm)',

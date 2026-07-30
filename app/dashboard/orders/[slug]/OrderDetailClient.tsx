@@ -16,6 +16,8 @@ import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { ImagePreviewModal, EnlargeableImage } from '@/components/dashboard/ImagePreviewModal';
 import FulfillmentControl from '@/components/dashboard/FulfillmentControl';
+import RefundOrderModal from '@/components/dashboard/RefundOrderModal';
+import type { RefundTicketDto } from '@/lib/api/refunds';
 import { formatOrderRef } from '@/lib/orders/order-format';
 
 /* ── Helpers ── */
@@ -27,6 +29,11 @@ function formatDate(iso: string): string {
     year: 'numeric', month: 'short', day: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
+}
+// Same shape as the Refunds tab (RefundableOrdersPanel) — refundedAmountCents
+// is already minor units, unlike totalAmount which is a major-unit string.
+function egpFromCents(cents: number): string {
+  return `EGP ${(cents / 100).toLocaleString('en-EG', { minimumFractionDigits: 2 })}`;
 }
 
 const STATUS_DATA_ATTR: Record<OrderStatus, string> = {
@@ -51,18 +58,21 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
 
 /* ── Action buttons based on current status ── */
 function OrderActions({
-  status,
+  order,
   onConfirm,
   onCancel,
   onShip,
+  onRefund,
   busy,
 }: {
-  status: OrderStatus;
+  order: Order;
   onConfirm: () => void;
   onCancel: () => void;
   onShip: () => void;
+  onRefund: () => void;
   busy: boolean;
 }) {
+  const { status } = order;
   return (
     <div className="dash-row-actions">
       {status === 'PENDING' && (
@@ -88,6 +98,13 @@ function OrderActions({
       {status === 'PROCESSING' && (
         <button className="dash-btn-primary" disabled={busy} onClick={onShip}>
           Mark shipped
+        </button>
+      )}
+      {/* Same eligibility as the Refunds tab: not already refunded, and a
+          settled payment attempt exists (order.paid), fulfilled or not. */}
+      {!order.refundedAt && order.paid && (
+        <button className="dash-btn-secondary" disabled={busy} onClick={onRefund}>
+          Refund
         </button>
       )}
     </div>
@@ -118,6 +135,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
   // Which order line's image is open full-size. Held by id rather than by URL
   // so two lines sharing one product image cannot both open at once.
   const [itemPreview, setItemPreview] = useState<string | null>(null);
+  const [refunding, setRefunding] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -149,6 +167,21 @@ export default function OrderDetailClient({ id }: { id: string }) {
     } finally {
       setBusy(false);
     }
+  };
+
+  // Mirrors RefundableOrdersPanel.handleRefunded — updates the order in
+  // place from the ticket rather than refetching, same shape both places.
+  const handleRefunded = (ticket: RefundTicketDto) => {
+    setOrder((prev) =>
+      prev
+        ? {
+            ...prev,
+            refundedAt: new Date().toISOString(),
+            refundedAmountCents: ticket.approvedAmountCents ?? ticket.requestedAmountCents,
+          }
+        : prev,
+    );
+    setRefunding(false);
   };
 
   const runPaymentAction = async (
@@ -231,10 +264,13 @@ export default function OrderDetailClient({ id }: { id: string }) {
               View customer →
             </Link>
           )}
-          <OrderStatusBadge status={order.status} />
+          {/* Never disagrees with the Refunds tab: a refund on this order
+              overrides whatever `status` still says, even for a row no
+              repair migration touched. */}
+          <OrderStatusBadge status={order.refundedAt ? 'REFUNDED' : order.status} />
         </div>
         <OrderActions
-          status={order.status}
+          order={order}
           busy={busy}
           onConfirm={() => runAction(() => apiAdminTransitionStatus(id, 'CONFIRMED'))}
           onCancel={() => runAction(() => apiAdminCancelOrder(id))}
@@ -246,8 +282,15 @@ export default function OrderDetailClient({ id }: { id: string }) {
               ),
             )
           }
+          onRefund={() => setRefunding(true)}
         />
       </div>
+
+      {order.refundedAt && (
+        <p style={{ margin: '-8px 0 16px', fontSize: 13, color: 'var(--mr-fg-3)' }}>
+          {egpFromCents(order.refundedAmountCents)} refunded on {formatDate(order.refundedAt)}
+        </p>
+      )}
 
       {actionError && (
         <p className="dash-inline-error" style={{ marginBottom: 16 }}>{actionError}</p>
@@ -530,6 +573,14 @@ export default function OrderDetailClient({ id }: { id: string }) {
           src={receiptPreview}
           alt="Instapay receipt"
           onClose={() => setReceiptPreview(null)}
+        />
+      )}
+
+      {refunding && (
+        <RefundOrderModal
+          order={order}
+          onClose={() => setRefunding(false)}
+          onRefunded={handleRefunded}
         />
       )}
     </>

@@ -199,7 +199,7 @@ export default function AnalyticsClient() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 16, marginBottom: 20 }}>
         {loading ? (
-          <><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /></>
+          <><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /></>
         ) : error ? (
           <div className="dash-card" style={{ gridColumn: '1/-1' }}>
             <p className="dash-inline-error">{error}</p>
@@ -221,6 +221,16 @@ export default function AnalyticsClient() {
               sub={`${overview?.pending_revenue?.order_count ?? 0} order${
                 (overview?.pending_revenue?.order_count ?? 0) === 1 ? '' : 's'
               } · excluded from revenue`}
+            />
+            {/* Projected, not banked. Labelled so it can never be read as confirmed revenue. */}
+            <StatCard
+              title="Projected This Month"
+              value={egpShort(
+                (overview?.revenue?.month_cents ?? 0) + (overview?.pending_revenue?.month_cents ?? 0),
+              )}
+              sub={`${egp(overview?.revenue?.month_cents ?? 0)} in · ${egp(
+                overview?.pending_revenue?.month_cents ?? 0,
+              )} still to clear`}
             />
           </>
         ) : null}

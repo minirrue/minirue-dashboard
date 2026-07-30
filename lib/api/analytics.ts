@@ -14,6 +14,9 @@ export interface OverviewRevenue {
 export interface OverviewPendingRevenue {
   today_cents: number;
   week_cents: number;
+  /** Month-scoped, unlike `total_cents` (all-time) — pairs with
+   * `OverviewRevenue.month_cents` for the Projected This Month tile. */
+  month_cents: number;
   total_cents: number;
   order_count: number;
 }

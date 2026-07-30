@@ -57,15 +57,19 @@ function OrderStatusCell({
   onError: (message: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  // Never disagrees with the order detail page or the Refunds tab: a refund
+  // on this order overrides whatever `status` still says, even for a row no
+  // repair migration touched.
+  const shown: OrderStatus = order.refundedAt ? 'REFUNDED' : order.status;
   const next = ORDER_TRANSITIONS[order.status];
 
   if (next.length === 0) {
-    return <OrderStatusBadge status={order.status} />;
+    return <OrderStatusBadge status={shown} />;
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: '100%' }}>
-      <OrderStatusBadge status={order.status} />
+      <OrderStatusBadge status={shown} />
       <select
         className="dash-select"
         disabled={busy}
