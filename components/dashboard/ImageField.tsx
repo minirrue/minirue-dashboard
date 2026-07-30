@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from 'react';
 import GalleryPickerModal from './GalleryPickerModal';
+import RetryingImage from './RetryingImage';
 import { exchangeItem } from '@/lib/gallery/api';
 import type { ApiError } from '@/lib/api/client';
 import type { GalleryItem } from '@/lib/gallery/types';
@@ -84,8 +85,7 @@ export default function ImageField({
           }}
         >
           {imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <RetryingImage
               src={imageUrl}
               alt=""
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}

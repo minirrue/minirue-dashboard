@@ -5,6 +5,7 @@ import { newId } from '@/lib/api/storefront';
 import type { HeroSection, HeroSlide } from '@/lib/api/storefront';
 import GalleryPickerModal, { uploadDeviceFileToGallery } from '@/components/dashboard/GalleryPickerModal';
 import ImageCropModal from '@/components/dashboard/ImageCropModal';
+import RetryingImage from '@/components/dashboard/RetryingImage';
 import { getItem } from '@/lib/gallery/api';
 import type { ApiError } from '@/lib/api/client';
 import CtaTargetField from './CtaTargetField';
@@ -38,8 +39,7 @@ function HeroImageFrame({
       }}
     >
       {url && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <RetryingImage
           src={url}
           alt=""
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}

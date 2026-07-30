@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 155,
+    date: '2026-07-30',
+    area: 'Photos',
+    summary:
+      'A photo you just uploaded could sometimes show up broken until you refreshed the page — the very first time a brand-new photo is fetched is always the slowest, and if that first attempt happened to fail, the page never tried again. Photos in product editing, the Gallery, category/brand pictures and the storefront hero now quietly retry a few times on their own, and only show "Couldn\'t load — tap to retry" if they truly can\'t load.',
+  },
+  {
     id: 154,
     date: '2026-07-30',
     area: 'Support',

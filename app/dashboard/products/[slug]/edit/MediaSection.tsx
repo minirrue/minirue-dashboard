@@ -15,6 +15,7 @@ import GalleryPickerModal, {
 } from '@/components/dashboard/GalleryPickerModal';
 import type { GalleryItem } from '@/lib/gallery/types';
 import { ImagePreviewModal } from '@/components/dashboard/ImagePreviewModal';
+import RetryingImage from '@/components/dashboard/RetryingImage';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 
 interface Props {
@@ -231,7 +232,7 @@ export default function MediaSection({ productId, productName, media, onMediaCha
                 data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-enlarge-product-image@${m.id}`}
                 style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
               >
-                <img
+                <RetryingImage
                   src={previewUrl(m)}
                   alt={m.altText ?? ''}
                   data-trace-id={`PG-DASHBOARD-CAT-003::EL-IMG-product-image@${m.id}`}

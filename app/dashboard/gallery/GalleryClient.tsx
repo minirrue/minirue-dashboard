@@ -16,6 +16,7 @@ import type { GalleryFolder, GalleryItem, GallerySearchResult } from '@/lib/gall
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
+import RetryingImage from '@/components/dashboard/RetryingImage';
 
 const TRACE = 'PG-DASHBOARD-GAL-001';
 
@@ -464,8 +465,11 @@ function ItemGrid({
             {item.kind === 'video' ? (
               <video src={item.url} className="dash-gallery-item-media" muted />
             ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={item.url} alt={item.altText ?? ''} className="dash-gallery-item-media" />
+              <RetryingImage
+                src={item.url}
+                alt={item.altText ?? ''}
+                className="dash-gallery-item-media"
+              />
             )}
           </button>
           <AltTextField item={item} onSave={(altText) => onRenameAlt(item.id, altText)} />

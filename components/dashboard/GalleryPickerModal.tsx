@@ -12,6 +12,7 @@ import {
 import type { GalleryFolder, GalleryItem, GallerySearchResult } from '@/lib/gallery/types';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import RetryingImage from '@/components/dashboard/RetryingImage';
 
 const TRACE = 'CMP-DASHBOARD-GALLERY-PICKER';
 
@@ -231,8 +232,7 @@ export default function GalleryPickerModal({ onSelect, onClose }: GalleryPickerM
                               style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover' }}
                             />
                           ) : (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
+                            <RetryingImage
                               src={item.url}
                               alt=""
                               style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover' }}
@@ -332,8 +332,7 @@ export default function GalleryPickerModal({ onSelect, onClose }: GalleryPickerM
                           style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover' }}
                         />
                       ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <RetryingImage
                           src={item.url}
                           alt=""
                           style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover' }}
