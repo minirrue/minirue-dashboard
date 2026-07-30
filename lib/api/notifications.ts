@@ -73,6 +73,17 @@ export async function apiAdminMarkNotificationUnread(id: number): Promise<AdminN
   return apiFetch(`/admin/notifications/${id}/unread`, { method: 'PATCH', auth: true });
 }
 
-export async function apiAdminMarkAllNotificationsRead(): Promise<{ count: number }> {
-  return apiFetch('/admin/notifications/read-all', { method: 'PATCH', auth: true });
+/**
+ * Omit `categories` to mark the whole feed read (the full notification
+ * centre's "Mark all read"). Pass categories to scope the write to just
+ * those — how a dashboard section clears its own badge without touching
+ * any other section's unread rows.
+ */
+export async function apiAdminMarkAllNotificationsRead(
+  categories?: NotificationCategory[],
+): Promise<{ count: number }> {
+  const qs = new URLSearchParams();
+  if (categories?.length) qs.set('category', categories.join(','));
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  return apiFetch(`/admin/notifications/read-all${query}`, { method: 'PATCH', auth: true });
 }

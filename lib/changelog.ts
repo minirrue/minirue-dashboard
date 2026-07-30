@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 149,
+    date: '2026-07-30',
+    area: 'Notifications',
+    summary:
+      'A number on a tab now goes out when you open that tab, instead of sitting there lit for up to a minute after you have plainly seen what it was telling you about. The counts were being fetched on a timer and nothing ever told that timer anything had happened — opening a conversation did correctly mark it read underneath, but the number on the sidebar had no idea. Only the section you opened is cleared: looking at Orders does not quietly clear Reviews. Inside Support, the list still shows which individual conversations are unread, so nothing is lost by the tab number going out.',
+  },
+  {
     id: 148,
     date: '2026-07-30',
     area: 'Erase data',

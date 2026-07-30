@@ -92,6 +92,33 @@ export function setUnreadCountOptimistic(unreadCount: number): void {
   void load();
 }
 
+/**
+ * Zero the given categories immediately, subtracting only their share from
+ * the bell total — used by `useClearNavBadge` so a section's badge goes out
+ * the instant it is opened, without waiting on the mark-read round trip.
+ *
+ * Deliberately does NOT touch any category not listed: clearing Orders must
+ * never zero Reviews. Does not itself trigger a refetch — the caller marks
+ * the rows read server-side and calls `refreshNotificationCounts()` once
+ * that settles, which reconciles this guess against the real numbers.
+ */
+export function clearCategoriesOptimistic(categories: readonly string[]): void {
+  if (categories.length === 0) return;
+  let subtract = 0;
+  const nextByCategory = { ...snapshot.byCategory };
+  for (const category of categories) {
+    subtract += nextByCategory[category] ?? 0;
+    nextByCategory[category] = 0;
+  }
+  if (subtract === 0) return;
+  publish({
+    ...snapshot,
+    byCategory: nextByCategory,
+    unreadCount: Math.max(0, snapshot.unreadCount - subtract),
+    loaded: true,
+  });
+}
+
 /** Subscribe to the shared notification counts. */
 export function useNotificationCounts(): NotificationCounts {
   const [counts, setCounts] = useState<NotificationCounts>(snapshot);

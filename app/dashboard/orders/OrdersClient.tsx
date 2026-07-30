@@ -10,6 +10,8 @@ import type { ApiError } from '@/lib/api/client';
 import { ORDER_TRANSITIONS, formatOrderStatus } from '@/lib/orders/transitions';
 import { formatOrderRef } from '@/lib/orders/order-format';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
+import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
 import FulfillmentControl from '@/components/dashboard/FulfillmentControl';
 import ManualOrderModal from './ManualOrderModal';
 
@@ -138,6 +140,9 @@ const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
 ];
 
 export default function OrdersClient() {
+  // Clears the Orders badge (ORDER + PAYMENT) the moment this screen is
+  // open, instead of leaving it lit until the next 60s poll.
+  useClearNavBadge(HREF_CATEGORIES['/orders']);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -13,6 +13,10 @@ import {
 } from '@/lib/api/notifications';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import {
+  refreshNotificationCounts,
+  setUnreadCountOptimistic,
+} from '@/lib/hooks/use-notification-counts';
 
 export interface NotificationFilterState {
   q: string;
@@ -88,24 +92,34 @@ export function useAdminNotifications({
   const markRead = useCallback(async (id: number) => {
     // Optimistic: the row greys out immediately, and a failure just refetches.
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
-    setUnreadCount((c) => Math.max(0, c - 1));
+    const next = Math.max(0, unreadCount - 1);
+    setUnreadCount(next);
+    // Every consumer of this hook (the drawer, the full notification centre)
+    // shares one bell and one set of nav badges — pushing the same number
+    // into the singleton here, once, is what keeps them in step without
+    // repeating this at each call site.
+    setUnreadCountOptimistic(next);
+    refreshNotificationCounts();
     try {
       await apiAdminMarkNotificationRead(id);
     } catch {
       void fetchPage(true);
     }
-  }, [fetchPage]);
+  }, [fetchPage, unreadCount]);
 
   const markUnread = useCallback(async (id: number) => {
     // Optimistic: the row lights back up immediately; a failure just refetches.
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: false } : n)));
-    setUnreadCount((c) => c + 1);
+    const next = unreadCount + 1;
+    setUnreadCount(next);
+    setUnreadCountOptimistic(next);
+    refreshNotificationCounts();
     try {
       await apiAdminMarkNotificationUnread(id);
     } catch {
       void fetchPage(true);
     }
-  }, [fetchPage]);
+  }, [fetchPage, unreadCount]);
 
   /** Toggle from whatever the current state is — powers the per-row button. */
   const toggleRead = useCallback(
@@ -116,6 +130,8 @@ export function useAdminNotifications({
   const markAllRead = useCallback(async () => {
     setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
     setUnreadCount(0);
+    setUnreadCountOptimistic(0);
+    refreshNotificationCounts();
     try {
       await apiAdminMarkAllNotificationsRead();
     } catch {

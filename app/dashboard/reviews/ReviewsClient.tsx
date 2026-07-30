@@ -16,6 +16,8 @@ import {
 } from '@/lib/api/reviews';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
+import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
 
 type Filter = ReviewStatus | 'ALL';
 
@@ -54,6 +56,12 @@ function formatDate(iso: string): string {
 }
 
 export default function ReviewsClient() {
+  // Reviews has no notification category of its own yet — '/reviews' is not
+  // in HREF_CATEGORIES and there is no REVIEW entry in the backend's
+  // NotificationCategory enum, so reviews never produce admin notifications
+  // today. This is a no-op until that exists; see the task report for why it
+  // is still wired here rather than left out.
+  useClearNavBadge(HREF_CATEGORIES['/reviews'] ?? []);
   const [filter, setFilter] = useState<Filter>('PENDING');
   const [items, setItems] = useState<AdminReview[]>([]);
   const [total, setTotal] = useState(0);

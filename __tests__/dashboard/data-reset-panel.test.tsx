@@ -4,10 +4,16 @@ import * as platformApi from '@/lib/api/platform';
 import DataResetPanel from '@/components/dashboard/DataResetPanel';
 
 /**
- * A brand-new shop has no store name yet, so the reset preview comes back with
- * confirmationPhrase empty or missing. The panel used to call .trim() on it and
- * crash the ENTIRE Settings page with "Cannot read properties of undefined
- * (reading 'trim')". It must render instead, and block the wipe with a reason.
+ * The confirmation phrase is now a fixed word ('DELETE') the server sends, so
+ * in practice it is always present. The guard below still matters: it used to
+ * be the shop's own name, a brand-new shop had none, and the panel called
+ * .trim() on undefined and crashed the ENTIRE Settings page with "Cannot read
+ * properties of undefined (reading 'trim')".
+ *
+ * A server that is stale, failing or mid-deploy can still answer with no
+ * phrase, and the answer to that must stay "render, and refuse to erase" rather
+ * than "take down the Settings page". These tests hold that line — the shop
+ * name is gone from the wording, not the protection.
  */
 
 jest.mock('@/lib/api/platform');
@@ -36,7 +42,7 @@ describe('DataResetPanel — missing confirmation phrase', () => {
     expect(await screen.findByText(/Erase shop data/i)).toBeInTheDocument();
   });
 
-  it('blocks the wipe and explains why when there is no shop name', async () => {
+  it('blocks the wipe and explains why when the phrase is empty', async () => {
     mockedPlatform.getResetPreview.mockResolvedValue(previewWith(''));
     render(<DataResetPanel />);
     await screen.findByText(/Erase shop data/i);
@@ -45,19 +51,21 @@ describe('DataResetPanel — missing confirmation phrase', () => {
     screen.getByRole('checkbox').click();
 
     await waitFor(() =>
-      expect(screen.getByText(/Set your shop name/i)).toBeInTheDocument(),
+      expect(
+        screen.getByText(/confirmation phrase is unavailable/i),
+      ).toBeInTheDocument(),
     );
     // No confirm input is offered — there is nothing to type.
     expect(screen.queryByLabelText(/to confirm/i)).not.toBeInTheDocument();
   });
 
   it('shows the normal confirm input when a phrase is present', async () => {
-    mockedPlatform.getResetPreview.mockResolvedValue(previewWith('MiniRue'));
+    mockedPlatform.getResetPreview.mockResolvedValue(previewWith('DELETE'));
     render(<DataResetPanel />);
     await screen.findByText(/Erase shop data/i);
 
     screen.getByRole('checkbox').click();
 
-    await waitFor(() => expect(screen.getByText('MiniRue')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('DELETE')).toBeInTheDocument());
   });
 });

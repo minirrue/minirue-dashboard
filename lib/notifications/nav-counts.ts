@@ -16,7 +16,7 @@ import type { NotificationCategory } from '@/lib/api/notifications';
  * sitting directly above it in the sidebar already shows that total. Badging it
  * too would put two different numbers for the same thing side by side.
  */
-const HREF_CATEGORIES: Record<string, readonly NotificationCategory[]> = {
+export const HREF_CATEGORIES: Record<string, readonly NotificationCategory[]> = {
   // Admin
   '/orders': ['ORDER', 'PAYMENT'],
   '/customers': ['CUSTOMER'],

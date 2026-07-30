@@ -3,10 +3,14 @@
 import React, { useState, useCallback } from 'react';
 import RefundableOrdersPanel from './RefundableOrdersPanel';
 import RefundHistoryPanel from './RefundHistoryPanel';
+import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
+import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
 
 type Tab = 'ORDERS' | 'HISTORY';
 
 export default function RefundsClient() {
+  // Clears the Refunds badge (REFUND) the moment this screen is open.
+  useClearNavBadge(HREF_CATEGORIES['/refunds']);
   const [tab, setTab] = useState<Tab>('ORDERS');
   const [refreshToken, setRefreshToken] = useState(0);
 

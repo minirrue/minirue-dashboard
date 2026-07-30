@@ -23,6 +23,8 @@ import { apiSupportSend } from '@/lib/api/support';
 import type { PresenceDto, MessageAttachmentDto } from '@/lib/api/support';
 import type { ConversationDto, MessageDto } from '@/lib/api/support';
 import { useAdminNotifications } from '@/components/dashboard/notifications/useAdminNotifications';
+import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
+import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
 
 function initials(name: string): string {
   return (
@@ -490,20 +492,11 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
       cancelled = true;
     };
   }, [user?.role]);
-  useEffect(() => {
-    if (!activeId) return;
-    const matches = notifications.filter((n) => {
-      if (n.isRead) return false;
-      const isSupportNotification = n.entityType === 'support' || n.type.startsWith('customer.support');
-      if (!isSupportNotification) return false;
-      const conversationId = typeof n.data?.conversationId === 'string' ? n.data.conversationId : undefined;
-      return conversationId === activeId;
-    });
-    matches.forEach((n) => void markNotificationRead(n.id));
-    // Re-runs as new messages poll in (every 5s) so a notification that
-    // arrives while the conversation is already open also gets auto-read.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeId, threadData?.messages, notifications, markNotificationRead]);
+  // Clears the Support nav badge (and the bell's share of it) the moment
+  // this inbox is open, via the shared singleton — generalises the
+  // per-conversation mark-read this used to do into "the whole Support
+  // section is on screen", per task-w2.2. See use-clear-nav-badge.ts.
+  useClearNavBadge(HREF_CATEGORIES['/support']);
 
   // The notifications list is fetched once on mount and does NOT poll, so a
   // notification created while this conversation is already open would never
