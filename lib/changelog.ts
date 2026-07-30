@@ -21,6 +21,48 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 161,
+    date: '2026-07-30',
+    area: 'Support',
+    summary:
+      'A shopper who signed out and then opened support was still being treated as their old account — the message they sent landed on that old account\'s conversation. The chat window sits on the page permanently, so signing out never actually cleared it. It is now wiped the moment the person signing in changes, whether that is a sign-out or a switch to a different account, and the note kept on the device is cleared too.',
+  },
+  {
+    id: 160,
+    date: '2026-07-30',
+    area: 'Support',
+    summary:
+      'Messages opens on MiniRue\'s own desk instead of every desk at once, and MiniRue is now one of the choices in the desk list (before, only partner desks were listed, so there was no way to see just your own). Picking a desk now really does show only that desk — choosing a customer used to bring up their conversations from every desk mixed together.',
+  },
+  {
+    id: 159,
+    date: '2026-07-30',
+    area: 'Support',
+    summary:
+      'Every message used to be signed "Customer", even when the account had a name on it. Messages now show the person\'s real name, falling back to their account name or email, and only say "Customer" for a guest who never gave one. On the shop side, starting a new conversation now opens an empty one — it used to show the previous conversation\'s messages underneath.',
+  },
+  {
+    id: 158,
+    date: '2026-07-30',
+    area: 'Orders',
+    summary:
+      'A refunded order still said "Delivered" on its own page. The page was reading only the status word and never mentioned the refund at all, so it disagreed with the Refunds tab. It now says Refunded wherever you look, shows the amount and the date, and has a Refund button of its own. Orders refunded before today have been corrected too.',
+  },
+  {
+    id: 157,
+    date: '2026-07-30',
+    area: 'Analytics',
+    summary:
+      'A new "Projected This Month" figure shows what you have taken this month plus what is still waiting to clear, with the split spelled out underneath. It is deliberately labelled Projected, never Revenue — the money that has not cleared yet is not yours until it does.',
+  },
+  {
+    id: 156,
+    date: '2026-07-30',
+    area: 'Photos',
+    summary:
+      'Photos taken in portrait on a phone were being saved sideways. Phones store the picture the wide way round plus a note saying "turn this", and that note was being thrown away when we converted the file — so nothing afterwards could put it right. This affected product photos, the Gallery and review photos. Reviews also stop accepting iPhone videos we cannot play, and now say so clearly instead of showing a black box, and iPhone photos are converted properly instead of arriving broken.',
+  },
+  {
     id: 155,
     date: '2026-07-30',
     area: 'Photos',
