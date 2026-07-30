@@ -63,7 +63,9 @@ const nextConfig: NextConfig = {
       // Catalogue moved under one /catalogue parent (2026-07-24). Old links and
       // bookmarks still work — they land on the new sub-tab. Specific paths
       // MUST come before the bare /products, or /products would swallow them.
-      { source: "/products/overview", destination: "/catalogue", permanent: true },
+      // The Overview tab is gone (Task 5a) — this old bookmark now lands on
+      // Products, same as bare /catalogue does below.
+      { source: "/products/overview", destination: "/catalogue/products", permanent: true },
       { source: "/products/new", destination: "/catalogue/products/new", permanent: true },
       { source: "/products/brands", destination: "/catalogue/brands", permanent: true },
       { source: "/products/global-variants", destination: "/catalogue/global-variants", permanent: true },
@@ -78,7 +80,9 @@ const nextConfig: NextConfig = {
       // Catalogue: one /catalogue parent, slash sub-tabs. The app-router files
       // stay under /dashboard/products and /dashboard/categories; only the
       // public URL changed. Specific paths before /catalogue/products.
-      { source: "/catalogue", destination: "/dashboard/products/overview" },
+      // Bare /catalogue used to land on the Overview map (now removed, Task
+      // 5a) — it lands on Products instead, same as CatalogSubnav's fallback.
+      { source: "/catalogue", destination: "/dashboard/products" },
       { source: "/catalogue/products/new", destination: "/dashboard/products/new" },
       { source: "/catalogue/products/:slug/edit", destination: "/dashboard/products/:slug/edit" },
       { source: "/catalogue/products", destination: "/dashboard/products" },

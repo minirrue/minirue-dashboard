@@ -10,9 +10,12 @@ import { usePathname } from 'next/navigation';
  *
  * Products, Categories, Brands and Global variants were four dead-end screens
  * you reached by scattered buttons and left with the back button. This bar sits
- * at the top of all of them (plus the new Overview map), so they read as one
- * area with rooms instead of a maze — you always know where you are and can
- * move in one click.
+ * at the top of all of them, so they read as one area with rooms instead of a
+ * maze — you always know where you are and can move in one click.
+ *
+ * The Overview tab (a read-only map of the tree) is gone — bare `/catalogue`
+ * now lands on Products, the fallback tab below already handles it, so
+ * removing the tab needed no change to the matching logic.
  */
 
 interface Tab {
@@ -23,11 +26,6 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
-  {
-    label: 'Overview',
-    href: '/catalogue',
-    match: (p) => p === '/catalogue',
-  },
   {
     label: 'Brands',
     href: '/catalogue/brands',
@@ -53,7 +51,7 @@ const TABS: Tab[] = [
 ];
 
 /** Display order, left to right — not the match order. */
-const ORDER = ['Overview', 'Products', 'Categories', 'Brands', 'Global variants'];
+const ORDER = ['Products', 'Categories', 'Brands', 'Global variants'];
 
 /**
  * Which tab owns this path. Exported and pure so the /products/brands vs

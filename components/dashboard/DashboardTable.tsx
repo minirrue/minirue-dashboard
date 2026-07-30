@@ -4,18 +4,32 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 
 /* ── Types ── */
 
-export interface Column<T> {
-  /** Unique key matching a property on the row data */
-  key: string;
+interface ColumnBase {
   /** Header label */
   label: string;
   /** Enable sorting on this column */
   sortable?: boolean;
-  /** Custom cell renderer */
-  render?: (row: T) => React.ReactNode;
   /** Text alignment */
   align?: 'left' | 'center' | 'right';
 }
+
+/**
+ * A column with no `render` falls through to `row[col.key]` (see
+ * `renderTable`/`renderCards` below), so its `key` MUST name a real property
+ * of the row — that is exactly the class of bug this type used to let
+ * through: `key: 'brand'` compiled fine against a row that only had
+ * `brandName`, rendered an empty column on every row, and silently made the
+ * column's sort a no-op.
+ *
+ * A column WITH a `render` never reads `row[col.key]` — its key only has to
+ * be unique for React's `key={col.key}` — so it may be any synthetic id
+ * (`'_actions'`, `'customer'`, `'fulfillment'`, …). Splitting these into a
+ * discriminated union keeps the real-field guarantee for the former without
+ * over-constraining the latter.
+ */
+export type Column<T> =
+  | (ColumnBase & { key: Extract<keyof T, string>; render?: undefined })
+  | (ColumnBase & { key: string; render: (row: T) => React.ReactNode });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface DashboardTableProps<T extends Record<string, any>> {

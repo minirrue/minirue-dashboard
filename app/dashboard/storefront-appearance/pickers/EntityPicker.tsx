@@ -60,7 +60,9 @@ async function fetchOptions(
     const res = await listProducts({
       status: 'PUBLISHED',
       limit: 100,
-      collaboratorId: collaboratorId || undefined,
+      // A picker scoped to one collaborator wants that partner's own space;
+      // otherwise this falls through to the server's own default (house).
+      space: collaboratorId || undefined,
     });
     return res.items.map((p) => ({
       id: p.id,

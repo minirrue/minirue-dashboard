@@ -1659,91 +1659,10 @@
   border-radius: 2px;
 }
 
-/* ── Catalogue map (Overview) ───────────────────────────────────────
-   The tree the model was never drawn as: category holds brands, and every
-   product in a category answers that category's global questions. */
-.dash-catalog-tree-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font-family: var(--mr-font-label);
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--mr-fg);
-}
-.dash-catalog-tree-caret {
-  display: inline-block;
-  font-size: 12px;
-  color: var(--mr-fg-4);
-  transition: transform var(--mr-dur-fast) var(--mr-ease-snappy);
-}
-.dash-catalog-tree-caret[data-open="true"] {
-  transform: rotate(90deg);
-}
-.dash-catalog-tree-name {
-  line-height: 1.2;
-}
-.dash-catalog-brand-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-.dash-catalog-brand-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px 6px 12px;
-  border: 1px solid var(--mr-dash-hair);
-  border-radius: var(--mr-radius-pill);
-  background: var(--mr-dash-sub);
-  color: var(--mr-fg-2);
-  text-decoration: none;
-  font-size: 14px;
-  transition: border-color var(--mr-dur-fast) var(--mr-ease-snappy),
-    color var(--mr-dur-fast) var(--mr-ease-snappy);
-}
-.dash-catalog-brand-chip:hover {
-  border-color: var(--mr-gold-400);
-  color: var(--mr-fg);
-}
-.dash-catalog-brand-name {
-  font-weight: 500;
-}
-.dash-catalog-brand-count {
-  min-width: 20px;
-  padding: 0 6px;
-  text-align: center;
-  border-radius: var(--mr-radius-pill);
-  background: var(--mr-dash-surface);
-  color: var(--mr-fg-3);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-/* The line that makes the model visible: what every product in this category
-   is asked. Kept quiet — it is context, not an action. */
-.dash-catalog-answers {
-  font-size: 13px;
-  color: var(--mr-fg-3);
-  padding-top: 12px;
-  border-top: 1px dashed var(--mr-dash-hair);
-}
-.dash-catalog-answers-label {
-  font-weight: 500;
-  color: var(--mr-fg-2);
-}
-.dash-catalog-answer-pill {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: var(--mr-radius-sm);
-  background: var(--mr-st-muted-bg);
-  color: var(--mr-st-muted-fg);
-  font-weight: 500;
-}
+/* The Catalogue map (Overview) that used to live here — .dash-catalog-tree-*,
+   .dash-catalog-brand-*, .dash-catalog-answer(s)* — was deleted with the
+   Overview tab (Task 5a, 2026-07-30). Its only caller is gone; nothing else
+   ever referenced these classes. */
 /* Marks a product-variant field that comes from the category's global
    variants — always present, cannot be removed, must be answered. */
 .dash-pill-applied {
@@ -1861,6 +1780,17 @@
 .dash-status[data-status="archived"] {
   background: var(--mr-st-muted-bg);
   color: var(--mr-st-muted-fg);
+}
+/* A partner's product awaiting the review queue — amber/waiting, the same
+   tone as the other "not yet decided" states below (pending, requested).
+   `active` and `rejected` (products can carry both statuses too) already have
+   rules further down this file — `active` under Account states, `rejected`
+   under Extended status variants — and are reused as-is rather than
+   duplicated here: `rejected` already reads danger/red, same red family the
+   refund states use, which is exactly what a rejected product should read as. */
+.dash-status[data-status="pending_review"] {
+  background: var(--mr-st-warn-bg);
+  color: var(--mr-st-warn-fg);
 }
 
 /* ── Extended status variants (orders / fulfillment / refunds) ──

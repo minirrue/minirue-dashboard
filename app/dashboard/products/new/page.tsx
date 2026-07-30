@@ -30,7 +30,8 @@ function validate(values: FormValues): FormErrors {
   if (!values.name.trim()) errors.name = 'Product name is required.';
   if (!values.classification.categoryId)
     errors.categoryId = 'Category is required.';
-  if (!values.classification.brandId) errors.brandId = 'Brand is required.';
+  // Brand is optional (owner decision 2) — a blank pick saves to this space's
+  // own Generic brand rather than blocking the save.
   return errors;
 }
 

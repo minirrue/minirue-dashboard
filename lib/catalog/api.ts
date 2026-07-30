@@ -11,20 +11,21 @@ import type {
 export type { ProductListItem, ProductStatus } from './types';
 
 /** A row of the admin-managed variant-type vocabulary ("Global variants"). */
-export type {
-  AttributeRecord,
-  AttributeOptionRecord,
-  VariantValue,
-  TreeCategoryNode,
-  TreeBrandNode,
-} from './types';
+export type { AttributeRecord, AttributeOptionRecord, VariantValue } from './types';
 
 import type {
   AttributeRecord as AttributeRecordDto,
   AttributeOptionRecord as AttributeOptionRecordDto,
   VariantValue as VariantValueDto,
-  TreeCategoryNode as TreeCategoryNodeDto,
 } from './types';
+
+/**
+ * Every space-scoped admin list takes this. Absent means the caller's own
+ * house catalogue — `space.ts` on the backend defaults the same way, so a
+ * screen that forgets to pass it still gets MiniRue's own data, never
+ * everything at once.
+ */
+export type SpaceParam = 'house' | (string & {});
 
 const ADMIN = '/catalog/admin';
 
@@ -145,32 +146,42 @@ function mapProduct(p: BackendProduct): Product {
   };
 }
 
-/** specs/2026-07-22-product-tree: brand and category are FKs, gender and
- *  fragrance family are option-list picks inside `attributes`. */
+/**
+ * specs/2026-07-22-product-tree: brand and category are FKs, gender and
+ * fragrance family are option-list picks inside `attributes`.
+ *
+ * `brandId`/`categoryId` are optional (owner decision 2): a product saved with
+ * neither resolves to that space's own Generic brand/category on the server.
+ * "Generic" is an internal bucket name only — never send it as a chosen
+ * brand/category id, just omit the field.
+ */
 export interface ProductWriteInput {
   name: string;
-  brandId: string;
-  categoryId: string;
+  brandId?: string;
+  categoryId?: string;
   description?: string;
   /** attribute id -> chosen option id */
   attributes?: Record<string, string>;
 }
 
 function toCreateProductBody(data: ProductWriteInput) {
-  return {
+  const body: Record<string, unknown> = {
     name: data.name,
-    brand_id: data.brandId,
-    category_id: data.categoryId,
     description: data.description ?? null,
     attributes: data.attributes ?? {},
   };
+  // Omitted (not sent as '') so the server's Generic-resolution applies —
+  // an empty string would be a brand/category id that doesn't exist.
+  if (data.brandId) body.brand_id = data.brandId;
+  if (data.categoryId) body.category_id = data.categoryId;
+  return body;
 }
 
 function toUpdateProductBody(data: Partial<ProductWriteInput>) {
   const body: Record<string, unknown> = {};
   if (data.name !== undefined) body.name = data.name;
-  if (data.brandId !== undefined) body.brand_id = data.brandId;
-  if (data.categoryId !== undefined) body.category_id = data.categoryId;
+  if (data.brandId !== undefined) body.brand_id = data.brandId || null;
+  if (data.categoryId !== undefined) body.category_id = data.categoryId || null;
   if (data.description !== undefined)
     body.description = data.description ?? null;
   if (data.attributes !== undefined) body.attributes = data.attributes;
@@ -182,9 +193,13 @@ export async function listProducts(params?: {
   limit?: number;
   status?: ProductStatus;
   search?: string;
-  brand?: string;
-  /** Only this collaborator's products; 'HOUSE' = MiniRue's own catalogue. */
-  collaboratorId?: string;
+  /** Filter by an exact brand id — a deep link from Brands used to filter by
+   *  name, which is ambiguous once two spaces can each have a brand called
+   *  the same thing. */
+  brandId?: string;
+  /** 'house' = MiniRue's own catalogue (the default the server applies when
+   *  this is omitted), a collaborator id for their space, or 'all'. */
+  space?: SpaceParam;
 }): Promise<{ items: ProductListItem[]; total: number }> {
   const qs = params
     ? '?' +
@@ -249,44 +264,39 @@ export async function createProduct(
   return getProduct(created.id);
 }
 
-export async function listCategories(): Promise<{ items: Category[] }> {
-  const res = await apiFetch<{ data: Category[] }>('/catalog/categories', { auth: true });
+/**
+ * The admin-scoped read — replaces the public `/catalog/categories`, which
+ * returned every space at once and let a partner's category read as though
+ * it were filed inside one of MiniRue's own. `space` omitted = MiniRue's own
+ * (matches the server default in `space.ts`).
+ */
+export async function listCategories(opts: { space?: SpaceParam } = {}): Promise<{ items: Category[] }> {
+  const qs = opts.space ? `?space=${encodeURIComponent(opts.space)}` : '';
+  const res = await apiFetch<{ data: Category[] }>(`${ADMIN}/categories${qs}`, { auth: true });
   return { items: res.data };
-}
-
-export async function listBrands(): Promise<string[]> {
-  return apiFetch<string[]>(`${ADMIN}/brands`, { auth: true });
 }
 
 export interface ManagedBrand {
   id: string;
   name: string;
   createdAt: string;
+  /** True for the one auto-created "Generic" brand every space gets. Never
+   *  offered as a pick in the brand dropdown — the blank option already means
+   *  Generic — and protected from rename/delete like a default category. */
+  isGeneric: boolean;
 }
 
 // ---------------------------------------------------------------------------
-// Option lists, brand global variants, and the tree
-// (specs 2026-07-22-product-tree)
+// Option lists and brand global variants (specs 2026-07-22-product-tree)
 //
-// Replaces the variant-type client. Delete always takes an explicit mode; the
-// caller must choose, exactly as the product delete dialog already makes you.
+// Delete always takes an explicit mode; the caller must choose, exactly as
+// the product delete dialog already makes you.
+//
+// `GET /catalog/admin/tree` and its client `loadTree` are gone — the
+// Catalogue Overview screen was its only caller and is gone too (Task 5a).
 // ---------------------------------------------------------------------------
 
 export type DeleteMode = 'soft' | 'hard';
-
-/** Category → Brand → item counts, for the navigation tree. */
-/**
- * `space` = 'house' for MiniRue's own tree, a collaborator id for a partner's,
- * or omitted for every space at once. Omitting it is what made this screen file
- * a partner under MiniRue's Perfumes as though they were a label inside it.
- */
-export async function loadTree(space?: string): Promise<TreeCategoryNodeDto[]> {
-  const qs = space ? `?space=${encodeURIComponent(space)}` : '';
-  const res = await apiFetch<{ data: TreeCategoryNodeDto[] }>(`${ADMIN}/tree${qs}`, {
-    auth: true,
-  });
-  return res.data;
-}
 
 /** Active lists only — what the product form offers. */
 export async function listAttributes(
@@ -401,8 +411,14 @@ export async function createCategory(data: {
   slug: string;
   parentId?: string;
   sortOrder?: number;
+  /** Required in practice (Task 18) — a category with no picture is a
+   *  prohibited state — but left optional here so the type itself doesn't
+   *  duplicate the form's own validation message. */
+  imageMediaId?: string;
+  space?: SpaceParam;
 }): Promise<Category> {
-  return apiFetch(`${ADMIN}/categories`, {
+  const qs = data.space ? `?space=${encodeURIComponent(data.space)}` : '';
+  return apiFetch(`${ADMIN}/categories${qs}`, {
     method: 'POST',
     auth: true,
     body: JSON.stringify({
@@ -410,15 +426,20 @@ export async function createCategory(data: {
       slug: data.slug,
       parent_id: data.parentId ?? null,
       sort_order: data.sortOrder ?? 0,
+      image_media_id: data.imageMediaId ?? null,
     }),
   });
 }
 
 export async function updateCategory(
   id: string,
-  data: Partial<Pick<Category, 'name' | 'slug' | 'parentId' | 'sortOrder'>>,
+  data: Partial<Pick<Category, 'name' | 'slug' | 'parentId' | 'sortOrder'>> & {
+    imageMediaId?: string | null;
+  },
+  space?: SpaceParam,
 ): Promise<Category> {
-  return apiFetch(`${ADMIN}/categories/${id}`, {
+  const qs = space ? `?space=${encodeURIComponent(space)}` : '';
+  return apiFetch(`${ADMIN}/categories/${id}${qs}`, {
     method: 'PATCH',
     auth: true,
     body: JSON.stringify({
@@ -426,12 +447,14 @@ export async function updateCategory(
       ...(data.slug !== undefined ? { slug: data.slug } : {}),
       ...(data.parentId !== undefined ? { parent_id: data.parentId } : {}),
       ...(data.sortOrder !== undefined ? { sort_order: data.sortOrder } : {}),
+      ...(data.imageMediaId !== undefined ? { image_media_id: data.imageMediaId } : {}),
     }),
   });
 }
 
-export async function deleteCategory(id: string): Promise<void> {
-  await apiFetch<void>(`${ADMIN}/categories/${id}`, { method: 'DELETE', auth: true });
+export async function deleteCategory(id: string, space?: SpaceParam): Promise<void> {
+  const qs = space ? `?space=${encodeURIComponent(space)}` : '';
+  await apiFetch<void>(`${ADMIN}/categories/${id}${qs}`, { method: 'DELETE', auth: true });
 }
 
 export async function createVariant(
@@ -486,25 +509,38 @@ export async function updateVariant(
 // --- brands ---------------------------------------------------------------
 
 /**
- * `ownedOnly` returns MiniRue's own makers and hides partner brands, which are
- * auto-created when a collaborator is onboarded and belong under Collaborators.
- * Filters that need to match any product's brand should omit it.
+ * `space` scopes to one seller's own makers — 'house' for MiniRue's, a
+ * collaborator id for theirs. `GET /catalog/admin/brands` (unscoped, every
+ * space at once) is gone; every caller now says whose brands it wants.
+ * `includeGeneric` opts into getting that space's Generic row back too — the
+ * product form's brand picker filters it out itself either way, so most
+ * callers can leave this off.
  */
 export async function listManagedBrands(
-  opts: { ownedOnly?: boolean } = {},
+  opts: { space?: SpaceParam; includeGeneric?: boolean } = {},
 ): Promise<ManagedBrand[]> {
-  const qs = opts.ownedOnly ? '?scope=own' : '';
+  const params = new URLSearchParams();
+  if (opts.space) params.set('space', opts.space);
+  if (opts.includeGeneric) params.set('includeGeneric', 'true');
+  const qs = params.toString() ? `?${params.toString()}` : '';
   const res = await apiFetch<{ data: ManagedBrand[] }>(
     `${ADMIN}/brands/managed${qs}`,
     { auth: true },
   );
   return res.data;
 }
-export async function createBrand(name: string): Promise<ManagedBrand> {
-  return apiFetch<ManagedBrand>(`${ADMIN}/brands/managed`, {
+export async function createBrand(
+  name: string,
+  opts: { space?: SpaceParam; imageMediaId?: string } = {},
+): Promise<ManagedBrand> {
+  const qs = opts.space ? `?space=${encodeURIComponent(opts.space)}` : '';
+  return apiFetch<ManagedBrand>(`${ADMIN}/brands/managed${qs}`, {
     method: 'POST',
     auth: true,
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({
+      name,
+      ...(opts.imageMediaId ? { image_media_id: opts.imageMediaId } : {}),
+    }),
   });
 }
 export async function renameBrand(id: string, name: string): Promise<ManagedBrand> {
@@ -512,6 +548,25 @@ export async function renameBrand(id: string, name: string): Promise<ManagedBran
     method: 'PATCH',
     auth: true,
     body: JSON.stringify({ name }),
+  });
+}
+
+/**
+ * Picture and blurb — a brand MAY have one (owner's distinction from a
+ * category, which MUST). Works for a partner's own brand too; `id` is enough,
+ * no `space` needed on this one endpoint.
+ */
+export async function updateBrandPresentation(
+  id: string,
+  data: { description?: string | null; imageMediaId?: string | null },
+): Promise<{ id: string; name: string; slug: string }> {
+  return apiFetch(`${ADMIN}/brands/${id}/presentation`, {
+    method: 'PATCH',
+    auth: true,
+    body: JSON.stringify({
+      ...(data.description !== undefined ? { description: data.description } : {}),
+      ...(data.imageMediaId !== undefined ? { image_media_id: data.imageMediaId } : {}),
+    }),
   });
 }
 export async function deleteBrandGlobalVariant(

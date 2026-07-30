@@ -1,4 +1,10 @@
-export type ProductStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED' | 'PUBLISHED';
+export type ProductStatus =
+  | 'DRAFT'
+  | 'ACTIVE'
+  | 'ARCHIVED'
+  | 'PUBLISHED'
+  | 'PENDING_REVIEW'
+  | 'REJECTED';
 
 // Gender was a hardcoded union here and a hardcoded array in two page files.
 // It is an admin-managed option list now (specs 2026-07-22-product-tree), so
@@ -34,20 +40,6 @@ export interface VariantValue {
   optionName: string;
 }
 
-/** One node of the Category -> Brand -> Item navigation tree. */
-export interface TreeBrandNode {
-  brandId: string;
-  brandName: string;
-  itemCount: number;
-}
-
-export interface TreeCategoryNode {
-  categoryId: string;
-  categoryName: string;
-  itemCount: number;
-  brands: TreeBrandNode[];
-}
-
 export interface Category {
   id: string;
   name: string;
@@ -55,6 +47,14 @@ export interface Category {
   parentId: string | null;
   sortOrder: number;
   children?: Category[];
+  /** The picture the storefront renders this category's tile with (480×480).
+   *  Present once `imageMediaId` resolves; a category with none is a
+   *  prohibited state on create, per the owner's rule (Task 18). */
+  imageUrl?: string | null;
+  imageMediaId?: string | null;
+  /** True for the one auto-created "Generic" category every space gets.
+   *  Protected from rename/delete the same way a Generic brand is. */
+  isDefault?: boolean;
 }
 
 export interface ProductVariant {

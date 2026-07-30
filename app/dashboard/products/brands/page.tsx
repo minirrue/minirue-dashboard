@@ -1,6 +1,6 @@
 'use client';
 
-import React, {useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import {
   listManagedBrands,
   createBrand,
@@ -11,6 +11,10 @@ import {
 import type { ApiError } from '@/lib/api/client';
 import CatalogSubnav from '@/components/dashboard/CatalogSubnav';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import ImageField from '@/components/dashboard/ImageField';
+import { uploadDeviceFileToGallery } from '@/components/dashboard/GalleryPickerModal';
+import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
+import type { GalleryItem } from '@/lib/gallery/types';
 
 const TRACE = 'PG-DASHBOARD-CAT-005';
 
@@ -142,6 +146,39 @@ export default function BrandsPage() {
   const [addError, setAddError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
 
+  // Optional — the owner's distinction from a category, which MUST have one.
+  // A brand with no image falls back to whatever the storefront already does
+  // today for an imageless brand; nothing here invents a placeholder.
+  const [newImageMediaId, setNewImageMediaId] = useState<string | null>(null);
+  const [newImageUrl, setNewImageUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const deviceInputRef = useRef<HTMLInputElement>(null);
+  const cropImage = useImageCrop();
+
+  async function handleDeviceImage(file: File) {
+    setImageError(null);
+    setUploadingImage(true);
+    try {
+      const cropped = await cropImage(file, {
+        initialAspect: 1,
+        title: 'Crop brand image',
+      });
+      if (!cropped) return;
+      const item: GalleryItem = await uploadDeviceFileToGallery(
+        cropped,
+        newName.trim() || 'Brand Photos',
+      );
+      setNewImageMediaId(item.id);
+      setNewImageUrl(item.url);
+    } catch (e) {
+      const err = e as ApiError;
+      setImageError(err.message ?? 'Failed to upload image.');
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
   const load = useCallback(async () => {
     setLoadError(null);
     setLoading(true);
@@ -149,7 +186,7 @@ export default function BrandsPage() {
       // Own makers only — a partner's brand row is created automatically when
       // the collaborator is onboarded and is managed under Collaborators, so
       // listing it here mixed two different things into one undivided list.
-      const res = await listManagedBrands({ ownedOnly: true });
+      const res = await listManagedBrands({ space: 'house' });
       setBrands(res.sort((a, b) => a.name.localeCompare(b.name)));
     } catch (e) {
       const err = e as ApiError;
@@ -172,8 +209,13 @@ export default function BrandsPage() {
     setAdding(true);
     setAddError(null);
     try {
-      await createBrand(newName.trim());
+      await createBrand(newName.trim(), {
+        space: 'house',
+        imageMediaId: newImageMediaId ?? undefined,
+      });
       setNewName('');
+      setNewImageMediaId(null);
+      setNewImageUrl(null);
       setShowAddForm(false);
       await load();
     } catch (e) {
@@ -239,6 +281,40 @@ export default function BrandsPage() {
               />
             </div>
           </div>
+
+          <ImageField
+            label="Brand image (optional)"
+            imageUrl={newImageUrl}
+            mediaId={newImageMediaId}
+            disabled={adding || uploadingImage}
+            onChange={(mediaId, item) => {
+              setNewImageMediaId(mediaId);
+              setNewImageUrl(item?.url ?? null);
+            }}
+          />
+          <input
+            ref={deviceInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/heic,image/heif,image/webp"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleDeviceImage(file);
+              e.target.value = '';
+            }}
+          />
+          <button
+            type="button"
+            className="dash-btn-ghost"
+            style={{ marginTop: -8, marginBottom: 16 }}
+            disabled={adding || uploadingImage}
+            onClick={() => deviceInputRef.current?.click()}
+            data-trace-id={`${TRACE}::EL-BTN-upload-brand-image`}
+          >
+            {uploadingImage ? 'Uploading…' : 'Upload from this device'}
+          </button>
+          {imageError && <p className="dash-inline-error">{imageError}</p>}
+
           {addError && <p className="dash-inline-error">{addError}</p>}
           <div className="dash-form-actions">
             <button type="submit" className="dash-btn-primary" disabled={adding}>
@@ -250,6 +326,9 @@ export default function BrandsPage() {
               onClick={() => {
                 setShowAddForm(false);
                 setNewName('');
+                setNewImageMediaId(null);
+                setNewImageUrl(null);
+                setImageError(null);
                 setAddError(null);
               }}
               disabled={adding}

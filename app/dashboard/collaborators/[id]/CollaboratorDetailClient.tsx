@@ -18,16 +18,37 @@ import {
   apiSuspendCollaborator,
   apiUpdateCollaborator,
   apiUpdateCollaboratorSettings,
-  apiGetCollaboratorProducts,
   apiGetCollaboratorActivity,
-  type CollaboratorProductItem,
   type CollaboratorActivityItem,
   type CollaboratorDeleteImpact,
   type CollaboratorDetail,
   type CollaboratorModule,
   type FulfillmentMode,
 } from '@/lib/api/collaborators';
+import {
+  listProducts,
+  listManagedBrands,
+  listCategories,
+  updateCategory,
+  deleteCategory,
+  type ManagedBrand,
+} from '@/lib/catalog/api';
+import type { ProductListItem, Category } from '@/lib/catalog/types';
+import StatusBadge from '@/components/dashboard/StatusBadge';
+import type { StatusKind } from '@/components/dashboard/StatusBadge';
+import CategoryTree, { type CategoryTreeApi } from '@/app/dashboard/categories/CategoryTree';
 import { useRouter } from 'next/navigation';
+
+/** Same total map ProductsClient uses — a partner's catalogue can carry every
+ *  product status MiniRue's own can. */
+const STATUS_KIND_MAP: Record<string, StatusKind> = {
+  DRAFT: 'draft',
+  ACTIVE: 'active',
+  PUBLISHED: 'published',
+  ARCHIVED: 'archived',
+  PENDING_REVIEW: 'pending_review',
+  REJECTED: 'rejected',
+};
 
 /** Short, readable timestamp for the activity feed. */
 function formatDate(iso: string): string {
@@ -76,9 +97,34 @@ export default function CollaboratorDetailClient() {
   const [fulfillmentMode, setFulfillmentMode] = useState<FulfillmentMode>('MINIRUE_SHIPS');
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [tab, setTab] = useState<'Settings' | 'Products' | 'Activity'>('Settings');
-  const [products, setProducts] = useState<CollaboratorProductItem[]>([]);
+  const [tab, setTab] = useState<'Settings' | 'Products' | 'Brands' | 'Categories' | 'Activity'>(
+    'Settings',
+  );
+
+  // Partners oversight deep-links here with ?tab=Products so "View catalogue"
+  // lands somewhere useful. Read once on mount rather than through
+  // useSearchParams, which would force a Suspense boundary on this page for a
+  // one-time seed (same call ProductsClient makes for its own ?brandId= seed).
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get('tab');
+    if (requested === 'Products' || requested === 'Brands' || requested === 'Categories') {
+      setTab(requested);
+    }
+  }, []);
+  // Products, Brands and Categories all share the one code path Task 6 asks
+  // for: the same house-scoped admin catalogue functions ProductsClient,
+  // BrandsPage and CategoriesPage use, just with `space: id` instead of
+  // 'house'. No dedicated "collaborator products" endpoint left to drift from
+  // the real one.
+  const [products, setProducts] = useState<ProductListItem[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
+  const [productsError, setProductsError] = useState<string | null>(null);
+  const [brands, setBrands] = useState<ManagedBrand[]>([]);
+  const [brandsLoading, setBrandsLoading] = useState(false);
+  const [brandsError, setBrandsError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
   const [activity, setActivity] = useState<CollaboratorActivityItem[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
   const [deleteImpact, setDeleteImpact] = useState<CollaboratorDeleteImpact | null>(null);
@@ -87,16 +133,37 @@ export default function CollaboratorDetailClient() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Loaded when the tab is first opened rather than up front: most visits to
-  // this page are to change a setting, and two extra reads on every one of
-  // them buys nothing.
+  // this page are to change a setting, and extra reads on every one of them
+  // buys nothing.
   useEffect(() => {
     if (tab !== 'Products' || products.length > 0 || productsLoading) return;
     setProductsLoading(true);
-    apiGetCollaboratorProducts(id)
-      .then((res) => setProducts(res.items ?? []))
-      .catch(() => setProducts([]))
+    setProductsError(null);
+    listProducts({ space: id, limit: 100 })
+      .then((res) => setProducts(res.items))
+      .catch((e) => setProductsError((e as { message?: string }).message ?? 'Could not load products.'))
       .finally(() => setProductsLoading(false));
   }, [tab, id, products.length, productsLoading]);
+
+  useEffect(() => {
+    if (tab !== 'Brands' || brands.length > 0 || brandsLoading) return;
+    setBrandsLoading(true);
+    setBrandsError(null);
+    listManagedBrands({ space: id })
+      .then(setBrands)
+      .catch((e) => setBrandsError((e as { message?: string }).message ?? 'Could not load brands.'))
+      .finally(() => setBrandsLoading(false));
+  }, [tab, id, brands.length, brandsLoading]);
+
+  useEffect(() => {
+    if (tab !== 'Categories' || categories.length > 0 || categoriesLoading) return;
+    setCategoriesLoading(true);
+    setCategoriesError(null);
+    listCategories({ space: id })
+      .then((res) => setCategories(res.items))
+      .catch((e) => setCategoriesError((e as { message?: string }).message ?? 'Could not load categories.'))
+      .finally(() => setCategoriesLoading(false));
+  }, [tab, id, categories.length, categoriesLoading]);
 
   useEffect(() => {
     if (tab !== 'Activity' || activity.length > 0 || activityLoading) return;
@@ -106,6 +173,15 @@ export default function CollaboratorDetailClient() {
       .catch(() => setActivity([]))
       .finally(() => setActivityLoading(false));
   }, [tab, id, activity.length, activityLoading]);
+
+  function handleCategoryUpdated(updated: Category) {
+    setCategories((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+  }
+
+  const categoryApi: CategoryTreeApi<Category> = {
+    update: (catId, data) => updateCategory(catId, data, id),
+    remove: (catId) => deleteCategory(catId, id),
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -411,7 +487,7 @@ export default function CollaboratorDetailClient() {
         data-trace-id="PG-DASHBOARD-COLLAB-008::EL-TABS-detail"
         style={{ display: 'flex', gap: 4, marginBottom: 16, flexWrap: 'wrap' }}
       >
-        {(['Settings', 'Products', 'Activity'] as const).map((t) => (
+        {(['Settings', 'Products', 'Brands', 'Categories', 'Activity'] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -429,6 +505,8 @@ export default function CollaboratorDetailClient() {
         <div className="dash-card">
           {productsLoading ? (
             <p className="dash-help-text">Loading products…</p>
+          ) : productsError ? (
+            <p className="dash-inline-error">{productsError}</p>
           ) : products.length === 0 ? (
             <p className="dash-help-text">This partner has not listed anything yet.</p>
           ) : (
@@ -440,15 +518,59 @@ export default function CollaboratorDetailClient() {
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600 }}>{p.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--mr-fg-3)' }}>/{p.slug}</div>
+                    <div style={{ fontSize: 12, color: 'var(--mr-fg-3)' }}>
+                      {p.brandName || 'No brand (Generic)'} · /{p.slug}
+                    </div>
                   </div>
-                  <span className="dash-status" data-status={p.publishedState.toLowerCase()}>
-                    <span className="dash-status-dot" />
-                    {p.publishedState.charAt(0) + p.publishedState.slice(1).toLowerCase()}
-                  </span>
+                  <StatusBadge status={STATUS_KIND_MAP[p.status] ?? 'draft'} />
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'Brands' && (
+        <div className="dash-card">
+          {brandsLoading ? (
+            <p className="dash-help-text">Loading brands…</p>
+          ) : brandsError ? (
+            <p className="dash-inline-error">{brandsError}</p>
+          ) : brands.length === 0 ? (
+            <p className="dash-help-text">This partner has not added a brand yet.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {brands.map((b) => (
+                <div key={b.id} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <div style={{ flex: 1, minWidth: 0, fontWeight: 600 }}>{b.name}</div>
+                  {b.isGeneric && <span className="dash-help-text">(default)</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'Categories' && (
+        <div>
+          {categoriesLoading ? (
+            <div className="dash-card">
+              <p className="dash-help-text">Loading categories…</p>
+            </div>
+          ) : categoriesError ? (
+            <div className="dash-card">
+              <p className="dash-inline-error">{categoriesError}</p>
+            </div>
+          ) : (
+            <CategoryTree
+              categories={categories}
+              api={categoryApi}
+              onCategoryUpdated={handleCategoryUpdated}
+              onCategoryDeleted={() => {
+                setCategories([]);
+                setCategoriesLoading(false);
+              }}
+            />
           )}
         </div>
       )}

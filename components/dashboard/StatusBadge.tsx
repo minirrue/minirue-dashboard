@@ -1,6 +1,12 @@
 import React from 'react';
 
-export type StatusKind = 'draft' | 'published' | 'archived';
+export type StatusKind =
+  | 'draft'
+  | 'published'
+  | 'archived'
+  | 'active'
+  | 'pending_review'
+  | 'rejected';
 
 export interface StatusBadgeProps {
   status: StatusKind;
@@ -12,6 +18,9 @@ const LABELS: Record<StatusKind, string> = {
   draft: 'Draft',
   published: 'Published',
   archived: 'Archived',
+  active: 'Active',
+  pending_review: 'Waiting for review',
+  rejected: 'Rejected',
 };
 
 export default function StatusBadge({ status, label }: StatusBadgeProps) {

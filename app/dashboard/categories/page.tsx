@@ -1,54 +1,25 @@
 'use client';
 
-import React, {useState, useCallback } from 'react';
-import { listCategories, createCategory, deleteCategory } from '@/lib/catalog/api';
+import React, { useCallback, useMemo, useState } from 'react';
+import { listCategories, createCategory, updateCategory, deleteCategory } from '@/lib/catalog/api';
 import type { Category } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
-import CategoryTree from './CategoryTree';
+import CategoryTree, { type CategoryTreeApi } from './CategoryTree';
+import NewCategoryForm, { type ParentOption } from './NewCategoryForm';
 import CatalogSubnav from '@/components/dashboard/CatalogSubnav';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
-/* ── Slug generation ── */
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-}
+const TRACE = 'PG-DASHBOARD-CAT-004';
 
-/* ── Form types ── */
-interface AddFormValues {
-  name: string;
-  slug: string;
-  parentId: string;
-  sortOrder: string;
-}
-
-interface AddFormErrors {
-  name?: string;
-  slug?: string;
-}
-
-function validate(v: AddFormValues): AddFormErrors {
-  const errors: AddFormErrors = {};
-  if (!v.name.trim()) errors.name = 'Name is required.';
-  if (!v.slug.trim()) errors.slug = 'Slug is required.';
-  return errors;
-}
-
-/* ── Flatten helper for parent select ── */
-function flattenForSelect(
-  categories: Category[],
-  depth = 0,
-): Array<Category & { depth: number }> {
+/** Flatten helper for the "Parent Category" select. */
+function flattenForSelect(categories: Category[], depth = 0): ParentOption[] {
   return categories.flatMap((cat) => [
-    { ...cat, depth },
+    { id: cat.id, name: cat.name, depth },
     ...flattenForSelect(cat.children ?? [], depth + 1),
   ]);
 }
 
-/* ── Deep update helper ── */
+/** Deep update helper — replaces one node in the tree in place. */
 function updateCategoryInTree(tree: Category[], updated: Category): Category[] {
   return tree.map((cat) => {
     if (cat.id === updated.id) return { ...updated, children: cat.children };
@@ -65,22 +36,11 @@ export default function CategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [addValues, setAddValues] = useState<AddFormValues>({
-    name: '',
-    slug: '',
-    parentId: '',
-    sortOrder: '0',
-  });
-  const [addErrors, setAddErrors] = useState<AddFormErrors>({});
-  const [addError, setAddError] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
-
   const load = useCallback(async () => {
     setLoadError(null);
     setLoading(true);
     try {
-      const res = await listCategories();
+      const res = await listCategories({ space: 'house' });
       // Guarded: a response missing this key set state to undefined and the
       // next .map()/.reduce() blanked the whole tab. Same bug as Settings
       // and Loyalty had.
@@ -97,187 +57,52 @@ export default function CategoriesPage() {
     load();
   }, [load]);
 
-  function setAddField<K extends keyof AddFormValues>(key: K, value: string) {
-    setAddValues((prev) => {
-      const next = { ...prev, [key]: value };
-      // Auto-generate slug from name
-      if (key === 'name') {
-        next.slug = slugify(value);
-      }
-      return next;
-    });
-    if (addErrors[key as keyof AddFormErrors]) {
-      setAddErrors((prev) => ({ ...prev, [key]: undefined }));
-    }
-  }
-
-  async function handleAddCategory(e: React.FormEvent) {
-    e.preventDefault();
-    const errs = validate(addValues);
-    if (Object.keys(errs).length > 0) {
-      setAddErrors(errs);
-      return;
-    }
-    setAddError(null);
-    setAdding(true);
-    try {
-      await createCategory({
-        name: addValues.name.trim(),
-        slug: addValues.slug.trim(),
-        parentId: addValues.parentId || undefined,
-        sortOrder: Number(addValues.sortOrder) || 0,
-      });
-      setAddValues({ name: '', slug: '', parentId: '', sortOrder: '0' });
-      setShowAddForm(false);
-      await load();
-    } catch (e) {
-      const err = e as ApiError;
-      setAddError(err.message ?? 'Failed to create category.');
-    } finally {
-      setAdding(false);
-    }
-  }
-
   function handleCategoryUpdated(updated: Category) {
     setCategories((prev) => updateCategoryInTree(prev, updated));
   }
 
-  const flatOptions = flattenForSelect(categories);
+  const parentOptions = useMemo(() => flattenForSelect(categories), [categories]);
+
+  // MiniRue's own space, bound once — the tree component itself never knows
+  // it is talking to 'house' rather than a partner's space.
+  const api: CategoryTreeApi<Category> = useMemo(
+    () => ({
+      update: (id, data) => updateCategory(id, data, 'house'),
+      remove: (id) => deleteCategory(id, 'house'),
+    }),
+    [],
+  );
 
   return (
     <>
-      <div className="dash-page-header" data-trace-id="PG-DASHBOARD-CAT-004::EL-REGION-categories-page-header">
+      <div className="dash-page-header" data-trace-id={`${TRACE}::EL-REGION-categories-page-header`}>
         <h1 className="dash-page-title">Categories</h1>
-        {!showAddForm && (
-          <button
-            className="dash-btn-primary"
-            onClick={() => setShowAddForm(true)}
-            data-trace-id="PG-DASHBOARD-CAT-004::EL-BTN-show-add-category-form"
-          >
-            Add Category
-          </button>
-        )}
       </div>
 
       <CatalogSubnav />
 
-      {/* Add category form */}
-      {showAddForm && (
-        <form
-          className="dash-form-card"
-          onSubmit={handleAddCategory}
-          noValidate
-          data-trace-id="PG-DASHBOARD-CAT-004::EL-FORM-add-category-form"
-        >
-          <h2 className="dash-section-title" style={{ marginBottom: 16 }}>
-            New Category
-          </h2>
-          <div className="dash-field-row">
-            <div className="dash-field">
-              <label className="dash-label" htmlFor="cat-name">
-                Name <span className="dash-required">*</span>
-              </label>
-              <input
-                id="cat-name"
-                className={`dash-input${addErrors.name ? ' dash-input-error' : ''}`}
-                value={addValues.name}
-                onChange={(e) => setAddField('name', e.target.value)}
-                placeholder="e.g. Woody"
-                disabled={adding}
-                autoFocus
-                data-trace-id="PG-DASHBOARD-CAT-004::EL-INPUT-add-category-name"
-              />
-              {addErrors.name && <p className="dash-field-error">{addErrors.name}</p>}
-            </div>
-            <div className="dash-field">
-              <label className="dash-label" htmlFor="cat-slug">
-                Slug <span className="dash-required">*</span>
-              </label>
-              <input
-                id="cat-slug"
-                className={`dash-input${addErrors.slug ? ' dash-input-error' : ''}`}
-                value={addValues.slug}
-                onChange={(e) => setAddField('slug', e.target.value)}
-                placeholder="woody"
-                disabled={adding}
-                data-trace-id="PG-DASHBOARD-CAT-004::EL-INPUT-add-category-slug"
-              />
-              {addErrors.slug && <p className="dash-field-error">{addErrors.slug}</p>}
-            </div>
-          </div>
-          <div className="dash-field-row">
-            <div className="dash-field">
-              <label className="dash-label" htmlFor="cat-parent">
-                Parent Category
-              </label>
-              <select
-                id="cat-parent"
-                className="dash-select"
-                value={addValues.parentId}
-                onChange={(e) => setAddField('parentId', e.target.value)}
-                disabled={adding}
-                data-trace-id="PG-DASHBOARD-CAT-004::EL-SELECT-add-category-parent"
-              >
-                <option value="">None (top-level)</option>
-                {flatOptions.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {'  '.repeat(cat.depth)}
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="dash-field">
-              <label className="dash-label" htmlFor="cat-sort">
-                Sort Order
-              </label>
-              <input
-                id="cat-sort"
-                type="number"
-                className="dash-input"
-                value={addValues.sortOrder}
-                onChange={(e) => setAddField('sortOrder', e.target.value)}
-                disabled={adding}
-                data-trace-id="PG-DASHBOARD-CAT-004::EL-INPUT-add-category-sort-order"
-              />
-            </div>
-          </div>
-
-          {addError && <p className="dash-inline-error">{addError}</p>}
-
-          <div className="dash-form-actions">
-            <button
-              type="submit"
-              className="dash-btn-primary"
-              disabled={adding}
-              data-trace-id="PG-DASHBOARD-CAT-004::EL-BTN-create-category"
-            >
-              {adding ? 'Creating…' : 'Create Category'}
-            </button>
-            <button
-              type="button"
-              className="dash-btn-ghost"
-              onClick={() => {
-                setShowAddForm(false);
-                setAddValues({ name: '', slug: '', parentId: '', sortOrder: '0' });
-                setAddErrors({});
-                setAddError(null);
-              }}
-              disabled={adding}
-              data-trace-id="PG-DASHBOARD-CAT-004::EL-BTN-cancel-add-category"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+      <NewCategoryForm
+        parentOptions={parentOptions}
+        traceId={TRACE}
+        onCreate={(input) =>
+          createCategory({
+            name: input.name,
+            slug: input.slug ?? '',
+            parentId: input.parentId,
+            sortOrder: input.sortOrder,
+            imageMediaId: input.imageMediaId,
+            space: 'house',
+          })
+        }
+        onCreated={load}
+      />
 
       {/* Tree */}
       {loading ? (
         <div
           className="dash-card"
           style={{ padding: 0, overflow: 'hidden' }}
-          data-trace-id="PG-DASHBOARD-CAT-004::EL-REGION-categories-tree-skeleton"
+          data-trace-id={`${TRACE}::EL-REGION-categories-tree-skeleton`}
         >
           <div className="dash-table-wrap">
             <table className="dash-table">
@@ -303,13 +128,13 @@ export default function CategoriesPage() {
           </div>
         </div>
       ) : loadError ? (
-        <div className="dash-card" data-trace-id="PG-DASHBOARD-CAT-004::EL-REGION-categories-load-error">
+        <div className="dash-card" data-trace-id={`${TRACE}::EL-REGION-categories-load-error`}>
           <p className="dash-inline-error">{loadError}</p>
           <button
             className="dash-btn-secondary"
             style={{ marginTop: 12 }}
             onClick={load}
-            data-trace-id="PG-DASHBOARD-CAT-004::EL-BTN-retry-load-categories"
+            data-trace-id={`${TRACE}::EL-BTN-retry-load-categories`}
           >
             Retry
           </button>
@@ -317,6 +142,7 @@ export default function CategoriesPage() {
       ) : (
         <CategoryTree
           categories={categories}
+          api={api}
           onCategoryUpdated={handleCategoryUpdated}
           onCategoryDeleted={load}
         />

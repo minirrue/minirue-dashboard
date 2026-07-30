@@ -44,11 +44,16 @@ export default function ProductClassification({
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([listCategories(), listManagedBrands()])
+    Promise.all([
+      listCategories({ space: 'house' }),
+      listManagedBrands({ space: 'house' }),
+    ])
       .then(([cats, brandRows]) => {
         if (cancelled) return;
         setCategories(cats.items);
-        setBrands(brandRows);
+        // The blank option below already means Generic; listing the actual
+        // Generic row too would invite picking it as though it were a maker.
+        setBrands(brandRows.filter((b) => !b.isGeneric));
       })
       .catch(() => {
         if (!cancelled)
@@ -94,7 +99,7 @@ export default function ProductClassification({
 
         <div className="dash-field">
           <label className="dash-label" htmlFor="pc-brand">
-            Brand <span className="dash-required">*</span>
+            Brand
           </label>
           <select
             id="pc-brand"
@@ -104,7 +109,7 @@ export default function ProductClassification({
             disabled={disabled}
             data-trace-id={`${tracePrefix}::EL-SELECT-product-brand`}
           >
-            <option value="">Select brand…</option>
+            <option value="">No brand (Generic)</option>
             {brands.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}

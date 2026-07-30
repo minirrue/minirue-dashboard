@@ -224,6 +224,16 @@ export default function PartnersOversightClient() {
                         >
                           Manage
                         </Link>
+                        {/* Lands directly on that partner's Products tab —
+                            their catalogue lives under Collaborators now, not
+                            under MiniRue's own Catalogue (Task 6). */}
+                        <Link
+                          href={`/collaborators/${partner.id}?tab=Products`}
+                          className="dash-btn-ghost"
+                          data-trace-id={`${TRACE}::EL-LINK-view-catalogue@${partner.id}`}
+                        >
+                          View catalogue
+                        </Link>
                         {isSuperAdmin && (
                           <button
                             type="button"

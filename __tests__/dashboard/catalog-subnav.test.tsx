@@ -13,7 +13,7 @@ import {
 
 describe('CatalogSubnav active tab', () => {
   const cases: Array<[string, string]> = [
-    ['/catalogue', 'Overview'],
+    ['/catalogue', 'Products'],
     ['/catalogue/products', 'Products'],
     ['/catalogue/products/new', 'Products'],
     ['/catalogue/products/abc-123/edit', 'Products'],
@@ -28,9 +28,8 @@ describe('CatalogSubnav active tab', () => {
     expect(resolveActiveTab(path)).toBe(expected);
   });
 
-  it('offers all five tabs in a stable order', () => {
+  it('offers all four tabs in a stable order', () => {
     expect(CATALOG_TAB_LABELS).toEqual([
-      'Overview',
       'Products',
       'Categories',
       'Brands',

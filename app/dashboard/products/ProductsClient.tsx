@@ -77,8 +77,20 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+// Total map, not a blind cast: `s.toLowerCase() as StatusKind` compiled fine
+// and was silently wrong the moment PENDING_REVIEW/REJECTED joined
+// ProductStatus but StatusKind's cases lagged behind. A missing case here is
+// now a caught `?? 'draft'` fallback, not an untyped guess.
+const STATUS_KIND: Record<ProductStatus, StatusKind> = {
+  DRAFT: 'draft',
+  ACTIVE: 'active',
+  PUBLISHED: 'published',
+  ARCHIVED: 'archived',
+  PENDING_REVIEW: 'pending_review',
+  REJECTED: 'rejected',
+};
 function statusToKind(s: ProductStatus): StatusKind {
-  return s.toLowerCase() as StatusKind;
+  return STATUS_KIND[s] ?? 'draft';
 }
 
 const STATUS_OPTIONS: Array<{ value: '' | ProductStatus; label: string }> = [
@@ -86,6 +98,8 @@ const STATUS_OPTIONS: Array<{ value: '' | ProductStatus; label: string }> = [
   { value: 'DRAFT', label: 'Draft' },
   { value: 'PUBLISHED', label: 'Published' },
   { value: 'ARCHIVED', label: 'Archived' },
+  { value: 'PENDING_REVIEW', label: 'Waiting for review' },
+  { value: 'REJECTED', label: 'Rejected' },
 ];
 
 /* ── Main Component ── */
@@ -109,19 +123,23 @@ export default function ProductsClient() {
   const [deleteTarget, setDeleteTarget] = useState<ProductListItem | null>(null);
 
   useEffect(() => {
-    listManagedBrands()
+    // MiniRue's own catalogue only — a partner's makers live under
+    // Collaborators, not this screen.
+    listManagedBrands({ space: 'house' })
       .then(setBrands)
       .catch(() => setBrands([]));
   }, []);
 
-  // The catalogue map deep-links here with ?brand=Creed. Read it once on mount
-  // rather than through useSearchParams, which would force a Suspense boundary
-  // on this page for a one-time seed. A blank or unknown value just leaves the
-  // filter on "All brands".
+  // Deep-links here with ?brandId=<id> (e.g. from the Brands tab). Read once
+  // on mount rather than through useSearchParams, which would force a
+  // Suspense boundary on this page for a one-time seed. A blank or unknown
+  // value just leaves the filter on "All brands". Filtering by id rather than
+  // name is what makes this unambiguous now that two spaces can each have a
+  // brand called the same thing.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const brand = params.get('brand');
-    if (brand) setBrandFilter(brand);
+    const brandId = params.get('brandId');
+    if (brandId) setBrandFilter(brandId);
   }, []);
 
   const load = useCallback(
@@ -131,7 +149,8 @@ export default function ProductsClient() {
       try {
         const res = await listProducts({
           status: statusFilter || undefined,
-          brand: brandFilter || undefined,
+          brandId: brandFilter || undefined,
+          space: 'house',
           search: (searchOverride ?? debouncedSearchInput) || undefined,
           limit: 50,
         });
@@ -218,7 +237,7 @@ export default function ProductsClient() {
         </Link>
       ),
     },
-    { key: 'brand', label: 'Brand', sortable: true },
+    { key: 'brandName', label: 'Brand', sortable: true },
     {
       key: 'status',
       label: 'Status',
@@ -335,7 +354,7 @@ export default function ProductsClient() {
         >
           <option value="">All brands</option>
           {brands.map((b) => (
-            <option key={b.id} value={b.name}>
+            <option key={b.id} value={b.id}>
               {b.name}
             </option>
           ))}
