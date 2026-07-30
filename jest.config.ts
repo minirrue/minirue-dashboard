@@ -11,6 +11,13 @@ const config: Config = {
     '^@/(.*)$': '<rootDir>/$1',
   },
   testMatch: ['**/__tests__/**/*.test.{ts,tsx}'],
+  // NOTE: the d3 packages behind the chart kit are ESM-only with a locked
+  // `exports` map, so there is no CJS build to fall back to and Jest cannot
+  // require them. Setting `transformIgnorePatterns` here does NOT fix it —
+  // next/jest appends user patterns *after* its own `/node_modules/` rule,
+  // so the exclusion still wins. The supported lever is `transpilePackages`
+  // in next.config.ts, which next/jest reads to build that first pattern.
+  // See the d3 entry there.
   collectCoverageFrom: [
     'lib/**/*.{ts,tsx}',
     'app/**/*.{ts,tsx}',
