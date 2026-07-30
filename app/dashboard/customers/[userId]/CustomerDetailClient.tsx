@@ -457,9 +457,9 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
               Delete this customer&apos;s account?
             </h2>
             <p className="dash-help-text" style={{ marginBottom: 12 }}>
-              This anonymizes their personal data (name, email, addresses) per GDPR — their past
-              orders stay on record for accounting, but their account can no longer sign in. This
-              cannot be undone.
+              This permanently deletes the customer&apos;s account — profile, addresses, saved
+              cart and login. Their past orders stay on record for accounting, with the buyer
+              removed rather than the order. This cannot be undone.
             </p>
             {deleteError && <p className="dash-inline-error">{deleteError}</p>}
             <div className="dash-form-actions" style={{ marginTop: 8 }}>
@@ -677,10 +677,21 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                     <label className="dash-label" htmlFor="edit-phone">
                       Phone
                     </label>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    {/* Country is a fixed narrow column; phone flexes to fill what's
+                        left. The select's `flex: 0 0 Npx` alone isn't enough — a plain
+                        <input> flex child defaults to `min-width: auto`, which is its own
+                        intrinsic content width (well over 128px), so without an explicit
+                        `min-width: 0` it refuses to shrink and pushes past the select
+                        instead of sharing the row. Wraps to its own line rather than
+                        overlapping if the row is ever too narrow for both. */}
+                    <div
+                      data-testid="phone-country-row"
+                      style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}
+                    >
                       <select
                         className="dash-input"
-                        style={{ flex: '0 0 128px' }}
+                        data-testid="phone-country-select"
+                        style={{ flex: '0 0 128px', minWidth: 0 }}
                         aria-label="Phone country"
                         value={detailForm.phoneDial}
                         onChange={(e) =>
@@ -696,6 +707,7 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                       <input
                         id="edit-phone"
                         className="dash-input"
+                        data-testid="phone-number-input"
                         type="tel"
                         inputMode="tel"
                         placeholder="1001234567"
@@ -703,6 +715,7 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                         onChange={(e) =>
                           setDetailForm({ ...detailForm, phoneNational: e.target.value })
                         }
+                        style={{ flex: '1 1 160px', minWidth: 0 }}
                       />
                     </div>
                     {/* Shows what will actually be stored, and the same

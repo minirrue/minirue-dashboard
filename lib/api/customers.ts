@@ -104,7 +104,12 @@ export async function apiAdminAdjustTier(
   });
 }
 
-/** GDPR-anonymize + delete this customer's account (admin-triggered). */
+/**
+ * Permanently deletes this customer's account (admin-triggered): profile,
+ * addresses, cart and login are removed outright. Their past orders stay on
+ * record with the buyer detached, not erased, so revenue/order-count figures
+ * never move.
+ */
 export async function apiAdminDeleteCustomer(userId: string): Promise<void> {
   await apiFetch<void>(`/customers/${userId}`, { method: 'DELETE', auth: true });
 }
