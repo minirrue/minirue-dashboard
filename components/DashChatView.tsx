@@ -60,8 +60,16 @@ export interface Person {
   unread: number
   presence: CustomerPresence
   /** Non-archived room count, shown in the rooms pane header ("Youssef · 3
-   * chats"). */
+   * chats") — EXCEPT when `fullyArchived`, in which case this is the
+   * archived count instead, so the header still shows a real number. */
   chatCount: number
+  /** True when every one of this person's conversations is archived. Owner
+   * decision 2026-07-30: archiving everything must never make a customer
+   * disappear from the rail — that would be the only way back to
+   * un-archiving them. A fully-archived person stays in the list, selectable,
+   * styled to make the archived state obvious, and their rooms pane opens
+   * straight to the archived group instead of looking empty. */
+  fullyArchived?: boolean
 }
 
 export interface Conversation {
@@ -415,6 +423,26 @@ const STYLES = `
   border: 2px solid var(--mr-dash-surface);
 }
 .mrc-row[data-active="true"] .mrc-dot { border-color: var(--mr-cream-200); }
+/* Every one of this person's rooms is archived — dimmed like an archived room
+   row, full opacity on hover/active so selecting them still reads clearly. */
+.mrc-row[data-archived="true"] { opacity: 0.7; }
+.mrc-row[data-archived="true"]:hover,
+.mrc-row[data-archived="true"][data-active="true"] { opacity: 1; }
+.mrc-archived-flag {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mr-ink-500);
+  color: var(--mr-cream-100);
+  border: 2px solid var(--mr-dash-surface);
+}
+.mrc-row[data-active="true"] .mrc-archived-flag { border-color: var(--mr-cream-200); }
 
 .mrc-row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .mrc-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
@@ -629,6 +657,14 @@ const STYLES = `
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--mr-ink-500);
+}
+.mrc-rooms-archived-notice {
+  padding: 12px 18px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--mr-ink-500);
+  background: var(--mr-dash-sub);
+  border-bottom: 1px solid var(--mr-dash-hair);
 }
 .mrc-room-group-toggle:hover { background: var(--mr-dash-sub); }
 .mrc-room-group-toggle svg { transition: transform var(--mr-dur-fast) var(--mr-ease-out); flex-shrink: 0; }
@@ -1504,12 +1540,18 @@ export function DashChatView({
                   onClick={() => selectPerson(p.id)}
                   data-active={activePersonId === p.id}
                   data-unread={p.unread > 0}
+                  data-archived={p.fullyArchived ? 'true' : 'false'}
                   className="mrc-row"
                   style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
                 >
                   <span className="mrc-avatar-wrap">
                     <span className="mrc-avatar"><AvatarContent url={p.avatarUrl} label={p.name} /></span>
                     <span className="mrc-dot" style={{ background: PRESENCE[p.presence].color }} />
+                    {p.fullyArchived && (
+                      <span className="mrc-archived-flag" title="All conversations archived" aria-label="All conversations archived">
+                        <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8M10 13h4" /></svg>
+                      </span>
+                    )}
                   </span>
                   <span className="mrc-row-body">
                     <span className="mrc-row-top">
@@ -1517,7 +1559,11 @@ export function DashChatView({
                       <span className="mrc-row-time">{p.time}</span>
                     </span>
                     <span className="mrc-row-mid">
-                      <span className="mrc-row-preview">{p.chatCount} {p.chatCount === 1 ? 'chat' : 'chats'}</span>
+                      <span className="mrc-row-preview">
+                        {p.fullyArchived
+                          ? `Archived · ${p.chatCount} ${p.chatCount === 1 ? 'chat' : 'chats'}`
+                          : `${p.chatCount} ${p.chatCount === 1 ? 'chat' : 'chats'}`}
+                      </span>
                       {p.unread > 0 && <span className="mrc-badge">{p.unread}</span>}
                     </span>
                   </span>
@@ -1540,7 +1586,11 @@ export function DashChatView({
             {activePerson ? (
               <>
                 <span className="mrc-rooms-title">{activePerson.name}</span>
-                <span className="mrc-rooms-count">{activePerson.chatCount} {activePerson.chatCount === 1 ? 'chat' : 'chats'}</span>
+                <span className="mrc-rooms-count">
+                  {activePerson.fullyArchived
+                    ? `${activePerson.chatCount} archived`
+                    : `${activePerson.chatCount} ${activePerson.chatCount === 1 ? 'chat' : 'chats'}`}
+                </span>
               </>
             ) : (
               <span className="mrc-rooms-title">Rooms</span>
@@ -1559,6 +1609,19 @@ export function DashChatView({
             <div className="mrc-rooms-empty">
               <span className="mrc-empty-title">No conversations</span>
               <span className="mrc-empty-copy">This customer has no rooms on this desk.</span>
+            </div>
+          ) : liveRooms.length === 0 && historyRooms.length === 0 ? (
+            // Every one of this person's rooms is archived. There is nothing
+            // live or resolved left to collapse the archived group under, so
+            // show it directly rather than behind a toggle that would open on
+            // an apparently-empty pane — this IS the reason it looks empty,
+            // and the admin needs to see that immediately, not discover a
+            // hidden "Archived" toggle.
+            <div className="mrc-rooms-list" role="list">
+              <div className="mrc-rooms-archived-notice">
+                Every conversation with {activePerson.name} is archived. Restore one to reply.
+              </div>
+              {archivedRooms.map(c => renderRoomRow(c, 'archived'))}
             </div>
           ) : (
             <div className="mrc-rooms-list" role="list">

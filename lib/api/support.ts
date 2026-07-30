@@ -111,13 +111,22 @@ export interface SupportPersonDto {
   email: string | null;
   avatarUrl: string | null;
   presence: 'ONLINE' | 'IDLE' | 'OFFLINE' | null;
-  /** Non-archived rooms only. */
+  /** Non-archived rooms only — EXCEPT when `fullyArchived` is true, in which
+   * case this is the archived count instead, so the rail still shows a real
+   * number for a customer whose rooms are all archived. */
   conversationCount: number;
-  /** Rolled up across every room counted in `conversationCount`. */
+  /** Rolled up across every room counted in `conversationCount`. Always 0
+   * when `fullyArchived`. */
   unreadCount: number;
   lastMessageAt: string | null;
   lastMessageSnippet: string | null;
   lastMessageSenderType: 'CUSTOMER' | 'STAFF' | 'ADMIN' | 'SUPERADMIN' | 'COLLAB' | 'SYSTEM' | null;
+  /** True when every one of this customer's conversations is archived. Owner
+   * decision 2026-07-30: they must stay visible/selectable in the default
+   * list rather than disappear — this is the flag the inbox uses to style
+   * the row and to open straight to their archived rooms. Always false in
+   * the trash view (`view: 'trash'`). */
+  fullyArchived: boolean;
 }
 
 export const apiSupportPeople = (opts: {

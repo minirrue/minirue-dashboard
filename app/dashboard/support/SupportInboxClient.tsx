@@ -103,6 +103,7 @@ function toPerson(dto: SupportPersonDto): Person {
     unread: dto.unreadCount,
     presence: dto.presence ?? 'OFFLINE',
     chatCount: dto.conversationCount,
+    fullyArchived: dto.fullyArchived,
   };
 }
 
