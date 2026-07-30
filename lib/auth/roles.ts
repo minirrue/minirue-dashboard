@@ -6,7 +6,15 @@ const STAFF_ROLES: RoleType[] = [Role.SUPERADMIN, Role.ADMIN, Role.STAFF];
 const COLLAB_ROLES: RoleType[] = [Role.COLLAB];
 
 const ADMIN_ONLY: readonly RoleType[] = [Role.SUPERADMIN, Role.ADMIN];
-/** Admin work that customer support also handles. */
+/**
+ * The two jobs STAFF (the support-desk role) actually does: answer customers
+ * and see their orders. Deliberately NOT reused for anything else — 2026-07-30
+ * the owner asked for STAFF narrowed to exactly Support + Orders (+ their
+ * notifications), with everything else — Overview, Analytics, Fulfillment,
+ * Reviews, the Settings > Info tab, Gallery, all of it — hidden. Before this
+ * date STAFF also had Overview/Fulfillment/Analytics/Reviews/Info via this
+ * same list; do not widen it again without a fresh owner ask.
+ */
 const ADMIN_AND_SUPPORT: readonly RoleType[] = [
   Role.SUPERADMIN,
   Role.ADMIN,
@@ -21,7 +29,7 @@ const ADMIN_AND_SUPPORT: readonly RoleType[] = [
  * regardless, matching the backend RolesGuard.
  */
 export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
-  '/overview': ADMIN_AND_SUPPORT,
+  '/overview': ADMIN_ONLY,
   // The whole catalogue lives under one parent now (2026-07-24): the map at
   // /catalogue and the sub-tabs /catalogue/products, /catalogue/categories,
   // /catalogue/brands, /catalogue/global-variants. One key covers them all by
@@ -30,23 +38,28 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   '/catalogue': ADMIN_ONLY,
   '/orders': ADMIN_AND_SUPPORT,
   '/customers': ADMIN_ONLY,
-  '/fulfillment': ADMIN_AND_SUPPORT,
+  '/fulfillment': ADMIN_ONLY,
   '/refunds': ADMIN_ONLY,
   // Parked 2026-07-23: inventory is under active repair and is not trustworthy
   // for day-to-day admin use. SUPERADMIN keeps it so it can be worked on.
   // Restore ADMIN_ONLY when it comes back.
   '/inventory': [Role.SUPERADMIN],
-  '/analytics': ADMIN_AND_SUPPORT,
+  '/analytics': ADMIN_ONLY,
   // Customer support inbox — staff/admin/superadmin handle it; collaborators
-  // get their own inbox at /collab/support instead.
+  // get their own inbox at /collab/support instead. One of the two things
+  // STAFF is scoped down to (2026-07-30).
   '/support': ADMIN_AND_SUPPORT,
-  // Review moderation — the same people who answer customers decide what goes
-  // on a product page, so it is staffed like support rather than like refunds.
-  '/reviews': ADMIN_AND_SUPPORT,
+  '/reviews': ADMIN_ONLY,
   '/loyalty': ADMIN_ONLY,
   '/settings': ADMIN_ONLY,
-  '/info': STAFF_ROLES,
-  '/notifications': STAFF_ROLES,
+  // Was STAFF_ROLES — narrowed to ADMIN_ONLY 2026-07-30 per owner ask ("hide
+  // from him info also").
+  '/info': ADMIN_ONLY,
+  // Notifications stay reachable for STAFF: their bell/feed is scoped to just
+  // Order/Payment/Support categories server-side (AdminNotificationsService,
+  // restrictCategories), so opening this page never shows them something they
+  // cannot act on.
+  '/notifications': ADMIN_AND_SUPPORT,
   '/storefront-appearance': ADMIN_ONLY,
   '/collaborators': ADMIN_ONLY,
   // Partner oversight — watch brand partners. Admin + super admin.
@@ -61,10 +74,11 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   '/collab/brand': COLLAB_ROLES,
   '/collab/analytics': COLLAB_ROLES,
   '/collab/support': COLLAB_ROLES,
-  // Gallery is per-account (either a staff/admin user or a collaborator, per
+  // Gallery is per-account (either an admin user or a collaborator, per
   // gallery-routes.md) — the same /dashboard/gallery screen and backend
   // routes serve both caller types, each auto-scoped to their own folders.
-  '/gallery': [...STAFF_ROLES, ...COLLAB_ROLES],
+  // STAFF removed 2026-07-30 (not one of their two jobs).
+  '/gallery': [...ADMIN_ONLY, ...COLLAB_ROLES],
 };
 
 export const DASHBOARD_NAV_PATHS = Object.keys(DASHBOARD_ROUTE_ACCESS).sort(
@@ -136,10 +150,15 @@ export function canAccessDashboardRoute(role: string, path: string): boolean {
 
 export function firstAccessibleDashboardRoute(role: string): string {
   if (!isStaffRole(role)) return '/login';
+  // '/orders' sits ahead of '/fulfillment'/'/catalogue'/'/analytics'/'/settings'
+  // on purpose: since 2026-07-30 STAFF cannot open any of those, and would be
+  // bounced straight back out if this list sent them there first. Orders (and
+  // failing that, Support) are the two routes STAFF can actually open.
   for (const href of [
     '/collab/workspace',
     '/overview',
     '/orders',
+    '/support',
     '/fulfillment',
     '/catalogue',
     '/analytics',

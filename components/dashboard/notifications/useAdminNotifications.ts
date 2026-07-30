@@ -90,36 +90,69 @@ export function useAdminNotifications({
   const refresh = useCallback(() => fetchPage(true), [fetchPage]);
 
   const markRead = useCallback(async (id: number) => {
+    // The target row's prior state is read from `items` BEFORE calling
+    // setItems, not from inside its updater function — a setState updater
+    // is queued and run by React during its own render pass, not invoked
+    // synchronously at the call site, so anything assigned inside one is not
+    // yet readable on the very next line.
+    const target = items.find((n) => n.id === id);
     // Optimistic: the row greys out immediately, and a failure just refetches.
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
-    const next = Math.max(0, unreadCount - 1);
-    setUnreadCount(next);
-    // Every consumer of this hook (the drawer, the full notification centre)
-    // shares one bell and one set of nav badges — pushing the same number
-    // into the singleton here, once, is what keeps them in step without
-    // repeating this at each call site.
-    setUnreadCountOptimistic(next);
-    refreshNotificationCounts();
+    if (target && !target.isRead) {
+      const next = Math.max(0, unreadCount - 1);
+      setUnreadCount(next);
+      // This hook's OWN categoryCounts feeds the drawer/full centre's filter
+      // chips directly — those are a separate fetch from the shared
+      // singleton (use-notification-counts.ts) and were never updated on a
+      // single mark-read/unread, only on a full re-fetch. That is why a chip
+      // kept showing a stale count even after the row greyed out.
+      const category = target.category;
+      setCategoryCounts((prev) => ({
+        ...prev,
+        [category]: Math.max(0, (prev[category] ?? 0) - 1),
+      }));
+      // Every consumer of this hook (the drawer, the full notification centre)
+      // shares one bell and one set of nav badges — pushing the same number
+      // into the singleton here, once, is what keeps them in step without
+      // repeating this at each call site.
+      setUnreadCountOptimistic(next);
+    }
     try {
       await apiAdminMarkNotificationRead(id);
+      // Refresh only AFTER the PATCH has actually settled. Firing this
+      // before awaiting the mutation (the previous order) raced the write:
+      // the GET this triggers could return before the PATCH committed,
+      // reloading the OLD (still-unread) server counts on top of the correct
+      // optimistic guess — which is exactly why a freshly-read notification
+      // kept reappearing on the bell, the sidebar and the chip.
+      refreshNotificationCounts();
     } catch {
       void fetchPage(true);
     }
-  }, [fetchPage, unreadCount]);
+  }, [fetchPage, items, unreadCount]);
 
   const markUnread = useCallback(async (id: number) => {
+    const target = items.find((n) => n.id === id);
     // Optimistic: the row lights back up immediately; a failure just refetches.
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: false } : n)));
-    const next = unreadCount + 1;
-    setUnreadCount(next);
-    setUnreadCountOptimistic(next);
-    refreshNotificationCounts();
+    if (target && target.isRead) {
+      const next = unreadCount + 1;
+      setUnreadCount(next);
+      const category = target.category;
+      setCategoryCounts((prev) => ({
+        ...prev,
+        [category]: (prev[category] ?? 0) + 1,
+      }));
+      setUnreadCountOptimistic(next);
+    }
     try {
       await apiAdminMarkNotificationUnread(id);
+      // See markRead above: only refresh once the PATCH has settled.
+      refreshNotificationCounts();
     } catch {
       void fetchPage(true);
     }
-  }, [fetchPage, unreadCount]);
+  }, [fetchPage, items, unreadCount]);
 
   /** Toggle from whatever the current state is — powers the per-row button. */
   const toggleRead = useCallback(
@@ -130,10 +163,18 @@ export function useAdminNotifications({
   const markAllRead = useCallback(async () => {
     setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
     setUnreadCount(0);
+    // Every category this hook knows about goes to 0 too — the same chip
+    // staleness bug as markRead/markUnread, just for the whole feed at once.
+    setCategoryCounts((prev) => {
+      const zeroed: Record<string, number> = {};
+      for (const key of Object.keys(prev)) zeroed[key] = 0;
+      return zeroed;
+    });
     setUnreadCountOptimistic(0);
-    refreshNotificationCounts();
     try {
       await apiAdminMarkAllNotificationsRead();
+      // See markRead above: only refresh once the PATCH has settled.
+      refreshNotificationCounts();
     } catch {
       void fetchPage(true);
     }

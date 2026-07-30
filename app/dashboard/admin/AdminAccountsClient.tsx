@@ -446,7 +446,8 @@ function CreateAccountForm({
 }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<Role>(Role.STAFF);
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -463,12 +464,14 @@ function CreateAccountForm({
       const created = await createAccount({
         email: email.trim(),
         password,
-        name: name.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim() || undefined,
         role,
         confirmPassword: needsConfirm ? confirmPassword : undefined,
       });
       setEmail('');
-      setName('');
+      setFirstName('');
+      setLastName('');
       setPassword('');
       setConfirmPassword('');
       setRole(Role.STAFF);
@@ -515,19 +518,36 @@ function CreateAccountForm({
           />
         </div>
 
-        <div className="dash-field">
-          <label className="dash-label" htmlFor="new-name">
-            Name <span className="dash-required">*</span>
-          </label>
-          <input
-            id="new-name"
-            className="dash-input"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            disabled={saving}
-            required
-            data-trace-id={`${TRACE}::EL-INPUT-new-name`}
-          />
+        <div className="dash-field-row">
+          <div className="dash-field">
+            <label className="dash-label" htmlFor="new-first-name">
+              First name <span className="dash-required">*</span>
+            </label>
+            <input
+              id="new-first-name"
+              className="dash-input"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              disabled={saving}
+              required
+              data-trace-id={`${TRACE}::EL-INPUT-new-first-name`}
+            />
+          </div>
+
+          <div className="dash-field">
+            <label className="dash-label" htmlFor="new-last-name">
+              Last name
+            </label>
+            <input
+              id="new-last-name"
+              className="dash-input"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              disabled={saving}
+              data-trace-id={`${TRACE}::EL-INPUT-new-last-name`}
+            />
+            <p className="dash-help-text">Optional.</p>
+          </div>
         </div>
 
         <div className="dash-field">
@@ -599,7 +619,7 @@ function CreateAccountForm({
           <button
             type="submit"
             className="dash-btn-primary"
-            disabled={saving || !email.trim() || !name.trim() || !password}
+            disabled={saving || !email.trim() || !firstName.trim() || !password}
             data-trace-id={`${TRACE}::EL-BTN-create`}
           >
             {saving ? 'Creating…' : 'Create account'}

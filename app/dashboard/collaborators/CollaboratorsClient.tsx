@@ -34,6 +34,8 @@ import {
 
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
+import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
 
 
 
@@ -132,6 +134,10 @@ const COLUMNS: Column<CollaboratorListItem>[] = [
 
 
 export default function CollaboratorsClient() {
+  // Clears the Collaborators badge the moment this screen is open, instead
+  // of leaving it lit until the next 60s poll — this screen previously never
+  // called useClearNavBadge at all, so just being on it never cleared it.
+  useClearNavBadge(HREF_CATEGORIES['/collaborators']);
 
   const [items, setItems] = useState<CollaboratorListItem[]>([]);
 

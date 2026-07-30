@@ -75,6 +75,10 @@ export default function ProvisionCollaboratorClient() {
 
     email: '',
 
+    firstName: '',
+
+    lastName: '',
+
     brandName: '',
 
     brandSlug: '',
@@ -117,6 +121,14 @@ export default function ProvisionCollaboratorClient() {
 
     }
 
+    if (!form.firstName.trim()) {
+
+      setError('First name is required.');
+
+      return;
+
+    }
+
     if (!form.brandName.trim()) {
 
       setError('Brand name is required.');
@@ -134,6 +146,10 @@ export default function ProvisionCollaboratorClient() {
       await apiCreateCollaborator({
 
         email: form.email.trim(),
+
+        firstName: form.firstName.trim(),
+
+        lastName: form.lastName.trim() || undefined,
 
         brandName: form.brandName.trim(),
 
@@ -240,6 +256,64 @@ export default function ProvisionCollaboratorClient() {
           </label>
 
         </fieldset>
+
+
+
+        <div className="dash-field-row">
+
+          <div className="dash-field">
+
+            <label className="dash-label" htmlFor="collab-first-name">
+
+              First name
+
+            </label>
+
+            <input
+
+              id="collab-first-name"
+
+              className="dash-input"
+
+              value={form.firstName}
+
+              onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
+
+              required
+
+              disabled={creating}
+
+            />
+
+          </div>
+
+          <div className="dash-field">
+
+            <label className="dash-label" htmlFor="collab-last-name">
+
+              Last name
+
+            </label>
+
+            <input
+
+              id="collab-last-name"
+
+              className="dash-input"
+
+              value={form.lastName}
+
+              onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
+
+              disabled={creating}
+
+            />
+
+            <p className="dash-help-text">Optional.</p>
+
+          </div>
+
+        </div>
 
 
 

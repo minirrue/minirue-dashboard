@@ -61,11 +61,17 @@ describe('dashboard RBAC routes', () => {
     expect(canAccessDashboardRoute(Role.STAFF, '/catalogue')).toBe(false);
   });
 
-  it('gives support staff the customer-facing screens only', () => {
-    for (const allowed of ['/overview', '/orders', '/fulfillment', '/analytics']) {
+  it('gives support staff only Orders, Support and their own notifications', () => {
+    // 2026-07-30: narrowed from the whole customer-facing set (Overview,
+    // Fulfillment, Analytics, Reviews, Info, Gallery) down to exactly the two
+    // jobs STAFF does, per owner ask.
+    for (const allowed of ['/orders', '/support', '/notifications']) {
       expect(canAccessDashboardRoute(Role.STAFF, allowed)).toBe(true);
     }
-    for (const denied of ['/catalogue', '/settings', '/customers', '/admin']) {
+    for (const denied of [
+      '/catalogue', '/settings', '/customers', '/admin',
+      '/overview', '/fulfillment', '/analytics', '/reviews', '/info', '/gallery',
+    ]) {
       expect(canAccessDashboardRoute(Role.STAFF, denied)).toBe(false);
     }
   });
@@ -113,8 +119,10 @@ describe('dashboard RBAC routes', () => {
     expect(DASHBOARD_ROUTE_ACCESS['/admin']).toEqual([Role.SUPERADMIN]);
   });
 
-  it('redirects unknown staff to their first allowed route', () => {
-    expect(firstAccessibleDashboardRoute(Role.STAFF)).toBe('/overview');
+  it('redirects staff to a route they can actually open, not /overview', () => {
+    // Since 2026-07-30 STAFF cannot open /overview at all — landing them
+    // there would bounce them straight back out.
+    expect(firstAccessibleDashboardRoute(Role.STAFF)).toBe('/orders');
   });
 });
 

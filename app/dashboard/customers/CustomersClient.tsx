@@ -8,6 +8,8 @@ import { apiAdminListCustomers } from '@/lib/api/customers';
 import type { CustomerListItem, TierLevel } from '@/lib/api/customers';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
+import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-EG', {
@@ -124,6 +126,9 @@ const COLUMNS: Column<CustomerListItem>[] = [
 ];
 
 export default function CustomersClient() {
+  // Clears the Customers badge the moment this screen is open, instead of
+  // leaving it lit until the next 60s poll — same pattern as Orders/Refunds.
+  useClearNavBadge(HREF_CATEGORIES['/customers']);
   const [allCustomers, setAllCustomers] = useState<CustomerListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

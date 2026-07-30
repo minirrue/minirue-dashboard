@@ -164,7 +164,9 @@ export async function listAccounts(
 export async function createAccount(data: {
   email: string;
   password: string;
-  name: string;
+  /** Required. Last name is deliberately optional (2026-07-30 owner ask). */
+  firstName: string;
+  lastName?: string;
   role: Role;
   /** The caller's own password. Required only when creating a super admin. */
   confirmPassword?: string;

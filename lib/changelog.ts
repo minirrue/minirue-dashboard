@@ -21,6 +21,69 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 170,
+    date: '2026-07-30',
+    area: 'Account & sign-in',
+    summary:
+      'Signing out did not actually end your session on the server. If you signed out at the same moment your sign-in had already timed out — which is exactly when people tend to press it — the "Sign out" request itself quietly failed and did nothing, so the screen cleared but the account underneath was still fully signed in. Worse, the support system had never been checking whether a sign-in was still valid at all: it took whatever a browser\'s login token said about who was writing and trusted it as-is, so a token from an account that had already been signed out of kept working, silently, for as long as a full day afterwards. That is the real explanation for the earlier report above — a signed-out person\'s message could still land on their old account. Both are now fixed: "Sign out" always ends your session no matter what state it was in, and every message is checked against a genuinely live sign-in rather than taken on trust. Proved end to end: sign in, send a message, sign out, then try to reuse that exact same sign-in — it is rejected immediately and cannot send anything.',
+  },
+  {
+    id: 169,
+    date: '2026-07-30',
+    area: 'Support',
+    summary:
+      'The list of people and the top of an open conversation could still show the word "Customer" for an account that has a real name on it, even though the messages underneath already showed that name correctly — the list and the header were built from a shorter check than the messages were. Both now use the same one, so a customer\'s name shows consistently everywhere in a conversation, not only next to what they wrote.',
+  },
+  {
+    id: 168,
+    date: '2026-07-30',
+    area: 'Support',
+    summary:
+      'For a moment right after refreshing the page, a collaborator\'s Support screen could show MiniRue\'s own support conversations before correcting itself and switching to the collaborator\'s own — the server was always handing back the right conversations for whoever was actually signed in, but the page did not yet know who was asking and could paint the wrong desk on screen for that first instant. A partner could never act on anything that wasn\'t theirs, but seeing MiniRue\'s own messages even briefly was not acceptable, so the page now waits until it has confirmed who is signed in before it shows anything at all, rather than showing something it might have to take back. The same page also no longer runs off the edge of the screen on smaller layouts.',
+  },
+  {
+    id: 167,
+    date: '2026-07-30',
+    area: 'Brand pages',
+    summary:
+      'A partner\'s brand page was being linked to an address that does not exist — both the link an admin sees pointing to a partner\'s page, and the address the partner\'s own page was set up to expect. A brand\'s page actually lives at the top level of the site (like minirueshop.com/thatbrand), not inside a /brands/ folder, and every place that builds that link now points at the real address.',
+  },
+  {
+    id: 166,
+    date: '2026-07-30',
+    area: 'Sign-in',
+    summary:
+      'Signing in as a collaborator could flash a "you don\'t have access" message for an instant before the correct screen took over. Sign-in always opens on the main Overview screen first, which a collaborator isn\'t allowed to see, and the page was showing that denial before it had a chance to send them on to the screen they actually can see. It now waits for that handoff instead of accusing someone of a permissions problem they don\'t have.',
+  },
+  {
+    id: 165,
+    date: '2026-07-30',
+    area: 'Collaborators',
+    summary:
+      'A collaborator\'s Products and Brands tabs could look like they had frozen on "Loading…" forever. They had not frozen — they were quietly retrying over and over, so fast that an error never got the chance to show. Each tab now tries once and shows a real error or an empty state instead of spinning indefinitely.',
+  },
+  {
+    id: 164,
+    date: '2026-07-30',
+    area: 'Profile photos',
+    summary:
+      'Anyone without a profile photo — customer, staff, or collaborator — now gets a plain person silhouette instead of their initial in a circle, the same mark already used on the Settings profile card, so it looks the same everywhere a person is pictured across the storefront and dashboard. A shop or brand\'s own logo placeholder is left alone on purpose — that is a store mark, not a person.',
+  },
+  {
+    id: 163,
+    date: '2026-07-30',
+    area: 'Profile photos',
+    summary:
+      'Customers can now set their own profile photo from their account page on the storefront, cropped square since it always shows in a circle. Before, only staff and collaborators could set a picture for someone — a customer\'s own photo was permanently the placeholder no matter what they tried. It uses the same processing already used for product photos and reviews, so a portrait photo taken on a phone comes out the right way up, and a photo from an iPhone converts properly instead of failing.',
+  },
+  {
+    id: 162,
+    date: '2026-07-30',
+    area: 'Notifications',
+    summary:
+      'The notification bell\'s panel was casting a soft grey shadow down the right edge of every screen even while it was closed and sitting off-screen — the fifth time this exact kind of bug has turned up in the dashboard, always the same cause: a closed panel still painting the shadow meant for when it\'s open. It no longer casts one until it is actually open.',
+  },
+  {
     id: 161,
     date: '2026-07-30',
     area: 'Support',

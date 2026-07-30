@@ -53,18 +53,29 @@ describe('sidebar visibility', () => {
     expect(visible).toContain('/collab/workspace');
   });
 
-  it('shows support staff no admin-only tabs', () => {
+  it('shows support staff only Orders, Support and Notifications', () => {
+    // 2026-07-30: owner asked for STAFF narrowed to exactly the two jobs they
+    // do (support + orders), notifications included since those are scoped to
+    // the same two categories server-side. Everything else — Overview,
+    // Analytics, Fulfillment, Reviews, Info, Gallery, all admin-only tabs — is
+    // hidden, not just unreachable.
     const visible = visibleTo(Role.STAFF);
-    for (const forbidden of ['/catalogue', '/settings', '/customers', '/admin', '/collaborators']) {
-      expect(visible).not.toContain(forbidden);
-    }
-    expect(visible).toContain('/orders');
+    expect(visible.sort()).toEqual(['/notifications', '/orders', '/support'].sort());
   });
 
-  it('lets support staff moderate reviews, and nobody outside the shop', () => {
-    // Moderating reviews is the same job as answering customers, so it is
-    // staffed like /support rather than like the catalogue.
-    expect(visibleTo(Role.STAFF)).toContain('/reviews');
+  it('hides overview, analytics, fulfillment, reviews, info and gallery from support staff', () => {
+    const visible = visibleTo(Role.STAFF);
+    for (const forbidden of [
+      '/catalogue', '/settings', '/customers', '/admin', '/collaborators',
+      '/overview', '/analytics', '/fulfillment', '/reviews', '/info', '/gallery',
+    ]) {
+      expect(visible).not.toContain(forbidden);
+    }
+  });
+
+  it('still lets admins and super admins moderate reviews', () => {
+    // Moderating reviews used to be staffed like /support; since 2026-07-30
+    // STAFF no longer sees it, but admin still does.
     expect(visibleTo(Role.ADMIN)).toContain('/reviews');
     expect(visibleTo(Role.SUPERADMIN)).toContain('/reviews');
     expect(visibleTo(Role.COLLAB)).not.toContain('/reviews');

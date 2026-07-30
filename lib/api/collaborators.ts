@@ -74,6 +74,9 @@ export async function apiGetCollaborator(id: string): Promise<CollaboratorDetail
 
 export async function apiCreateCollaborator(data: {
   email: string;
+  /** Required. Last name is deliberately optional (2026-07-30 owner ask). */
+  firstName: string;
+  lastName?: string;
   brandName: string;
   brandSlug: string;
   modules: CollaboratorModule[];

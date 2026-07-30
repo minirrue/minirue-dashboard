@@ -8,6 +8,8 @@ import { listStockAdmin, stockStatus } from '@/lib/inventory/api';
 import type { StockAdminRow, StockStatus } from '@/lib/inventory/api';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
+import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
 
 /* ── Skeleton ── */
 function SkeletonRows({ count = 8 }: { count?: number }) {
@@ -120,6 +122,9 @@ const COLUMNS: Column<StockRow>[] = [
 ];
 
 export default function StockOverviewClient() {
+  // Clears the Inventory badge the moment this screen is open, instead of
+  // leaving it lit until the next 60s poll — same pattern as Orders/Refunds.
+  useClearNavBadge(HREF_CATEGORIES['/inventory']);
   const [allItems, setAllItems] = useState<StockRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

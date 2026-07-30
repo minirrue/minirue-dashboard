@@ -26,6 +26,10 @@ import { apiCollabOrders } from '@/lib/api/collab-portal';
 
 import type { ApiError } from '@/lib/api/client';
 
+import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
+
+import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
+
 
 
 type OrderRow = Record<string, unknown>;
@@ -71,6 +75,10 @@ function orderPlaced(row: OrderRow): string {
 
 
 export default function CollabOrdersClient() {
+
+  // Clears the Orders badge (ORDER + PAYMENT) the moment this screen is
+  // open, instead of leaving it lit until the next 60s poll.
+  useClearNavBadge(HREF_CATEGORIES['/collab/orders']);
 
   const [items, setItems] = useState<OrderRow[]>([]);
 

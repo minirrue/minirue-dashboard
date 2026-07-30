@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import ManualFulfillmentPanel from './ManualFulfillmentPanel';
 import ShippingServicePanel from './ShippingServicePanel';
+import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
+import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
 
 type Tab = 'MANUAL' | 'SHIPPING_SERVICE';
 
@@ -12,6 +14,9 @@ const TABS: Array<{ id: Tab; label: string }> = [
 ];
 
 export default function FulfillmentClient() {
+  // Clears the Fulfillment badge the moment this screen is open, regardless
+  // of which tab is active — same pattern as Orders/Refunds.
+  useClearNavBadge(HREF_CATEGORIES['/fulfillment']);
   const [tab, setTab] = useState<Tab>('MANUAL');
 
   return (

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { DashChatView, type Conversation, type Person } from '@/components/DashChatView';
 
 /**
@@ -264,7 +264,12 @@ describe('DashChatView — pane 1 (people) and pane 2 (rooms)', () => {
     expect(document.querySelectorAll('.mrc-rooms-list .mrc-room-row').length).toBe(3);
   });
 
-  it('archiving a room moves it into the Archived group and out of the live list; restoring reverses it', () => {
+  it('archiving this customer\'s only room shows it directly, dimmed, with an explanatory notice — never gated behind a hidden toggle; restoring reverses it', () => {
+    // W2.1 follow-up (2026-07-30): archiving EVERY one of a customer's rooms
+    // must never make their last thread unreachable. When there is nothing
+    // live or resolved left to collapse the archived group under, the pane
+    // shows the archived room(s) directly instead of behind the collapsed
+    // "Archived (N)" toggle used when other rooms are still visible.
     function Harness() {
       const p = person();
       const [rooms, setRooms] = useState<Conversation[]>([
@@ -292,16 +297,54 @@ describe('DashChatView — pane 1 (people) and pane 2 (rooms)', () => {
     render(<Harness />);
 
     expect(document.querySelectorAll('.mrc-rooms-list .mrc-room-row').length).toBe(1);
-    expect(screen.queryByText(/Archived \(/)).toBeNull();
+    expect(screen.queryByText(/is archived/)).toBeNull();
 
     fireEvent.click(screen.getByLabelText(/Archive conversation with Youssef/));
-    expect(document.querySelectorAll('.mrc-rooms-list .mrc-room-row').length).toBe(0);
-    expect(screen.getByText('Archived (1)')).toBeInTheDocument();
+    // Still one row — shown directly, not hidden behind a toggle, since it's
+    // the only room this customer has left.
+    expect(document.querySelectorAll('.mrc-rooms-list .mrc-room-row').length).toBe(1);
+    expect(screen.getByText(/is archived/)).toBeInTheDocument();
+    expect(screen.queryByText('Archived (1)')).toBeNull();
 
-    fireEvent.click(screen.getByText('Archived (1)'));
+    // Restorable straight away — no toggle to find first.
     fireEvent.click(screen.getByLabelText(/Restore conversation with Youssef/));
     expect(document.querySelectorAll('.mrc-rooms-list .mrc-room-row').length).toBe(1);
-    expect(screen.queryByText(/Archived \(/)).toBeNull();
+    expect(screen.queryByText(/is archived/)).toBeNull();
+  });
+
+  it('a customer with only archived rooms stays visible and selectable in the people rail, styled as archived, and their rooms pane opens straight to the archived rooms', () => {
+    const p = person({ fullyArchived: true, chatCount: 2 });
+    const rooms = [
+      room({ id: 'archived-1', status: 'CLOSED', archivedAt: '2026-07-28T00:00:00.000Z' }),
+      room({ id: 'archived-2', status: 'OPEN', archivedAt: '2026-07-29T00:00:00.000Z' }),
+    ];
+    render(
+      <DashChatView
+        people={[p]}
+        activePersonId={p.id}
+        onSelectPerson={noop}
+        conversations={rooms}
+        activeId={null}
+        onSelect={noop}
+        onArchive={noop}
+        onRestore={noop}
+        messages={[]}
+        onSend={noop}
+      />,
+    );
+
+    // Visible + selectable in the people rail, marked archived.
+    const peopleList = document.querySelector('.mrc-list') as HTMLElement;
+    const personRow = within(peopleList).getByText('Youssef').closest('.mrc-row');
+    expect(personRow).toBeTruthy();
+    expect(personRow).toHaveAttribute('data-archived', 'true');
+    expect(within(peopleList).getByText(/Archived · 2/)).toBeInTheDocument();
+
+    // Both archived rooms are directly reachable and restorable — no toggle
+    // click required, and the pane explains why there's nothing else.
+    expect(document.querySelectorAll('.mrc-rooms-list .mrc-room-row').length).toBe(2);
+    expect(screen.queryByText(/Archived \(2\)/)).toBeNull();
+    expect(screen.getByText(/Every conversation with Youssef is archived/)).toBeInTheDocument();
   });
 
   it('disables the composer and shows the reason instead of the reply field on a watch-only desk', () => {

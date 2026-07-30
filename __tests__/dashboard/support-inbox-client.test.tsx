@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import SupportInboxClient from '@/app/dashboard/support/SupportInboxClient';
 import { Role } from '@/lib/auth/role';
 import type { ConversationDto, SupportPersonDto } from '@/lib/api/support';
@@ -78,6 +78,7 @@ function personDto(overrides: Partial<SupportPersonDto> = {}): SupportPersonDto 
     lastMessageAt: '2026-07-30T10:00:00.000Z',
     lastMessageSnippet: "My order hasn't come",
     lastMessageSenderType: 'CUSTOMER',
+    fullyArchived: false,
     ...overrides,
   };
 }
@@ -140,6 +141,35 @@ describe('SupportInboxClient — people/rooms mapping', () => {
     await waitFor(() => {
       expect(document.querySelectorAll('.mrc-rooms-list .mrc-room-row').length).toBe(3);
     });
+  });
+
+  it('a customer whose conversations are all archived still renders in the people rail, selectable and marked archived, with their archived room reachable', async () => {
+    // Owner ask (2026-07-30): archiving every one of a customer's
+    // conversations must not make them disappear from the left rail — this
+    // is the only way an admin can find them again to un-archive.
+    mockUsePeople.mockReturnValue({
+      data: [personDto({ fullyArchived: true, conversationCount: 1, unreadCount: 0 })],
+    });
+    mockUseConversations.mockReturnValue({ data: [] }); // no live rooms left
+    mockUseArchived.mockReturnValue({
+      data: [roomDto({ id: 'room-1', status: 'CLOSED', archivedAt: '2026-07-29T00:00:00.000Z' })],
+    });
+
+    render(<SupportInboxClient showPresence />);
+
+    const peopleList = document.querySelector('.mrc-list') as HTMLElement;
+    const row = within(peopleList).getByText('Youssef').closest('.mrc-row');
+    expect(row).toBeTruthy();
+    expect(row).toHaveAttribute('data-archived', 'true');
+
+    fireEvent.click(within(peopleList).getByText('Youssef'));
+
+    await waitFor(() => {
+      expect(document.querySelectorAll('.mrc-rooms-list .mrc-room-row').length).toBe(1);
+    });
+    expect(screen.getByText(/is archived/)).toBeInTheDocument();
+    // Restorable directly — no collapsed toggle to find first.
+    expect(screen.getByLabelText(/Restore conversation with Youssef/)).toBeInTheDocument();
   });
 
   it('renders both filter selects inside a .dash-filters element', () => {
