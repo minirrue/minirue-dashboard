@@ -41,6 +41,17 @@ export default function NotificationDrawer({
         data-open={open ? 'true' : 'false'}
         aria-hidden={!open}
         aria-label="Notifications"
+        // dashboard.css gives this panel box-shadow: var(--mr-shadow-xl)
+        // unconditionally. Closed, it sits at translateX(calc(100% + 32px)) —
+        // off-canvas to the right — but a box-shadow's blur radius (up to 96px
+        // here) still paints past the box's own edges. That blur reached back
+        // over the translate gap and painted a grey vertical smear down the
+        // RIGHT edge of every mobile screen, misread as coming from the bell
+        // that opens this drawer. Same defect, same fix as the mobile nav
+        // drawer and the search sheet: the shadow belongs to the open panel
+        // only. Scoped here via inline style (not dashboard.css) so it wins
+        // over the class rule without needing !important there.
+        style={{ boxShadow: open ? 'var(--mr-shadow-xl)' : 'none' }}
       >
         <div className="dash-notif-header">
           <div className="dash-notif-title">

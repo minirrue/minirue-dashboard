@@ -134,4 +134,18 @@ describe('NotificationDrawer', () => {
     render(<NotificationDrawer open={false} onClose={jest.fn()} />);
     expect(apiAdminListNotifications).not.toHaveBeenCalled();
   });
+
+  it('carries no shadow while closed, so a panel parked off-canvas cannot paint a smear onto the page', () => {
+    // Regression for the fourth occurrence of this bug class: a fixed panel
+    // hidden only by translateX still has its box-shadow blur reach back over
+    // the translate gap. Closed, this drawer must not carry the shadow at all.
+    const { rerender } = render(<NotificationDrawer open={false} onClose={jest.fn()} />);
+    const closedDrawer = screen.getByLabelText('Notifications');
+    expect(closedDrawer.style.boxShadow).toBe('none');
+
+    rerender(<NotificationDrawer open onClose={jest.fn()} />);
+    const openDrawer = screen.getByLabelText('Notifications');
+    expect(openDrawer.style.boxShadow).not.toBe('none');
+    expect(openDrawer.style.boxShadow).not.toBe('');
+  });
 });
