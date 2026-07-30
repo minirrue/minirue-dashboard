@@ -551,7 +551,9 @@ export default function CollabBrandClient() {
 
           Storefront{' '}
 
-          <code className="collab-slug-code">/brands/{brand?.brandSlug}</code>
+          {/* Root-level, not /brands/<slug> — there is a brands listing page but
+              no child route under it, so the old text pointed at a dead URL. */}
+          <code className="collab-slug-code">/{brand?.brandSlug}</code>
 
         </p>
 
