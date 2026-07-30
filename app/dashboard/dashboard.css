@@ -787,6 +787,26 @@
       padding: 14px 20px;
     }
 
+    /* Immersion: the bar carries a menu toggle and a bell, so it earns its
+       place at rest and nothing else. Once the page moves it slides out of the
+       way and comes back the moment you return to the top — scroll-driven, so
+       it tracks the finger rather than animating on a timer, and it costs no
+       scroll listener. Routes that pin themselves to the viewport (the support
+       inbox scrolls its panes internally, not the page) have no page scroll to
+       drive this, so the bar simply stays. */
+    @supports (animation-timeline: scroll()) {
+      .dash-topbar--minimal {
+        animation: dash-topbar-retract linear both;
+        animation-timeline: scroll(nearest block);
+        animation-range: 0 72px;
+        will-change: transform;
+      }
+    }
+    @keyframes dash-topbar-retract {
+      from { transform: translateY(0); }
+      to { transform: translateY(-100%); }
+    }
+
     .dash-user-menu {
       align-self: flex-start;
       min-width: 0;
@@ -843,12 +863,17 @@
       z-index: 50;
       overflow: hidden;
       border-right: 1px solid var(--mr-dash-hair);
-      box-shadow: var(--mr-shadow-xl);
       transform: translateX(-100%);
       transition: transform 300ms var(--mr-ease-out);
     }
+    /* The shadow belongs to the OPEN drawer only. translateX(-100%) moves the
+       panel off-canvas but not the shadow it casts: the blur kept painting from
+       x=0 rightwards, so every mobile screen carried a grey strip down its left
+       edge with the menu shut, reading as a rendering fault on the page
+       underneath. Depth is for the drawer while it is actually over content. */
     .dash-mobile-drawer[data-open="true"] {
       transform: translateX(0);
+      box-shadow: var(--mr-shadow-xl);
     }
 
     /* ── Mobile backdrop ── */
@@ -3408,7 +3433,57 @@
    itself ("Online / Idle / Away / Offline", and a placeholder that reads
    "Typical reply time"). Assistive tech still gets them; the phone gets the
    pixels, which belong to the conversation list underneath. */
+/* The summary row exists only on phones; desktop shows the controls outright. */
+.mrc-presence-summary { display: none; }
+
 @media (max-width: 640px) {
+  /* Collapsed by default. The strip answers "are we open, and what are we
+     promising?" in one 44px row instead of 127px of switch + text field, and
+     the space goes to the list of people underneath — which is the reason the
+     screen exists. Tapping opens the real controls. */
+  .mrc-presence-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-family: var(--mr-font-ui);
+    font-size: 13px;
+    color: var(--mr-fg-2);
+    text-align: left;
+    cursor: pointer;
+  }
+  .mrc-presence-summary-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .mrc-presence-summary-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mrc-presence-summary-caret {
+    flex-shrink: 0;
+    color: var(--mr-fg-3);
+    transition: transform var(--mr-dur-fast) var(--mr-ease-out);
+  }
+  .mrc-presence-bar[data-expanded="true"] .mrc-presence-summary-caret {
+    transform: rotate(180deg);
+  }
+  .mrc-presence-bar:not([data-expanded="true"]) .mrc-presence-bar-controls {
+    display: none;
+  }
+  .mrc-presence-bar[data-expanded="true"] .mrc-presence-bar-controls {
+    margin-top: 10px;
+  }
+
   .mrc-presence-bar-controls {
     flex-direction: column;
     align-items: stretch;
@@ -3450,6 +3525,21 @@
      the box that has to clear the minimum, not the 19px text node inside it. */
   .mrc-search {
     min-height: 44px;
+  }
+
+  /* NB: .mrc-rail-head / .mrc-rail-title / .mrc-rail-controls are NOT tightened
+     here. They live in DashChatView's own injected <style>, which lands after
+     this stylesheet in document order and wins at equal specificity, so the
+     phone overrides for those sit beside their definitions in that file. */
+
+  /* Reading and answering one customer is the whole screen. With a thread open
+     (step 2) the menu bar and the shop-status strip sit between the message and
+     the reply box while telling you nothing about either — and the thread has
+     its own back arrow, so nothing becomes unreachable. Everything they were
+     using goes to the conversation. */
+  .dash-content-inner:has(.mrc-shell[data-step="2"]) .mrc-presence-bar,
+  .dash-main:has(.mrc-shell[data-step="2"]) .dash-topbar--minimal {
+    display: none;
   }
 }
 

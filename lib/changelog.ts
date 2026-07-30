@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 154,
+    date: '2026-07-30',
+    area: 'Support',
+    summary:
+      'Three things on phones. The grey smear down the left edge of every screen is gone — the slide-out menu was casting its shadow onto the page even while it was closed and off-screen; it now only casts one when it is actually open over the page. The online/reply-time strip is a single line you can read at a glance ("Online · replies within an hour") and tap to open when you want to change it, instead of a block of buttons taking a fifth of the screen for a setting you touch once a shift — which hands that space to the list of customers. And opening a conversation now fills the whole screen: the menu bar and the status strip step out of the way while you read and reply, and the back arrow brings you out again. The bar at the top of other screens also slides away as you scroll down and returns when you scroll back up.',
+  },
+  {
     id: 153,
     date: '2026-07-30',
     area: 'Support',

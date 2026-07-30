@@ -314,6 +314,10 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   /** Every desk this user may open — including ones with no threads yet. */
   const [channels, setChannels] = useState<SupportChannel[]>([]);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  /** Phone only — see the presence strip below. Closed by default: the summary
+   * row already says whether the shop is open, so opening it is for changing
+   * that, not for reading it. */
+  const [presenceExpanded, setPresenceExpanded] = useState(false);
   const [pending, setPending] = useState<PendingOutgoing[]>([]);
   const qc = useQueryClient();
 
@@ -667,9 +671,52 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
    * other admin list in this dashboard puts them. What is left here is the only
    * thing that is genuinely shop-wide rather than list-scoped.
    */
+  /**
+   * On a phone the expanded strip cost 127px of an ~800px screen — a switch and
+   * a text field, both shop-wide settings you touch once a shift, sitting above
+   * the list of people you came here to answer. It collapses to a single row
+   * that still ANSWERS the question the strip exists to answer ("are we open,
+   * and what are we promising?") and opens on tap when you need to change it.
+   * Above 640px the summary is hidden and the controls are always shown, so the
+   * desktop strip is exactly what it was.
+   */
+  const presenceSummary = presence
+    ? `${presence.status.charAt(0)}${presence.status.slice(1).toLowerCase()}${
+        presence.replyTimeText ? ` · ${presence.replyTimeText}` : ''
+      }`
+    : 'Support status'
+
   const presenceBar = showPresence ? (
-    <div className="mrc-presence-bar">
+    <div className="mrc-presence-bar" data-expanded={presenceExpanded ? 'true' : 'false'}>
       <span className="mrc-presence-bar-label">Support status</span>
+      <button
+        type="button"
+        className="mrc-presence-summary"
+        aria-expanded={presenceExpanded}
+        onClick={() => setPresenceExpanded((v) => !v)}
+      >
+        {presence && (
+          <span
+            className="mrc-presence-summary-dot"
+            style={{ background: presenceDotColor[presence.status] }}
+          />
+        )}
+        <span className="mrc-presence-summary-text">{presenceSummary}</span>
+        <svg
+          className="mrc-presence-summary-caret"
+          width={12}
+          height={12}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
       {canEditPresence ? <PresenceControls presence={presence} /> : presenceReadOnly(presence)}
     </div>
   ) : null;

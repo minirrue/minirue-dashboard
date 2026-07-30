@@ -1115,6 +1115,15 @@ const STYLES = `
 @media (max-width: 640px) {
   .mrc-bubble-row { max-width: 84%; }
   .mrc-thread { animation: mrc-slide-in 0.32s var(--mr-ease-out) both; }
+
+  /* Desktop proportions in a phone's header: 20px of padding around a 26px
+     display serif, above a search box, above the filters — ~133px of chrome
+     before a single customer's name. The heading becomes a label for the pane
+     rather than a page title, and the space goes to the list. */
+  .mrc-rail-head { padding: 12px 16px 10px; }
+  .mrc-rail-title { font-size: 20px; }
+  .mrc-rail-title-row { margin-bottom: 10px; }
+  .mrc-rail-controls { padding: 0 16px 10px; }
 }
 
 /* ── Mobile: pin the whole support surface to the VISIBLE viewport ──
@@ -1403,8 +1412,17 @@ export function DashChatView({
     </div>
   )
 
+  // data-step is published so the surrounding dashboard chrome can react to
+  // which pane is showing. Below the stepped breakpoint only one pane is on
+  // screen at a time, and step 2 is the open conversation — the one state where
+  // the menu bar and the shop-status strip are pure overhead between the
+  // customer's message and the reply box.
   return (
-    <div className="mrc-shell" data-stepped={tablet ? 'true' : 'false'}>
+    <div
+      className="mrc-shell"
+      data-stepped={tablet ? 'true' : 'false'}
+      data-step={tablet ? String(step) : ''}
+    >
       <style>{STYLES}</style>
 
       {/* ── Pane 1: People rail ── */}
