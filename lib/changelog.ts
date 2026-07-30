@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 148,
+    date: '2026-07-30',
+    area: 'Erase data',
+    summary:
+      'Erasing shop data is now one button. Before, you ticked eleven boxes, and what each box deleted was a list of table names typed by hand — a list that had already drifted three times, naming two things that no longer exist and missing two that do. When it drifted, the erase did not warn you, it simply refused. The new button asks the database what it actually contains at that moment, so there is no longer a list to get out of date, and it can no longer fail part-way on something nobody remembered to add. Sign-in accounts are still never touched — everyone can log in afterwards. Order numbers start again at 00001. The eleven boxes are still there, folded away under “Or erase only some things”, for when you want to clear one thing rather than everything.',
+  },
+  {
     id: 147,
     date: '2026-07-29',
     area: 'Support, Gallery & Erase data',

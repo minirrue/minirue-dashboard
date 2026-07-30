@@ -58,6 +58,21 @@ export async function runReset(
   return res.data;
 }
 
+/**
+ * Erases every resettable table in one shot — everything except sign-in
+ * accounts. No group list: the server asks Postgres what exists instead of
+ * working from a hand-maintained table list, so this action cannot drift the
+ * way the eleven-checkbox groups already have twice. Not reversible.
+ */
+export async function runResetAll(confirmation: string): Promise<ResetResult> {
+  const res = await apiFetch<{ data: ResetResult }>('/platform/reset/all', {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify({ confirmation }),
+  });
+  return res.data;
+}
+
 // ---------------------------------------------------------------------------
 // Super admin accounts
 // ---------------------------------------------------------------------------

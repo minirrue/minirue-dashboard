@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import {
   getResetPreview,
   runReset,
+  runResetAll,
+  type ResetGroupPreview,
   type ResetPreview,
   type ResetResult,
 } from '@/lib/api/platform';
@@ -12,12 +14,56 @@ import type { ApiError } from '@/lib/api/client';
 const TRACE = 'PG-DASHBOARD-SET-002';
 
 /**
+ * A short, human noun for the one-line summary — not the full group label
+ * ("Orders, payments and refunds" would swamp the line). Falls back to the
+ * group's own key for anything added later and not yet given a short word
+ * here, so a new group shows up ugly rather than not at all.
+ */
+const SUMMARY_NOUN: Record<string, string> = {
+  support: 'support',
+  sales: 'orders',
+  carts: 'carts',
+  inventory: 'stock',
+  customers: 'customers',
+  notifications: 'notifications',
+  collaborators: 'collaborators',
+  products: 'products',
+  gallery: 'photos',
+  catalogVocabulary: 'categories',
+  settings: 'settings',
+};
+
+/**
+ * `61 support · 27 orders · 6 products · 5 photos (+2 files) · 15 settings`
+ * — only groups with something in them, so an empty shop does not read
+ * "0 support · 0 orders · …". Built entirely from the preview already on
+ * screen; no extra API call.
+ */
+function buildSummaryLine(groups: ResetGroupPreview[]): string {
+  const parts = groups
+    .filter((g) => g.rowCount > 0)
+    .map((g) => {
+      const noun = SUMMARY_NOUN[g.key] ?? g.key;
+      const files =
+        g.fileCount > 0
+          ? ` (+${g.fileCount.toLocaleString()} file${g.fileCount === 1 ? '' : 's'})`
+          : '';
+      return `${g.rowCount.toLocaleString()} ${noun}${files}`;
+    });
+  return parts.length > 0 ? parts.join(' · ') : 'Nothing to erase';
+}
+
+/**
  * Erase shop data. Super admin only.
- * specs/2026-07-22-platform-reset
+ * specs/2026-07-22-platform-reset, W1.1
  *
- * Nothing is assumed on the admin's behalf. The server is asked what exists,
- * every part is shown with its real count, and each one has to be ticked. Then
- * the shop's name has to be typed. Only then does the button do anything.
+ * Two ways in, one confirmation. The primary action erases every resettable
+ * table Postgres currently has except sign-in accounts — the table list
+ * comes from the server asking Postgres, not from a hand-maintained list, so
+ * it cannot drift out of sync with the schema the way the eleven checkboxes
+ * below have twice already. Those checkboxes still exist for the rarer case
+ * of erasing only part of the shop, tucked behind "Or erase only some
+ * things" so they no longer read as the main way to do this.
  *
  * The server enforces all of this again — this panel is the explanation, not
  * the lock.
@@ -30,6 +76,7 @@ export default function DataResetPanel() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [typed, setTyped] = useState('');
   const [running, setRunning] = useState(false);
+  const [runningAll, setRunningAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ResetResult | null>(null);
 
@@ -94,27 +141,52 @@ export default function DataResetPanel() {
     }
   }
 
+  async function handleRunAll() {
+    if (!preview) return;
+    setRunningAll(true);
+    setError(null);
+    try {
+      const res = await runResetAll(typed);
+      setResult(res);
+      setSelected(new Set());
+      setTyped('');
+      // Same re-read handleRun does, so the panel reflects reality either way.
+      setPreview(await getResetPreview());
+    } catch (e) {
+      setError((e as ApiError).message ?? 'Reset failed.');
+    } finally {
+      setRunningAll(false);
+    }
+  }
+
   if (loading) return null;
 
   // Silently absent rather than showing a locked box to every admin.
   if (unavailable) return null;
   if (!preview) return null;
 
-  // The confirm phrase is the shop's name, which a brand-new shop may not have
-  // set yet — the API then sends it back empty or missing. Guard it: calling
-  // .trim() on undefined took the whole Settings page down with "Cannot read
-  // properties of undefined (reading 'trim')". With no phrase, running is
+  // The confirm phrase is a fixed word ('DELETE') sent by the server. Guard
+  // it anyway: calling .trim() on undefined once took the whole Settings
+  // page down with "Cannot read properties of undefined (reading 'trim')"
+  // back when this was the shop's own name. With no phrase, running is
   // blocked (you cannot match an empty phrase), and the reason is shown below.
   const confirmationPhrase = (preview.confirmationPhrase ?? '').trim();
   const hasPhrase = confirmationPhrase.length > 0;
   const phraseMatches = hasPhrase && typed.trim() === confirmationPhrase;
-  const canRun = selected.size > 0 && phraseMatches && !running;
+  const nothingToErase = preview.groups.every((g) => g.rowCount === 0 && g.fileCount === 0);
+  const busy = running || runningAll;
+
+  const canRun = selected.size > 0 && phraseMatches && !busy && !nothingToErase;
+  const canRunAll = phraseMatches && !busy && !nothingToErase;
+
   const totalRows = preview.groups
     .filter((g) => selected.has(g.key))
     .reduce((n, g) => n + g.rowCount, 0);
   const totalFiles = preview.groups
     .filter((g) => selected.has(g.key))
     .reduce((n, g) => n + g.fileCount, 0);
+
+  const summaryLine = buildSummaryLine(preview.groups);
 
   return (
     <section
@@ -125,104 +197,136 @@ export default function DataResetPanel() {
       <h2 style={{ marginTop: 0 }}>Erase shop data</h2>
 
       <p className="dash-muted">
-        Ticks below remove real data and cannot be undone. Sign-in accounts are
-        never touched — everyone can still log in afterwards.
+        Removes real data and cannot be undone. Sign-in accounts are never
+        touched — everyone can still log in afterwards.
       </p>
 
       <p className="dash-help-text">
         Always kept: {preview.neverDeleted.join(', ')}
       </p>
 
-      <div style={{ margin: '16px 0' }}>
-        {preview.groups.map((g) => {
-          const isOn = selected.has(g.key);
-          const empty = g.rowCount === 0 && g.fileCount === 0;
-          return (
-            <label
-              key={g.key}
-              className="dash-checkbox-label"
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 10,
-                padding: '8px 0',
-                opacity: empty ? 0.6 : 1,
-              }}
-              data-trace-id={`${TRACE}::EL-CHECK-reset-group@${g.key}`}
-            >
-              <input
-                type="checkbox"
-                className="dash-checkbox"
-                checked={isOn}
-                onChange={() => toggle(g.key)}
-                disabled={running || empty}
-                style={{ marginTop: 3 }}
-              />
-              <span>
-                <strong>{g.label}</strong>{' '}
-                <span className="dash-muted">
-                  {empty
-                    ? '— nothing to remove'
-                    : `— ${g.rowCount.toLocaleString()} record${g.rowCount === 1 ? '' : 's'}${
-                        g.fileCount > 0
-                          ? ` and ${g.fileCount.toLocaleString()} file${g.fileCount === 1 ? '' : 's'}`
-                          : ''
-                      }`}
-                </span>
-                <br />
-                <span className="dash-help-text">{g.description}</span>
-              </span>
-            </label>
-          );
-        })}
-      </div>
+      <p
+        className="dash-muted"
+        data-trace-id={`${TRACE}::EL-TEXT-reset-summary`}
+      >
+        {summaryLine}
+      </p>
 
-      {selected.size > 0 && (
-        <>
-          <p>
-            <strong>
-              This will remove {totalRows.toLocaleString()} record
-              {totalRows === 1 ? '' : 's'}
-              {totalFiles > 0
-                ? ` and ${totalFiles.toLocaleString()} file${totalFiles === 1 ? '' : 's'}`
-                : ''}
-              .
-            </strong>
-          </p>
-
-          {hasPhrase ? (
-            <div className="dash-field" style={{ maxWidth: 380 }}>
-              <label className="dash-label" htmlFor="reset-confirm">
-                Type <strong>{confirmationPhrase}</strong> to confirm
-              </label>
-              <input
-                id="reset-confirm"
-                className="dash-input"
-                value={typed}
-                onChange={(e) => setTyped(e.target.value)}
-                disabled={running}
-                autoComplete="off"
-                data-trace-id={`${TRACE}::EL-INPUT-reset-confirm`}
-              />
-            </div>
-          ) : (
-            <p className="dash-inline-error">
-              Set your shop name in Settings first — it is the phrase you type to
-              confirm this. Without it, erasing is blocked.
-            </p>
-          )}
-
-          <button
-            type="button"
-            className="dash-btn-danger"
-            onClick={handleRun}
-            disabled={!canRun}
-            data-trace-id={`${TRACE}::EL-BTN-run-reset`}
-          >
-            {running ? 'Erasing…' : 'Erase the ticked data'}
-          </button>
-        </>
+      {hasPhrase ? (
+        <div className="dash-field" style={{ maxWidth: 380 }}>
+          <label className="dash-label" htmlFor="reset-confirm">
+            Type <strong>{confirmationPhrase}</strong> to confirm
+          </label>
+          <input
+            id="reset-confirm"
+            className="dash-input"
+            value={typed}
+            onChange={(e) => {
+              setTyped(e.target.value);
+              setResult(null);
+              setError(null);
+            }}
+            disabled={busy}
+            autoComplete="off"
+            data-trace-id={`${TRACE}::EL-INPUT-reset-confirm`}
+          />
+        </div>
+      ) : (
+        <p className="dash-inline-error">
+          The reset confirmation phrase is unavailable right now. Erasing is
+          blocked until it loads.
+        </p>
       )}
+
+      <button
+        type="button"
+        className="dash-btn-danger"
+        onClick={handleRunAll}
+        disabled={!canRunAll}
+        style={{ marginTop: 12 }}
+        data-trace-id={`${TRACE}::EL-BTN-run-reset-all`}
+      >
+        {runningAll ? 'Erasing everything…' : 'Erase everything except accounts'}
+      </button>
+
+      <details style={{ marginTop: 20 }}>
+        <summary
+          className="dash-muted"
+          style={{ cursor: 'pointer' }}
+          data-trace-id={`${TRACE}::EL-TOGGLE-reset-partial`}
+        >
+          Or erase only some things
+        </summary>
+
+        <div style={{ margin: '16px 0' }}>
+          {preview.groups.map((g) => {
+            const isOn = selected.has(g.key);
+            const empty = g.rowCount === 0 && g.fileCount === 0;
+            return (
+              <label
+                key={g.key}
+                className="dash-checkbox-label"
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 10,
+                  padding: '8px 0',
+                  opacity: empty ? 0.6 : 1,
+                }}
+                data-trace-id={`${TRACE}::EL-CHECK-reset-group@${g.key}`}
+              >
+                <input
+                  type="checkbox"
+                  className="dash-checkbox"
+                  checked={isOn}
+                  onChange={() => toggle(g.key)}
+                  disabled={busy || empty}
+                  style={{ marginTop: 3 }}
+                />
+                <span>
+                  <strong>{g.label}</strong>{' '}
+                  <span className="dash-muted">
+                    {empty
+                      ? '— nothing to remove'
+                      : `— ${g.rowCount.toLocaleString()} record${g.rowCount === 1 ? '' : 's'}${
+                          g.fileCount > 0
+                            ? ` and ${g.fileCount.toLocaleString()} file${g.fileCount === 1 ? '' : 's'}`
+                            : ''
+                        }`}
+                  </span>
+                  <br />
+                  <span className="dash-help-text">{g.description}</span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+
+        {selected.size > 0 && (
+          <>
+            <p>
+              <strong>
+                This will remove {totalRows.toLocaleString()} record
+                {totalRows === 1 ? '' : 's'}
+                {totalFiles > 0
+                  ? ` and ${totalFiles.toLocaleString()} file${totalFiles === 1 ? '' : 's'}`
+                  : ''}
+                .
+              </strong>
+            </p>
+
+            <button
+              type="button"
+              className="dash-btn-danger"
+              onClick={handleRun}
+              disabled={!canRun}
+              data-trace-id={`${TRACE}::EL-BTN-run-reset`}
+            >
+              {running ? 'Erasing…' : 'Erase the ticked data'}
+            </button>
+          </>
+        )}
+      </details>
 
       {error && <p className="dash-inline-error">{error}</p>}
 
