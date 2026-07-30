@@ -13,6 +13,7 @@ import DataResetPanel from '@/components/dashboard/DataResetPanel';
 import SuperAdminPanel from '@/components/dashboard/SuperAdminPanel';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
+import { GenericAvatarIcon } from '@/components/GenericAvatarIcon';
 
 /**
  * Exported (not just used locally) so the profile-by-role tests can render it
@@ -133,10 +134,7 @@ export function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => voi
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={user.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
-                <svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} style={{ margin: '20px auto' }}>
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
+                <GenericAvatarIcon size={32} style={{ margin: '20px auto' }} />
               )}
             </button>
             <input

@@ -16,6 +16,8 @@ import {
 
 import { EnlargeableImage } from '@/components/dashboard/ImagePreviewModal';
 
+import { GenericAvatarIcon } from '@/components/GenericAvatarIcon';
+
 import {
 
   apiCollabGetBrand,
@@ -313,7 +315,7 @@ export default function CollabBrandClient() {
 
               <div className="collab-brand-logo collab-avatar collab-brand-logo--placeholder" aria-hidden>
 
-                {displayName.charAt(0).toUpperCase() || '?'}
+                <GenericAvatarIcon size="55%" />
 
               </div>
 

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useBreakpoint } from '@/hooks/useMotion'
 import { EnlargeableImage } from '@/components/dashboard/ImagePreviewModal'
 import RetryingImage from '@/components/dashboard/RetryingImage'
-import { getInitials } from '@/lib/utils/getInitials'
+import { GenericAvatarIcon } from '@/components/GenericAvatarIcon'
 
 export interface MessageAttachment {
   url: string
@@ -184,39 +184,24 @@ function AvatarContent({ url, label }: { url?: string | null; label: string }) {
     )
   }
   return (
-    <svg
-      data-testid="avatar-generic"
-      className="mrc-avatar-generic"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.8}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      role="img"
-      aria-label={`${label} — no photo`}
-    >
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
-    </svg>
+    <GenericAvatarIcon size="55%" className="mrc-avatar-generic" />
   )
 }
 
-/** Per-message sender avatar, next to each bubble in the thread — separate
- * from `AvatarContent` (people rail / thread header) because a message's
- * fallback is the sender's INITIAL LETTER, not the generic person glyph:
- * the backend already resolved personal avatar -> (COLLAB) brand logo ->
- * null, and null means "draw an initial", never a broken image or an empty
- * gap. Uses `RetryingImage`, not a bare `<img>`, for the photo case: a
- * freshly-uploaded avatar is exactly the cold-cache case that component
- * exists for. */
+/** Per-message sender avatar, next to each bubble in the thread. Used to draw
+ * the sender's INITIAL LETTER when there was no photo — the owner's "any
+ * avatar, exchange it with generic profile icon" request removed that:
+ * every avatar slot (this one included) now falls back to the same
+ * `GenericAvatarIcon` silhouette as `AvatarContent`, never a letter. Uses
+ * `RetryingImage`, not a bare `<img>`, for the photo case: a freshly-uploaded
+ * avatar is exactly the cold-cache case that component exists for. */
 function MessageAvatar({ url, name }: { url?: string | null; name: string }) {
   if (url) {
     return <RetryingImage src={url} alt={name} className="mrc-msg-avatar-photo" />
   }
   return (
     <span className="mrc-msg-avatar-initial" data-testid="msg-avatar-initial" aria-label={`${name} — no photo`}>
-      {getInitials(name) || '?'}
+      <GenericAvatarIcon size="70%" />
     </span>
   )
 }
