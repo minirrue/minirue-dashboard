@@ -303,7 +303,11 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   const [activeId, setActiveId] = useState<string | null>(null);
   // Two filters: work state, and which desk the room belongs to.
   const [statusFilter, setStatusFilter] = useState('');
-  const [deskFilter, setDeskFilter] = useState('');
+  // Defaults to MiniRue's own desk ('direct' is the sentinel for the
+  // untagged/house channel — see support.service.ts). An empty string used to
+  // mean "All desks" by default, so the owner's own inbox opened on a mixed
+  // view of every partner's conversations instead of MiniRue's own.
+  const [deskFilter, setDeskFilter] = useState('direct');
   const [refreshing, setRefreshing] = useState(false);
   /**
    * A partner's own module grants, used only to decide whether to draw the
@@ -327,9 +331,13 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   });
   const { data: roomDtos } = useSupportConversations({
     customerId: activePersonId ?? undefined,
+    brand: deskFilter || undefined,
     enabled: !!activePersonId,
   });
-  const { data: archivedRoomDtos } = useSupportArchivedConversations(activePersonId);
+  const { data: archivedRoomDtos } = useSupportArchivedConversations(
+    activePersonId,
+    deskFilter || undefined,
+  );
   const { data: threadData, refetch: refetchThread } = useSupportThread(activeId);
   // Single unified live loop: one timer refreshes the people rollup, this
   // person's rooms and the open thread together (replaces the two separate
@@ -549,9 +557,15 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
    * threads yet had no option, so their desk could not be opened to see that it
    * was empty, which is exactly the question "has anyone messaged Helia".
    */
-  const brandOptions = channels
-    .filter((ch) => ch.collaboratorId)
-    .map((ch) => ({ id: ch.collaboratorId as string, name: ch.name }));
+  const brandOptions = [
+    // The house channel's collaboratorId is null, so the plain filter below
+    // drops it — without this, the owner's own desk had no option at all and
+    // could not be picked even manually.
+    { id: 'direct', name: 'MiniRue' },
+    ...channels
+      .filter((ch) => ch.collaboratorId)
+      .map((ch) => ({ id: ch.collaboratorId as string, name: ch.name })),
+  ];
 
   /**
    * Watching someone else's desk. The whole team may READ any desk but must
@@ -647,8 +661,15 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
           value={deskFilter}
           onChange={(e) => setDeskFilter(e.target.value)}
         >
+          {/* MiniRue first, so the default selection reads first; "All desks"
+              is then an explicit opt-in rather than the implicit default. */}
+          {brandOptions.slice(0, 1).map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.name}
+            </option>
+          ))}
           <option value="">All desks</option>
-          {brandOptions.map((b) => (
+          {brandOptions.slice(1).map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
             </option>

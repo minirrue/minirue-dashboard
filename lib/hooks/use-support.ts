@@ -22,8 +22,8 @@ export const SUPPORT_KEYS = {
     ['support', 'people', status ?? 'all', collaboratorId ?? 'all'] as const,
   conversations: (status?: string, brand?: string, customerId?: string) =>
     ['support', 'conversations', status ?? 'all', brand ?? 'all', customerId ?? 'all'] as const,
-  archivedConversations: (customerId: string) =>
-    ['support', 'conversations', 'trash', customerId] as const,
+  archivedConversations: (customerId: string, brand?: string) =>
+    ['support', 'conversations', 'trash', customerId, brand ?? 'all'] as const,
   thread: (id: string) => ['support', 'thread', id] as const,
   presence: () => ['support', 'presence'] as const,
 };
@@ -48,11 +48,14 @@ export function useSupportConversations(
 }
 
 /** The archived (trashed) rooms for one customer — the collapsed "Archived
- * (n)" group in the rooms pane. Only fetched once a person is selected. */
-export function useSupportArchivedConversations(customerId: string | null) {
+ * (n)" group in the rooms pane. Only fetched once a person is selected.
+ * `brand` scopes to one desk, exactly like `useSupportConversations` — without
+ * it, this list bled every desk's archived rooms for the selected customer
+ * regardless of which desk was picked. */
+export function useSupportArchivedConversations(customerId: string | null, brand?: string) {
   return useQuery({
-    queryKey: SUPPORT_KEYS.archivedConversations(customerId ?? ''),
-    queryFn: () => apiSupportConversations({ customerId: customerId as string, view: 'trash' }),
+    queryKey: SUPPORT_KEYS.archivedConversations(customerId ?? '', brand),
+    queryFn: () => apiSupportConversations({ customerId: customerId as string, view: 'trash', brand }),
     enabled: !!customerId,
     refetchOnWindowFocus: true,
   });
