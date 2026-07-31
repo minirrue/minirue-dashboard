@@ -37,7 +37,12 @@ export default function LoginPage() {
         // instead of a hardcoded generic string that hid it.
         setError(apiErr.message || 'Email or password is incorrect.');
       } else if (apiErr.status === 403) {
-        setError('This account does not have admin access.');
+        // Surface the real reason, same as the 401 branch above. This was
+        // hardcoded, so EVERY 403 read as "your account lacks access" —
+        // including the ones apiLogin used to raise for a failed session
+        // check. An operator whose session had merely gone stale was told
+        // their role had been taken away.
+        setError(apiErr.message || 'This account does not have admin access.');
       } else if (apiErr.status === 429) {
         setError('Too many attempts. Please wait a moment and try again.');
       } else {

@@ -27,13 +27,36 @@ export async function apiLogin(email: string, password: string): Promise<AuthSuc
     const user = data.user ? parseAuthUser(data.user) : await apiMe();
     return { ...data, user };
   } catch (e) {
+    // Only a genuine role rejection may claim the account lacks access.
+    //
+    // This used to flatten EVERY failure here into one 403 reading "This
+    // account does not have admin access", and the login page then re-labelled
+    // every 403 with that same sentence. So a `/auth/me` that 401'd — a dead
+    // session, a stale cookie, an API that was down — told the operator their
+    // account had been demoted. During the 2026-07-31 incident that message
+    // cost real time: it was read as "the reset changed my role" when the
+    // password had in fact just been accepted and the account was fine.
+    //
+    // The distinction is load-bearing: reaching this catch at all means
+    // POST /auth/login already returned 200, so the credentials were correct
+    // and the users row is alive. Anything other than InsufficientStaffRoleError
+    // is a SESSION problem, and saying so points at the actual fix.
+    if (e instanceof Error && e.name === 'InsufficientStaffRoleError') {
+      const err: ApiError = {
+        status: 403,
+        message: 'This account does not have admin access.',
+        error: 'Forbidden',
+      };
+      throw err;
+    }
+    const underlying = e as Partial<ApiError> | undefined;
     const err: ApiError = {
-      status: 403,
+      // 401, not 403 — the credentials passed; it is the session that failed.
+      status: 401,
       message:
-        e instanceof Error && e.name === 'InsufficientStaffRoleError'
-          ? 'This account does not have admin access.'
-          : 'Your session role is invalid. Sign in again.',
-      error: 'Forbidden',
+        underlying?.message ||
+        'Signed in, but the session could not be verified. Sign in again.',
+      error: 'Unauthorized',
     };
     throw err;
   }
