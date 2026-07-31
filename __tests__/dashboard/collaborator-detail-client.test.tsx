@@ -52,10 +52,11 @@ jest.mock('@/lib/catalog/api', () => ({
 }));
 
 import CollaboratorDetailClient from '@/app/dashboard/collaborators/[id]/CollaboratorDetailClient';
-import { apiGetCollaborator } from '@/lib/api/collaborators';
+import { apiGetCollaborator, apiUpdateCollaborator } from '@/lib/api/collaborators';
 import { listProducts, listManagedBrands } from '@/lib/catalog/api';
 
 const mockedGetCollaborator = apiGetCollaborator as jest.Mock;
+const mockedUpdateCollaborator = apiUpdateCollaborator as jest.Mock;
 const mockedListProducts = listProducts as jest.Mock;
 const mockedListManagedBrands = listManagedBrands as jest.Mock;
 
@@ -139,5 +140,79 @@ describe('CollaboratorDetailClient — brand page path (defect 2)', () => {
 
     expect(screen.getByText('/helia')).toBeInTheDocument();
     expect(screen.queryByText('/brands/helia')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Task 37 — the collaborator's name was fixed after creation; this is the
+ * new edit path. Owner decision (2026-07-31): name and slug are
+ * INDEPENDENT fields, no derivation either way — editing one must never
+ * send (or imply) a change to the other.
+ */
+describe('CollaboratorDetailClient — name is editable, independently of slug (task 37)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedGetCollaborator.mockResolvedValue(COLLAB);
+  });
+
+  it('renders the current name in its own field, separate from the slug field', async () => {
+    render(<CollaboratorDetailClient />);
+    await screen.findByText('Helia');
+
+    const nameInput = screen.getByLabelText('Name') as HTMLInputElement;
+    const slugInput = screen.getByLabelText('Brand slug') as HTMLInputElement;
+    expect(nameInput.value).toBe('Helia');
+    expect(slugInput.value).toBe('helia');
+  });
+
+  it('saving a changed name sends displayName but no brandSlug', async () => {
+    mockedUpdateCollaborator.mockResolvedValue({ ...COLLAB, brandName: 'Helia Beauty' });
+    render(<CollaboratorDetailClient />);
+    await screen.findByText('Helia');
+
+    fireEvent.change(screen.getByLabelText('Name'), {
+      target: { value: 'Helia Beauty' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /save identity/i }));
+
+    await waitFor(() => expect(mockedUpdateCollaborator).toHaveBeenCalled());
+    expect(mockedUpdateCollaborator).toHaveBeenCalledWith('collab-1', {
+      brandSlug: undefined,
+      displayName: 'Helia Beauty',
+      modules: undefined,
+    });
+  });
+
+  it('saving a changed slug sends brandSlug but no displayName', async () => {
+    mockedUpdateCollaborator.mockResolvedValue({ ...COLLAB, brandSlug: 'helia-beauty' });
+    render(<CollaboratorDetailClient />);
+    await screen.findByText('Helia');
+
+    fireEvent.change(screen.getByLabelText('Brand slug'), {
+      target: { value: 'helia-beauty' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /save identity/i }));
+
+    await waitFor(() => expect(mockedUpdateCollaborator).toHaveBeenCalled());
+    expect(mockedUpdateCollaborator).toHaveBeenCalledWith('collab-1', {
+      brandSlug: 'helia-beauty',
+      displayName: undefined,
+      modules: undefined,
+    });
+  });
+
+  it('saving with neither field changed sends neither', async () => {
+    mockedUpdateCollaborator.mockResolvedValue(COLLAB);
+    render(<CollaboratorDetailClient />);
+    await screen.findByText('Helia');
+
+    fireEvent.click(screen.getByRole('button', { name: /save identity/i }));
+
+    await waitFor(() => expect(mockedUpdateCollaborator).toHaveBeenCalled());
+    expect(mockedUpdateCollaborator).toHaveBeenCalledWith('collab-1', {
+      brandSlug: undefined,
+      displayName: undefined,
+      modules: undefined,
+    });
   });
 });

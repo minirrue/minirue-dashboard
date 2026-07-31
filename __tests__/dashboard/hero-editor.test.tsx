@@ -3,7 +3,7 @@ import type { HeroSlide } from '@/lib/api/storefront';
 
 const slide = (id: string): HeroSlide => ({
   id, eyebrow: '', headline: '', sub: '', tagline: '',
-  mode: 'editorial', imageGalleryItemId: null, imageAlt: '', background: '#000',
+  mode: 'editorial', imageGalleryItemId: null, mobileImageGalleryItemId: null, imageAlt: '', background: '#000',
   bottle: null, cap: null, ctaLabel: null, ctaTarget: { kind: 'scroll' },
 });
 

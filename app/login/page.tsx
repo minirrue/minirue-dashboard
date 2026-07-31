@@ -6,9 +6,13 @@ import { apiLogin } from '@/lib/api/auth';
 import type { ApiError } from '@/lib/api/client';
 import ErrorBanner from '@/components/dashboard/ErrorBanner';
 import ServerStatus from '@/components/dashboard/ServerStatus';
+import { useShopName } from '@/lib/hooks/use-shop-name';
 
 export default function LoginPage() {
   const router = useRouter();
+  // The ONE shop name (2026-07-31 owner ask) — public settings, so this
+  // resolves before a session exists.
+  const shopName = useShopName();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -126,7 +130,7 @@ export default function LoginPage() {
               lineHeight: 1,
             }}
           >
-            MiniRue
+            {shopName}
           </div>
           <div
             style={{

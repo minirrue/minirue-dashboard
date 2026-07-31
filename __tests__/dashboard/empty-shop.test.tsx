@@ -1,6 +1,12 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import AnalyticsClient from '@/app/dashboard/analytics/AnalyticsClient';
+// The Lane 12 rewrite (2026-07-31) replaced `AnalyticsClient` with the
+// widget-registry Overview screen and moved the order-derived figures this
+// suite actually exercises (revenue/refunds/orders/top-products/funnel via
+// `@/lib/api/analytics`) to `SalesClient` at `/analytics/sales` — see
+// `AnalyticsSubnav.tsx`'s "Sales" tab comment. Point this suite at the
+// screen that still calls those four API functions.
+import SalesClient from '@/app/dashboard/analytics/sales/SalesClient';
 import LoyaltyClient from '@/app/dashboard/loyalty/LoyaltyClient';
 import * as analyticsApi from '@/lib/api/analytics';
 import * as loyaltyApi from '@/lib/api/loyalty';
@@ -18,6 +24,12 @@ import * as loyaltyApi from '@/lib/api/loyalty';
 
 jest.mock('@/lib/api/analytics');
 jest.mock('@/lib/api/loyalty');
+
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  usePathname: () => '/analytics',
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 const mockedAnalytics = analyticsApi as jest.Mocked<typeof analyticsApi>;
 const mockedLoyalty = loyaltyApi as jest.Mocked<typeof loyaltyApi>;
@@ -55,9 +67,11 @@ describe('Analytics on an empty shop', () => {
   });
 
   it('renders with zeroes rather than crashing', async () => {
-    render(<AnalyticsClient />);
+    render(<SalesClient />);
 
-    expect(await screen.findByText('Analytics')).toBeInTheDocument();
+    // "Sales" appears twice (the subnav tab link and the page's own <h1>) —
+    // the heading role disambiguates.
+    expect(await screen.findByRole('heading', { name: 'Sales' })).toBeInTheDocument();
     expect(await screen.findByText(/no product sales data yet/i)).toBeInTheDocument();
   });
 
@@ -68,9 +82,11 @@ describe('Analytics on an empty shop', () => {
       {} as unknown as typeof EMPTY_OVERVIEW,
     );
 
-    render(<AnalyticsClient />);
+    render(<SalesClient />);
 
-    expect(await screen.findByText('Analytics')).toBeInTheDocument();
+    // "Sales" appears twice (the subnav tab link and the page's own <h1>) —
+    // the heading role disambiguates.
+    expect(await screen.findByRole('heading', { name: 'Sales' })).toBeInTheDocument();
   });
 
   it('survives a list endpoint returning nothing at all', async () => {
@@ -81,9 +97,11 @@ describe('Analytics on an empty shop', () => {
       undefined as unknown as [],
     );
 
-    render(<AnalyticsClient />);
+    render(<SalesClient />);
 
-    expect(await screen.findByText('Analytics')).toBeInTheDocument();
+    // "Sales" appears twice (the subnav tab link and the page's own <h1>) —
+    // the heading role disambiguates.
+    expect(await screen.findByRole('heading', { name: 'Sales' })).toBeInTheDocument();
   });
 
   it('shows the error and a retry when the API fails', async () => {
@@ -92,7 +110,7 @@ describe('Analytics on an empty shop', () => {
       message: 'Analytics is unavailable',
     });
 
-    render(<AnalyticsClient />);
+    render(<SalesClient />);
 
     expect(await screen.findByText(/analytics is unavailable/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();

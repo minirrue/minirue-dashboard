@@ -7,6 +7,7 @@ import {
   useSupportPeople,
   useSupportConversations,
   useSupportArchivedConversations,
+  useSupportDeletedConversations,
   useSupportThread,
   useSupportLiveSync,
   useSupportPresence,
@@ -16,8 +17,11 @@ import {
   useUpdateConversation,
   useArchiveConversation,
   useRestoreConversation,
+  useSoftDeleteConversation,
+  useRestoreDeletedConversation,
 } from '@/lib/hooks/use-support';
 import { useUser } from '@/lib/hooks/use-auth';
+import { useShopName } from '@/lib/hooks/use-shop-name';
 import { apiCollabOverview } from '@/lib/api/collab-portal';
 import { apiSupportChannels, type SupportChannel } from '@/lib/api/support';
 import { Role } from '@/lib/auth/role';
@@ -91,6 +95,7 @@ function toConversation(dto: ConversationDto): Conversation {
     collaboratorId: dto.collaboratorId ?? undefined,
     status: dto.status,
     archivedAt: dto.archivedAt ?? null,
+    deletedAt: dto.deletedAt ?? null,
   };
 }
 
@@ -301,6 +306,11 @@ function PresenceControls({ presence }: { presence: PresenceDto | undefined }) {
 }
 
 export default function SupportInboxClient({ showPresence = false }: SupportInboxClientProps) {
+  // The ONE shop name (2026-07-31 owner ask) — the house desk option below,
+  // and the sender name on a message this session just sent (before the
+  // server round-trip replaces it with its own resolved copy), must read
+  // this rather than a hardcoded literal or the signed-in staffer's own name.
+  const shopName = useShopName();
   const [activePersonId, setActivePersonId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   // Two filters: work state, and which desk the room belongs to.
@@ -340,6 +350,16 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
     activePersonId,
     deskFilter || undefined,
   );
+  const { data: user } = useUser();
+  // SUPERADMIN-only deleted rooms for the selected person (task 40) — the
+  // hook itself gates the actual request on `isSuperAdmin` via `enabled`, so
+  // no request ever fires for anyone else.
+  const isSuperAdmin = user?.role === Role.SUPERADMIN;
+  const { data: deletedRoomDtos } = useSupportDeletedConversations(
+    activePersonId,
+    deskFilter || undefined,
+    isSuperAdmin,
+  );
   const { data: threadData, refetch: refetchThread } = useSupportThread(activeId);
   // Single unified live loop: one timer refreshes the people rollup, this
   // person's rooms and the open thread together (replaces the two separate
@@ -347,10 +367,11 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   useSupportLiveSync(activeId, activePersonId);
   const { data: presence } = useSupportPresence();
   const uploadImage = useSupportUpload();
-  const { data: user } = useUser();
   const markRead = useSupportMarkRead();
   const archiveMutation = useArchiveConversation();
   const restoreMutation = useRestoreConversation();
+  const deleteMutation = useSoftDeleteConversation();
+  const restoreDeletedMutation = useRestoreDeletedConversation();
 
   // Powers the rail's refresh button: refetches the people rail, this
   // person's rooms (live + archived), and, if a thread is open, that thread too.
@@ -544,14 +565,27 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
 
   // Every room this person has, live + archived merged into one list — the
   // rooms pane buckets them into live/history/archived groups itself from
-  // each room's own `status`/`archivedAt`.
+  // each room's own `status`/`archivedAt`. Deleted rooms are NOT folded in
+  // here (task 40): DashChatView's own live/history/archived grouping
+  // (`roomGroupOf`) has no deleted case, so a deleted row would be
+  // misclassified as live/history if merged into this list — it is passed
+  // separately, as `deletedConversations` below.
   const allRoomDtos = useMemo(
     () => [...(roomDtos ?? []), ...(archivedRoomDtos ?? [])],
     [roomDtos, archivedRoomDtos],
   );
+  // Lookup-only superset (live + archived + deleted) — used ONLY to resolve
+  // the open thread's own DTO (customer name/presence/status for the header,
+  // the deleted flag for the composer gate) when a SUPERADMIN opens a
+  // deleted conversation from the Deleted group, which `allRoomDtos` above
+  // deliberately excludes.
+  const allRoomDtosWithDeleted = useMemo(
+    () => [...allRoomDtos, ...(deletedRoomDtos ?? [])],
+    [allRoomDtos, deletedRoomDtos],
+  );
   // The raw DTO for the open thread: the view model deliberately drops fields the
   // rooms pane has no use for, but the actions need the real status and grant.
-  const activeConversationDto = allRoomDtos.find((c) => c.id === activeId);
+  const activeConversationDto = allRoomDtosWithDeleted.find((c) => c.id === activeId);
 
   /**
    * Every partner desk, from the channel list — not derived from whatever
@@ -563,7 +597,7 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
     // The house channel's collaboratorId is null, so the plain filter below
     // drops it — without this, the owner's own desk had no option at all and
     // could not be picked even manually.
-    { id: 'direct', name: 'MiniRue' },
+    { id: 'direct', name: shopName },
     ...channels
       .filter((ch) => ch.collaboratorId)
       .map((ch) => ({ id: ch.collaboratorId as string, name: ch.name })),
@@ -579,7 +613,14 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
    */
   const activeIsForeignDesk = isTeamRole && !!activeConversationDto?.collaboratorId;
   const watchedBrandName = activeConversationDto?.brandName ?? 'this partner';
-  const composerDisabledReason = activeIsForeignDesk ? (
+  // Task 40: a deleted conversation only ever opens for SUPERADMIN (the
+  // Deleted group), and the server itself refuses a new message into one
+  // (SupportService.sendMessage) — this just puts the same reason in the
+  // composer's place instead of a raw request failure.
+  const activeIsDeleted = !!activeConversationDto?.deletedAt;
+  const composerDisabledReason = activeIsDeleted ? (
+    <>This conversation has been deleted. Restore it to reply.</>
+  ) : activeIsForeignDesk ? (
     <>
       Watching <strong>{watchedBrandName}</strong>&apos;s desk — read only. Only {watchedBrandName} can reply here.
     </>
@@ -591,16 +632,49 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
     // you're already looking at it, so a message arriving in it isn't "unread".
     (c) => (c.id === activeId ? { ...c, unread: 0 } : c),
   );
+  // SUPERADMIN-only deleted rooms (task 40), mapped the same way as every
+  // other room — empty for everyone else, since the query itself is gated
+  // on `isSuperAdmin` above.
+  const deletedConversations = (deletedRoomDtos ?? []).map(toConversation);
 
   const archiveActionPendingId =
     (archiveMutation.isPending ? (archiveMutation.variables as string) : null) ??
     (restoreMutation.isPending ? (restoreMutation.variables as string) : null);
+  const deleteActionPendingId = deleteMutation.isPending
+    ? (deleteMutation.variables as string)
+    : null;
+  const restoreDeletedActionPendingId = restoreDeletedMutation.isPending
+    ? (restoreDeletedMutation.variables as string)
+    : null;
 
   const handleArchive = (id: string) => {
     archiveMutation.mutate(id, { onSuccess: () => setActionNotice('Conversation archived.') });
   };
   const handleRestore = (id: string) => {
     restoreMutation.mutate(id, { onSuccess: () => setActionNotice('Conversation restored.') });
+  };
+  /**
+   * Soft-deletes a room (task 40, owner ask: "add a new button here beside
+   * archive to delete the chats from right side and delete the left side
+   * chat also"). On success the room is gone from every list query this
+   * screen holds (the mutation invalidates them), which removes it from the
+   * rooms pane (left) automatically on the next render — and if it was the
+   * conversation currently open in the thread (right), this also clears
+   * `activeId` so that pane closes too, rather than being left open on a
+   * conversation that no longer appears anywhere in the lists behind it.
+   */
+  const handleDelete = (id: string) => {
+    deleteMutation.mutate(id, {
+      onSuccess: () => {
+        setActionNotice('Conversation deleted.');
+        if (activeId === id) setActiveId(null);
+      },
+    });
+  };
+  const handleRestoreDeleted = (id: string) => {
+    restoreDeletedMutation.mutate(id, {
+      onSuccess: () => setActionNotice('Conversation restored.'),
+    });
   };
 
   // Display = server messages CONCAT this conversation's pending items that
@@ -610,7 +684,12 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   const messages = useMemo<Message[]>(() => {
     const serverMessages = threadData?.messages ?? [];
     const serverIds = new Set(serverMessages.map((m) => m.id));
-    const senderName = user?.name ?? 'MiniRue';
+    // The ONE shop name, not the signed-in staffer's own name — "the staff
+    // has same name inherit from the main single admin" (2026-07-31 owner
+    // ask). Matches what the server's own copy of this message will say once
+    // the round-trip replaces this optimistic bubble (support.service.ts's
+    // `nameForSender`), so there is no name flicker between the two.
+    const senderName = shopName;
     const activePending = pending.filter(
       (p) => p.conversationId === activeId && !(p.realId && serverIds.has(p.realId)),
     );
@@ -766,6 +845,11 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
         onArchive={handleArchive}
         onRestore={handleRestore}
         archiveActionPendingId={archiveActionPendingId}
+        onDelete={handleDelete}
+        deleteActionPendingId={deleteActionPendingId}
+        deletedConversations={deletedConversations}
+        onRestoreDeleted={handleRestoreDeleted}
+        restoreDeletedActionPendingId={restoreDeletedActionPendingId}
         messages={messages}
         onSend={(text, attachments) => {
           if (!activeId) return;
@@ -777,7 +861,7 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
         }}
         onRefresh={handleRefresh}
         refreshing={refreshing}
-        composerDisabled={activeIsForeignDesk}
+        composerDisabled={activeIsForeignDesk || activeIsDeleted}
         composerDisabledReason={composerDisabledReason}
         threadActions={
           activeId && activeConversationDto ? (

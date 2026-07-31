@@ -80,6 +80,11 @@ export default function CollaboratorDetailClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [brandSlug, setBrandSlug] = useState('');
+  // Independent from brandSlug (owner decision, 2026-07-31): editing the name
+  // never derives or touches the slug, and vice versa — two separate fields,
+  // no auto-sync either direction. Renaming a collaborator must never move
+  // their space URL.
+  const [displayName, setDisplayName] = useState('');
   const [modules, setModules] = useState<CollaboratorModule[]>([]);
   const [saving, setSaving] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
@@ -211,6 +216,7 @@ export default function CollaboratorDetailClient() {
         if (!cancelled) {
           setCollab(data);
           setBrandSlug(data.brandSlug);
+          setDisplayName(data.brandName);
           setModules(data.modules);
           setAutoPublish(data.autoPublishProducts ?? false);
           setHomeFeature(data.storefrontHomeFeature ?? false);
@@ -252,11 +258,13 @@ export default function CollaboratorDetailClient() {
     try {
       const updated = await apiUpdateCollaborator(id, {
         brandSlug: brandSlug !== collab.brandSlug ? brandSlug : undefined,
+        displayName: displayName !== collab.brandName ? displayName : undefined,
         modules:
           JSON.stringify(modules) !== JSON.stringify(collab.modules) ? modules : undefined,
       });
       setCollab(updated);
       setBrandSlug(updated.brandSlug);
+      setDisplayName(updated.brandName);
       setModules(updated.modules);
       setSavedAt(new Date());
     } catch (e) {
@@ -641,6 +649,29 @@ export default function CollaboratorDetailClient() {
           <CollaboratorStatusBadge status={collab.status} />
         </div>
         <div className="dash-field">
+          <label className="dash-label" htmlFor="displayName">
+            Name
+          </label>
+          <input
+            id="displayName"
+            className="dash-input"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            maxLength={120}
+            required
+            disabled={saving}
+            data-trace-id="PG-DASHBOARD-COLLAB-008::EL-INPUT-detail-display-name"
+          />
+          {/* Independent of the slug below — renaming here never changes
+              this partner's space URL. */}
+          <p className="dash-help-text">
+            How this partner appears everywhere in the dashboard and storefront.
+            Spaces and casing are theirs to choose — this never changes their
+            web address below.
+          </p>
+        </div>
+
+        <div className="dash-field">
           <label className="dash-label" htmlFor="brandSlug">
             Brand slug
           </label>
@@ -653,6 +684,11 @@ export default function CollaboratorDetailClient() {
             disabled={saving}
             data-trace-id="PG-DASHBOARD-COLLAB-008::EL-INPUT-detail-brand-slug"
           />
+          <p className="dash-help-text">
+            This partner&apos;s web address. Changing it moves their space
+            URL — it is not tied to the name above (see Storefront placement
+            below for the current address).
+          </p>
         </div>
         <div className="dash-field">
           <p className="dash-label">Access</p>

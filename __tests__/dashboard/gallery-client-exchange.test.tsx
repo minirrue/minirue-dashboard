@@ -28,6 +28,15 @@ jest.mock('@/components/dashboard/ImageCropProvider', () => ({
   useImageCrop: () => mockCropImage,
 }));
 
+// Task 39: GalleryClient now reads the signed-in viewer's role to decide
+// whether to render the SUPERADMIN-only Deleted images panel. `useUser` is a
+// real react-query hook (needs a QueryClientProvider this test doesn't set
+// up) — mocked here, as a plain non-SUPERADMIN viewer, so the panel stays
+// off and this test's own behaviour (folders/items/exchange) is unaffected.
+jest.mock('@/lib/hooks/use-auth', () => ({
+  useUser: () => ({ data: { role: 'ADMIN' } }),
+}));
+
 import { exchangeItem, listFolders, listItems } from '@/lib/gallery/api';
 
 function makeFolder(over: Partial<GalleryFolder> = {}): GalleryFolder {

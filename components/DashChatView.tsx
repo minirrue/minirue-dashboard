@@ -6,6 +6,7 @@ import { useBreakpoint } from '@/hooks/useMotion'
 import { EnlargeableImage } from '@/components/dashboard/ImagePreviewModal'
 import RetryingImage from '@/components/dashboard/RetryingImage'
 import { GenericAvatarIcon } from '@/components/GenericAvatarIcon'
+import { useShopName } from '@/lib/hooks/use-shop-name'
 
 export interface MessageAttachment {
   url: string
@@ -105,8 +106,13 @@ export interface Conversation {
    * banner — a closed thread refuses new messages server-side. */
   status?: 'OPEN' | 'PENDING' | 'RESOLVED' | 'CLOSED'
   /** Set once the room is archived (moved to trash); drives which of the
-   * rooms-pane's three groups (live / history / archived) it renders in. */
+   * rooms-pane's groups (live / history / archived / deleted) it renders in. */
   archivedAt?: string | null
+  /** Soft delete (task 40) — a DIFFERENT concept from archive above. Only
+   * ever present when the signed-in viewer is SUPERADMIN; every other
+   * viewer's `conversations`/`deletedConversations` never include a deleted
+   * room at all. Drives the 'deleted' room group and the "Deleted" label. */
+  deletedAt?: string | null
 }
 
 export interface DashChatViewProps {
@@ -129,6 +135,23 @@ export interface DashChatViewProps {
   /** The id currently mid-archive/restore, so its row can show a disabled
    * state instead of double-firing on a slow connection. */
   archiveActionPendingId?: string | null
+  /** Soft-deletes a room (task 40) — a DIFFERENT action from archive above,
+   * offered alongside it on every live/history/archived row. Omit to hide
+   * the action entirely (e.g. a read-only viewer). */
+  onDelete?: (id: string) => void
+  /** The id currently mid-delete, so its row can show a disabled state. */
+  deleteActionPendingId?: string | null
+  /**
+   * SUPERADMIN-only deleted rooms (task 40) — a fourth, separate bucket
+   * rendered as its own collapsible "Deleted" group, clearly labelled,
+   * below Archived. Omitted/empty for every viewer but SUPERADMIN, since the
+   * server never returns a deleted room to anyone else.
+   */
+  deletedConversations?: Conversation[]
+  /** Restores a room out of the deleted view. SUPERADMIN only — the server
+   * 403s anyone else who somehow reaches this. */
+  onRestoreDeleted?: (id: string) => void
+  restoreDeletedActionPendingId?: string | null
 
   /** Pane 3 — thread (unchanged). */
   messages: Message[]
@@ -163,8 +186,12 @@ interface PendingAttachment {
 }
 
 /** A room's coarse bucket in the rooms pane: live work first, then history,
- * then a collapsed archived group. */
-type RoomGroup = 'live' | 'history' | 'archived'
+ * then a collapsed archived group, then (SUPERADMIN only) a collapsed
+ * deleted group — task 40. `roomGroupOf` below only ever produces the first
+ * three; 'deleted' is assigned explicitly by the caller when rendering
+ * `deletedConversations`, which never flows through `conversations`/
+ * `roomGroupOf` at all. */
+type RoomGroup = 'live' | 'history' | 'archived' | 'deleted'
 
 function roomGroupOf(c: Conversation): RoomGroup {
   if (c.archivedAt) return 'archived'
@@ -1227,6 +1254,11 @@ export function DashChatView({
   onArchive,
   onRestore,
   archiveActionPendingId,
+  onDelete,
+  deleteActionPendingId,
+  deletedConversations,
+  onRestoreDeleted,
+  restoreDeletedActionPendingId,
   messages,
   onSend,
   threadActions,
@@ -1236,12 +1268,18 @@ export function DashChatView({
   composerDisabled,
   composerDisabledReason,
 }: DashChatViewProps) {
+  // The ONE shop name (2026-07-31 owner ask) — replaces the hardcoded
+  // "MiniRue" fallback below for a room with no brandName (the house desk).
+  const shopName = useShopName();
   const [input, setInput] = useState('')
   const [pending, setPending] = useState<PendingAttachment[]>([])
   const [contactOpen, setContactOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [archivedExpanded, setArchivedExpanded] = useState(false)
+  // SUPERADMIN-only deleted group (task 40) — same collapsed-by-default
+  // shape as the archived group above.
+  const [deletedExpanded, setDeletedExpanded] = useState(false)
   // Which attachment is open full-size, keyed `messageIndex:attachmentIndex`
   // so two identical images in a thread cannot both open at once. Message has
   // no id — optimistic sends exist before the server assigns one.
@@ -1281,9 +1319,15 @@ export function DashChatView({
     }
   }, [activeId, tablet])
 
+  // SUPERADMIN-only deleted rooms for the selected person (task 40) — a
+  // fixed array, never derived via roomGroupOf, since deletedConversations
+  // is its own separate query, already scoped server-side to this person.
+  const deletedRooms = deletedConversations ?? []
+
   const selectPerson = (id: string) => {
     onSelectPerson(id)
     setArchivedExpanded(false)
+    setDeletedExpanded(false)
     if (tablet) {
       setStep(1)
       awaitingAutoRoomRef.current = true
@@ -1416,13 +1460,41 @@ export function DashChatView({
       data-active={activeId === c.id}
       data-unread={c.unread > 0}
       data-archived={group === 'archived'}
+      data-deleted={group === 'deleted'}
       className="mrc-room-row"
     >
       <span className="mrc-room-top">
-        <span className="mrc-room-subject">{c.subject}</span>
-        {group === 'archived' ? (
-          onRestore && (
+        <span className="mrc-room-subject">
+          {/* Task 40: a deleted room only ever appears here for SUPERADMIN
+              (deletedConversations), clearly labelled so it never reads as a
+              normal live conversation. */}
+          {group === 'deleted' && (
+            <strong
+              style={{ color: 'var(--mr-dash-danger, #b3261e)', marginRight: 6 }}
+            >
+              Deleted ·
+            </strong>
+          )}
+          {c.subject}
+        </span>
+        {group === 'deleted' ? (
+          onRestoreDeleted && (
             <span className="mrc-room-actions">
+              <button
+                type="button"
+                className="mrc-room-action-btn"
+                disabled={restoreDeletedActionPendingId === c.id}
+                onClick={(e) => { e.stopPropagation(); onRestoreDeleted(c.id) }}
+                aria-label={`Restore deleted conversation with ${c.name}`}
+                title="Restore"
+              >
+                <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" /></svg>
+              </button>
+            </span>
+          )
+        ) : group === 'archived' ? (
+          <span className="mrc-room-actions">
+            {onRestore && (
               <button
                 type="button"
                 className="mrc-room-action-btn"
@@ -1433,11 +1505,23 @@ export function DashChatView({
               >
                 <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" /></svg>
               </button>
-            </span>
-          )
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                className="mrc-room-action-btn"
+                disabled={deleteActionPendingId === c.id}
+                onClick={(e) => { e.stopPropagation(); onDelete(c.id) }}
+                aria-label={`Delete conversation with ${c.name}`}
+                title="Delete"
+              >
+                <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z" /></svg>
+              </button>
+            )}
+          </span>
         ) : (
-          onArchive && (
-            <span className="mrc-room-actions">
+          <span className="mrc-room-actions">
+            {onArchive && (
               <button
                 type="button"
                 className="mrc-room-action-btn"
@@ -1448,8 +1532,20 @@ export function DashChatView({
               >
                 <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8M10 13h4" /></svg>
               </button>
-            </span>
-          )
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                className="mrc-room-action-btn"
+                disabled={deleteActionPendingId === c.id}
+                onClick={(e) => { e.stopPropagation(); onDelete(c.id) }}
+                aria-label={`Delete conversation with ${c.name}`}
+                title="Delete"
+              >
+                <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z" /></svg>
+              </button>
+            )}
+          </span>
         )}
       </span>
       <span className="mrc-room-meta">
@@ -1605,12 +1701,12 @@ export function DashChatView({
               <span className="mrc-empty-title">Select a customer</span>
               <span className="mrc-empty-copy">Choose a customer from the list to see their conversations.</span>
             </div>
-          ) : liveRooms.length === 0 && historyRooms.length === 0 && archivedRooms.length === 0 ? (
+          ) : liveRooms.length === 0 && historyRooms.length === 0 && archivedRooms.length === 0 && deletedRooms.length === 0 ? (
             <div className="mrc-rooms-empty">
               <span className="mrc-empty-title">No conversations</span>
               <span className="mrc-empty-copy">This customer has no rooms on this desk.</span>
             </div>
-          ) : liveRooms.length === 0 && historyRooms.length === 0 ? (
+          ) : liveRooms.length === 0 && historyRooms.length === 0 && archivedRooms.length > 0 ? (
             // Every one of this person's rooms is archived. There is nothing
             // live or resolved left to collapse the archived group under, so
             // show it directly rather than behind a toggle that would open on
@@ -1622,6 +1718,20 @@ export function DashChatView({
                 Every conversation with {activePerson.name} is archived. Restore one to reply.
               </div>
               {archivedRooms.map(c => renderRoomRow(c, 'archived'))}
+              {deletedRooms.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    className="mrc-room-group-toggle"
+                    onClick={() => setDeletedExpanded(v => !v)}
+                    aria-expanded={deletedExpanded}
+                  >
+                    <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                    Deleted ({deletedRooms.length})
+                  </button>
+                  {deletedExpanded && deletedRooms.map(c => renderRoomRow(c, 'deleted'))}
+                </>
+              )}
             </div>
           ) : (
             <div className="mrc-rooms-list" role="list">
@@ -1640,6 +1750,23 @@ export function DashChatView({
                     Archived ({archivedRooms.length})
                   </button>
                   {archivedExpanded && archivedRooms.map(c => renderRoomRow(c, 'archived'))}
+                </>
+              )}
+              {/* SUPERADMIN-only deleted group (task 40) — its own separate
+                  collapsible section, clearly labelled, below Archived.
+                  Empty/absent for every other viewer. */}
+              {deletedRooms.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    className="mrc-room-group-toggle"
+                    onClick={() => setDeletedExpanded(v => !v)}
+                    aria-expanded={deletedExpanded}
+                  >
+                    <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                    Deleted ({deletedRooms.length})
+                  </button>
+                  {deletedExpanded && deletedRooms.map(c => renderRoomRow(c, 'deleted'))}
                 </>
               )}
             </div>
@@ -1692,7 +1819,7 @@ export function DashChatView({
               ) : (
                 <>
                   Replying to <strong>{convo.name}</strong>
-                  {convo.brandName ? <> · {convo.brandName}</> : <> · MiniRue</>}
+                  {convo.brandName ? <> · {convo.brandName}</> : <> · {shopName}</>}
                 </>
               )}
             </div>

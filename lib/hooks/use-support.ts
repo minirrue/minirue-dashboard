@@ -15,6 +15,8 @@ import {
   apiSupportUpdateConversation,
   apiSupportArchiveConversation,
   apiSupportRestoreConversation,
+  apiSupportSoftDeleteConversation,
+  apiSupportRestoreDeletedConversation,
 } from '@/lib/api/support';
 import type { ConversationDto, MessageAttachmentDto, SupportPersonDto } from '@/lib/api/support';
 
@@ -45,6 +47,10 @@ export const SUPPORT_KEYS = {
     ['support', 'conversations', viewerId, status ?? 'all', brand ?? 'all', customerId ?? 'all'] as const,
   archivedConversations: (viewerId: string, customerId: string, brand?: string) =>
     ['support', 'conversations', 'trash', viewerId, customerId, brand ?? 'all'] as const,
+  /** SUPERADMIN-only deleted view (task 40) — same shape as
+   * archivedConversations, keyed 'deleted' instead of 'trash'. */
+  deletedConversations: (viewerId: string, customerId: string, brand?: string) =>
+    ['support', 'conversations', 'deleted', viewerId, customerId, brand ?? 'all'] as const,
   thread: (viewerId: string, id: string) => ['support', 'thread', viewerId, id] as const,
   presence: (viewerId: string) => ['support', 'presence', viewerId] as const,
 };
@@ -88,6 +94,27 @@ export function useSupportArchivedConversations(customerId: string | null, brand
     queryKey: SUPPORT_KEYS.archivedConversations(viewerId ?? NO_VIEWER, customerId ?? '', brand),
     queryFn: () => apiSupportConversations({ customerId: customerId as string, view: 'trash', brand }),
     enabled: !!customerId && !!viewerId,
+    refetchOnWindowFocus: true,
+  });
+}
+
+/**
+ * SUPERADMIN-only deleted rooms for one customer (task 40) — same shape as
+ * useSupportArchivedConversations above, keyed on `view: 'deleted'` instead
+ * of `'trash'`. The server 403s anyone but SUPERADMIN who asks for this, so
+ * `enabled` also requires `isSuperAdmin` — a non-SUPERADMIN viewer must
+ * never even fire this request, let alone render its result.
+ */
+export function useSupportDeletedConversations(
+  customerId: string | null,
+  brand: string | undefined,
+  isSuperAdmin: boolean,
+) {
+  const viewerId = useViewerId();
+  return useQuery({
+    queryKey: SUPPORT_KEYS.deletedConversations(viewerId ?? NO_VIEWER, customerId ?? '', brand),
+    queryFn: () => apiSupportConversations({ customerId: customerId as string, view: 'deleted', brand }),
+    enabled: !!customerId && !!viewerId && isSuperAdmin,
     refetchOnWindowFocus: true,
   });
 }
@@ -158,6 +185,36 @@ export function useRestoreConversation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => apiSupportRestoreConversation(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['support', 'conversations'] });
+      void qc.invalidateQueries({ queryKey: ['support', 'people'] });
+    },
+  });
+}
+
+/**
+ * Soft-delete a room — task 40. A DIFFERENT action from archive above, not a
+ * stronger version of it. Invalidates every conversation list variant
+ * (live, trash, deleted, per-customer) plus the people rollup, same as
+ * archive: the moment this succeeds, the conversation must be gone from
+ * every list, count and unread badge for everyone but SUPERADMIN.
+ */
+export function useSoftDeleteConversation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiSupportSoftDeleteConversation(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['support', 'conversations'] });
+      void qc.invalidateQueries({ queryKey: ['support', 'people'] });
+    },
+  });
+}
+
+/** Reverses a soft delete. SUPERADMIN only — see apiSupportRestoreDeletedConversation. */
+export function useRestoreDeletedConversation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiSupportRestoreDeletedConversation(id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['support', 'conversations'] });
       void qc.invalidateQueries({ queryKey: ['support', 'people'] });

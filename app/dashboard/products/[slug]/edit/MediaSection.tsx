@@ -6,6 +6,9 @@ import {
   createProductMedia,
   setProductMediaCover,
   setProductMediaClosing,
+  reorderProductMedia,
+  deleteProductMedia,
+  restoreProductMedia,
 } from '@/lib/catalog/api';
 import { exchangeItem } from '@/lib/gallery/api';
 import type { ProductMedia } from '@/lib/catalog/types';
@@ -23,6 +26,15 @@ interface Props {
   productName: string;
   media: ProductMedia[];
   onMediaChange: (media: ProductMedia[]) => void;
+  /**
+   * '/catalog/admin' (default) or '/collab' — this is the ONE media form
+   * both the admin and collab product screens render (owner ask, 2026-07-31:
+   * the collab form must have "the same mechanism we add a product
+   * including the images"). Every request this component makes is prefixed
+   * with this, so the collab screen reaches its own scoped routes
+   * (CollabPortalController) instead of the admin-only ones.
+   */
+  mediaBasePath?: string;
 }
 
 /** Resolves the best available preview URL for a media row — the freshly
@@ -32,7 +44,13 @@ function previewUrl(m: ProductMedia): string {
   return cloudinaryPreviewUrl(m.cloudinaryPublicId);
 }
 
-export default function MediaSection({ productId, productName, media, onMediaChange }: Props) {
+export default function MediaSection({
+  productId,
+  productName,
+  media,
+  onMediaChange,
+  mediaBasePath = '/catalog/admin',
+}: Props) {
   const [mode, setMode] = useState<'device' | 'gallery'>('device');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +59,21 @@ export default function MediaSection({ productId, productName, media, onMediaCha
   const inputRef = useRef<HTMLInputElement>(null);
   const [coverSaving, setCoverSaving] = useState<string | null>(null);
   const [closingSaving, setClosingSaving] = useState<string | null>(null);
+  const [reordering, setReordering] = useState<string | null>(null);
+  // Per-image soft delete (task 39). A row only ever arrives with
+  // `deletedAt` set when the signed-in viewer is SUPERADMIN — the server
+  // never includes a deleted row for anyone else — so no extra role check
+  // is needed here to decide whether to draw it as deleted.
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState<string | null>(null);
   const cropImage = useImageCrop();
+
+  // The visible, changeable order the owner asked for (2026-07-31): every
+  // general (non-variant) CAROUSEL image's position among its own siblings
+  // — cover and closing sit outside this, their position IS their role.
+  const carouselIds = media
+    .filter((m) => m.role === 'CAROUSEL' && !m.variantId)
+    .map((m) => m.id);
 
   // "Exchange" (task-w2.3-brief.md, Part A) — replaces a media row's picture
   // in place via PATCH /gallery/items/:id/file, so the ProductMedia row's own
@@ -65,7 +97,7 @@ export default function MediaSection({ productId, productName, media, onMediaCha
     setError(null);
     setCoverSaving(m.id);
     try {
-      await setProductMediaCover(productId, m.id);
+      await setProductMediaCover(productId, m.id, mediaBasePath);
       onMediaChange(
         media.map((x) => ({
           ...x,
@@ -94,7 +126,7 @@ export default function MediaSection({ productId, productName, media, onMediaCha
     setError(null);
     setClosingSaving(m.id);
     try {
-      await setProductMediaClosing(productId, m.id);
+      await setProductMediaClosing(productId, m.id, mediaBasePath);
       onMediaChange(
         media.map((x) => ({
           ...x,
@@ -116,6 +148,94 @@ export default function MediaSection({ productId, productName, media, onMediaCha
     }
   }
 
+  /**
+   * Swaps this carousel image with its neighbour (owner ask, 2026-07-31:
+   * cover and closing already had a visible, changeable role — the rest of
+   * the images had no visible order and no way to change it). Only offered
+   * for a general CAROUSEL image with a neighbour on that side; the button
+   * is simply absent past either end, so this never has to reject a no-op.
+   */
+  async function handleReorder(m: ProductMedia, direction: 'up' | 'down') {
+    const pos = carouselIds.indexOf(m.id);
+    if (pos === -1) return;
+    const neighborPos = direction === 'up' ? pos - 1 : pos + 1;
+    if (neighborPos < 0 || neighborPos >= carouselIds.length) return;
+    const neighborId = carouselIds[neighborPos];
+
+    setError(null);
+    setReordering(m.id);
+    try {
+      await reorderProductMedia(productId, m.id, direction, mediaBasePath);
+      // Swap BOTH the array position (what the grid below actually renders
+      // in order) and the sortOrder value (what a fresh getProduct() would
+      // return) — updating only one would look reordered here and then jump
+      // back on the next reload, or vice versa.
+      const aIdx = media.findIndex((x) => x.id === m.id);
+      const bIdx = media.findIndex((x) => x.id === neighborId);
+      if (aIdx === -1 || bIdx === -1) return;
+      const next = [...media];
+      const aSortOrder = next[aIdx].sortOrder;
+      const bSortOrder = next[bIdx].sortOrder;
+      next[aIdx] = { ...next[aIdx], sortOrder: bSortOrder };
+      next[bIdx] = { ...next[bIdx], sortOrder: aSortOrder };
+      [next[aIdx], next[bIdx]] = [next[bIdx], next[aIdx]];
+      onMediaChange(next);
+    } catch (e) {
+      const err = e as ApiError;
+      setError(err.message || 'Failed to reorder image.');
+    } finally {
+      setReordering(null);
+    }
+  }
+
+  /**
+   * Per-image soft delete (task 39, owner ask: "add a global delete per
+   * image ... soft delete collab and soft delete for admin"). Never a
+   * confirm-less click — this hides the photo from the storefront and every
+   * other viewer immediately, so a mis-click needs a chance to be caught.
+   * The row itself is dropped from the local list on success rather than
+   * marked deleted in place: an ordinary ADMIN/STAFF/COLLAB viewer's product
+   * read will never see it again on the next reload either (the server
+   * excludes it), so there is nothing useful left to show here for them.
+   */
+  async function handleDelete(m: ProductMedia) {
+    if (!window.confirm('Delete this image? It will be hidden everywhere, but can still be restored by a super admin.')) {
+      return;
+    }
+    setError(null);
+    setDeleting(m.id);
+    try {
+      await deleteProductMedia(productId, m.id, mediaBasePath);
+      onMediaChange(media.filter((x) => x.id !== m.id));
+    } catch (e) {
+      const err = e as ApiError;
+      setError(err.message || 'Failed to delete image.');
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  /**
+   * Reverses a soft delete. Only ever offered on a row that already carries
+   * `deletedAt` — which, per the comment on the `deleting`/`restoring` state
+   * above, only a SUPERADMIN viewer's read ever includes. The server itself
+   * also refuses this for anyone else (CatalogService.restoreMedia), so this
+   * is a UI convenience, not the actual boundary.
+   */
+  async function handleRestore(m: ProductMedia) {
+    setError(null);
+    setRestoring(m.id);
+    try {
+      await restoreProductMedia(productId, m.id);
+      onMediaChange(media.map((x) => (x.id === m.id ? { ...x, deletedAt: null } : x)));
+    } catch (e) {
+      const err = e as ApiError;
+      setError(err.message || 'Failed to restore image.');
+    } finally {
+      setRestoring(null);
+    }
+  }
+
   async function handleDeviceUpload(file: File) {
     setError(null);
     setUploading(true);
@@ -130,11 +250,17 @@ export default function MediaSection({ productId, productName, media, onMediaCha
       // cover and its carousel siblings can be framed consistently.
       const cropped = await cropImage(file, { title: `Crop ${file.name}` });
       if (!cropped) return;
-      const item: GalleryItem = await uploadDeviceFileToGallery(cropped, productName, productId);
-      const asset = await createProductMedia(productId, {
-        galleryItemId: item.id,
-        sortOrder: media.length,
-      });
+      const item: GalleryItem = await uploadDeviceFileToGallery(
+        cropped,
+        productName,
+        productId,
+        mediaBasePath,
+      );
+      const asset = await createProductMedia(
+        productId,
+        { galleryItemId: item.id, sortOrder: media.length },
+        mediaBasePath,
+      );
       onMediaChange([...media, asset]);
       setPendingLocalFiles((prev) => ({ ...prev, [asset.id]: cropped }));
     } catch (e) {
@@ -178,10 +304,11 @@ export default function MediaSection({ productId, productName, media, onMediaCha
     setPickerOpen(false);
     setError(null);
     try {
-      const asset = await createProductMedia(productId, {
-        galleryItemId: item.id,
-        sortOrder: media.length,
-      });
+      const asset = await createProductMedia(
+        productId,
+        { galleryItemId: item.id, sortOrder: media.length },
+        mediaBasePath,
+      );
       onMediaChange([...media, asset]);
     } catch (e) {
       const err = e as ApiError;
@@ -233,7 +360,7 @@ export default function MediaSection({ productId, productName, media, onMediaCha
           }}
         >
           {media.map((m) => (
-            <figure key={m.id} style={{ margin: 0 }}>
+            <figure key={m.id} style={{ margin: 0, opacity: m.deletedAt ? 0.5 : 1 }}>
               <button
                 type="button"
                 onClick={() => setPreviewMedia(m)}
@@ -251,7 +378,9 @@ export default function MediaSection({ productId, productName, media, onMediaCha
                     aspectRatio: '4/5',
                     objectFit: 'cover',
                     borderRadius: 'var(--mr-radius-sm)',
-                    border: '1px solid var(--mr-dash-hair)',
+                    border: m.deletedAt
+                      ? '1px dashed var(--mr-dash-danger, #b3261e)'
+                      : '1px solid var(--mr-dash-hair)',
                   }}
                 />
               </button>
@@ -259,6 +388,32 @@ export default function MediaSection({ productId, productName, media, onMediaCha
                 className="dash-help-text"
                 style={{ marginTop: 6, fontSize: 11, wordBreak: 'break-all' }}
               >
+                {m.deletedAt ? (
+                  // Task 39: only a SUPERADMIN's read ever includes a row
+                  // with `deletedAt` set — everyone else's product read never
+                  // sees this row at all. No cover/closing/reorder/exchange
+                  // controls make sense on something already deleted; the
+                  // only action offered is putting it back.
+                  <>
+                    <strong
+                      style={{ display: 'block', color: 'var(--mr-dash-danger, #b3261e)' }}
+                      data-trace-id={`PG-DASHBOARD-CAT-003::EL-LABEL-deleted-image@${m.id}`}
+                    >
+                      Deleted
+                    </strong>
+                    <button
+                      type="button"
+                      className="dash-btn-ghost"
+                      style={{ display: 'block', padding: '2px 0', fontSize: 11 }}
+                      disabled={restoring !== null}
+                      onClick={() => handleRestore(m)}
+                      data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-restore-product-image@${m.id}`}
+                    >
+                      {restoring === m.id ? 'Restoring…' : 'Restore image'}
+                    </button>
+                  </>
+                ) : (
+                  <>
                 {m.role === 'COVER' ? (
                   <strong style={{ display: 'block', color: 'var(--mr-dash-accent, #8a6d3b)' }}>
                     Cover thumbnail
@@ -271,6 +426,40 @@ export default function MediaSection({ productId, productName, media, onMediaCha
                   <span style={{ display: 'block' }}>Variant image</span>
                 ) : (
                   <>
+                    {/* Owner ask, 2026-07-31: cover and closing already read
+                        as explicit roles — the images between them need the
+                        same clarity: which position they hold, and a way to
+                        move them. */}
+                    <span style={{ display: 'block', fontWeight: 600 }}>
+                      Image {carouselIds.indexOf(m.id) + 1} of {carouselIds.length}
+                    </span>
+                    <span style={{ display: 'flex', gap: 6, marginBottom: 2 }}>
+                      <button
+                        type="button"
+                        className="dash-btn-ghost"
+                        style={{ padding: '2px 6px', fontSize: 11 }}
+                        disabled={reordering !== null || carouselIds.indexOf(m.id) === 0}
+                        onClick={() => handleReorder(m, 'up')}
+                        title="Move earlier"
+                        data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-move-image-up@${m.id}`}
+                      >
+                        {reordering === m.id ? '…' : '↑ Earlier'}
+                      </button>
+                      <button
+                        type="button"
+                        className="dash-btn-ghost"
+                        style={{ padding: '2px 6px', fontSize: 11 }}
+                        disabled={
+                          reordering !== null ||
+                          carouselIds.indexOf(m.id) === carouselIds.length - 1
+                        }
+                        onClick={() => handleReorder(m, 'down')}
+                        title="Move later"
+                        data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-move-image-down@${m.id}`}
+                      >
+                        {reordering === m.id ? '…' : '↓ Later'}
+                      </button>
+                    </span>
                     <button
                       type="button"
                       className="dash-btn-ghost"
@@ -309,6 +498,24 @@ export default function MediaSection({ productId, productName, media, onMediaCha
                   >
                     {exchanging === m.id ? 'Exchanging…' : 'Exchange'}
                   </button>
+                )}
+                <button
+                  type="button"
+                  className="dash-btn-ghost"
+                  style={{
+                    display: 'block',
+                    padding: '2px 0',
+                    fontSize: 11,
+                    color: 'var(--mr-dash-danger, #b3261e)',
+                  }}
+                  disabled={deleting !== null}
+                  onClick={() => handleDelete(m)}
+                  title="Delete this image — hidden everywhere, restorable only by a super admin"
+                  data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-delete-product-image@${m.id}`}
+                >
+                  {deleting === m.id ? 'Deleting…' : 'Delete image'}
+                </button>
+                  </>
                 )}
                 {m.galleryItemId ? 'From Gallery' : m.cloudinaryPublicId}
               </figcaption>

@@ -17,6 +17,7 @@ import {
 } from '@/components/collab/collab-ui';
 import type { ApiError } from '@/lib/api/client';
 import { useUser } from '@/lib/hooks/use-auth';
+import { useShopName } from '@/lib/hooks/use-shop-name';
 import { Role } from '@/lib/auth/role';
 
 const TRACE = 'PG-DASHBOARD-PTR-001';
@@ -48,6 +49,7 @@ type StatsState =
 export default function PartnersOversightClient() {
   const { data: user } = useUser();
   const isSuperAdmin = user?.role === Role.SUPERADMIN;
+  const shopName = useShopName();
 
   const [partners, setPartners] = useState<CollaboratorListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,7 +176,7 @@ export default function PartnersOversightClient() {
                   <th scope="col">Access</th>
                   <th scope="col" style={{ textAlign: 'right' }}>Orders</th>
                   <th scope="col" style={{ textAlign: 'right' }}>Revenue</th>
-                  <th scope="col" style={{ textAlign: 'right' }}>MiniRue commission</th>
+                  <th scope="col" style={{ textAlign: 'right' }}>{shopName} commission</th>
                   <th scope="col" style={{ textAlign: 'right' }}>Live products</th>
                   <th scope="col">Actions</th>
                 </tr>

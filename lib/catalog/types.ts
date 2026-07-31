@@ -52,9 +52,6 @@ export interface Category {
    *  prohibited state on create, per the owner's rule (Task 18). */
   imageUrl?: string | null;
   imageMediaId?: string | null;
-  /** True for the one auto-created "Generic" category every space gets.
-   *  Protected from rename/delete the same way a Generic brand is. */
-  isDefault?: boolean;
 }
 
 export interface ProductVariant {
@@ -100,6 +97,11 @@ export interface ProductMedia {
   height: number | null;
   altText: string | null;
   sortOrder: number;
+  /** Per-image soft delete (task 39). Present and non-null ONLY when the
+   * signed-in viewer is SUPERADMIN — every other viewer's product read
+   * simply never includes a deleted row at all, so this is always undefined
+   * for ADMIN/STAFF/COLLAB. */
+  deletedAt?: string | null;
 }
 
 export interface ProductListItem {

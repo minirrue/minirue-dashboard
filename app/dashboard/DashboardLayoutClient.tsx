@@ -17,6 +17,7 @@ import {
 } from '@/lib/auth/roles';
 import { Role } from '@/lib/auth/role';
 import { useUser } from '@/lib/hooks/use-auth';
+import { useShopName } from '@/lib/hooks/use-shop-name';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 function DashboardContentSkeleton() {
@@ -118,7 +119,9 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
   const showLoadingShell = !mounted || isLoading || awaitingOverviewRedirect;
   const pathSegments = activePath.split('/').filter(Boolean);
   const isCollaboratorArea = pathSegments[0] === 'collab';
-  const shellEyebrow = isCollaboratorArea ? 'Partner workspace' : 'MiniRue dashboard';
+  // The ONE shop name (2026-07-31 owner ask) — never a hardcoded literal.
+  const shopName = useShopName();
+  const shellEyebrow = isCollaboratorArea ? 'Partner workspace' : `${shopName} dashboard`;
   // Every page's title is its own last path segment (Products, Categories,
   // Settings, Info, ...) — was previously hardcoded to 'Overview' (or
   // 'Workspace' for collab) for ANY single-segment path, so every top-level

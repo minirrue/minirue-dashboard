@@ -55,7 +55,14 @@ export async function apiCollabCreateProduct(data: {
    * which is generated the same way as on the admin side (backend 0.41.0).
    */
   customValues?: Record<string, string>;
-}): Promise<unknown> {
+  /**
+   * One of this partner's OWN categories (apiCollabCategories) — required.
+   * Owner decision, 2026-07-31: there is no default/"Uncategorised" category
+   * any more, in any space. A partner must create a category of their own
+   * before their first product.
+   */
+  categoryId: string;
+}): Promise<{ id: string }> {
   return apiFetch('/collab/products', {
     method: 'POST',
     auth: true,
@@ -101,6 +108,9 @@ export async function apiCollabUpdateProduct(
     priceAmount?: string;
     initialStock?: number;
     unpublish?: boolean;
+    /** Swap for another of this partner's own categories. Omit to leave
+     *  unchanged — never send an empty value, there is nothing to clear to. */
+    categoryId?: string;
   },
 ): Promise<unknown> {
   return apiFetch(`/collab/products/${id}`, {

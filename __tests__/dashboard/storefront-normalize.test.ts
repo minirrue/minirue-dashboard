@@ -4,6 +4,7 @@ import type { StorefrontLayout, NavItem } from '@/lib/api/storefront';
 function baseLayout(): StorefrontLayout {
   return {
     version: 2,
+    productSection: { perks: [] },
     announcement: { enabled: false, messages: [], linkUrl: null, background: null },
     faviconUrl: null,
     sections: [newSection('hero', 0)],
@@ -12,6 +13,7 @@ function baseLayout(): StorefrontLayout {
       showSearch: true,
       showAccount: true,
     },
+    mobileMenu: { shortcuts: [], footerButton: null },
     footer: {
       tagline: null,
       newsletterEnabled: false,

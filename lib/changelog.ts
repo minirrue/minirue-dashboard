@@ -21,11 +21,67 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 185,
+    date: '2026-07-31',
+    area: 'Support inbox',
+    summary:
+      'Added a Delete button next to Archive on every conversation, for admin, staff and collaborators. Deleting a conversation removes it completely — it disappears from the inbox, the trash, unread counts and the customer\'s own chat history, exactly as if it never existed. This is separate from Archive, which still works exactly as before. Only a super admin can see and restore a deleted conversation.',
+  },
+  {
+    id: 184,
+    date: '2026-07-31',
+    area: 'Products & Gallery',
+    summary:
+      "Added a Delete button on every product photo, in both the admin and collaborator product editors — previously there was no way to remove a single image at all. Deleting a photo is reversible and never touches the original file; it just disappears from the storefront and every editor. Only a super admin can see deleted photos (in the Gallery section) and restore them.",
+  },
+  {
+    id: 183,
+    date: '2026-07-31',
+    area: 'Settings',
+    summary:
+      "Fixed your brand logo silently breaking, sometimes weeks after you last touched it. Saving the Settings form for any reason — even just the currency or VAT — could quietly re-save the logo in a way that worked at first but wasn't built to last. Already-affected logos have been repaired automatically; nothing needs re-uploading, and this can no longer happen going forward.",
+  },
+  {
+    id: 182,
+    date: '2026-07-31',
+    area: 'Account & sign-in',
+    summary:
+      "Fixed a profile photo — yours or a customer's — that could work fine for about a week and then break on its own with no obvious cause. It only affected photos uploaded while a setting behind the scenes was incomplete; those have been found and repaired automatically, and it cannot happen to a new upload.",
+  },
+  {
+    id: 181,
+    date: '2026-07-31',
+    area: 'Reviews',
+    summary:
+      'A review video now shows a picture before it plays, the same as a video anywhere else online — before, it was a blank box until someone pressed play.',
+  },
+  {
     id: 175,
     date: '2026-07-31',
     area: 'Analytics',
     summary:
       "The analytics page you already knew - revenue today and this month, total orders, new customers, refunds, net revenue, money awaiting payment confirmation and the projected month - is still here, now on its own \"Sales\" tab. Nothing about how those figures are worked out has changed, except that a day now ends at midnight in Cairo rather than two or three hours late, so \"today\" finally means today. It sits beside the new visitor tabs on purpose: Sales is counted from your actual orders, so those numbers stay correct even if visitor tracking is switched off or blocked.",
+  },
+  {
+    id: 174,
+    date: '2026-07-31',
+    area: 'Collab portal',
+    summary:
+      "Adding or editing a product on a partner's Collab portal now supports photos, just like your own product form does — choose a cover photo (what shoppers see in listings and the cart), a closing photo (the last image on the product page), and reorder the rest with simple move-earlier/move-later buttons. Each photo now clearly shows its position, e.g. \"Image 2 of 4\". Uploading still saves the photo to that partner's own Gallery, kept completely separate from yours and every other partner's.",
+  },
+  {
+    id: 173,
+    date: '2026-07-31',
+    area: 'Collaborators',
+    summary:
+      "A collaborator's name can now be edited from their management page, separately from their web address. Renaming a partner (e.g. fixing a typo or a rebrand) no longer requires touching their slug, and changing their slug never changes their name — the two are completely independent, so renaming a partner never moves their storefront link.",
+  },
+  {
+    id: 172,
+    date: '2026-07-31',
+    area: 'Catalogue',
+    summary:
+      'Every product must now belong to a real category you\'ve chosen — there is no more automatic "Uncategorised" bucket a product could quietly land in. Adding or editing a product on your own dashboard, or on a partner\'s Collab portal, now shows a clear error if no category is picked, and the save is rejected until one is. Partners with no categories of their own yet are pointed to Categories to create one first. Any category that used to be the automatic fallback is now just an ordinary category — nothing about it changed except it can be renamed or removed like any other once it\'s empty. Brands are unaffected: a product without a chosen brand still quietly falls back to that shop\'s "Generic" brand, exactly as before.',
   },
   {
     id: 171,
@@ -238,21 +294,21 @@ export const CHANGELOG: ChangelogEntry[] = [
       'A customer can now attach up to four photos and one short video to a review — what the bottle actually looked like when it arrived. You see them in the Reviews tab before you decide, and clicking a photo opens it full size, because approving from a thumbnail is approving blind. If someone adds a photo to a review you have already approved, it comes back to you for a second look rather than appearing on the shop by itself.',
   },
   {
-    id: 143,
+    id: 176,
     date: '2026-07-29',
     area: 'Left menu',
     summary:
       'Next to the server dot at the bottom of the left menu you can now see how long the server takes to answer, in milliseconds. It turns amber if it gets slow and red if it gets very slow, so you can tell "the shop feels sluggish today" apart from "something is broken". Only you and other admins see this — staff and partners still see whether the server is up, which is the part that affects their work. It is not shown on the sign-in page, since there is nobody to show it to yet.',
   },
   {
-    id: 142,
+    id: 177,
     date: '2026-07-29',
     area: 'Reviews (new tab) & product photos',
     summary:
       'Customers can now leave a star rating and a few words on a product, and there is a new Reviews tab under Operations where you decide what goes on the shop. Nothing a customer writes appears on a product page until you approve it there — you can also take an approved one back down, or let a rejected one through, at any time. Only customers who have actually received the product can write one, so every review is marked as a verified purchase and there is nothing to stop being flooded with. Separately, when editing a product you can now mark one photo as "Set as closing" — that photo ends the product page, instead of the "Available sizes" panel that just repeated the size the shopper already picked. You cannot pick the cover photo for this, because a photo only does one job and the shop would lose its thumbnail.',
   },
   {
-    id: 141,
+    id: 178,
     date: '2026-07-29',
     area: 'Left menu & notifications',
     summary:

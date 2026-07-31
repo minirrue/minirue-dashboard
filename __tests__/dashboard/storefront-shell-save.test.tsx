@@ -31,6 +31,7 @@ function layoutWithUnfinishedPickers(): StorefrontLayout {
 
   return {
     version: 2,
+    productSection: { perks: [] },
     announcement: { enabled: false, messages: [], linkUrl: null, background: null },
     faviconUrl: null,
     sections: [hero],
@@ -39,6 +40,7 @@ function layoutWithUnfinishedPickers(): StorefrontLayout {
       showSearch: true,
       showAccount: true,
     },
+    mobileMenu: { shortcuts: [], footerButton: null },
     footer: {
       tagline: null,
       newsletterEnabled: false,

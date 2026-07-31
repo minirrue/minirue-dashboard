@@ -45,6 +45,14 @@ export interface ConversationDto {
    * in the normal inbox. Cleared on restore. */
   archivedAt?: string | null;
   archivedBy?: string | null;
+  /**
+   * Soft delete (task 40) — a DIFFERENT concept from archive above. Only
+   * ever present/non-null when the signed-in viewer is SUPERADMIN: every
+   * other viewer's list/thread read never includes a deleted conversation at
+   * all, so this is always undefined for STAFF/ADMIN/COLLAB/CUSTOMER.
+   */
+  deletedAt?: string | null;
+  deletedBy?: string | null;
 }
 
 export interface MessageAttachmentDto {
@@ -88,7 +96,9 @@ export const apiSupportConversations = (opts: {
   status?: string;
   brand?: string;
   customerId?: string;
-  view?: 'trash';
+  /** 'trash' = archived; 'deleted' = the SUPERADMIN-only deleted view
+   * (task 40) — the server 403s anyone else who asks for it. */
+  view?: 'trash' | 'deleted';
 } = {}) => {
   const qs = new URLSearchParams();
   if (opts.status) qs.set('status', opts.status);
@@ -132,7 +142,7 @@ export interface SupportPersonDto {
 export const apiSupportPeople = (opts: {
   collaboratorId?: string;
   status?: string;
-  view?: 'trash';
+  view?: 'trash' | 'deleted';
 } = {}) => {
   const qs = new URLSearchParams();
   if (opts.collaboratorId) qs.set('collaboratorId', opts.collaboratorId);
@@ -201,6 +211,20 @@ export const apiSupportRestoreConversation = (id: string) =>
 
 export const apiSupportDeleteConversation = (id: string) =>
   apiFetch<void>(`/support/conversations/${id}`, { method: 'DELETE', auth: true });
+
+/**
+ * Soft-delete (task 40, owner ask: "add a new button here beside archive to
+ * delete the chats ... a soft delete"). A DIFFERENT action from the hard
+ * `apiSupportDeleteConversation` above — this is reversible, but only by
+ * SUPERADMIN, and invisible to everyone else, unlike the trash/archive
+ * flow. Same actors as archive (STAFF/ADMIN/COLLAB on their own desk).
+ */
+export const apiSupportSoftDeleteConversation = (id: string) =>
+  apiFetch<void>(`/support/conversations/${id}/delete-soft`, { method: 'POST', auth: true });
+
+/** Reverses a soft delete. SUPERADMIN only — the server 403s anyone else. */
+export const apiSupportRestoreDeletedConversation = (id: string) =>
+  apiFetch<void>(`/support/conversations/${id}/restore-deleted`, { method: 'POST', auth: true });
 
 export const apiSupportPresence = () => apiFetch<PresenceDto>('/support/presence', { auth: true });
 

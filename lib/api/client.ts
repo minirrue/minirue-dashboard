@@ -8,6 +8,9 @@ export interface ApiError {
 
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8002') + '/v1';
 
+/** Exported for the one call that has to bypass apiFetch — see apiStopActingAs. */
+export const API_BASE = BASE;
+
 /**
  * Tells the API this request belongs to the DASHBOARD, so it reads and writes the
  * dashboard's own session cookies.
@@ -17,8 +20,8 @@ const BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8002') + '/v1
  * public storefront then carried a SUPERADMIN token. With this header the two
  * sessions coexist and log out independently.
  */
-const CLIENT_HEADER = 'x-mr-client';
-const CLIENT_AUDIENCE = 'dashboard';
+export const CLIENT_HEADER = 'x-mr-client';
+export const CLIENT_AUDIENCE = 'dashboard';
 
 /**
  * One shared refresh attempt for the whole app.

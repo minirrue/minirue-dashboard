@@ -92,7 +92,7 @@ export async function apiCreateCollaborator(data: {
 
 export async function apiUpdateCollaborator(
   id: string,
-  data: { brandSlug?: string; modules?: CollaboratorModule[] },
+  data: { brandSlug?: string; displayName?: string; modules?: CollaboratorModule[] },
 ): Promise<CollaboratorDetail> {
   return apiFetch<CollaboratorDetail>(`/admin/collaborators/${id}`, {
     method: 'PATCH',

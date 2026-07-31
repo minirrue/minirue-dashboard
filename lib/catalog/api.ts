@@ -59,6 +59,10 @@ interface BackendMedia {
   height: number | null;
   altText: string | null;
   sortOrder: number;
+  /** Per-image soft delete (task 39) — present only when a SUPERADMIN read
+   * the product; absent/undefined for everyone else, since the server never
+   * includes a deleted row for anyone but SUPERADMIN. */
+  deletedAt?: string | null;
 }
 
 interface BackendProduct {
@@ -124,12 +128,19 @@ function mapMedia(m: BackendMedia): ProductMedia {
     cloudinaryPublicId: m.cloudinaryPublicId,
     galleryItemId: m.galleryItemId ?? null,
     variantId: m.variantId ?? null,
-    role: m.role === 'COVER' ? 'COVER' : 'CAROUSEL',
+    // Bug fix: this used to collapse anything that wasn't COVER to CAROUSEL,
+    // so a CLOSING row lost its "closes the page" role the moment the page
+    // reloaded through getProduct — only the in-memory optimistic update
+    // after clicking "Set as closing" ever showed it correctly. Reordering
+    // (task 38) needs role to survive a reload just as much as cover/closing
+    // do, so this had to be right for all three, not just two of them.
+    role: m.role === 'COVER' ? 'COVER' : m.role === 'CLOSING' ? 'CLOSING' : 'CAROUSEL',
     url: m.url ?? null,
     width: m.width,
     height: m.height,
     altText: m.altText,
     sortOrder: m.sortOrder,
+    deletedAt: m.deletedAt ?? null,
   };
 }
 
@@ -150,15 +161,21 @@ function mapProduct(p: BackendProduct): Product {
  * specs/2026-07-22-product-tree: brand and category are FKs, gender and
  * fragrance family are option-list picks inside `attributes`.
  *
- * `brandId`/`categoryId` are optional (owner decision 2): a product saved with
- * neither resolves to that space's own Generic brand/category on the server.
- * "Generic" is an internal bucket name only — never send it as a chosen
- * brand/category id, just omit the field.
+ * `brandId` is optional (owner decision 2): a product saved with none
+ * resolves to that space's own Generic brand on the server. "Generic" is an
+ * internal bucket name only — never send it as a chosen brand id, just omit
+ * the field.
+ *
+ * `categoryId` is REQUIRED (owner decision, 2026-07-31 — reverses the
+ * category half of decision 2): there is no fallback category any more, in
+ * any space. The form validates this before submit; the type keeps it
+ * optional only so `Partial<ProductWriteInput>` can express "leave the
+ * existing category unchanged" on update.
  */
 export interface ProductWriteInput {
   name: string;
   brandId?: string;
-  categoryId?: string;
+  categoryId: string;
   description?: string;
   /** attribute id -> chosen option id */
   attributes?: Record<string, string>;
@@ -170,10 +187,12 @@ function toCreateProductBody(data: ProductWriteInput) {
     description: data.description ?? null,
     attributes: data.attributes ?? {},
   };
-  // Omitted (not sent as '') so the server's Generic-resolution applies —
-  // an empty string would be a brand/category id that doesn't exist.
+  // brandId omitted (not sent as '') so the server's Generic-resolution
+  // applies — an empty string would be a brand id that doesn't exist.
+  // categoryId is always required and sent as-is; the form never lets this
+  // call happen without one.
   if (data.brandId) body.brand_id = data.brandId;
-  if (data.categoryId) body.category_id = data.categoryId;
+  body.category_id = data.categoryId;
   return body;
 }
 
@@ -181,7 +200,9 @@ function toUpdateProductBody(data: Partial<ProductWriteInput>) {
   const body: Record<string, unknown> = {};
   if (data.name !== undefined) body.name = data.name;
   if (data.brandId !== undefined) body.brand_id = data.brandId || null;
-  if (data.categoryId !== undefined) body.category_id = data.categoryId || null;
+  // Never null — a category can be swapped for another real one, never
+  // cleared. undefined (field omitted) means "leave unchanged".
+  if (data.categoryId !== undefined) body.category_id = data.categoryId;
   if (data.description !== undefined)
     body.description = data.description ?? null;
   if (data.attributes !== undefined) body.attributes = data.attributes;
@@ -582,8 +603,14 @@ export async function deleteBrand(id: string): Promise<void> {
   await apiFetch<void>(`${ADMIN}/brands/managed/${id}`, { method: 'DELETE', auth: true });
 }
 
-export async function getProduct(id: string): Promise<Product> {
-  const raw = await apiFetch<BackendProduct>(`${ADMIN}/products/${id}`, { auth: true });
+/**
+ * `basePath` defaults to the admin catalogue but accepts `/collab` too — a
+ * collaborator's own product read is the same shape, scoped server-side to
+ * products they own (CollabProductsService.getProductDetail), so the same
+ * mapping is reused rather than forked for the collab edit screen.
+ */
+export async function getProduct(id: string, basePath: string = ADMIN): Promise<Product> {
+  const raw = await apiFetch<BackendProduct>(`${basePath}/products/${id}`, { auth: true });
   return mapProduct(raw);
 }
 
@@ -606,6 +633,14 @@ export function cloudinaryPreviewUrl(publicId: string, w = 200, h = 250): string
   return `https://res.cloudinary.com/${CLOUDINARY_CLOUD}/image/upload/w_${w},h_${h},c_fill,q_auto,f_auto/${publicId}`;
 }
 
+/**
+ * Every function below takes an optional `basePath`, defaulting to the admin
+ * catalogue (`/catalog/admin`) — passing `/collab` instead hits this
+ * collaborator's own scoped media routes (CollabPortalController), which
+ * enforce the same product-ownership boundary server-side. Reused rather
+ * than forked so MediaSection.tsx (the ONE component both the admin and
+ * collab product forms render) never has to know which caller it is.
+ */
 export async function createProductMedia(
   productId: string,
   data: {
@@ -618,6 +653,7 @@ export async function createProductMedia(
     altText?: string;
     sortOrder?: number;
   },
+  basePath: string = ADMIN,
 ): Promise<ProductMedia> {
   // Mutually exclusive per contracts/gallery-routes.md — pass exactly one.
   const body: Record<string, unknown> = {
@@ -632,7 +668,7 @@ export async function createProductMedia(
   if (data.variantId) {
     body.variant_id = data.variantId;
   }
-  const raw = await apiFetch<BackendMedia>(`${ADMIN}/products/${productId}/media`, {
+  const raw = await apiFetch<BackendMedia>(`${basePath}/products/${productId}/media`, {
     method: 'POST',
     auth: true,
     body: JSON.stringify(body),
@@ -645,9 +681,10 @@ export async function createProductMedia(
 export async function setProductMediaCover(
   productId: string,
   mediaId: string,
+  basePath: string = ADMIN,
 ): Promise<ProductMedia> {
   const raw = await apiFetch<BackendMedia>(
-    `${ADMIN}/products/${productId}/media/${mediaId}/cover`,
+    `${basePath}/products/${productId}/media/${mediaId}/cover`,
     { method: 'PATCH', auth: true },
   );
   return mapMedia(raw);
@@ -660,12 +697,87 @@ export async function setProductMediaCover(
 export async function setProductMediaClosing(
   productId: string,
   mediaId: string,
+  basePath: string = ADMIN,
 ): Promise<ProductMedia> {
   const raw = await apiFetch<BackendMedia>(
-    `${ADMIN}/products/${productId}/media/${mediaId}/closing`,
+    `${basePath}/products/${productId}/media/${mediaId}/closing`,
     { method: 'PATCH', auth: true },
   );
   return mapMedia(raw);
+}
+
+/**
+ * Swaps one carousel image with its neighbour ('up' = earlier, 'down' =
+ * later). Owner ask, 2026-07-31: the cover and closing photo were already
+ * explicit, changeable roles — the images between them had no visible order
+ * and no way to change it. Cover, closing and variant-scoped images are
+ * outside this ordering; the backend 422s an attempt on one of those.
+ */
+export async function reorderProductMedia(
+  productId: string,
+  mediaId: string,
+  direction: 'up' | 'down',
+  basePath: string = ADMIN,
+): Promise<void> {
+  await apiFetch<{ ok: boolean }>(
+    `${basePath}/products/${productId}/media/${mediaId}/reorder`,
+    { method: 'PATCH', auth: true, body: JSON.stringify({ direction }) },
+  );
+}
+
+/**
+ * Soft-deletes one image (task 39, owner ask: "add a global delete per
+ * image ... inside collab and admin"). The storage object is never touched;
+ * the image simply disappears from every read except a SUPERADMIN's, marked
+ * with `deletedAt` (see `ProductMedia.deletedAt`). Same `basePath` pattern as
+ * every other media call here — `/collab` hits the collaborator's own
+ * ownership-scoped route.
+ */
+export async function deleteProductMedia(
+  productId: string,
+  mediaId: string,
+  basePath: string = ADMIN,
+): Promise<void> {
+  await apiFetch<{ ok: boolean }>(
+    `${basePath}/products/${productId}/media/${mediaId}/delete-soft`,
+    { method: 'POST', auth: true },
+  );
+}
+
+/**
+ * Reverses a soft delete. SUPERADMIN only — the server 403s anyone else
+ * (CatalogService.restoreMedia). Admin-only route; there is no collab
+ * equivalent, since only SUPERADMIN can ever see a deleted image to restore
+ * it in the first place.
+ */
+export async function restoreProductMedia(
+  productId: string,
+  mediaId: string,
+): Promise<void> {
+  await apiFetch<{ ok: boolean }>(
+    `${ADMIN}/products/${productId}/media/${mediaId}/restore`,
+    { method: 'POST', auth: true },
+  );
+}
+
+/**
+ * Every soft-deleted image, across every product/space — the SUPERADMIN-
+ * only "Deleted" view in the Gallery section (task 39: "make superadmin see
+ * soft deleted images in gallery section for super admin only"). The
+ * server 403s anyone but SUPERADMIN.
+ */
+export interface DeletedMediaItem extends ProductMedia {
+  productId: string;
+  productName: string;
+  productSlug: string;
+}
+
+export async function listDeletedMedia(): Promise<DeletedMediaItem[]> {
+  const res = await apiFetch<{ data: DeletedMediaItem[] }>(
+    `${ADMIN}/media/deleted`,
+    { auth: true },
+  );
+  return res.data ?? [];
 }
 
 /**

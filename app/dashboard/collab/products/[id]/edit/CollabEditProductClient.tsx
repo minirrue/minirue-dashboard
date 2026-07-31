@@ -11,26 +11,15 @@ import {
   ProductStatusBadge,
 } from '@/components/collab/collab-ui';
 import {
+  apiCollabCategories,
   apiCollabOverview,
-  apiCollabProducts,
   apiCollabUpdateProduct,
+  type CollabCategory,
 } from '@/lib/api/collab-portal';
+import { getProduct } from '@/lib/catalog/api';
+import type { Product, ProductMedia } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
-
-type ProductRow = {
-  id?: string;
-  name?: string;
-  description?: string;
-  priceAmount?: string;
-  price_amount?: string;
-  initialStock?: number;
-  stock?: number;
-  published_state?: string;
-  publishedState?: string;
-  status?: string;
-  rejectionReason?: string | null;
-  rejection_reason?: string | null;
-};
+import MediaSection from '@/app/dashboard/products/[slug]/edit/MediaSection';
 
 export default function CollabEditProductClient() {
   const { id } = useParams<{ id: string }>();
@@ -41,6 +30,10 @@ export default function CollabEditProductClient() {
   const [error, setError] = useState<string | null>(null);
   const [trusted, setTrusted] = useState(false);
   const [publishedState, setPublishedState] = useState('DRAFT');
+  const [categories, setCategories] = useState<CollabCategory[]>([]);
+  const [categoryId, setCategoryId] = useState('');
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [media, setMedia] = useState<ProductMedia[]>([]);
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -50,29 +43,27 @@ export default function CollabEditProductClient() {
 
   useEffect(() => {
     if (!id) return;
-    Promise.all([apiCollabOverview(), apiCollabProducts()])
-      .then(([overview, products]) => {
+    // GET /collab/products/:id — same shape (variants + media, resolved to
+    // servable URLs) as the admin edit screen's own getProduct(), reused
+    // here via CollabProductsService.getProductDetail rather than a second
+    // fetch-the-list-and-find-by-id detour that never carried media at all.
+    Promise.all([
+      apiCollabOverview(),
+      getProduct(id, '/collab') as Promise<Product>,
+      apiCollabCategories(),
+    ])
+      .then(([overview, product, cats]) => {
         setTrusted(Boolean(overview.autoPublishProducts));
-        const row = (products.items ?? []).find(
-          (item) => String((item as ProductRow).id) === id,
-        ) as ProductRow | undefined;
-        if (!row) {
-          setError('Product not found');
-          return;
-        }
-        setPublishedState(
-          row.published_state ?? row.publishedState ?? row.status ?? 'DRAFT',
-        );
+        setCategories(cats.data ?? []);
+        setPublishedState(product.status);
+        setCategoryId(product.categoryId);
+        setMedia(product.media ?? []);
+        const activeVariant = product.variants.find((v) => v.stock !== undefined) ?? product.variants[0];
         setForm({
-          name: String(row.name ?? ''),
-          description: String(row.description ?? ''),
-          priceAmount: String(row.priceAmount ?? row.price_amount ?? ''),
-          initialStock:
-            row.initialStock != null
-              ? String(row.initialStock)
-              : row.stock != null
-                ? String(row.stock)
-                : '',
+          name: product.name,
+          description: product.description ?? '',
+          priceAmount: activeVariant ? String(activeVariant.priceAmount) : '',
+          initialStock: activeVariant ? String(activeVariant.stock) : '',
         });
       })
       .catch((err: ApiError) => setError(err.message || 'Failed to load product'))
@@ -100,6 +91,11 @@ export default function CollabEditProductClient() {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!id) return;
+    if (!categoryId) {
+      setCategoryError('Category is required.');
+      return;
+    }
+    setCategoryError(null);
     setSaving(true);
     setError(null);
     try {
@@ -107,6 +103,7 @@ export default function CollabEditProductClient() {
         name: form.name.trim(),
         description: form.description.trim() || undefined,
         priceAmount: form.priceAmount.trim(),
+        categoryId,
       };
       const stock = form.initialStock.trim();
       if (stock) payload.initialStock = Number.parseInt(stock, 10);
@@ -167,6 +164,31 @@ export default function CollabEditProductClient() {
             required
             disabled={saving}
           />
+        </div>
+
+        <div className="dash-field">
+          <label className="dash-label" htmlFor="edit-category">
+            Category <span className="dash-required">*</span>
+          </label>
+          <select
+            id="edit-category"
+            className={`dash-select${categoryError ? ' dash-input-error' : ''}`}
+            value={categoryId}
+            onChange={(e) => {
+              setCategoryId(e.target.value);
+              setCategoryError(null);
+            }}
+            required
+            disabled={saving}
+          >
+            <option value="">Select category…</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          {categoryError && <p className="dash-field-error">{categoryError}</p>}
         </div>
 
         <div className="dash-field">
@@ -241,6 +263,21 @@ export default function CollabEditProductClient() {
           </button>
         </div>
       </form>
+
+      {/* Same images/cover mechanism as the admin product form — owner ask,
+          2026-07-31: "the collab product form needs images/cover... whats
+          the cover ? whats the last image ? what the images rest of them".
+          mediaBasePath scopes every request this renders to this
+          collaborator's own product, never the admin-only routes. */}
+      {id ? (
+        <MediaSection
+          productId={id}
+          productName={form.name}
+          media={media}
+          onMediaChange={setMedia}
+          mediaBasePath="/collab"
+        />
+      ) : null}
     </>
   );
 }

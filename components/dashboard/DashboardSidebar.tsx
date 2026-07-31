@@ -14,6 +14,7 @@ import NotificationDrawer from './NotificationDrawer';
 import { useUnreadNotificationCount } from '@/lib/hooks/use-unread-notifications';
 import { apiCollabOverview, type CollabModule } from '@/lib/api/collab-portal';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import { useShopName } from '@/lib/hooks/use-shop-name';
 
 /* ── Icon helpers (inline SVG to avoid external deps) ── */
 
@@ -277,6 +278,9 @@ export default function DashboardSidebar({
   mobileDrawerOpen,
   onMobileDrawerClose,
 }: DashboardSidebarProps) {
+  // The ONE shop name (2026-07-31 owner ask) — replaces the hardcoded
+  // "MiniRue" wordmark below so a rename in Settings reaches the sidebar too.
+  const shopName = useShopName();
   // While userRole hasn't resolved yet (every page refresh briefly has it
   // undefined before useUser() loads), fall back to NO items rather than
   // every item unfiltered — the previous fallback showed the full nav
@@ -411,7 +415,7 @@ export default function DashboardSidebar({
     <div className="dash-sidebar-brand">
       <div>
         <div className="dash-sidebar-logo">
-          MiniRue
+          {shopName}
           <span className="dash-sidebar-logo-mark" aria-hidden="true">
             <Sparkle size={9} />
           </span>

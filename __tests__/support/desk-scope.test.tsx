@@ -44,6 +44,9 @@ jest.mock('@/lib/hooks/use-support', () => ({
   useSupportPeople: jest.fn(),
   useSupportConversations: jest.fn(),
   useSupportArchivedConversations: jest.fn(),
+  // Task 40 — SUPERADMIN-only deleted rooms. Empty/inert here: this test
+  // suite is about desk scoping, not delete, and no test in it is SUPERADMIN.
+  useSupportDeletedConversations: jest.fn(() => ({ data: [] })),
   useSupportThread: jest.fn(),
   useSupportLiveSync: jest.fn(),
   useSupportPresence: jest.fn(() => ({ data: undefined })),
@@ -53,6 +56,8 @@ jest.mock('@/lib/hooks/use-support', () => ({
   useUpdateConversation: jest.fn(() => ({ mutate: jest.fn(), isPending: false })),
   useArchiveConversation: jest.fn(() => ({ mutate: jest.fn(), isPending: false, variables: undefined })),
   useRestoreConversation: jest.fn(() => ({ mutate: jest.fn(), isPending: false, variables: undefined })),
+  useSoftDeleteConversation: jest.fn(() => ({ mutate: jest.fn(), isPending: false, variables: undefined })),
+  useRestoreDeletedConversation: jest.fn(() => ({ mutate: jest.fn(), isPending: false, variables: undefined })),
 }));
 
 import { useUser } from '@/lib/hooks/use-auth';
@@ -81,6 +86,7 @@ function personDto(overrides: Partial<SupportPersonDto> = {}): SupportPersonDto 
     lastMessageAt: '2026-07-30T10:00:00.000Z',
     lastMessageSnippet: 'Hi',
     lastMessageSenderType: 'CUSTOMER',
+    fullyArchived: false,
     ...overrides,
   };
 }

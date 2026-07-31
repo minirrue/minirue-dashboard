@@ -44,9 +44,13 @@ export async function uploadDeviceFileToGallery(
   file: File,
   productName?: string,
   productId?: string,
+  /** '/catalog/admin' (default) or '/collab' — which side's own gallery
+   *  folder tree this device upload resolves into. See
+   *  `ensureProductFolder`'s doc comment. */
+  mediaBasePath?: string,
 ): Promise<GalleryItem> {
   if (productId) {
-    const { folderId } = await ensureProductFolder(productId);
+    const { folderId } = await ensureProductFolder(productId, mediaBasePath);
     return uploadItem(folderId, file);
   }
 

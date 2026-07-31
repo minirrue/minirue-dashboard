@@ -44,6 +44,30 @@ function readJson<T>(key: string): T | null {
   }
 }
 
+/**
+ * Tells the server to revoke the borrowed session, then forgets about it.
+ *
+ * Fire-and-forget on purpose, and the reason both callers below can stay
+ * synchronous: a failed round-trip must still clear the client. The server
+ * side is not merely a nicety — until POST /auth/stop-acting-as existed,
+ * "stop acting" was ONLY this file putting the parked tokens back, so the
+ * borrowed token itself stayed valid for the rest of its 30 minutes and a
+ * leaked one could not be stopped at all.
+ *
+ * Dynamically imported so this module keeps no static edge to the API client
+ * (which already imports back into this one), and read BEFORE the tokens are
+ * swapped or cleared — afterwards the borrowed token is gone and there is
+ * nothing left to revoke with.
+ */
+function revokeBorrowedSession(): void {
+  if (!isActing()) return;
+  const borrowed = getAccessToken();
+  if (!borrowed) return;
+  void import('@/lib/api/auth')
+    .then((m) => m.apiStopActingAs(borrowed))
+    .catch(() => undefined);
+}
+
 /** Who the dashboard is currently acting as, or null when it is just you. */
 export function getActingAs(): ActingAs | null {
   return readJson<ActingAs>(ACTING_KEY);
@@ -97,6 +121,9 @@ export function beginActingAs(
  */
 export function stopActingAs(): boolean {
   if (typeof window === 'undefined') return false;
+  // First, while the borrowed token is still the installed one. Switching back
+  // has to END the borrowed session, not just stop using it.
+  revokeBorrowedSession();
   const parked = readJson<ParkedSession>(PARKED_KEY);
   sessionStorage.removeItem(PARKED_KEY);
   sessionStorage.removeItem(ACTING_KEY);
@@ -110,4 +137,34 @@ export function stopActingAs(): boolean {
 
   setTokens(parked.accessToken, parked.refreshToken);
   return true;
+}
+
+/**
+ * Throws the borrowed session away WITHOUT restoring the parked one.
+ *
+ * `stopActingAs()` is "switch back to me"; this is "there is no me any more".
+ * Sign-out must use it, because clearTokens() only touches localStorage and
+ * the mr-auth hint — it never touched sessionStorage, so after signing out
+ * while impersonating, `mr-acting-parked` still held the super admin's real
+ * access AND refresh tokens and `mr-acting-as` still said we were acting.
+ * The very next 401 anywhere in the app runs apiFetch's isActing() branch
+ * (lib/api/client.ts:132), which calls stopActingAs(), which writes those
+ * parked tokens back into localStorage and re-sets `mr-auth=1` — signing the
+ * super admin straight back in moments after they pressed Sign out.
+ */
+export function clearActingSession(): void {
+  if (typeof window === 'undefined') return;
+  // Signing out while impersonating has to end the borrowed session too. The
+  // super admin's own sign-out revokes their session, not the borrowed one —
+  // they are two separate rows — so without this the account they were acting
+  // as stayed borrowable for the rest of its 30 minutes. Runs first, because
+  // useLogout calls this BEFORE clearTokens() and the borrowed token is still
+  // in localStorage at this point.
+  //
+  // The server closes the same hole from its own side when it can
+  // (AuthService.logoutByRefreshToken ends every session the signing-out
+  // person borrowed), so a browser that dies mid-sign-out is still covered.
+  revokeBorrowedSession();
+  sessionStorage.removeItem(PARKED_KEY);
+  sessionStorage.removeItem(ACTING_KEY);
 }

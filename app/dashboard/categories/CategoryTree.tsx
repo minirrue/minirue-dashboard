@@ -22,9 +22,6 @@ export interface CategoryTreeNode {
   children?: CategoryTreeNode[];
   imageUrl?: string | null;
   imageMediaId?: string | null;
-  /** True for the one auto-created default category every space gets.
-   *  Protected from rename/delete the same way a Generic brand is. */
-  isDefault?: boolean;
 }
 
 /**
@@ -95,9 +92,6 @@ function CategoryRow<T extends CategoryTreeNode>({
 
   const hasChildren = (category.children ?? []).length > 0;
   const childCount = category.children?.length ?? 0;
-  // The default ("Generic") category is protected the same way a Generic
-  // brand is — nothing in this tree can rename or delete it away.
-  const locked = category.isDefault === true;
 
   function setField<K extends keyof EditValues>(key: K, value: string) {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -236,11 +230,6 @@ function CategoryRow<T extends CategoryTreeNode>({
               />
             )}
             <span style={{ minWidth: 0, overflowWrap: 'break-word' }}>{category.name}</span>
-            {locked && (
-              <span className="dash-help-text" style={{ fontSize: 11 }}>
-                (default)
-              </span>
-            )}
           </div>
         </td>
         <td>
@@ -271,37 +260,33 @@ function CategoryRow<T extends CategoryTreeNode>({
                 e.target.value = '';
               }}
             />
-            {!locked && (
-              <>
-                <button
-                  type="button"
-                  className="dash-btn-ghost"
-                  onClick={() => {
-                    setEditing((v) => !v);
-                    setSaveError(null);
-                  }}
-                  data-trace-id={`PG-DASHBOARD-CAT-004::EL-BTN-edit-category@${category.id}`}
-                >
-                  {editing ? 'Cancel' : 'Edit'}
-                </button>
-                <button
-                  type="button"
-                  className="dash-btn-ghost dash-btn-danger"
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  data-trace-id={`PG-DASHBOARD-CAT-004::EL-BTN-delete-category@${category.id}`}
-                >
-                  {deleting ? 'Deleting…' : 'Delete'}
-                </button>
-              </>
-            )}
+            <button
+              type="button"
+              className="dash-btn-ghost"
+              onClick={() => {
+                setEditing((v) => !v);
+                setSaveError(null);
+              }}
+              data-trace-id={`PG-DASHBOARD-CAT-004::EL-BTN-edit-category@${category.id}`}
+            >
+              {editing ? 'Cancel' : 'Edit'}
+            </button>
+            <button
+              type="button"
+              className="dash-btn-ghost dash-btn-danger"
+              onClick={handleDelete}
+              disabled={deleting}
+              data-trace-id={`PG-DASHBOARD-CAT-004::EL-BTN-delete-category@${category.id}`}
+            >
+              {deleting ? 'Deleting…' : 'Delete'}
+            </button>
           </div>
           {deleteError && <p className="dash-field-error">{deleteError}</p>}
           {imageError && <p className="dash-field-error">{imageError}</p>}
         </td>
       </tr>
 
-      {editing && !locked && (
+      {editing && (
         <tr>
           <td colSpan={4} style={{ background: 'var(--mr-dash-sub)', padding: '12px 14px' }}>
             <form

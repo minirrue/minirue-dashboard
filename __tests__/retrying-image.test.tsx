@@ -1,4 +1,3 @@
-import { describe, expect, it } from '@jest/globals';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import RetryingImage from '@/components/dashboard/RetryingImage';
 

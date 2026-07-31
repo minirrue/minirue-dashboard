@@ -127,9 +127,19 @@ export async function searchGallery(
  * comment for why). Call this BEFORE `uploadItem()` so the upload lands
  * straight into the right folder instead of a flat top-level one.
  */
-export async function ensureProductFolder(productId: string): Promise<{ folderId: string }> {
+/**
+ * `basePath` defaults to the admin catalogue but accepts `/collab` too — a
+ * collaborator's own device upload resolves against THEIR gallery folder
+ * tree (CollabProductsService.resolveMediaFolder), never an admin user's;
+ * see that method's doc comment for why passing the wrong one would be a
+ * cross-space collision.
+ */
+export async function ensureProductFolder(
+  productId: string,
+  basePath: string = '/catalog/admin',
+): Promise<{ folderId: string }> {
   return apiFetch<{ folderId: string }>(
-    `/catalog/admin/products/${productId}/media/folder`,
+    `${basePath}/products/${productId}/media/folder`,
     { method: 'POST', auth: true },
   );
 }

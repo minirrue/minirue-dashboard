@@ -21,7 +21,16 @@ import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
  * directly with a mocked `useUser()` rather than standing up the whole
  * Settings page.
  */
-export function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => void }) {
+export function AdminProfileCard({
+  logoUrl,
+  onLogoUploaded,
+}: {
+  /** The store's current resolved brand logo URL, or null/empty if unset —
+   *  lifted from SettingsClient's `raw.brand.logoUrl` so this tile can show
+   *  the real image instead of a permanent placeholder icon. */
+  logoUrl: string | null;
+  onLogoUploaded: (updated: StoreSettings) => void;
+}) {
   const { data: user, isLoading } = useUser();
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
@@ -30,28 +39,68 @@ export function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => voi
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [logoError, setLogoError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
-  // Task FF (2026-07-30): the cropped bytes for an avatar just uploaded THIS
-  // session, so the tile renders locally instead of a guaranteed-cold-miss
-  // remote fetch of the exact bytes the browser is already holding.
-  // `pendingAvatarUrlRef` records the avatarUrl that local file belongs to —
-  // if `user.avatarUrl` ever changes to something else WITHOUT going through
-  // handleAvatarChange (e.g. this same card re-rendering for a different
-  // account via "sign in as"), the stale local bytes must stop showing.
+  // Task FF (2026-07-30), hardened 2026-07-31 after an owner report on the
+  // storefront's equivalent card ("upload succeeded, but the account still
+  // showed the generic icon"): the cropped bytes for an avatar just uploaded
+  // THIS session, so the tile renders locally instead of a
+  // guaranteed-cold-miss remote fetch of the exact bytes the browser is
+  // already holding.
+  //
+  // `uploadedAvatarUrl` is tracked in STATE (not only a ref) because the
+  // render below must not gate on `user?.avatarUrl` alone — a component test
+  // on the storefront's identical pattern (ProfileForm.tsx) proved that if
+  // that value from `useUser()` lags even one render behind the upload, for
+  // any reason, gating on it alone silently discards local bytes that were
+  // sitting right there and falls back to the generic icon. `avatarSrc`
+  // below reads our own known-good URL as a fallback so the icon can never
+  // mask a photo this session knows was just uploaded.
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
-  const pendingAvatarUrlRef = useRef<string | null>(null);
+  const [uploadedAvatarUrl, setUploadedAvatarUrl] = useState<string | null>(null);
+  // Same pattern for the brand logo: the tile below used to render a fixed
+  // placeholder SVG NO MATTER WHAT — never the real logo, uploaded or not,
+  // and never an error unless one happened to also touch the shared
+  // `avatarError` state. An admin who uploaded a logo had zero visual
+  // confirmation it worked short of scrolling to the unrelated "Logo URL"
+  // text field far down the page, so a real success and a swallowed failure
+  // looked identical. `pendingLogoFile`/`uploadedLogoUrl` let this tile show
+  // the just-uploaded bytes immediately, same as the avatar above.
+  const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
+  const [uploadedLogoUrl, setUploadedLogoUrl] = useState<string | null>(null);
 
+  // `user.name` is deliberately the GREETING form — first name only, business
+  // rule shared with every "Hi, {name}" in the app (see auth.controller.ts's
+  // `me()`). Editing that here and saving it back would silently truncate
+  // any multi-word name to its first word the moment this effect re-ran off
+  // a fresh `/auth/me` fetch — which is exactly what the owner reported
+  // ("typed MINI RUE, it saved MINI"). `user.fullName` is the untouched
+  // stored value; older cached responses without it fall back to `name`.
   useMountedEffect(() => {
-    if (user?.name) setName(user.name);
-  }, [user?.name]);
+    const full = user?.fullName ?? user?.name;
+    if (full) setName(full);
+  }, [user?.fullName, user?.name]);
 
+  // Only clear on a CONFLICTING truthy value (a different account via "sign
+  // in as", a real external change) — never merely because `user?.avatarUrl`
+  // hasn't caught up to ours yet, which would silently reproduce the bug.
   useMountedEffect(() => {
-    if (pendingAvatarUrlRef.current !== null && user?.avatarUrl !== pendingAvatarUrlRef.current) {
+    if (uploadedAvatarUrl !== null && user?.avatarUrl && user.avatarUrl !== uploadedAvatarUrl) {
       setPendingAvatarFile(null);
-      pendingAvatarUrlRef.current = null;
+      setUploadedAvatarUrl(null);
     }
-  }, [user?.avatarUrl]);
+  }, [user?.avatarUrl, uploadedAvatarUrl]);
+
+  useMountedEffect(() => {
+    if (uploadedLogoUrl !== null && logoUrl && logoUrl !== uploadedLogoUrl) {
+      setPendingLogoFile(null);
+      setUploadedLogoUrl(null);
+    }
+  }, [logoUrl, uploadedLogoUrl]);
+
+  const avatarSrc = user?.avatarUrl ?? uploadedAvatarUrl;
+  const logoSrc = logoUrl ?? uploadedLogoUrl;
 
   const handleSaveName = async () => {
     if (!name.trim()) return;
@@ -81,7 +130,7 @@ export function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => voi
     try {
       const updated = await apiUploadMyAvatar(cropped);
       queryClient.setQueryData(['auth', 'me'], updated);
-      pendingAvatarUrlRef.current = updated.avatarUrl ?? null;
+      setUploadedAvatarUrl(updated.avatarUrl ?? null);
       setPendingAvatarFile(cropped);
     } catch (err) {
       setAvatarError((err as ApiError).message ?? 'Failed to upload avatar');
@@ -102,12 +151,14 @@ export function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => voi
         : await cropImage(file, { title: 'Crop shop logo' });
     if (!cropped) return;
     setUploadingLogo(true);
-    setAvatarError(null);
+    setLogoError(null);
     try {
-      await apiUploadBrandLogo(cropped);
-      onLogoUploaded();
+      const updated = await apiUploadBrandLogo(cropped);
+      setUploadedLogoUrl(updated.brand?.logoUrl ?? null);
+      setPendingLogoFile(cropped);
+      onLogoUploaded(updated);
     } catch (err) {
-      setAvatarError((err as ApiError).message ?? 'Failed to upload brand logo');
+      setLogoError((err as ApiError).message ?? 'Failed to upload brand logo');
     } finally {
       setUploadingLogo(false);
     }
@@ -149,9 +200,9 @@ export function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => voi
               }}
               title="Change avatar"
             >
-              {user.avatarUrl ? (
+              {avatarSrc ? (
                 <UploadPreviewImage
-                  src={user.avatarUrl}
+                  src={avatarSrc}
                   localFile={pendingAvatarFile}
                   alt=""
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -188,7 +239,7 @@ export function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => voi
               <button
                 type="button"
                 className="dash-btn-secondary"
-                disabled={savingName || !name.trim() || name.trim() === user.name}
+                disabled={savingName || !name.trim() || name.trim() === (user.fullName ?? user.name)}
                 onClick={handleSaveName}
               >
                 {savingName ? 'Saving…' : 'Save'}
@@ -223,12 +274,20 @@ export function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => voi
               }}
               title="Change brand logo"
             >
-              {/* Logo preview intentionally left blank here — form below shows the live value */}
-              <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} style={{ margin: '20px auto' }}>
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <path d="M21 15l-5-5L5 21" />
-              </svg>
+              {logoSrc ? (
+                <UploadPreviewImage
+                  src={logoSrc}
+                  localFile={pendingLogoFile}
+                  alt=""
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+              ) : (
+                <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} style={{ margin: '20px auto' }}>
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <path d="M21 15l-5-5L5 21" />
+                </svg>
+              )}
             </button>
             <input
               ref={logoInputRef}
@@ -240,6 +299,9 @@ export function AdminProfileCard({ onLogoUploaded }: { onLogoUploaded: () => voi
             <span className="dash-help-text" style={{ fontSize: 11 }}>
               {uploadingLogo ? 'Uploading…' : 'Brand logo'}
             </span>
+            {logoError && (
+              <p className="dash-inline-error" style={{ fontSize: 11, textAlign: 'center' }}>{logoError}</p>
+            )}
           </div>
         )}
       </div>
@@ -262,6 +324,16 @@ function Skeleton() {
 }
 
 type BrandForm = {
+  /**
+   * The ONE admin-editable shop display name (2026-07-31 owner ask: "i want
+   * to set freely MINI RUE" — free casing, free internal spaces, no
+   * slugifying). Read by the storefront header/footer, the support chat
+   * sender name (staff and admin alike), and this dashboard's own chrome —
+   * see `useShopName` (lib/hooks/use-shop-name.ts). Sent as `null` (not an
+   * empty string) when blank, so the backend's `nullable().min(1)` schema
+   * treats it as "unconfigured" rather than rejecting an empty write.
+   */
+  displayName: string;
   contactEmail: string;
   contactPhone: string;
   logoUrl: string;
@@ -269,7 +341,6 @@ type BrandForm = {
 
 type SettingsForm = {
   currency: string;
-  locale: string;
   vatPct: string;
   brand: BrandForm;
   /** What MiniRue charges to ship, in major units as typed (e.g. "50.00"). */
@@ -293,7 +364,6 @@ function inputToCents(value: string): number {
 function settingsToForm(s: StoreSettings): SettingsForm {
   return {
     currency: s.currency,
-    locale: s.locale,
     // Optional-chained: a store with no tax rules yet (a fresh database) returns
     // settings with no taxRules key at all, and an unguarded .find() there took
     // the whole Settings page down with "Cannot read properties of undefined".
@@ -303,6 +373,7 @@ function settingsToForm(s: StoreSettings): SettingsForm {
     // `s.brand.storeName` throw and crashed the page with a React error right
     // as the admin saved the shop name.
     brand: {
+      displayName: s.brand?.displayName ?? '',
       contactEmail: s.brand?.contactEmail ?? '',
       contactPhone: s.brand?.contactPhone ?? '',
       logoUrl: s.brand?.logoUrl ?? '',
@@ -317,9 +388,8 @@ function settingsToForm(s: StoreSettings): SettingsForm {
 export default function SettingsClient() {
   const [form, setForm] = useState<SettingsForm>({
     currency: 'EGP',
-    locale: 'ar-EG',
     vatPct: '14',
-    brand: { contactEmail: '', contactPhone: '', logoUrl: '' },
+    brand: { displayName: '', contactEmail: '', contactPhone: '', logoUrl: '' },
     shippingFlatRate: '',
     shippingFreeOver: '',
   });
@@ -346,6 +416,16 @@ export default function SettingsClient() {
 
   useMountedEffect(() => { load(); }, [load]);
 
+  // Used by AdminProfileCard after a logo upload. Deliberately does NOT go
+  // through `load()` — `load()` flips `loading` back to true, which blanks
+  // this whole page (including the profile card that just updated) behind
+  // <Skeleton /> for the round trip. The upload response already IS the
+  // fresh settings document, so apply it directly.
+  const applyUpdatedSettings = useCallback((updated: StoreSettings) => {
+    setRaw(updated);
+    setForm(settingsToForm(updated));
+  }, []);
+
   const setField = (field: keyof Omit<SettingsForm, 'brand'>) => (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => { setSaved(false); setForm((p) => ({ ...p, [field]: e.target.value })); };
@@ -363,7 +443,12 @@ export default function SettingsClient() {
     try {
       const patch: Partial<StoreSettings> = {
         currency: form.currency,
-        locale: form.locale,
+        // `locale` is deliberately NOT sent here: the field was removed from
+        // this form (owner request, 2026-07-31) but the stored value is still
+        // read by nothing in-app today — see git history / task report for
+        // what was checked. Omitting the key (not sending `locale: undefined`)
+        // means the merge in settings.service.ts's updateSettings leaves
+        // whatever is already stored untouched, rather than blanking it.
         // Only sent when a rate has been typed: sending 0 for a blank field would
         // silently make shipping free for the whole store.
         ...(form.shippingFlatRate.trim()
@@ -376,6 +461,14 @@ export default function SettingsClient() {
             }
           : {}),
         brand: {
+          // Sent EXACTLY as typed — free casing, free internal spaces
+          // ("MINI RUE" must survive as "MINI RUE", never collapsed or
+          // title-cased). Only leading/trailing whitespace is trimmed, by
+          // the backend's zod schema (update-settings.dto.ts), same as
+          // contactPhone/logoUrl below. Blank means "unconfigured": sent as
+          // `null`, never `''`, so the nullable-but-required schema key
+          // reads as "no display name set" rather than a rejected empty write.
+          displayName: form.brand.displayName || null,
           contactEmail: form.brand.contactEmail,
           contactPhone: form.brand.contactPhone || null,
           logoUrl: form.brand.logoUrl || null,
@@ -426,10 +519,52 @@ export default function SettingsClient() {
         <h1 className="dash-page-title">Settings</h1>
       </div>
 
-      <AdminProfileCard onLogoUploaded={load} />
+      <AdminProfileCard logoUrl={raw?.brand?.logoUrl ?? null} onLogoUploaded={applyUpdatedSettings} />
 
       <form onSubmit={handleSubmit}>
         <div className="dash-form-card">
+          <div className="dash-field-row">
+            <div className="dash-field">
+              <label className="dash-label">Shop name</label>
+              <input
+                type="text"
+                className="dash-input"
+                value={form.brand.displayName}
+                onChange={setBrand('displayName')}
+                maxLength={120}
+                placeholder="MiniRue"
+              />
+              {/*
+                Owner, 2026-07-31: "highlight the settings name with warning
+                that this is your global name across anything" — a visible,
+                highlighted callout, not a muted `dash-help-text` hint. This
+                is the ONE field that becomes the shop's name everywhere a
+                customer or staff member sees it: the storefront header and
+                footer, support chat (for the admin AND every staff member —
+                staff inherit this one name rather than their own), and this
+                dashboard's own chrome. Free casing and free internal spaces
+                are preserved exactly as typed ("MINI RUE" stays "MINI RUE") —
+                only leading/trailing whitespace is trimmed.
+              */}
+              <p
+                style={{
+                  marginTop: 6,
+                  padding: '8px 12px',
+                  borderRadius: 'var(--mr-radius-sm)',
+                  background: 'var(--mr-st-warn-bg)',
+                  color: 'var(--mr-st-warn-fg)',
+                  fontSize: 13,
+                  lineHeight: 1.4,
+                }}
+              >
+                This is your shop&apos;s ONE global name. It replaces every other
+                spelling everywhere customers see it — the storefront header
+                and footer, support chat, and this dashboard — so change it
+                carefully.
+              </p>
+            </div>
+          </div>
+
           <div className="dash-field-row">
             <div className="dash-field">
               <label className="dash-label">Currency</label>
@@ -453,11 +588,6 @@ export default function SettingsClient() {
             <div className="dash-field">
               <label className="dash-label">VAT % (Egypt)</label>
               <input type="number" className="dash-input" value={form.vatPct} onChange={setField('vatPct')} min="0" max="100" step="0.01" />
-            </div>
-            <div className="dash-field">
-              <label className="dash-label">Locale</label>
-              <input type="text" className="dash-input" value={form.locale} onChange={setField('locale')} placeholder="ar-EG" />
-              <p className="dash-help-text">BCP 47 — e.g. ar-EG, en-US</p>
             </div>
           </div>
 
@@ -497,9 +627,28 @@ export default function SettingsClient() {
           </div>
 
           <div className="dash-field">
+            {/*
+              Field contract (2026-07-31, owner report "logo url is
+              forbidden becuase brand logo upload is broken"): this box
+              always DISPLAYS the server's resolved link for whatever logo is
+              live — normally the file uploaded via the tile above — so an
+              admin can copy it out or confirm what is live. Saving it back
+              unchanged (the common case: editing an unrelated field like
+              currency) is explicitly safe: the backend's
+              `resolveBrandLogoForWrite` (settings.service.ts) recognises its
+              own resolved URLs on write and re-normalises them back to the
+              stable object key, so this round trip can never persist a
+              signed/expiring link. Typing a genuinely different,
+              externally-hosted image URL here OVERRIDES the uploaded logo
+              with that link instead — it is stored and served exactly as
+              typed, never touched by that normalisation.
+            */}
             <label className="dash-label">Logo URL</label>
             <input type="url" className="dash-input" value={form.brand.logoUrl} onChange={setBrand('logoUrl')} placeholder="https://…" />
-            <p className="dash-help-text">Leave blank to use the default wordmark.</p>
+            <p className="dash-help-text">
+              Shows the logo uploaded above. Leave as-is to keep it, paste a different
+              image&apos;s URL to use that instead, or clear it to use the default wordmark.
+            </p>
           </div>
 
           {saveError && <p className="dash-inline-error">{saveError}</p>}

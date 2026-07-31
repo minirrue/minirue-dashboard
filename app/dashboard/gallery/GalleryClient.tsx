@@ -17,6 +17,13 @@ import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
+import { useUser } from '@/lib/hooks/use-auth';
+import { Role } from '@/lib/auth/role';
+import {
+  listDeletedMedia,
+  restoreProductMedia,
+  type DeletedMediaItem,
+} from '@/lib/catalog/api';
 
 const TRACE = 'PG-DASHBOARD-GAL-001';
 
@@ -26,6 +33,152 @@ function formatDate(iso: string): string {
     day: 'numeric',
     year: 'numeric',
   });
+}
+
+/**
+ * Task 39 — "make superadmin see soft deleted images in gallery section for
+ * super admin only". A soft-deleted product image (media_assets, not a
+ * gallery_items row — see MediaSection.tsx's `handleDelete`) disappears from
+ * everywhere else the moment it's deleted; this is the ONE place it is
+ * still visible, clearly marked, and restorable. Not rendered at all unless
+ * the caller is SUPERADMIN — the parent only mounts this component after
+ * confirming that, and the server itself 403s the request anyway
+ * (CatalogService.listDeletedMedia), so there is no path that leaks a
+ * deleted image to anyone else even if this were reused incorrectly.
+ */
+function DeletedImagesPanel() {
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<DeletedMediaItem[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      setItems(await listDeletedMedia());
+    } catch (e) {
+      const err = e as ApiError;
+      setError(err.message ?? 'Failed to load deleted images.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function toggle() {
+    const next = !open;
+    setOpen(next);
+    if (next && items === null) void load();
+  }
+
+  async function handleRestore(item: DeletedMediaItem) {
+    setRestoringId(item.id);
+    try {
+      await restoreProductMedia(item.productId, item.id);
+      setItems((prev) => (prev ? prev.filter((m) => m.id !== item.id) : prev));
+    } catch (e) {
+      const err = e as ApiError;
+      setError(err.message ?? 'Failed to restore image.');
+    } finally {
+      setRestoringId(null);
+    }
+  }
+
+  return (
+    <div
+      className="dash-card"
+      style={{ marginBottom: 16 }}
+      data-trace-id={`${TRACE}::EL-REGION-deleted-images`}
+    >
+      <button
+        type="button"
+        className="dash-btn-ghost"
+        onClick={toggle}
+        aria-expanded={open}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', justifyContent: 'space-between' }}
+        data-trace-id={`${TRACE}::EL-BTN-toggle-deleted-images`}
+      >
+        <span style={{ color: 'var(--mr-dash-danger, #b3261e)', fontWeight: 600 }}>
+          Deleted images{items ? ` (${items.length})` : ''}
+        </span>
+        <span aria-hidden="true">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div style={{ marginTop: 12 }}>
+          <p className="dash-help-text" style={{ marginTop: 0 }}>
+            Soft-deleted product images — hidden from the storefront, admin and
+            collaborator screens. Only super admin can see this list. Restoring
+            an image puts it straight back on its product.
+          </p>
+          {loading ? (
+            <p className="dash-help-text">Loading…</p>
+          ) : error ? (
+            <p className="dash-inline-error">{error}</p>
+          ) : !items || items.length === 0 ? (
+            <p className="dash-help-text">No deleted images.</p>
+          ) : (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                gap: 16,
+              }}
+            >
+              {items.map((m) => (
+                <figure key={m.id} style={{ margin: 0, opacity: 0.6 }}>
+                  {m.url ? (
+                    <UploadPreviewImage
+                      src={m.url}
+                      localFile={null}
+                      alt={m.altText ?? ''}
+                      style={{
+                        width: '100%',
+                        aspectRatio: '4/5',
+                        objectFit: 'cover',
+                        borderRadius: 'var(--mr-radius-sm)',
+                        border: '1px dashed var(--mr-dash-danger, #b3261e)',
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '100%',
+                        aspectRatio: '4/5',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '1px dashed var(--mr-dash-danger, #b3261e)',
+                        borderRadius: 'var(--mr-radius-sm)',
+                        fontSize: 11,
+                        color: 'var(--mr-ink-400)',
+                      }}
+                    >
+                      No preview
+                    </div>
+                  )}
+                  <figcaption className="dash-help-text" style={{ marginTop: 6, fontSize: 11 }}>
+                    <span style={{ display: 'block', fontWeight: 600 }}>{m.productName}</span>
+                    <span style={{ display: 'block' }}>{m.role}</span>
+                    <button
+                      type="button"
+                      className="dash-btn-ghost"
+                      style={{ display: 'block', padding: '2px 0', fontSize: 11 }}
+                      disabled={restoringId !== null}
+                      onClick={() => handleRestore(m)}
+                      data-trace-id={`${TRACE}::EL-BTN-restore-deleted-image@${m.id}`}
+                    >
+                      {restoringId === m.id ? 'Restoring…' : 'Restore'}
+                    </button>
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /* ── Folder list (top-level or one level of children) ── */
@@ -513,6 +666,11 @@ function ItemGrid({
 /* ── Main page ── */
 export default function GalleryClient() {
   const cropImage = useImageCrop();
+  // Task 39: the Deleted images panel is SUPERADMIN-only — gated here (never
+  // mounted, so it never fires the request) AND on the server
+  // (CatalogService.listDeletedMedia 403s anyone else regardless).
+  const { data: user } = useUser();
+  const isSuperAdmin = user?.role === Role.SUPERADMIN;
   const [folders, setFolders] = useState<GalleryFolder[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -781,6 +939,8 @@ export default function GalleryClient() {
           )}
         </div>
       </div>
+
+      {isSuperAdmin && <DeletedImagesPanel />}
 
       <div style={{ marginBottom: 16, maxWidth: 420 }}>
         <input
