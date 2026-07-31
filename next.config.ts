@@ -125,6 +125,7 @@ const nextConfig: NextConfig = {
       // under /dashboard/analytics/*, only the public URL is clean. Missing
       // an entry here means the page 404s in production even though it
       // builds and appears in `next build` output — see CLAUDE.md.
+      { source: "/analytics/sales", destination: "/dashboard/analytics/sales" },
       { source: "/analytics/realtime", destination: "/dashboard/analytics/realtime" },
       { source: "/analytics/visitors", destination: "/dashboard/analytics/visitors" },
       { source: "/analytics/visitors/:visitorId", destination: "/dashboard/analytics/visitors/:visitorId" },

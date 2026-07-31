@@ -31,6 +31,15 @@ const TABS: Tab[] = [
     match: (p) => p === '/analytics' || p === '/analytics/',
   },
   {
+    // The original analytics screen, kept rather than replaced. It answers a
+    // different question from everything else here: money in and money back,
+    // computed from the orders themselves, with no dependence on visitor
+    // tracking. If collection ever breaks, these figures stay true.
+    label: 'Sales',
+    href: '/analytics/sales',
+    match: (p) => p.startsWith('/analytics/sales'),
+  },
+  {
     label: 'Realtime',
     href: '/analytics/realtime',
     match: (p) => p.startsWith('/analytics/realtime'),
@@ -70,6 +79,7 @@ const TABS: Tab[] = [
 /** Display order, left to right — not the match order. */
 const ORDER = [
   'Overview',
+  'Sales',
   'Realtime',
   'Visitors',
   'Pages',

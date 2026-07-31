@@ -13,6 +13,7 @@ import {
 describe('AnalyticsSubnav active tab', () => {
   const cases: Array<[string, string]> = [
     ['/analytics', 'Overview'],
+    ['/analytics/sales', 'Sales'],
     ['/analytics/realtime', 'Realtime'],
     ['/analytics/visitors', 'Visitors'],
     ['/analytics/visitors/vis-abc-123', 'Visitors'],
@@ -30,9 +31,10 @@ describe('AnalyticsSubnav active tab', () => {
     expect(resolveActiveTab(path)).toBe(expected);
   });
 
-  it('offers all eight tabs in a stable order', () => {
+  it('offers all nine tabs in a stable order', () => {
     expect(ANALYTICS_TAB_LABELS).toEqual([
       'Overview',
+      'Sales',
       'Realtime',
       'Visitors',
       'Pages',

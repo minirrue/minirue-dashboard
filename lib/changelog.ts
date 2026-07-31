@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 175,
+    date: '2026-07-31',
+    area: 'Analytics',
+    summary:
+      "The analytics page you already knew - revenue today and this month, total orders, new customers, refunds, net revenue, money awaiting payment confirmation and the projected month - is still here, now on its own \"Sales\" tab. Nothing about how those figures are worked out has changed, except that a day now ends at midnight in Cairo rather than two or three hours late, so \"today\" finally means today. It sits beside the new visitor tabs on purpose: Sales is counted from your actual orders, so those numbers stay correct even if visitor tracking is switched off or blocked.",
+  },
+  {
     id: 171,
     date: '2026-07-31',
     area: 'Analytics',
