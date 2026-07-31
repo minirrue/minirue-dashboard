@@ -22,6 +22,7 @@ import type { ApiError } from '@/lib/api/client';
 import StatusBadge from '@/components/dashboard/StatusBadge';
 import type { StatusKind } from '@/components/dashboard/StatusBadge';
 import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
+import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
 import VariantsSection from './VariantsSection';
 import MediaSection from './MediaSection';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
@@ -468,8 +469,14 @@ export default function EditProductPage() {
             >
               {displayedMedia.map((m) => (
                 <figure key={m.id} style={{ margin: 0 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  {/* Never a bare image tag: this grid re-renders the exact
+                      same photos MediaSection above can exchange, so it lands
+                      on a brand-new, guaranteed-cold-miss URL the moment one is
+                      replaced. With no onError handler it stayed broken until a
+                      page reload (owner, 2026-07-31). No `localFile` here — the
+                      bytes live in MediaSection's own state; the retry is what
+                      this grid needs. */}
+                  <UploadPreviewImage
                     src={mediaPreviewUrl(m)}
                     alt={m.altText ?? ''}
                     data-trace-id={`PG-DASHBOARD-CAT-003::EL-IMG-variant-photo@${m.id}`}

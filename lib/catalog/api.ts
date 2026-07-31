@@ -737,11 +737,12 @@ export async function deleteProductMedia(
   productId: string,
   mediaId: string,
   basePath: string = ADMIN,
-): Promise<void> {
-  await apiFetch<{ ok: boolean }>(
+): Promise<{ promotedCoverId: string | null }> {
+  const res = await apiFetch<{ ok: boolean; promotedCoverId?: string | null }>(
     `${basePath}/products/${productId}/media/${mediaId}/delete-soft`,
     { method: 'POST', auth: true },
   );
+  return { promotedCoverId: res.promotedCoverId ?? null };
 }
 
 /**

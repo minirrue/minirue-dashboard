@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from 'react';
 import ImageField from '@/components/dashboard/ImageField';
+import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
 import { uploadDeviceFileToGallery } from '@/components/dashboard/GalleryPickerModal';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 import type { GalleryItem } from '@/lib/gallery/types';
@@ -87,6 +88,25 @@ function CategoryRow<T extends CategoryTreeNode>({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  /**
+   * Bytes for a picture THIS row's category was just given in this session,
+   * tagged with the gallery item they belong to.
+   *
+   * The row thumbnail used to be a bare `<img src={category.imageUrl}>`. The
+   * moment an image is exchanged or swapped, that url is brand new and its
+   * first request is a guaranteed cold miss (Cloudflare -> nginx -> imgproxy
+   * -> Garage); with no `onError` on the tag, one transient failure left the
+   * category showing a broken box until a full page reload — the owner's
+   * "thumbnail appears broken globally" (2026-07-31). Rendering the local
+   * bytes means there is no cold-miss window to fail in at all.
+   *
+   * Tagged by media id rather than held loose so it is dropped the instant
+   * this row points at a DIFFERENT picture — otherwise the bytes of the last
+   * image uploaded here would keep showing under the newly chosen one.
+   */
+  const [localImage, setLocalImage] = useState<{ mediaId: string; file: File } | null>(null);
+  const localImageFile =
+    localImage && localImage.mediaId === category.imageMediaId ? localImage.file : null;
   const deviceInputRef = useRef<HTMLInputElement>(null);
   const cropImage = useImageCrop();
 
@@ -138,6 +158,7 @@ function CategoryRow<T extends CategoryTreeNode>({
       if (!cropped) return;
       const item: GalleryItem = await uploadDeviceFileToGallery(cropped, category.name);
       const updated = await api.update(category.id, { imageMediaId: item.id });
+      setLocalImage({ mediaId: item.id, file: cropped });
       onUpdated(updated);
     } catch (e) {
       const err = e as ApiError;
@@ -147,7 +168,7 @@ function CategoryRow<T extends CategoryTreeNode>({
     }
   }
 
-  async function handleGalleryPick(mediaId: string | null) {
+  async function handleGalleryPick(mediaId: string | null, localFile?: File | null) {
     // A category can never end up imageless — refuse the "Remove" affordance
     // ImageField would otherwise offer, same rule as at create time.
     if (!mediaId) {
@@ -156,6 +177,10 @@ function CategoryRow<T extends CategoryTreeNode>({
     }
     setImageError(null);
     setUploadingImage(true);
+    // Set BEFORE the round trip: an Exchange keeps the same imageMediaId, so
+    // the row is already pointing at the replaced picture and would otherwise
+    // spend the whole save showing the cold new url.
+    setLocalImage(localFile ? { mediaId, file: localFile } : null);
     try {
       const updated = await api.update(category.id, { imageMediaId: mediaId });
       onUpdated(updated);
@@ -207,13 +232,20 @@ function CategoryRow<T extends CategoryTreeNode>({
               <span style={{ display: 'inline-block', width: 18, flexShrink: 0 }} />
             )}
             {category.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <UploadPreviewImage
                 src={category.imageUrl}
+                localFile={localImageFile}
                 alt=""
                 width={28}
                 height={28}
-                style={{ borderRadius: 4, objectFit: 'cover', flexShrink: 0 }}
+                data-trace-id={`PG-DASHBOARD-CAT-004::EL-IMG-category-thumbnail@${category.id}`}
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 4,
+                  objectFit: 'cover',
+                  flexShrink: 0,
+                }}
               />
             ) : (
               <span
@@ -347,7 +379,9 @@ function CategoryRow<T extends CategoryTreeNode>({
                 imageUrl={category.imageUrl ?? null}
                 mediaId={category.imageMediaId ?? null}
                 disabled={saving || uploadingImage}
-                onChange={(mediaId) => void handleGalleryPick(mediaId)}
+                onChange={(mediaId, _item, localFile) =>
+                  void handleGalleryPick(mediaId, localFile)
+                }
               />
 
               {saveError && <p className="dash-inline-error">{saveError}</p>}

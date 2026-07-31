@@ -20,6 +20,13 @@ import { getProduct } from '@/lib/catalog/api';
 import type { Product, ProductMedia } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
 import MediaSection from '@/app/dashboard/products/[slug]/edit/MediaSection';
+import VariantFieldsEditor, {
+  toCustomValues,
+  toVariantFields,
+  type VariantField,
+} from '@/components/collab/VariantFieldsEditor';
+
+const TRACE = 'PG-COLLAB-PRODUCT-EDIT-001';
 
 export default function CollabEditProductClient() {
   const { id } = useParams<{ id: string }>();
@@ -34,6 +41,13 @@ export default function CollabEditProductClient() {
   const [categoryId, setCategoryId] = useState('');
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [media, setMedia] = useState<ProductMedia[]>([]);
+  // The Add-product form has offered these since backend 0.41.0 and this form
+  // did not, so a partner named Size/Shade once at create and could never
+  // change them — the API even accepted the field and dropped it silently
+  // (fixed 2026-07-31). Same shared editor both forms render.
+  const [variantFields, setVariantFields] = useState<VariantField[]>([
+    { name: '', value: '' },
+  ]);
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -59,6 +73,7 @@ export default function CollabEditProductClient() {
         setCategoryId(product.categoryId);
         setMedia(product.media ?? []);
         const activeVariant = product.variants.find((v) => v.stock !== undefined) ?? product.variants[0];
+        setVariantFields(toVariantFields(activeVariant?.customValues));
         setForm({
           name: product.name,
           description: product.description ?? '',
@@ -104,6 +119,10 @@ export default function CollabEditProductClient() {
         description: form.description.trim() || undefined,
         priceAmount: form.priceAmount.trim(),
         categoryId,
+        // Always sent, never omitted: omitting means "leave alone", so a
+        // partner who deletes every row has to be able to say "none" — that is
+        // an empty object, which the API stores as no fields at all.
+        customValues: toCustomValues(variantFields),
       };
       const stock = form.initialStock.trim();
       if (stock) payload.initialStock = Number.parseInt(stock, 10);
@@ -244,6 +263,13 @@ export default function CollabEditProductClient() {
             </p>
           </div>
         </div>
+
+        <VariantFieldsEditor
+          rows={variantFields}
+          onChange={setVariantFields}
+          disabled={saving}
+          traceId={TRACE}
+        />
 
         {error ? <p className="dash-inline-error">{error}</p> : null}
 

@@ -39,8 +39,22 @@ export default function ImageField({
    * existing gallery item) works either way.
    */
   mediaId?: string | null;
-  /** Called with the chosen gallery item id, or null to clear it. */
-  onChange: (mediaId: string | null, item: GalleryItem | null) => void;
+  /**
+   * Called with the chosen gallery item id, or null to clear it.
+   *
+   * `localFile` carries the bytes an "Exchange" just uploaded, and is
+   * undefined for every other transition (picking a different existing item,
+   * clearing). The tile inside this component already renders those bytes
+   * itself; the third argument exists so the SCREEN AROUND IT can too — a
+   * category row's own 28px thumbnail, a brand tile — since those render the
+   * same picture from the same brand-new, guaranteed-cold-miss URL and were
+   * the surfaces the owner actually saw broken (2026-07-31).
+   */
+  onChange: (
+    mediaId: string | null,
+    item: GalleryItem | null,
+    localFile?: File | null,
+  ) => void;
   label?: string;
   helpText?: string;
   disabled?: boolean;
@@ -97,7 +111,7 @@ export default function ImageField({
       });
       if (!cropped) return;
       const updated = await exchangeItem(mediaId, cropped);
-      onChange(mediaId, updated);
+      onChange(mediaId, updated, cropped);
       pendingForMediaId.current = mediaId;
       setPendingLocalFile(cropped);
     } catch (e) {
@@ -158,7 +172,7 @@ export default function ImageField({
               className="dash-btn-ghost"
               onClick={() => {
                 setPendingLocalFile(null);
-                onChange(null, null);
+                onChange(null, null, null);
               }}
               disabled={disabled}
             >
@@ -189,7 +203,7 @@ export default function ImageField({
             // any stale local preview from a previous Exchange so this
             // doesn't keep showing the wrong photo.
             setPendingLocalFile(null);
-            onChange(item.id, item);
+            onChange(item.id, item, null);
             setPicking(false);
           }}
           onClose={() => setPicking(false)}

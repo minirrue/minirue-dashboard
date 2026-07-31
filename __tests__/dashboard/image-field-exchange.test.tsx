@@ -95,10 +95,16 @@ describe('ImageField — Exchange', () => {
     await user.upload(input, file);
 
     await waitFor(() => expect(exchangeItem).toHaveBeenCalledWith('item-1', file));
+    // Third argument (2026-07-31): the bytes that were just uploaded, so the
+    // SCREEN AROUND this field — a category row's own thumbnail, a brand tile
+    // — can render the replacement locally instead of racing the same
+    // guaranteed-cold-miss URL this field's tile already avoids. See
+    // __tests__/dashboard/replaced-image-recovers.test.tsx.
     await waitFor(() =>
       expect(onChange).toHaveBeenCalledWith(
         'item-1',
         expect.objectContaining({ url: 'https://storage.example/replaced.webp' }),
+        file,
       ),
     );
   });

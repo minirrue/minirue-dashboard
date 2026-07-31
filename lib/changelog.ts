@@ -21,6 +21,27 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 188,
+    date: '2026-07-31',
+    area: 'Partner products',
+    summary:
+      'A partner editing one of their products can now change its variant details — the "Size / 50 ml" style fields. Before, those fields could only be filled in once, on the Add product screen, and then never again: the Edit screen simply did not show them, and a change sent any other way was accepted and quietly thrown away. The Edit screen now shows the fields already saved, lets them be edited, added to or emptied, and saves what you see.',
+  },
+  {
+    id: 187,
+    date: '2026-07-31',
+    area: 'Settings',
+    summary:
+      'Fixed the "Your name" box under Settings dropping everything after the first space — typing "MINI RUE" and saving left you with "MINI". Your full name was always saved correctly; it was the box itself that redrew showing only the first word, so it looked like the rest had been thrown away. It now shows exactly what you typed, spaces and all, and stays that way after a refresh.',
+  },
+  {
+    id: 186,
+    date: '2026-07-31',
+    area: 'Settings',
+    summary:
+      'Your brand logo now shows as a thumbnail on the Settings profile card. Before, that tile always showed a grey placeholder picture no matter what — so an upload that had worked perfectly looked identical to one that had failed, and there was no way to tell short of scrolling down to the Logo URL box. The picture you just picked appears instantly, the saved one appears on every later visit, and a failed upload now says why, right next to the tile.',
+  },
+  {
     id: 185,
     date: '2026-07-31',
     area: 'Support inbox',

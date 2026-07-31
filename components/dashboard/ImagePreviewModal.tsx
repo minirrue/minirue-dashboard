@@ -12,10 +12,21 @@ import UploadPreviewImage from './UploadPreviewImage';
 export function ImagePreviewModal({
   src,
   alt,
+  localFile,
   onClose,
 }: {
   src: string;
   alt: string;
+  /**
+   * Bytes already in the browser for THIS image — the File/Blob just picked,
+   * cropped or exchanged. Enlarging a photo seconds after replacing it is the
+   * single most likely moment for a cold miss, and this used to be a bare
+   * `<img>`: one failed load and the enlarged view stayed broken until the
+   * modal was closed and reopened — it now goes through UploadPreviewImage
+   * like every other picture in the dashboard. Omit for an image that was not
+   * uploaded in this session; the retry behaviour still applies.
+   */
+  localFile?: File | Blob | null;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -43,8 +54,12 @@ export function ImagePreviewModal({
         ✕
       </button>
       <div className="dash-gallery-preview-frame" onClick={(e) => e.stopPropagation()}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={alt} className="dash-gallery-preview-media" />
+        <UploadPreviewImage
+          src={src}
+          localFile={localFile}
+          alt={alt}
+          className="dash-gallery-preview-media"
+        />
       </div>
     </div>
   );

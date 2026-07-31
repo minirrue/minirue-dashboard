@@ -197,6 +197,21 @@ export default function MediaSection({
    * marked deleted in place: an ordinary ADMIN/STAFF/COLLAB viewer's product
    * read will never see it again on the next reload either (the server
    * excludes it), so there is nothing useful left to show here for them.
+   *
+   * This is the ONE form both the new-product "Add images" step and the
+   * edit screen render — by the time either mounts it, the product already
+   * exists (created before this component appears), so every image here is
+   * already a real, server-persisted `media_assets` row, never a
+   * client-only staged file. Delete therefore always goes through the same
+   * server soft-delete, on the new form exactly as on the edit form — there
+   * is nothing to "just drop locally" and no risk of orphaning a storage
+   * object or a dangling row either way.
+   *
+   * Owner ask, 2026-07-31: "deleting the cover must promote a sensible new
+   * cover rather than leaving the product with none." The server picks the
+   * replacement (CatalogService.softDeleteMedia) and reports it back as
+   * `promotedCoverId`; applied here so the label under that photo flips to
+   * "Cover thumbnail" immediately, without waiting on a reload.
    */
   async function handleDelete(m: ProductMedia) {
     if (!window.confirm('Delete this image? It will be hidden everywhere, but can still be restored by a super admin.')) {
@@ -205,8 +220,14 @@ export default function MediaSection({
     setError(null);
     setDeleting(m.id);
     try {
-      await deleteProductMedia(productId, m.id, mediaBasePath);
-      onMediaChange(media.filter((x) => x.id !== m.id));
+      const { promotedCoverId } = await deleteProductMedia(productId, m.id, mediaBasePath);
+      onMediaChange(
+        media
+          .filter((x) => x.id !== m.id)
+          .map((x) =>
+            promotedCoverId && x.id === promotedCoverId ? { ...x, role: 'COVER' } : x,
+          ),
+      );
     } catch (e) {
       const err = e as ApiError;
       setError(err.message || 'Failed to delete image.');
@@ -593,6 +614,10 @@ export default function MediaSection({
       {previewMedia && (
         <ImagePreviewModal
           src={previewUrl(previewMedia)}
+          // Enlarging a photo right after exchanging it is the likeliest cold
+          // miss in this screen — hand the modal the same local bytes the
+          // thumbnail is already using rather than making it refetch.
+          localFile={pendingLocalFiles[previewMedia.id] ?? null}
           alt={previewMedia.altText ?? ''}
           onClose={() => setPreviewMedia(null)}
         />

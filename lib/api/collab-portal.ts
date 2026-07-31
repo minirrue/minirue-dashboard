@@ -111,6 +111,14 @@ export async function apiCollabUpdateProduct(
     /** Swap for another of this partner's own categories. Omit to leave
      *  unchanged — never send an empty value, there is nothing to clear to. */
     categoryId?: string;
+    /**
+     * Product-specific variant fields, e.g. { Size: '50 ml' } — the collab
+     * equivalent of the admin form's Variants section. The Add-product form
+     * has offered these since backend 0.41.0; the edit form could not change
+     * them because this client never sent the field and the API dropped it
+     * (2026-07-31). `{}` clears every field; omit to leave them alone.
+     */
+    customValues?: Record<string, string>;
   },
 ): Promise<unknown> {
   return apiFetch(`/collab/products/${id}`, {

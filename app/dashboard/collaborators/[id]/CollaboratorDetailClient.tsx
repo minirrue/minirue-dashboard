@@ -8,6 +8,7 @@ import {
   CollaboratorStatusBadge,
   CollabLoadingBlock,
 } from '@/components/collab/collab-ui';
+import RetryingImage from '@/components/dashboard/RetryingImage';
 import {
   apiArchiveCollaborator,
   apiGetCollaborator,
@@ -711,7 +712,13 @@ export default function CollaboratorDetailClient() {
         {collab.logoUrl ? (
           <div className="dash-field">
             <p className="dash-label">Brand logo</p>
-            <img src={collab.logoUrl} alt="" className="collab-brand-logo" />
+            {/* The partner replaces this logo from their own portal, under a
+                new uuid-suffixed key each time — so an admin opening this
+                screen right after is looking at a cold url. Bare, with no
+                onError handler, one failed load left a broken box here for
+                good (owner, 2026-07-31). No local bytes exist on this screen:
+                the upload happened in another app entirely. */}
+            <RetryingImage src={collab.logoUrl} alt="" className="collab-brand-logo" />
           </div>
         ) : null}
         {saveError ? <p className="dash-inline-error">{saveError}</p> : null}

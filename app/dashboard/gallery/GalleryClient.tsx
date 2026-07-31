@@ -437,9 +437,14 @@ function UploadDropzone({ folderId, onUploaded }: UploadDropzoneProps) {
    was actually uploaded, not a cropped decorative preview). ── */
 function ItemPreviewModal({
   item,
+  localFile,
   onClose,
 }: {
   item: GalleryItem;
+  /** Bytes for an item exchanged/uploaded in THIS session — enlarging a photo
+   *  seconds after replacing it is the likeliest cold miss in the whole
+   *  screen, and this used to be a bare image tag with no onError at all. */
+  localFile?: File | null;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -477,8 +482,12 @@ function ItemPreviewModal({
             autoPlay
           />
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.url} alt="" className="dash-gallery-preview-media" />
+          <UploadPreviewImage
+            src={item.url}
+            localFile={localFile ?? null}
+            alt=""
+            className="dash-gallery-preview-media"
+          />
         )}
       </div>
     </div>
@@ -1005,6 +1014,10 @@ export default function GalleryClient() {
                           ) : (
                             <UploadPreviewImage
                               src={item.url}
+                              // A search result can be the very item just
+                              // exchanged in the folder view behind this
+                              // overlay — same bytes, same cold-miss url.
+                              localFile={pendingLocalFiles[item.id] ?? null}
                               alt={item.altText ?? ''}
                               className="dash-gallery-item-media"
                             />
@@ -1219,7 +1232,11 @@ export default function GalleryClient() {
       )}
 
       {previewItem && (
-        <ItemPreviewModal item={previewItem} onClose={() => setPreviewItem(null)} />
+        <ItemPreviewModal
+          item={previewItem}
+          localFile={pendingLocalFiles[previewItem.id] ?? null}
+          onClose={() => setPreviewItem(null)}
+        />
       )}
     </>
   );
