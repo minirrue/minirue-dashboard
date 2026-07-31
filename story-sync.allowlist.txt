@@ -73,3 +73,24 @@ minirue-dashboard PAGE /dashboard/collab/categories
 # reason: new product surface with no existing story describing it. Story pending per §18/§21
 # (vault decoupled).
 minirue-dashboard PAGE /dashboard/reviews
+
+# ================================================================================================
+# PERMANENT — analytics screens (2026-07-31).
+#
+# No citing story because the story project is gone: minirue-us was deleted and is not returning,
+# so there is nowhere for one to live. The header's "genuinely has no story to cite" case, not a
+# way to quiet a failing check. What these screens do is written down instead in
+# docs/superpowers/runbooks/analytics-*.md and in the Settings -> Info changelog entry.
+#
+# All nine sit under /analytics for the operator (lib/auth/roles.ts folds them to the ADMIN_ONLY
+# guard on the parent). If a story project is ever reinstated, these belong in it.
+# ================================================================================================
+minirue-dashboard PAGE /dashboard/analytics/realtime
+minirue-dashboard PAGE /dashboard/analytics/visitors
+minirue-dashboard PAGE /dashboard/analytics/visitors/:param
+minirue-dashboard PAGE /dashboard/analytics/pages
+minirue-dashboard PAGE /dashboard/analytics/products
+minirue-dashboard PAGE /dashboard/analytics/products/:param
+minirue-dashboard PAGE /dashboard/analytics/acquisition
+minirue-dashboard PAGE /dashboard/analytics/checkout
+minirue-dashboard PAGE /dashboard/analytics/events

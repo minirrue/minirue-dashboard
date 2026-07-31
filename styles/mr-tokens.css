@@ -220,3 +220,51 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Chart tokens (Lane 4 — dashboard chart kit) ──────────────────────────
+   Every hex below was chosen by enumerating orderings of a brand-compatible
+   hue pool and validating the result against a six-check colourblind and
+   contrast standard on both dashboard grounds (--mr-dash-surface #FFFFFF and
+   --mr-dash-bg #F4F2EC):
+     - worst adjacent pair ΔE 10.3 under protanopia (target ≥ 8)
+     - worst adjacent pair ΔE 17.3 under normal vision (floor ≥ 15)
+     - all eight ≥ 3:1 contrast on both grounds
+     - all eight chroma ≥ 0.10
+   THE ORDER IS THE COLOURBLIND-SAFETY MECHANISM. Do not reorder the slots, do
+   not cycle back to --mr-chart-1 for a 9th series, and do not regenerate this
+   ramp "to match brand better" — brand gold/crimson alone collapse into each
+   other under deuteranopia, which is exactly why cool anchors (teal, indigo,
+   petrol, plum, olive) are mixed in. These colours are chart marks only —
+   never page chrome — so the surface palette stays on-brand everywhere else. */
+:root {
+  /* Categorical series — fixed slot order. Assign 1..N in sequence via
+     seriesColor() in chart-utils.ts, which throws past index 7 rather than
+     wrapping back to slot 1. */
+  --mr-chart-1: #A8791F;  /* gold    */
+  --mr-chart-2: #008B77;  /* teal    */
+  --mr-chart-3: #5B45BC;  /* indigo  */
+  --mr-chart-4: #B03A3E;  /* crimson */
+  --mr-chart-5: #0A6E9E;  /* petrol  */
+  --mr-chart-6: #C2622C;  /* orange  */
+  --mr-chart-7: #93357F;  /* plum    */
+  --mr-chart-8: #6E7A24;  /* olive   */
+
+  /* Ordinal / sequential ramp — one hue, monotone light→dark. FIVE STEPS IS
+     THE CEILING: a sixth step fails the ΔL ≥ 0.06 adjacent-step gap on this
+     hue, and the brand's gold-200 (#E4D7B4) fails the 2:1 light-end contrast
+     floor at 1.43:1 — so the ramp starts at the step below and must never go
+     lighter than --mr-chart-ramp-1. Do not extend this past 5 steps and do
+     not substitute --mr-gold-200/100 as a lighter 0th step. */
+  --mr-chart-ramp-1: #C9B483;
+  --mr-chart-ramp-2: #B0924F;
+  --mr-chart-ramp-3: #95783C;
+  --mr-chart-ramp-4: #846432;
+  --mr-chart-ramp-5: #6B5526;
+
+  /* Chart chrome — recessive by design: grid/axis/labels must never compete
+     with the marks they support. */
+  --mr-chart-grid: var(--mr-dash-hair);
+  --mr-chart-axis: var(--mr-fg-4);
+  --mr-chart-label: var(--mr-fg-3);
+  --mr-chart-surface: var(--mr-dash-surface);
+}

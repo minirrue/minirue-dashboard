@@ -3519,3 +3519,382 @@ tr:hover .dash-editable-pencil {
 @media (hover: none) {
   .dash-editable-pencil { opacity: 0.6; }
 }
+
+/* ── Chart kit (Lane 4 — components/dashboard/charts) ──────────────────
+   Chrome stays recessive by design: grid/axis/tick text lean on
+   --mr-chart-label/--mr-chart-axis (never --mr-fg), so the coloured marks
+   are always the loudest thing in the card. Motion is entry-only, 200ms,
+   --mr-ease-out, transform/opacity — reduced-motion users get none of it via
+   the global `prefers-reduced-motion` rule in mr-tokens.css, which already
+   covers every animation/transition in the app, SVG included. */
+
+.dash-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dash-chart-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dash-chart-title {
+  margin: 0;
+  font-family: var(--mr-font-ui);
+  font-size: var(--mr-text-md);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--mr-fg);
+}
+
+.dash-chart-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dash-chart-toggle {
+  padding: 6px 10px;
+  font-size: var(--mr-text-xs);
+}
+
+.dash-chart-svg-wrap {
+  width: 100%;
+  position: relative;
+}
+.dash-chart-svg-wrap svg {
+  display: block;
+}
+
+/* ── Tick / axis text (SVG <text>, so colour is `fill`, not `color`) ── */
+.dash-chart-tick-label {
+  font-family: var(--mr-font-ui);
+  font-size: var(--mr-text-xs);
+  fill: var(--mr-chart-label);
+}
+
+/* ── Legend ──
+   Text always wears --mr-fg-3, never the series colour — the swatch beside
+   it is what carries identity (DESIGN.md). */
+.dash-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.dash-chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  font-family: var(--mr-font-ui);
+  font-size: var(--mr-text-xs);
+  color: var(--mr-fg-3);
+  border-radius: var(--mr-radius-sm);
+  transition: opacity var(--mr-dur-fast) var(--mr-ease-snappy);
+}
+.dash-chart-legend-item:disabled {
+  cursor: default;
+}
+.dash-chart-legend-item[data-hidden="true"] {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+.dash-chart-legend-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.dash-chart-legend-label {
+  color: var(--mr-fg-3);
+}
+
+/* ── Empty / skeleton ── */
+.dash-chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mr-fg-4);
+  font-family: var(--mr-font-ui);
+  font-size: 13px;
+  background: var(--mr-dash-sub);
+  border: 1px dashed var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+}
+.dash-chart-skeleton {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Sparkline (Sparkline.tsx) ── */
+.dash-chart-sparkline {
+  display: block;
+}
+
+/* ── Tooltip — fixed positioning so it escapes any overflow:hidden ancestor.
+   Dark on light, deliberately — same "second neutral layer" logic DESIGN.md
+   already applies to the dashboard sidebar, used here for a floating
+   surface that must read above any chart colour behind it. ── */
+.dash-chart-tooltip {
+  position: fixed;
+  z-index: 80;
+  background: var(--mr-ink-900);
+  color: var(--mr-cream-100);
+  padding: 8px 10px;
+  border-radius: var(--mr-radius-sm);
+  font-family: var(--mr-font-ui);
+  font-size: 12px;
+  box-shadow: var(--mr-shadow-md);
+  pointer-events: none;
+  max-width: 240px;
+}
+.dash-chart-tooltip-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+.dash-chart-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  white-space: nowrap;
+}
+.dash-chart-tooltip-swatch {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.dash-chart-tooltip-label {
+  flex: 1;
+  opacity: 0.85;
+}
+.dash-chart-tooltip-value {
+  font-weight: 600;
+}
+
+/* ── Entry motion — marks only, never chrome. transform/opacity, 200ms,
+   --mr-ease-out. Fully collapsed under prefers-reduced-motion via the
+   global rule in mr-tokens.css. ── */
+.dash-chart-mark-enter {
+  animation: dash-chart-fade-in var(--mr-dur-fast) var(--mr-ease-out) both;
+  transform-origin: center;
+}
+@keyframes dash-chart-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   Lane 12 — Analytics overview widget grid
+   ============================================================ */
+
+/* Two generic status keys the business-status `.dash-status[data-status=…]`
+   set above doesn't have yet — used by the reconciliation widget, which
+   needs a plain ok/danger read rather than a domain-specific one. Same
+   token pairs, same markup contract, just not tied to an order/product
+   lifecycle name. */
+.dash-status[data-status="ok"] {
+  background: var(--mr-st-ok-bg);
+  color: var(--mr-st-ok-fg);
+}
+.dash-status[data-status="warn"] {
+  background: var(--mr-st-warn-bg);
+  color: var(--mr-st-warn-fg);
+}
+.dash-status[data-status="danger"] {
+  background: var(--mr-st-danger-bg);
+  color: var(--mr-st-danger-fg);
+}
+
+/* Visible focus ring on the whole-card link — widgets are keyboard targets,
+   not mouse-only affordances, and `.dash-card`/`.dash-metric` never resets
+   `outline` themselves. */
+a.dash-card:focus-visible {
+  outline: 2px solid var(--mr-gold-500);
+  outline-offset: 2px;
+}
+
+/* Shared empty/no-data-in-range copy inside a widget's own render (loading
+   and error are handled once, centrally, by `AnalyticsWidgetCard`). */
+.dash-widget-empty {
+  font-size: 13px;
+  color: var(--mr-fg-3);
+  margin: 0;
+}
+
+/* ── Header toolbar (range + compare + freshness) ── */
+.dash-analytics-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.dash-analytics-toolbar > .dash-filters {
+  margin-bottom: 0;
+}
+
+/* ── Collection-degraded banner — a stale rollup or ingest lag, not "no
+   data yet" (each widget already renders that itself). Warm, not alarming:
+   the warn pair, not danger — the data is real, just behind. ── */
+.dash-degraded-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  background: var(--mr-dash-surface);
+  border: 1px solid var(--mr-st-warn-fg);
+  border-radius: var(--mr-dash-card-radius);
+}
+
+/* ── Widget grid ──
+   `repeat(auto-fit, minmax(min(280px,100%),1fr))` per DESIGN.md's
+   responsive-grid pattern — no breakpoints, `minmax(0,…)` guard on each slot
+   so a long label can't force horizontal overflow. */
+.dash-widget-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 16px;
+}
+.dash-widget-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.dash-widget-sm { grid-column: span 1; }
+.dash-widget-md { grid-column: span 2; }
+.dash-widget-lg { grid-column: span 3; }
+.dash-widget-full { grid-column: 1 / -1; }
+
+/* Drop-target affordance — a static outline, not motion, so it costs
+   nothing under prefers-reduced-motion. */
+.dash-widget-slot.is-drag-over .dash-card {
+  outline: 2px dashed var(--mr-gold-400);
+  outline-offset: 2px;
+}
+
+/* The only motion in the grid: a ~200ms settle after a reorder, communicating
+   that a widget moved and nothing else. transform/opacity only, --mr-ease-
+   snappy, collapses to ~0 under prefers-reduced-motion via the global rule
+   in mr-tokens.css. */
+@keyframes dash-widget-settle {
+  from { opacity: 0.55; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.dash-widget-slot.just-moved {
+  animation: dash-widget-settle var(--mr-dur-fast) var(--mr-ease-snappy) both;
+}
+
+/* ── Per-widget edit toolbar ── */
+.dash-widget-editbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--mr-dash-sub);
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+}
+.dash-widget-editbar-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--mr-fg-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dash-widget-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--mr-fg-3);
+  cursor: grab;
+  border-radius: var(--mr-radius-sm);
+  flex-shrink: 0;
+}
+.dash-widget-drag-handle:hover {
+  color: var(--mr-fg);
+  background: var(--mr-dash-hair);
+}
+.dash-widget-drag-handle:active {
+  cursor: grabbing;
+}
+.dash-widget-size-btn {
+  min-width: 32px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.dash-widget-remove-btn {
+  padding: 4px 6px;
+  flex-shrink: 0;
+}
+.dash-widget-remove-btn:hover:not(:disabled) {
+  color: var(--mr-st-danger-fg);
+  background: var(--mr-st-danger-bg);
+}
+
+/* ── Add-widget panel ── */
+.dash-widget-add-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.dash-widget-add-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+.dash-widget-add-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--mr-dash-hair);
+}
+.dash-widget-add-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mr-fg);
+}
+.dash-widget-add-desc {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--mr-fg-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-widget-slot.just-moved {
+    animation: none;
+  }
+}
