@@ -342,6 +342,8 @@ export default function CollabBrandClient() {
 
                 alt="Your avatar"
 
+                fallback={<GenericAvatarIcon size="55%" />}
+
                 className="collab-brand-logo collab-avatar"
 
                 previewOpen={avatarPreviewOpen}

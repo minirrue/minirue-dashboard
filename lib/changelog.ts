@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 195,
+    date: '2026-08-01',
+    area: 'Customers, Collaborators, Gallery, Chat',
+    summary:
+      'Photos that are slow to load no longer turn into a dashed box reading “Couldn’t load”. A customer photo uploaded a moment ago has to be built for the first time before it can be shown, which occasionally takes a few seconds — the dashboard used to give up after under two seconds and put an error message where the picture should be. It now waits far longer, keeps trying quietly in the background, and shows the ordinary blank-photo silhouette while it does, so a slow photo simply appears when it is ready instead of looking broken.',
+  },
+  {
     id: 194,
     date: '2026-08-01',
     area: 'Analytics',

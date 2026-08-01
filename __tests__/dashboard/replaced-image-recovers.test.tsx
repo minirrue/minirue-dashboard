@@ -137,9 +137,13 @@ describe('Category row thumbnail — the picture a replaced category image lands
 describe('ImagePreviewModal — the enlarged view of a replaced photo', () => {
   it('recovers by itself when the enlarged load fails', async () => {
     render(<ImagePreviewModal src={REMOTE} alt="" onClose={jest.fn()} />);
-    fireEvent.error(screen.getByRole('presentation'));
+    // `hidden: true` because a failing image is now covered by the fallback
+    // and marked aria-hidden while the retries run underneath it — it is not
+    // unmounted, which is the point: the retry that succeeds needs something
+    // left to fire `onLoad` on.
+    fireEvent.error(screen.getByRole('presentation', { hidden: true }));
     await waitFor(() =>
-      expect(screen.getByRole('presentation')).toHaveAttribute(
+      expect(screen.getByRole('presentation', { hidden: true })).toHaveAttribute(
         'src',
         expect.stringContaining('retry=1'),
       ),

@@ -529,6 +529,10 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                   <EnlargeableImage
                     src={customer.avatarUrl}
                     alt={`${displayName(customer)} photo`}
+                    // A photo that is slow to load degrades to the same
+                    // silhouette shown when there is no photo at all,
+                    // rather than to a dashed "Couldn't load" box.
+                    fallback={<GenericAvatarIcon size="55%" />}
                     className="collab-brand-logo collab-avatar"
                     previewOpen={avatarPreviewOpen}
                     onOpenPreview={() => setAvatarPreviewOpen(true)}

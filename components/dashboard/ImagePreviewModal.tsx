@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import UploadPreviewImage from './UploadPreviewImage';
 
 /**
@@ -75,6 +75,7 @@ export function EnlargeableImage({
   onClosePreview,
   traceId,
   localFile,
+  fallback,
 }: {
   src: string;
   alt: string;
@@ -83,6 +84,13 @@ export function EnlargeableImage({
   onOpenPreview: () => void;
   onClosePreview: () => void;
   traceId?: string;
+  /**
+   * What to show while the image is still failing to load — for an avatar,
+   * the same generic silhouette used when there is no photo at all. Forwarded
+   * to RetryingImage; see the note there on why this replaced the old
+   * "Couldn't load" error box.
+   */
+  fallback?: React.ReactNode;
   /**
    * Task FF (2026-07-30): bytes already in the browser for THIS image — the
    * File/Blob just picked or cropped, whose upload `src` is the eventual
@@ -102,7 +110,13 @@ export function EnlargeableImage({
         aria-label="View full size"
         data-trace-id={traceId}
       >
-        <UploadPreviewImage src={src} localFile={localFile} alt={alt} className={className} />
+        <UploadPreviewImage
+          src={src}
+          localFile={localFile}
+          alt={alt}
+          className={className}
+          fallback={fallback}
+        />
       </button>
       {previewOpen && <ImagePreviewModal src={src} alt={alt} onClose={onClosePreview} />}
     </>
