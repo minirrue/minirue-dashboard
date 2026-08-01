@@ -196,13 +196,32 @@ export default function DataResetPanel() {
     >
       <h2 style={{ marginTop: 0 }}>Erase shop data</h2>
 
+      {/*
+        This paragraph used to promise "Sign-in accounts are never touched".
+        That stopped being true: erasing customers, collaborators or support
+        also removes their logins, because leaving them behind listed people on
+        this very screen whose data was gone and who could still sign in.
+        Administrator and super-admin accounts are the ones that survive, and
+        saying exactly which is the difference between a reassuring sentence
+        and a useful one.
+      */}
       <p className="dash-muted">
-        Removes real data and cannot be undone. Sign-in accounts are never
-        touched — everyone can still log in afterwards.
+        Removes real data and cannot be undone. Customer, partner and support
+        sign-in accounts are removed along with their data — administrator and
+        super-admin logins always survive, so you can still sign in afterwards.
       </p>
 
+      {/*
+        `users` is genuinely on the API's never-deleted list — no group can wipe
+        that table. But a reset does remove individual customer, partner and
+        support ROWS from it by role, so listing the table name alone reads as
+        "your accounts are safe" and would be misleading. The qualifier below
+        says which accounts actually survive.
+      */}
       <p className="dash-help-text">
-        Always kept: {preview.neverDeleted.join(', ')}
+        Tables never emptied: {preview.neverDeleted.join(', ')} — though
+        customer, partner and support accounts are removed from{' '}
+        <code>users</code> by role.
       </p>
 
       <p
@@ -246,7 +265,9 @@ export default function DataResetPanel() {
         style={{ marginTop: 12 }}
         data-trace-id={`${TRACE}::EL-BTN-run-reset-all`}
       >
-        {runningAll ? 'Erasing everything…' : 'Erase everything except accounts'}
+        {runningAll
+          ? 'Erasing everything…'
+          : 'Erase everything except admin logins'}
       </button>
 
       <details style={{ marginTop: 20 }}>
