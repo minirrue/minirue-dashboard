@@ -30,9 +30,12 @@ export default function ActingAsBanner() {
     function tick() {
       const left = (acting as ActingAs).expiresAt - Date.now();
       if (left <= 0) {
-        // The token is dead either way; put the real session back rather than
-        // leaving a bar that offers to switch back from nowhere.
-        stopActingAs();
+        // The borrowed session is dead either way; put the real one back
+        // rather than leaving a bar that offers to switch back from nowhere.
+        // Not awaited — this runs inside an interval tick and the navigation
+        // below is what the operator sees; the server restores the admin
+        // session regardless of whether this page is still around to hear it.
+        void stopActingAs();
         window.location.href = '/admin';
         return;
       }
@@ -48,8 +51,11 @@ export default function ActingAsBanner() {
 
   if (!acting) return null;
 
-  function handleSwitchBack() {
-    const restored = stopActingAs();
+  async function handleSwitchBack() {
+    // Awaited: the admin's session is restored by the SERVER, so navigating
+    // before it lands would load /admin with the borrowed cookie still in
+    // place — the operator would arrive as the wrong person.
+    const restored = await stopActingAs();
     window.location.href = restored ? '/admin' : '/login';
   }
 

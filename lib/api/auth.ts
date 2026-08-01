@@ -108,65 +108,62 @@ export async function apiLogout(_refreshToken?: string): Promise<void> {
 }
 
 /**
- * Ends a "sign in as" session ON THE SERVER.
+ * Borrows another account's session — "sign in as".
  *
- * Until this existed, stopping was purely a browser gesture — the borrowed
- * token stayed valid for the rest of its 30 minutes, so a leaked one was
- * unstoppable. It now names a revocable session (`sid`) and this revokes it.
+ * Better Auth's admin plugin swaps the session COOKIE on the server, so there
+ * is no borrowed token for the client to hold, install or later revoke. That
+ * removes the whole class of problem the previous implementation had to manage
+ * by hand: parked tokens in sessionStorage, a bearer token in localStorage, and
+ * a separate revoke call that had to be remembered.
  *
- * Two deliberate departures from apiFetch, both load-bearing:
- *
- *  - `credentials: 'omit'`. While impersonating, the httpOnly cookie pair
- *    still holds the SUPER ADMIN's session while the borrowed token sits in
- *    localStorage, and the backend's extractor reads the COOKIE FIRST
- *    (jwt.strategy.ts). Sending cookies would present the super admin's own
- *    token instead of the borrowed one — i.e. ask the server to end the wrong
- *    session. Omitting them forces the Authorization header to be what is
- *    read.
- *  - the token is passed in, not read from storage, so the caller can revoke
- *    the borrowed token it is about to throw away.
- *
- * Best-effort by contract: it resolves on failure. A dead network must never
- * strand someone inside a borrowed session in their own browser.
+ * The new session records `impersonatedBy`, so an admin acting as a customer is
+ * always attributable.
  */
-export async function apiStopActingAs(borrowedAccessToken: string): Promise<void> {
-  try {
-    await fetch(`${API_BASE}/auth/stop-acting-as`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        [CLIENT_HEADER]: CLIENT_AUDIENCE,
-        Authorization: `Bearer ${borrowedAccessToken}`,
-      },
-      credentials: 'omit',
-      body: '{}',
-    });
-  } catch {
-    // fall through: the client still clears itself
-  }
+export async function apiImpersonateUser(userId: string): Promise<void> {
+  await apiFetch<unknown>('/auth/admin/impersonate-user', {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify({ userId }),
+  });
 }
 
 /**
- * Who is signed in.
+ * Hands the borrowed session back.
  *
- * `get-session` answers 200 with a NULL body for a signed-out visitor rather
- * than 401. The old `/auth/me` 401ed, and the client leans on that hard — a
- * settled 401 is what makes the session state fail closed. So an empty session
- * is converted into the 401 the rest of the app already reasons about, rather
- * than teaching every consumer a second way to be signed out.
+ * Unlike the flow this replaces, stopping is a genuine server action: it is the
+ * server that restores the admin's session, so there is no state the client
+ * could get wrong and no borrowed credential left alive if the browser closes
+ * mid-way.
  */
+export async function apiStopImpersonating(): Promise<void> {
+  await apiFetch<unknown>('/auth/admin/stop-impersonating', {
+    method: 'POST',
+    auth: true,
+    body: '{}',
+  });
+}
+
 export async function apiMe(): Promise<MeResponse> {
   const session = await apiFetch<{
     user?: { id: string; email: string; name?: string | null; role?: string | null };
   } | null>('/auth/get-session', { auth: true });
 
   if (!session?.user) {
-    const err: ApiError = {
-      status: 401,
-      message: 'Session expired',
-      error: 'Unauthorized',
-    };
-    throw err;
+    /**
+     * Fall back to the legacy `/auth/me` before declaring anyone signed out.
+     *
+     * An operator whose browser signed in BEFORE the cutover holds the old
+     * mr_dash_access / mr_dash_refresh pair, which Better Auth knows nothing
+     * about — so `get-session` correctly answers "no session" for someone who
+     * is still signed in. On the storefront this showed as SIGN IN in the
+     * header while the account pages rendered the profile; here it would have
+     * bounced a working admin session to /login.
+     *
+     * Delete this once the legacy cookie's lifetime has passed; the old
+     * `/auth/me` goes with it.
+     */
+    const legacy = await apiFetch<MeResponse>('/auth/me', { auth: true });
+    return parseAuthUser(legacy);
   }
   return parseAuthUser({
     userId: session.user.id,

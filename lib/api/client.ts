@@ -129,12 +129,13 @@ export async function apiFetch<T>(
   // the user. Treating both alike is what made every mistyped password on the
   // login screen read "Session expired".
   if (res.status === 401 && auth && !_isRetry) {
-    // A borrowed "sign in as" session has no refresh token and cannot be
-    // extended. When it dies, hand the super admin their own session back
-    // rather than signing everyone out.
+    // A borrowed "sign in as" session is short-lived by design. When it dies,
+    // hand the super admin their own session back rather than signing everyone
+    // out. The restore is a server call now, so it is awaited — the message
+    // below tells the operator which account they are on, and it must be true.
     const { isActing, stopActingAs } = await import('@/lib/auth/acting-session');
     if (isActing()) {
-      const restored = stopActingAs();
+      const restored = await stopActingAs();
       throw {
         status: 401,
         message: restored

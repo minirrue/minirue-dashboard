@@ -1,24 +1,26 @@
 /**
  * Stopping a "sign in as" has to reach the SERVER.
  *
- * `stopActingAs()` used to be nothing but a swap in the browser: it put the
- * super admin's parked tokens back and forgot the borrowed one. The borrowed
- * token itself stayed valid for the rest of its 30 minutes, and there was no
- * endpoint that could end it — so one that leaked (copied out of devtools, sat
- * in a shared machine's storage, captured from a screen share) could not be
- * stopped at all.
+ * The behaviour under test is unchanged; the mechanism is completely different,
+ * so these were rewritten rather than patched.
  *
- * The backend now mints it against a revocable session marker and exposes
- * POST /v1/auth/stop-acting-as. These tests assert the dashboard actually
- * calls it — on switching back AND on signing out — and that a failed call
- * still clears the client, because someone who pressed the button must never
- * be left holding a borrowed session because the network was down.
+ * It used to be that `stopActingAs()` swapped tokens in the browser: it put the
+ * super admin's parked tokens back and forgot the borrowed one, which stayed
+ * valid for the rest of its 30 minutes. A separate `/auth/stop-acting-as`
+ * endpoint was added later so that a leaked token could actually be revoked.
+ *
+ * Better Auth's admin plugin removes the whole shape of that problem. The
+ * borrowed session IS the session cookie, swapped server-side, so there is
+ * nothing parked in the browser, nothing to restore by hand, and stopping is a
+ * server action by construction. What still has to be true — and is what these
+ * assert — is that switching back reaches the server, that a failed call does
+ * not leave someone looking at a banner whose button does nothing, and that
+ * signing out while impersonating still ends things properly.
  */
 import React from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useLogout } from '@/lib/hooks/use-auth';
-import { setTokens, getAccessToken } from '@/lib/auth/tokens';
 import {
   beginActingAs,
   isActing,
@@ -47,19 +49,19 @@ function wrapper({ children }: { children: React.ReactNode }) {
 }
 
 function stopCalls(mock: jest.Mock): unknown[][] {
-  return mock.mock.calls.filter((c) => String(c[0]).includes('/auth/stop-acting-as'));
+  return mock.mock.calls.filter((c) =>
+    String(c[0]).includes('/auth/admin/stop-impersonating'),
+  );
 }
 
-/** The fire-and-forget revoke goes through a dynamic import; let it land. */
-async function flush(): Promise<void> {
-  await Promise.resolve();
-  await new Promise((r) => setTimeout(r, 0));
-  await Promise.resolve();
+function impersonateCalls(mock: jest.Mock): unknown[][] {
+  return mock.mock.calls.filter((c) =>
+    String(c[0]).includes('/auth/admin/impersonate-user'),
+  );
 }
 
-function actAsSomeone(): void {
-  setTokens('super-access', 'super-refresh');
-  beginActingAs('borrowed-access', 1800, {
+async function actAsSomeone(): Promise<void> {
+  await beginActingAs('cust-1', {
     id: 'cust-1',
     name: 'A Customer',
     email: 'a@b.c',
@@ -84,89 +86,73 @@ describe('stopping a borrowed session ends it on the server', () => {
     sessionStorage.clear();
   });
 
-  it('POSTs /auth/stop-acting-as with the BORROWED token when switching back', async () => {
-    actAsSomeone();
+  it('asks the server to swap the session when acting starts', async () => {
+    await actAsSomeone();
+    expect(impersonateCalls(fetchMock)).toHaveLength(1);
+    expect(isActing()).toBe(true);
+  });
 
-    const restored = stopActingAs();
-    await flush();
+  it('POSTs stop-impersonating when switching back', async () => {
+    await actAsSomeone();
+    fetchMock.mockClear();
+
+    const restored = await stopActingAs();
 
     expect(restored).toBe(true);
-    const calls = stopCalls(fetchMock);
-    expect(calls).toHaveLength(1);
-
-    const init = calls[0][1] as RequestInit;
-    const headers = init.headers as Record<string, string>;
-    // The borrowed token, not the super admin's own — the point is to end the
-    // session being given up, not the one being returned to.
-    expect(headers.Authorization).toBe('Bearer borrowed-access');
+    expect(stopCalls(fetchMock)).toHaveLength(1);
+    expect(isActing()).toBe(false);
   });
 
-  it("omits credentials, so the cookie cannot end the super admin's session instead", async () => {
-    actAsSomeone();
-
-    stopActingAs();
-    await flush();
-
-    // While impersonating, the httpOnly cookie pair still holds the SUPER
-    // ADMIN's session while the borrowed token sits in localStorage — and the
-    // backend's extractor reads the COOKIE FIRST. Sending cookies here would
-    // ask the server to end the wrong session entirely.
-    const init = stopCalls(fetchMock)[0][1] as RequestInit;
-    expect(init.credentials).toBe('omit');
-    expect(init.method).toBe('POST');
+  it('refuses a second hop rather than losing the way back', async () => {
+    // Impersonating from inside an impersonated session would make "stop"
+    // return to the FIRST target rather than to the super admin — an account
+    // nobody asked for, with no obvious way out.
+    await actAsSomeone();
+    await expect(actAsSomeone()).rejects.toThrow(/switch back first/i);
   });
 
-  it('still hands the super admin their own session back when the call fails', async () => {
-    actAsSomeone();
+  it('still clears the client when the call fails, and reports that it did not restore', async () => {
+    await actAsSomeone();
     fetchMock.mockRejectedValue(new Error('network down'));
 
-    const restored = stopActingAs();
-    await flush();
+    const restored = await stopActingAs();
 
-    // Best-effort: a dead network must not strand someone inside a borrowed
-    // session in their own browser.
-    expect(restored).toBe(true);
+    // False, not true: the admin's session is restored by the SERVER, so a
+    // failed call leaves the browser holding the borrowed cookie. The caller
+    // uses this to send them to sign-in rather than silently continuing as
+    // someone else.
+    expect(restored).toBe(false);
+    // The local note goes either way — a banner offering a "switch back" that
+    // cannot work is worse than no banner at all.
     expect(isActing()).toBe(false);
-    expect(getAccessToken()).toBe('super-access');
-  });
-
-  it('does not call it when there is no borrowed session to end', async () => {
-    setTokens('super-access', 'super-refresh');
-
-    stopActingAs();
-    clearActingSession();
-    await flush();
-
-    expect(stopCalls(fetchMock)).toHaveLength(0);
   });
 
   it('ends the borrowed session when signing out while impersonating', async () => {
-    actAsSomeone();
+    await actAsSomeone();
+    fetchMock.mockClear();
 
     const { result } = renderHook(() => useLogout(), { wrapper });
     result.current.mutate();
     await waitFor(() => expect(result.current.isPending).toBe(false));
-    await flush();
 
-    // Signing out clears the super admin's session. The borrowed one is a
-    // separate session in separate storage, so without this it stayed live for
-    // the rest of its 30 minutes.
-    const calls = stopCalls(fetchMock);
-    expect(calls).toHaveLength(1);
-    expect((calls[0][1] as RequestInit).headers).toMatchObject({
-      Authorization: 'Bearer borrowed-access',
-    });
+    // Sign-out destroys whichever session the cookie names — and while
+    // impersonating that IS the borrowed one, so a separate revoke is neither
+    // needed nor correct: restoring the admin's session a moment before
+    // signing it out would be a race with no upside.
+    const signOut = fetchMock.mock.calls.filter((c) =>
+      String(c[0]).includes('/auth/sign-out'),
+    );
+    expect(signOut).toHaveLength(1);
     expect(isActing()).toBe(false);
   });
 
-  it('does not call it on an ordinary sign-out', async () => {
-    setTokens('admin-access', 'admin-refresh');
+  it('clearActingSession forgets the note without calling the server', async () => {
+    await actAsSomeone();
+    fetchMock.mockClear();
 
-    const { result } = renderHook(() => useLogout(), { wrapper });
-    result.current.mutate();
-    await waitFor(() => expect(result.current.isPending).toBe(false));
-    await flush();
+    clearActingSession();
 
+    expect(isActing()).toBe(false);
     expect(stopCalls(fetchMock)).toHaveLength(0);
   });
 });

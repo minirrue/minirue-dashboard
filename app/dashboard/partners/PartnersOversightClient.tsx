@@ -300,7 +300,10 @@ function OpenAsPartnerDialog({
         return;
       }
       const result = await signInAsAccount(account.id, password);
-      beginActingAs(result.accessToken, result.expiresIn, result.actingAs);
+      // The password gate stays on signInAsAccount; the session swap is the
+      // separate step. There is no borrowed token to install any more —
+      // Better Auth replaces this browser's session cookie server-side.
+      await beginActingAs(result.actingAs.id, result.actingAs, result.expiresIn);
       // Full reload: the sidebar, cached queries and role brief were all built
       // for the super admin, not the partner.
       window.location.href = '/collab/workspace';

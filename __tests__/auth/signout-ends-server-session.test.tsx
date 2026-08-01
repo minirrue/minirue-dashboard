@@ -95,15 +95,14 @@ describe('dashboard Sign out ends the SERVER session, not just the client one', 
     expect(logoutCalls(fetchMock)).toHaveLength(1);
   });
 
-  it('POSTs /auth/sign-out while impersonating, where the refresh token is deliberately empty', async () => {
+  it('POSTs /auth/sign-out while impersonating', async () => {
     setTokens('super-access', 'super-refresh');
-    beginActingAs('borrowed-access', 1800, {
+    await beginActingAs('cust-1', {
       id: 'cust-1',
       name: 'A Customer',
       email: 'a@b.c',
       role: Role.CUSTOMER,
     });
-    expect(getRefreshToken()).toBe('');
     expect(isActing()).toBe(true);
 
     const { result } = renderHook(() => useLogout(), { wrapper });
@@ -113,9 +112,9 @@ describe('dashboard Sign out ends the SERVER session, not just the client one', 
     expect(logoutCalls(fetchMock)).toHaveLength(1);
   });
 
-  it('throws the parked super-admin session away, so a later 401 cannot restore it', async () => {
+  it('leaves nothing for a later 401 to restore, so sign-out is final', async () => {
     setTokens('super-access', 'super-refresh');
-    beginActingAs('borrowed-access', 1800, {
+    await beginActingAs('cust-1', {
       id: 'cust-1',
       name: 'A Customer',
       email: 'a@b.c',
@@ -127,11 +126,14 @@ describe('dashboard Sign out ends the SERVER session, not just the client one', 
     await waitFor(() => expect(result.current.isPending).toBe(false));
 
     expect(isActing()).toBe(false);
+    // There is no parked session any more — the borrowed session was a server
+    // cookie, not tokens held in the browser, so there is nothing to park and
+    // nothing that could be restored behind the user's back.
     expect(sessionStorage.getItem('mr-acting-parked')).toBeNull();
 
     // This is what apiFetch's 401 branch does. After a sign-out it must find
     // nothing to put back.
-    expect(stopActingAs()).toBe(false);
+    await expect(stopActingAs()).resolves.toBe(false);
     expect(getAccessToken()).toBeNull();
     expect(document.cookie).not.toContain('mr-auth=1');
   });

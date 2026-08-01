@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 197,
+    date: '2026-08-01',
+    area: 'Sign in, Accounts',
+    summary:
+      'Two fixes to signing in. If you were already signed in before today’s change, your session keeps working instead of the site asking you to sign in again — and pressing Sign out now genuinely ends the session everywhere, rather than only in the browser tab. “Sign in as” also changed underneath: instead of borrowing a temporary key, the dashboard now switches your session on the server, so switching back is reliable and a borrowed session can always be ended.',
+  },
+  {
     id: 196,
     date: '2026-08-01',
     area: 'Sign in',

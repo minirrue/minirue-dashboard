@@ -1048,7 +1048,10 @@ function SignInAsDialog({
     setError(null);
     try {
       const result = await signInAsAccount(account.id, confirmPassword);
-      beginActingAs(result.accessToken, result.expiresIn, result.actingAs);
+      // The password gate stays on signInAsAccount; the session swap is the
+      // separate step. There is no borrowed token to install any more —
+      // Better Auth replaces this browser's session cookie server-side.
+      await beginActingAs(result.actingAs.id, result.actingAs, result.expiresIn);
       onStarted();
     } catch (e) {
       setError((e as ApiError).message ?? 'Could not start that session.');

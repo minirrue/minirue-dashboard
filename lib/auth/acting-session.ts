@@ -1,22 +1,38 @@
 'use client';
 
-import { getAccessToken, getRefreshToken, setTokens, clearTokens } from './tokens';
 import type { Role } from './role';
 
 /**
  * "Sign in as" — holding a borrowed session without losing your own.
  * specs/2026-07-23-account-administration
  *
- * The super admin's real tokens are parked here while a borrowed token sits in
- * the normal slot, so every existing API call keeps working untouched and
- * switching back is just putting them back.
+ * Rewritten onto Better Auth's admin plugin, and the change is a simplification
+ * rather than a port. The old design had to park the super admin's access and
+ * refresh tokens in sessionStorage and install a borrowed token in their place,
+ * because the session WAS the token and the client was the only thing that knew
+ * which one to send. Three things followed from that, all of them bad:
  *
- * sessionStorage, not localStorage, on purpose: a borrowed session should not
- * outlive the tab it was started in. Close the tab and the parked tokens go
- * with it — the borrowed token expires on its own and nothing is left behind.
+ *   - A borrowed bearer token sat in localStorage, readable by any script on
+ *     the page.
+ *   - Switching back meant putting the parked tokens back by hand. Lose that
+ *     sessionStorage entry — a crash, a closed tab, a cleared store — and the
+ *     super admin's own session was simply gone.
+ *   - Stopping had to separately revoke the borrowed token server-side, which
+ *     was added later, because until then "stop acting" was purely a browser
+ *     gesture and a leaked token stayed live for its full 30 minutes.
+ *
+ * Better Auth swaps the SESSION COOKIE on the server. `impersonate-user`
+ * replaces this browser's session with one for the target; `stop-impersonating`
+ * puts the admin's back. Nothing is parked, nothing is held in JS, and stopping
+ * is a server action by construction rather than by remembering to add one.
+ * The borrowed session records `impersonatedBy`, so the act is never anonymous
+ * in the audit trail.
+ *
+ * What remains here is only the LOCAL note of who is being acted as, so the
+ * banner has something to render without a round trip. It is a display cache,
+ * not a credential — losing it costs a banner, not a session.
  */
 
-const PARKED_KEY = 'mr-acting-parked';
 const ACTING_KEY = 'mr-acting-as';
 
 export interface ActingAs {
@@ -24,13 +40,8 @@ export interface ActingAs {
   name: string;
   email: string;
   role: Role;
-  /** Epoch ms when the borrowed token stops working. */
+  /** Epoch ms when the borrowed session stops working. */
   expiresAt: number;
-}
-
-interface ParkedSession {
-  accessToken: string;
-  refreshToken: string;
 }
 
 function readJson<T>(key: string): T | null {
@@ -44,30 +55,6 @@ function readJson<T>(key: string): T | null {
   }
 }
 
-/**
- * Tells the server to revoke the borrowed session, then forgets about it.
- *
- * Fire-and-forget on purpose, and the reason both callers below can stay
- * synchronous: a failed round-trip must still clear the client. The server
- * side is not merely a nicety — until POST /auth/stop-acting-as existed,
- * "stop acting" was ONLY this file putting the parked tokens back, so the
- * borrowed token itself stayed valid for the rest of its 30 minutes and a
- * leaked one could not be stopped at all.
- *
- * Dynamically imported so this module keeps no static edge to the API client
- * (which already imports back into this one), and read BEFORE the tokens are
- * swapped or cleared — afterwards the borrowed token is gone and there is
- * nothing left to revoke with.
- */
-function revokeBorrowedSession(): void {
-  if (!isActing()) return;
-  const borrowed = getAccessToken();
-  if (!borrowed) return;
-  void import('@/lib/api/auth')
-    .then((m) => m.apiStopActingAs(borrowed))
-    .catch(() => undefined);
-}
-
 /** Who the dashboard is currently acting as, or null when it is just you. */
 export function getActingAs(): ActingAs | null {
   return readJson<ActingAs>(ACTING_KEY);
@@ -78,93 +65,71 @@ export function isActing(): boolean {
 }
 
 /**
- * Parks the caller's own tokens and installs the borrowed one.
+ * Forgets the local note WITHOUT talking to the server.
  *
- * Refuses to start a second hop. Acting as A and then as B from inside A would
- * overwrite the parked tokens with A's, and switching back would land on an
- * account nobody asked for.
+ * Used by sign-out, where the server is about to destroy the session anyway —
+ * including the borrowed one, since that IS the session. Calling
+ * `stopActingAs` there would restore the admin's session a moment before
+ * signing it out, which is both pointless and a race.
+ *
+ * sessionStorage survives `clearTokens()`, so without this a sign-out while
+ * impersonating left the banner's note behind for the next sign-in to find.
  */
-export function beginActingAs(
-  accessToken: string,
-  expiresInSeconds: number,
+export function clearActingSession(): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.removeItem(ACTING_KEY);
+}
+
+/**
+ * Borrows the target's session.
+ *
+ * Refuses to start a second hop. Better Auth would happily impersonate from
+ * inside an impersonated session, and stopping would then return to the FIRST
+ * target rather than to the super admin — landing on an account nobody asked
+ * for, with no obvious way back.
+ */
+export async function beginActingAs(
+  userId: string,
   who: Omit<ActingAs, 'expiresAt'>,
-): void {
+  expiresInSeconds = 3600,
+): Promise<void> {
   if (typeof window === 'undefined') return;
   if (isActing()) {
     throw new Error('Already signed in as another account. Switch back first.');
   }
 
-  const own = getAccessToken();
-  const ownRefresh = getRefreshToken();
-  if (!own || !ownRefresh) {
-    throw new Error('Your own session is missing. Sign in again.');
-  }
+  const { apiImpersonateUser } = await import('@/lib/api/auth');
+  await apiImpersonateUser(userId);
 
-  sessionStorage.setItem(
-    PARKED_KEY,
-    JSON.stringify({ accessToken: own, refreshToken: ownRefresh } as ParkedSession),
-  );
   sessionStorage.setItem(
     ACTING_KEY,
     JSON.stringify({ ...who, expiresAt: Date.now() + expiresInSeconds * 1000 }),
   );
-
-  // The borrowed token has no refresh token. Parking an empty string here
-  // instead of the super admin's real one matters: a 401 while acting must not
-  // silently refresh back into the super admin's session and carry on.
-  setTokens(accessToken, '');
 }
 
 /**
- * Puts the caller's own tokens back. Safe to call when not acting.
- * Returns true if a session was actually restored.
+ * Hands the borrowed session back and returns to your own.
+ *
+ * The local note is cleared FIRST, and deliberately: if the server call fails,
+ * the banner must not keep claiming an impersonation the browser can no longer
+ * end. Better to show your own account and be wrong for a moment than to leave
+ * someone looking at a banner whose "switch back" button does nothing.
  */
-export function stopActingAs(): boolean {
+export async function stopActingAs(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
-  // First, while the borrowed token is still the installed one. Switching back
-  // has to END the borrowed session, not just stop using it.
-  revokeBorrowedSession();
-  const parked = readJson<ParkedSession>(PARKED_KEY);
-  sessionStorage.removeItem(PARKED_KEY);
+  const wasActing = isActing();
   sessionStorage.removeItem(ACTING_KEY);
+  if (!wasActing) return false;
 
-  if (!parked?.accessToken || !parked?.refreshToken) {
-    // Nothing to go back to — better to land on the sign-in screen than to
-    // leave a dead borrowed token in place looking like a working session.
-    clearTokens();
+  try {
+    const { apiStopImpersonating } = await import('@/lib/api/auth');
+    await apiStopImpersonating();
+    return true;
+  } catch {
+    // The admin's session is restored by the SERVER, so a failed call here
+    // leaves the browser holding the borrowed cookie. Returning false tells the
+    // caller to send them to sign-in, which is the only honest recovery — it is
+    // better than silently continuing as someone else.
     return false;
   }
-
-  setTokens(parked.accessToken, parked.refreshToken);
-  return true;
-}
-
-/**
- * Throws the borrowed session away WITHOUT restoring the parked one.
- *
- * `stopActingAs()` is "switch back to me"; this is "there is no me any more".
- * Sign-out must use it, because clearTokens() only touches localStorage and
- * the mr-auth hint — it never touched sessionStorage, so after signing out
- * while impersonating, `mr-acting-parked` still held the super admin's real
- * access AND refresh tokens and `mr-acting-as` still said we were acting.
- * The very next 401 anywhere in the app runs apiFetch's isActing() branch
- * (lib/api/client.ts:132), which calls stopActingAs(), which writes those
- * parked tokens back into localStorage and re-sets `mr-auth=1` — signing the
- * super admin straight back in moments after they pressed Sign out.
- */
-export function clearActingSession(): void {
-  if (typeof window === 'undefined') return;
-  // Signing out while impersonating has to end the borrowed session too. The
-  // super admin's own sign-out revokes their session, not the borrowed one —
-  // they are two separate rows — so without this the account they were acting
-  // as stayed borrowable for the rest of its 30 minutes. Runs first, because
-  // useLogout calls this BEFORE clearTokens() and the borrowed token is still
-  // in localStorage at this point.
-  //
-  // The server closes the same hole from its own side when it can
-  // (AuthService.logoutByRefreshToken ends every session the signing-out
-  // person borrowed), so a browser that dies mid-sign-out is still covered.
-  revokeBorrowedSession();
-  sessionStorage.removeItem(PARKED_KEY);
-  sessionStorage.removeItem(ACTING_KEY);
 }
