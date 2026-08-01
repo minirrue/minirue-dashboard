@@ -12,22 +12,23 @@ import {
   type BundleMemberInput,
 } from '@/lib/api/bundles';
 import { listProducts } from '@/lib/catalog/api';
+import BundleProductPicker from './BundleProductPicker';
 import type { ProductListItem } from '@/lib/catalog/types';
 import { errorMessageToText } from '@/lib/api/client';
-
-const MAX_MEMBERS = 6;
 
 function money(minor: number): string {
   return (minor / 100).toFixed(2);
 }
 
 /**
- * Bundles — pick products, name the set, give it one price.
+ * Bundles — import existing products, name the set, give it one price.
  *
- * The product picker asks the catalogue for MiniRue's own products only
- * (`space: 'house'`). That is a convenience, not the rule: the backend re-checks
- * every member on save, because a set holding a partner's product would be a
- * back door around "a partner's price is never cut".
+ * A set can ONLY contain products that already exist in the Products tab. There
+ * is no way to invent one here: the picker offers rows from the catalogue and
+ * nothing else, the list is fetched with `space: 'house'` so a partner's product
+ * is never offered, and the server re-reads every id on save and refuses the
+ * request if any belongs to a collaborator. Three layers, because a picker is a
+ * convenience and the endpoint takes ids that anything could send.
  */
 export default function BundlesClient() {
   const [rows, setRows] = React.useState<Bundle[]>([]);
@@ -83,13 +84,6 @@ export default function BundlesClient() {
       }, 0),
     [members, products],
   );
-
-  function addMember() {
-    if (members.length >= MAX_MEMBERS) return;
-    const first = products.find((p) => !members.some((m) => m.productId === p.id));
-    if (!first) return;
-    setMembers([...members, { productId: first.id, quantity: 1 }]);
-  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -212,75 +206,14 @@ export default function BundlesClient() {
               </div>
             </div>
 
+            <BundleProductPicker
+              products={products}
+              members={members}
+              onChange={setMembers}
+              loading={loading}
+            />
+
             <div className="dash-form-section">
-              <div className="dash-panel-head">
-                <h3 className="dash-section-title">
-                  What is inside ({members.length}/{MAX_MEMBERS})
-                </h3>
-                <button
-                  type="button"
-                  className="dash-btn-secondary"
-                  onClick={addMember}
-                  disabled={members.length >= MAX_MEMBERS || products.length === 0}
-                >
-                  Add product
-                </button>
-              </div>
-
-              {products.length === 0 && !loading && (
-                <p className="dash-help-text">
-                  There are no MiniRue products yet, so there is nothing to put
-                  in a set. Add products under Catalogue first.
-                </p>
-              )}
-
-              {members.map((m, i) => (
-                <div key={i} className="dash-field-row">
-                  <div className="dash-field" style={{ flex: 3 }}>
-                    <label className="dash-label" htmlFor={`b-m-${i}`}>Product</label>
-                    <select
-                      id={`b-m-${i}`}
-                      className="dash-select"
-                      value={m.productId}
-                      onChange={(e) => {
-                        const next = [...members];
-                        next[i] = { ...m, productId: e.target.value };
-                        setMembers(next);
-                      }}
-                    >
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} — {p.brandName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="dash-field" style={{ flex: 1 }}>
-                    <label className="dash-label" htmlFor={`b-q-${i}`}>How many</label>
-                    <input
-                      id={`b-q-${i}`}
-                      className="dash-input"
-                      type="number"
-                      min="1"
-                      max="99"
-                      value={m.quantity}
-                      onChange={(e) => {
-                        const next = [...members];
-                        next[i] = { ...m, quantity: Number(e.target.value) || 1 };
-                        setMembers(next);
-                      }}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    className="dash-btn-ghost"
-                    onClick={() => setMembers(members.filter((_, j) => j !== i))}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-
               {members.length > 0 && (
                 <p className="dash-help-text">
                   Bought separately: EGP {money(listTotalMinor)}.{' '}

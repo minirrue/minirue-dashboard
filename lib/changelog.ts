@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 199,
+    date: '2026-08-01',
+    area: 'Catalogue → Bundles, Customers, Storefront',
+    summary:
+      'Three follow-ups to discounts. The Bundles tab was missing from the Catalogue row entirely — it existed and worked, but was never drawn, so it is now where it should be. Building a set is also easier: instead of a long dropdown you search your own catalogue by product or brand and click to add, with each product’s price shown so you can price the set sensibly. Nothing there can invent a product — a set can only ever hold products you already created under Products, and the shop checks that again when you save. On a customer’s page there is now a Discounts section showing every code made for them (and whether it was used, expired unused, or stopped) alongside every code they have actually spent, with the total you have given them. Finally, when a sitewide discount is running, the shop now shows it: product cards and product pages display the old price struck through beside the new one. It never does that on a partner’s product, because a partner’s price is never reduced.',
+  },
+  {
     id: 198,
     date: '2026-08-01',
     area: 'Discounts, Catalogue → Bundles, Support',
