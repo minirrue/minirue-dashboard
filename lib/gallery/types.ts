@@ -18,6 +18,11 @@ export interface GalleryItem {
   folderId: string;
   kind: GalleryItemKind;
   url: string; // resolved via StorageService.resolveUrl() / imgproxy, never a raw storage key
+  /** A video's poster frame, resolved the same way `url` is. Null for an
+   *  image, and for a video uploaded before posters existed (migration 0190) —
+   *  render `<video poster={posterUrl ?? undefined}>` and the browser falls
+   *  back to its own first frame, exactly as before. */
+  posterUrl: string | null;
   mimeType: string;
   width: number | null;
   height: number | null;

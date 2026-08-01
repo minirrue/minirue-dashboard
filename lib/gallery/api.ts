@@ -1,4 +1,5 @@
 import { apiFetch, apiUpload } from '@/lib/api/client';
+import { posterPartFor } from './capture-poster-frame';
 import type { GalleryFolder, GalleryItem, GallerySearchResult } from './types';
 
 const BASE = '/gallery';
@@ -61,6 +62,17 @@ export async function getItem(id: string): Promise<GalleryItem> {
   return res.data;
 }
 
+/**
+ * A video is uploaded with a `poster` part alongside it — one frame this
+ * browser grabs off the local file before sending (capture-poster-frame.ts).
+ * Attached HERE rather than at each call site so every route into the gallery
+ * (the Gallery tab's drop zone, the product media picker, a collaborator's
+ * own upload) gets a thumbnail without having to remember to ask for one.
+ *
+ * `posterPartFor` returns null for an image, and for a video whose capture
+ * failed — the upload proceeds unchanged either way. A missing poster costs a
+ * thumbnail, never the upload.
+ */
 export async function uploadItem(
   folderId: string,
   file: File,
@@ -70,6 +82,8 @@ export async function uploadItem(
   formData.append('folderId', folderId);
   formData.append('file', file);
   if (altText) formData.append('altText', altText);
+  const poster = await posterPartFor(file);
+  if (poster) formData.append('poster', poster);
   return apiUpload<GalleryItem>(`${BASE}/items`, formData);
 }
 
@@ -96,6 +110,10 @@ export async function deleteItem(id: string): Promise<void> {
 export async function exchangeItem(id: string, file: File): Promise<GalleryItem> {
   const formData = new FormData();
   formData.append('file', file);
+  // Same poster part as uploadItem — the replacement is different bytes, so
+  // it needs its own thumbnail; the backend clears the old one either way.
+  const poster = await posterPartFor(file);
+  if (poster) formData.append('poster', poster);
   return apiUpload<GalleryItem>(`${BASE}/items/${id}/file`, formData, 'PATCH');
 }
 

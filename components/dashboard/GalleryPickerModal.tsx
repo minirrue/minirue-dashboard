@@ -232,7 +232,9 @@ export default function GalleryPickerModal({ onSelect, onClose }: GalleryPickerM
                           {item.kind === 'video' ? (
                             <video
                               src={item.url}
+                              poster={item.posterUrl ?? undefined}
                               muted
+                              preload={item.posterUrl ? 'none' : 'metadata'}
                               style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover' }}
                             />
                           ) : (
@@ -332,7 +334,9 @@ export default function GalleryPickerModal({ onSelect, onClose }: GalleryPickerM
                       {item.kind === 'video' ? (
                         <video
                           src={item.url}
+                          poster={item.posterUrl ?? undefined}
                           muted
+                          preload={item.posterUrl ? 'none' : 'metadata'}
                           style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover' }}
                         />
                       ) : (

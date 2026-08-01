@@ -21,6 +21,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 197,
+    date: '2026-08-01',
+    area: 'Gallery, Reviews',
+    summary:
+      'An uploaded video now shows a picture of itself instead of a black rectangle. Videos had no thumbnail at all, so every screen that listed them had to download the clip itself just to draw one frame — which on a folder of clips meant a wall of blank tiles that read like the uploads had failed. The dashboard now takes a still from each video as you pick it and sends it along with the upload, so the thumbnail is there the moment the video is, and the grid no longer downloads a single video to show you the folder.',
+  },
+  {
+    id: 196,
+    date: '2026-08-01',
+    area: 'Customers, Reviews, Chat',
+    summary:
+      'A customer’s profile photo now shows on their customer page. It showed correctly on the shop’s own account page but came through as the grey silhouette here — the same photo, which made it look like the customer had never uploaded one. The same fault was hiding customer photos on their product reviews and a partner’s logo on their support messages; all three are fixed.',
+  },
+  {
     id: 195,
     date: '2026-08-01',
     area: 'Customers, Collaborators, Gallery, Chat',

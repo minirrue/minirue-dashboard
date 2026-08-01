@@ -30,6 +30,7 @@ function makeGalleryItem(overrides: Partial<GalleryItem> = {}): GalleryItem {
     id: 'gal_1',
     folderId: 'folder_1',
     kind: 'image',
+    posterUrl: null,
     url: 'https://img.minirueshop.com/gal_1.jpg',
     mimeType: 'image/jpeg',
     width: 480,

@@ -8,6 +8,11 @@ export interface ReviewMedia {
   /** Resolved server-side at read time — images through imgproxy, videos as a
    * freshly signed link. Null if storage could not resolve it. */
   url: string | null;
+  /** A VIDEO's poster frame — the backend has always sent this
+   * (`ReviewsService.toMediaView`), this type simply never declared it, so
+   * the moderation screen rendered every clip as a black box. Null for an
+   * IMAGE and for a video uploaded before posters existed. */
+  posterUrl: string | null;
   contentType: string;
 }
 

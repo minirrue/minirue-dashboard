@@ -55,6 +55,7 @@ function makeItem(over: Partial<GalleryItem> = {}): GalleryItem {
     id: 'item-1',
     folderId: 'folder-leaf',
     kind: 'image',
+    posterUrl: null,
     url: 'https://storage.example/current.webp',
     mimeType: 'image/webp',
     width: 400,

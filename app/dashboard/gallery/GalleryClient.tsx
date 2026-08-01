@@ -477,6 +477,7 @@ function ItemPreviewModal({
         {item.kind === 'video' ? (
           <video
             src={item.url}
+            poster={item.posterUrl ?? undefined}
             className="dash-gallery-preview-media"
             controls
             autoPlay
@@ -631,7 +632,16 @@ function ItemGrid({
             data-trace-id={`${TRACE}::EL-BTN-preview-gallery-item@${item.id}`}
           >
             {item.kind === 'video' ? (
-              <video src={item.url} className="dash-gallery-item-media" muted />
+              <video
+                src={item.url}
+                poster={item.posterUrl ?? undefined}
+                className="dash-gallery-item-media"
+                muted
+                /* A poster means the grid never needs the video bytes to draw
+                   a tile — without this every clip in the folder starts
+                   downloading just to paint one frame. */
+                preload={item.posterUrl ? 'none' : 'metadata'}
+              />
             ) : (
               <UploadPreviewImage
                 src={item.url}
@@ -1010,7 +1020,16 @@ export default function GalleryClient() {
                           data-trace-id={`${TRACE}::EL-BTN-preview-search-result-item@${item.id}`}
                         >
                           {item.kind === 'video' ? (
-                            <video src={item.url} className="dash-gallery-item-media" muted />
+                            <video
+                src={item.url}
+                poster={item.posterUrl ?? undefined}
+                className="dash-gallery-item-media"
+                muted
+                /* A poster means the grid never needs the video bytes to draw
+                   a tile — without this every clip in the folder starts
+                   downloading just to paint one frame. */
+                preload={item.posterUrl ? 'none' : 'metadata'}
+              />
                           ) : (
                             <UploadPreviewImage
                               src={item.url}

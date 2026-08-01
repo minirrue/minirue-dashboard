@@ -267,9 +267,10 @@ export default function ReviewsClient() {
                                 <video
                                   key={m.id}
                                   src={m.url}
+                                  poster={m.posterUrl ?? undefined}
                                   controls
                                   playsInline
-                                  preload="metadata"
+                                  preload={m.posterUrl ? 'none' : 'metadata'}
                                   width={128}
                                   onError={() =>
                                     setFailedMedia((f) => ({ ...f, [m.id]: true }))

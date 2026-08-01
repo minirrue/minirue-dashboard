@@ -49,6 +49,7 @@ function makeItem(over: Partial<GalleryItem> = {}): GalleryItem {
     id: 'gal-1',
     folderId: 'folder-1',
     kind: 'image',
+    posterUrl: null,
     url: `${REMOTE}?replaced`,
     mimeType: 'image/webp',
     width: 400,
