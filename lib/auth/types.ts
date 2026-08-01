@@ -26,7 +26,18 @@ export interface TokenPair {
   tokenType: 'Bearer';
 }
 
-export interface AuthSuccessResponse extends TokenPair {
+/**
+ * What a successful sign-in gives the client.
+ *
+ * No longer extends TokenPair. Better Auth's session is an httpOnly cookie —
+ * there is no access or refresh token for a caller to hold, and returning empty
+ * strings shaped like credentials would be worse than dropping the fields.
+ * `user` is the only one any call site ever read.
+ *
+ * TokenPair itself survives for "sign in as", which really does mint a
+ * short-lived bearer token rather than swapping the session cookie.
+ */
+export interface AuthSuccessResponse {
   user: UserProfile;
 }
 

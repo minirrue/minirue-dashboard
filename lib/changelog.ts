@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 196,
+    date: '2026-08-01',
+    area: 'Sign in',
+    summary:
+      'Signing in to the dashboard now uses a new, more secure session system. Nothing changes in how you sign in — same email, same password, same accounts — but your session is no longer stored anywhere a script on the page could read it, and signing out now ends the session on the server rather than only in your browser. Existing accounts carried over exactly as they were; nobody needs to reset a password.',
+  },
+  {
     id: 197,
     date: '2026-08-01',
     area: 'Gallery, Reviews',

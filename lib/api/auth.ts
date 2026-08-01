@@ -1,5 +1,5 @@
 import { apiFetch, API_BASE, CLIENT_HEADER, CLIENT_AUDIENCE } from './client';
-import { setTokens } from '@/lib/auth/tokens';
+import { markAuthenticated } from '@/lib/auth/tokens';
 import { parseAuthUser } from '@/lib/auth/session-role';
 import type { AuthSuccessResponse, MeResponse, TokenPair } from '@/lib/auth/types';
 import type { ApiError } from './client';
@@ -14,33 +14,52 @@ function createIdempotencyKey(prefix: string): string {
   return `${prefix}-${id}`;
 }
 
+/**
+ * Signs an operator in through Better Auth.
+ *
+ * Keeps its name, arguments and return shape — every caller reads `user` and
+ * nothing else. What changed is underneath: there are no tokens. Better Auth
+ * sets an httpOnly cookie (`mr-dash.session_token`, distinct from the
+ * storefront's `mr-shop.`) and that is the entire session.
+ *
+ * `setTokens` is gone with them. It wrote the access and refresh tokens into
+ * localStorage, which is exactly where a session credential should not live —
+ * any script on the page could read it. The only part still needed is the
+ * non-secret `mr-auth` hint the Edge middleware reads, so that is all
+ * `markAuthenticated` writes.
+ */
 export async function apiLogin(email: string, password: string): Promise<AuthSuccessResponse> {
-  const data = await apiFetch<TokenPair & Partial<Pick<AuthSuccessResponse, 'user'>>>('/auth/login', {
+  const data = await apiFetch<{
+    user: { id: string; email: string; name?: string | null; role?: string | null };
+  }>('/auth/sign-in/email', {
     method: 'POST',
-    headers: { 'Idempotency-Key': createIdempotencyKey('login') },
     body: JSON.stringify({ email, password }),
   });
 
-  setTokens(data.accessToken, data.refreshToken);
+  markAuthenticated();
 
   try {
-    const user = data.user ? parseAuthUser(data.user) : await apiMe();
-    return { ...data, user };
+    const user = parseAuthUser({
+      userId: data.user.id,
+      role: data.user.role ?? '',
+      email: data.user.email,
+      name: data.user.name ?? undefined,
+    });
+    return { user };
   } catch (e) {
     // Only a genuine role rejection may claim the account lacks access.
     //
     // This used to flatten EVERY failure here into one 403 reading "This
     // account does not have admin access", and the login page then re-labelled
-    // every 403 with that same sentence. So a `/auth/me` that 401'd — a dead
-    // session, a stale cookie, an API that was down — told the operator their
-    // account had been demoted. During the 2026-07-31 incident that message
-    // cost real time: it was read as "the reset changed my role" when the
-    // password had in fact just been accepted and the account was fine.
+    // every 403 with that same sentence. So a session problem told the operator
+    // their account had been demoted. During the 2026-07-31 incident that
+    // message cost real time: it was read as "the reset changed my role" when
+    // the password had in fact just been accepted and the account was fine.
     //
-    // The distinction is load-bearing: reaching this catch at all means
-    // POST /auth/login already returned 200, so the credentials were correct
-    // and the users row is alive. Anything other than InsufficientStaffRoleError
-    // is a SESSION problem, and saying so points at the actual fix.
+    // Reaching this catch means sign-in already returned 200, so the
+    // credentials were correct and the users row is alive. Anything other than
+    // InsufficientStaffRoleError is a SESSION problem, and saying so points at
+    // the actual fix.
     if (e instanceof Error && e.name === 'InsufficientStaffRoleError') {
       const err: ApiError = {
         status: 403,
@@ -54,7 +73,7 @@ export async function apiLogin(email: string, password: string): Promise<AuthSuc
       // 401, not 403 — the credentials passed; it is the session that failed.
       status: 401,
       message:
-        underlying?.message ||
+        (typeof underlying?.message === 'string' && underlying.message) ||
         'Signed in, but the session could not be verified. Sign in again.',
       error: 'Unauthorized',
     };
@@ -77,11 +96,14 @@ export async function apiLogin(email: string, password: string): Promise<AuthSuc
  * It used to be gated on a localStorage refresh token being present, which is
  * exactly backwards — see useLogout().
  */
-export async function apiLogout(refreshToken?: string): Promise<void> {
-  await apiFetch<void>('/auth/logout', {
+export async function apiLogout(_refreshToken?: string): Promise<void> {
+  // The argument is kept so call sites do not change; it is ignored. Better
+  // Auth ends the session named by the cookie, which is the only session this
+  // browser has — there is no token to hand back.
+  await apiFetch<void>('/auth/sign-out', {
     method: 'POST',
     auth: true,
-    body: JSON.stringify(refreshToken ? { refreshToken } : {}),
+    body: '{}',
   });
 }
 
@@ -124,9 +146,34 @@ export async function apiStopActingAs(borrowedAccessToken: string): Promise<void
   }
 }
 
+/**
+ * Who is signed in.
+ *
+ * `get-session` answers 200 with a NULL body for a signed-out visitor rather
+ * than 401. The old `/auth/me` 401ed, and the client leans on that hard — a
+ * settled 401 is what makes the session state fail closed. So an empty session
+ * is converted into the 401 the rest of the app already reasons about, rather
+ * than teaching every consumer a second way to be signed out.
+ */
 export async function apiMe(): Promise<MeResponse> {
-  const me = await apiFetch<MeResponse>('/auth/me', { auth: true });
-  return parseAuthUser(me);
+  const session = await apiFetch<{
+    user?: { id: string; email: string; name?: string | null; role?: string | null };
+  } | null>('/auth/get-session', { auth: true });
+
+  if (!session?.user) {
+    const err: ApiError = {
+      status: 401,
+      message: 'Session expired',
+      error: 'Unauthorized',
+    };
+    throw err;
+  }
+  return parseAuthUser({
+    userId: session.user.id,
+    role: session.user.role ?? '',
+    email: session.user.email,
+    name: session.user.name ?? undefined,
+  });
 }
 
 export async function apiUpdateMyProfile(name: string): Promise<MeResponse> {

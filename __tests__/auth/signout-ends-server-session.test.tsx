@@ -57,8 +57,14 @@ function wrapper({ children }: { children: React.ReactNode }) {
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
+/**
+ * `/auth/sign-out` is Better Auth's name for what used to be `/auth/logout`.
+ * The behaviour these tests pin is unchanged and still the point: signing out
+ * must reach the SERVER, so the session row is destroyed rather than the
+ * browser merely forgetting it.
+ */
 function logoutCalls(mock: jest.Mock): unknown[][] {
-  return mock.mock.calls.filter((c) => String(c[0]).includes('/auth/logout'));
+  return mock.mock.calls.filter((c) => String(c[0]).includes('/auth/sign-out'));
 }
 
 describe('dashboard Sign out ends the SERVER session, not just the client one', () => {
@@ -78,7 +84,7 @@ describe('dashboard Sign out ends the SERVER session, not just the client one', 
     sessionStorage.clear();
   });
 
-  it('POSTs /auth/logout even with no refresh token in localStorage', async () => {
+  it('POSTs /auth/sign-out even with no refresh token in localStorage', async () => {
     // The httpOnly cookies are alive; localStorage is not where they live.
     expect(getRefreshToken()).toBeNull();
 
@@ -89,7 +95,7 @@ describe('dashboard Sign out ends the SERVER session, not just the client one', 
     expect(logoutCalls(fetchMock)).toHaveLength(1);
   });
 
-  it('POSTs /auth/logout while impersonating, where the refresh token is deliberately empty', async () => {
+  it('POSTs /auth/sign-out while impersonating, where the refresh token is deliberately empty', async () => {
     setTokens('super-access', 'super-refresh');
     beginActingAs('borrowed-access', 1800, {
       id: 'cust-1',
