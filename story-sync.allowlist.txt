@@ -104,3 +104,12 @@ minirue-dashboard PAGE /dashboard/analytics/sales
 # reason as every other analytics entry above: minirue-us is deleted, so no
 # citing story can exist to point at. Reviewed and intentional.
 minirue-dashboard PAGE /dashboard/analytics/devops
+
+# Discounts and Bundles (2026-08-01) — codes, the sitewide markdown, the usage
+# ledger with its four abuse warnings, and sets of products at one price.
+# Designed in docs/superpowers/specs/2026-08-01-discounts-and-bundles-design.md
+# and built to docs/superpowers/plans/2026-08-01-discounts-and-bundles.md.
+# Allowlisted for the same reason as every entry above: minirue-us is deleted,
+# so there is no citing story to point at. Reviewed and intentional.
+minirue-dashboard PAGE /dashboard/discounts
+minirue-dashboard PAGE /dashboard/bundles
