@@ -3780,6 +3780,21 @@ a.dash-card:focus-visible {
   gap: 8px;
   min-width: 0;
 }
+/*
+  The card fills its slot.
+
+  Grid already stretches every slot in a row to the tallest one — that part was
+  always working. What was not: the .dash-card inside a shorter slot kept its
+  content height and left a gap beneath it, so two widgets sitting side by side
+  ended with visibly different card bottoms whenever one had a longer
+  description than the other. The row was aligned; the cards were not.
+
+  flex: 1 lets the card take the slack the slot already has, so bottoms line up
+  across a row regardless of how much copy each widget carries.
+*/
+.dash-widget-slot > .dash-card {
+  flex: 1 1 auto;
+}
 .dash-widget-sm { grid-column: span 1; }
 .dash-widget-md { grid-column: span 2; }
 .dash-widget-lg { grid-column: span 3; }

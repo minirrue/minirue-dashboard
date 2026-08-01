@@ -21,6 +21,27 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 194,
+    date: '2026-08-01',
+    area: 'Analytics',
+    summary:
+      'The System tab now leads with live readings taken from your own traffic — page views per second, sessions and orders per day, and whether the reporting pipeline is up to date. The load-test figures moved to a clearly marked section at the bottom, because a benchmark from one day and a live reading look identical once they are both numbers on a screen, and planning against the wrong one is an easy mistake to make.',
+  },
+  {
+    id: 193,
+    date: '2026-08-01',
+    area: 'Analytics',
+    summary:
+      'Acquisition now shows Device type, Operating system and Countries alongside Browsers. It only ever showed browsers, which is the least useful of the four — knowing a visitor used Chrome changes nothing, knowing most of them were on a phone in one country changes where your next campaign goes.',
+  },
+  {
+    id: 192,
+    date: '2026-08-01',
+    area: 'Analytics',
+    summary:
+      'Fixed cards on the Analytics overview ending at different heights when one had a longer description than its neighbour, leaving a ragged gap along the bottom of each row. Cards in a row now line up.',
+  },
+  {
     id: 191,
     date: '2026-08-01',
     area: 'Analytics',

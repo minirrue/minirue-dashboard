@@ -7,8 +7,42 @@ import type { Column } from '@/components/dashboard/DashboardTable';
 import { Donut, BarChart } from '@/components/dashboard/charts';
 import { useAnalyticsRange, useSources, useTech, useCampaignDetail } from '@/lib/hooks/use-analytics';
 import type { AnalyticsRangeState } from '@/lib/hooks/use-analytics';
-import { egp, SOURCE_GROUP_BY } from '@/lib/api/analytics-insights';
-import type { AnalyticsFreshness, SourceGroupBy, SourceRow } from '@/lib/api/analytics-insights';
+import { useQuery } from '@tanstack/react-query';
+import { apiFetch, type ApiError } from '@/lib/api/client';
+import {
+  buildAnalyticsQueryString,
+  egp,
+  SOURCE_GROUP_BY,
+} from '@/lib/api/analytics-insights';
+import type {
+  AnalyticsEnvelope,
+  AnalyticsFreshness,
+  AnalyticsQueryParams,
+  GeoRow,
+  SourceGroupBy,
+  SourceRow,
+} from '@/lib/api/analytics-insights';
+
+/**
+ * Countries, by visitors.
+ *
+ * `/analytics/geo` is a real endpoint with no client function or hook yet —
+ * the same gap `OverviewGrid` works around. Calling `apiFetch` directly here
+ * keeps that one exception in the two places that need it rather than adding a
+ * half-promoted export; promote both to a shared `useGeo` when something else
+ * needs it.
+ */
+function useCountries(params: AnalyticsQueryParams) {
+  return useQuery<AnalyticsEnvelope<GeoRow[]>, ApiError>({
+    queryKey: ['analytics', 'geo', 'country', params],
+    queryFn: () =>
+      apiFetch<AnalyticsEnvelope<GeoRow[]>>(
+        `/analytics/geo?${buildAnalyticsQueryString(params, { dimension: 'country' })}`,
+        { auth: true },
+      ),
+    staleTime: 60_000,
+  });
+}
 
 function RangeControl({
   range,
@@ -171,6 +205,18 @@ export default function AcquisitionClient() {
   const [groupBy, setGroupBy] = useState<SourceGroupBy>('channel');
   const sources = useSources(range, groupBy);
   const tech = useTech(range, 'browser');
+  /**
+   * Device and OS alongside browser.
+   *
+   * `/analytics/tech` returns ONE dimension per call, so three calls rather
+   * than one combined response — that is the endpoint's shape, not a choice.
+   * Acquisition showed browsers only, which answers the least useful of the
+   * three: knowing someone used Chrome changes nothing, knowing 78% of them
+   * were on a phone changes where the next month of design effort goes.
+   */
+  const devices = useTech(range, 'device');
+  const operatingSystems = useTech(range, 'os');
+  const geo = useCountries(range);
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
 
   const isLoading = sources.isLoading || tech.isLoading;
@@ -213,6 +259,24 @@ export default function AcquisitionClient() {
             <Donut
               data={sourceRows.slice(0, 5).map((s) => ({ label: s.key, value: s.visitors }))}
               title={`Traffic by ${GROUP_BY_LABEL[groupBy].toLowerCase()}`}
+            />
+            <BarChart
+              data={devices.data?.data ?? []}
+              category={(d) => d.key || 'Unknown'}
+              series={[{ id: 'sessions', label: 'Sessions', y: (d) => d.sessions }]}
+              title="Device type"
+            />
+            <BarChart
+              data={operatingSystems.data?.data ?? []}
+              category={(o) => o.key || 'Unknown'}
+              series={[{ id: 'sessions', label: 'Sessions', y: (o) => o.sessions }]}
+              title="Operating system"
+            />
+            <BarChart
+              data={geo.data?.data ?? []}
+              category={(g) => g.key || 'Unknown'}
+              series={[{ id: 'visitors', label: 'Visitors', y: (g) => g.visitors }]}
+              title="Countries"
             />
             <BarChart
               data={browsers}

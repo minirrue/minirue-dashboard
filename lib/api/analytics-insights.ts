@@ -669,3 +669,41 @@ export async function apiGetPurchaseReconciliation(params: AnalyticsQueryParams)
  *   - POST /analytics/rollups/run         (SUPERADMIN-only manual backfill;
  *     acknowledges but does not yet dispatch — see the controller comment)
  */
+
+/* ── Geo ────────────────────────────────────────────────────────────────── */
+
+/**
+ * `GET /analytics/geo?dimension=country` → one row per country.
+ *
+ * Promoted here from `OverviewGrid.tsx` once a second screen (Acquisition)
+ * needed it. It lived local to that file while there was exactly one caller;
+ * two is where a private copy stops being pragmatic and starts being drift.
+ */
+export interface GeoRow {
+  key: string;
+  sessions: number;
+  visitors: number;
+  revenueMinor: number;
+}
+
+/**
+ * Query string for the endpoints that have no typed client function yet.
+ *
+ * `compare` is deliberately mapped, not passed through: the backend takes
+ * `'previous' | 'year' | 'none'` (BaseQuerySchema in common.dto.ts), never a
+ * boolean. Sending `compare=true` returns 422 — the exact bug the rest of this
+ * file was reconciled to avoid.
+ */
+export function buildAnalyticsQueryString(
+  params: AnalyticsQueryParams,
+  extra?: Record<string, string>,
+): string {
+  const q = new URLSearchParams();
+  q.set('from', params.from);
+  q.set('to', params.to);
+  if (params.compare) q.set('compare', 'previous');
+  if (extra) {
+    for (const [key, value] of Object.entries(extra)) q.set(key, value);
+  }
+  return q.toString();
+}

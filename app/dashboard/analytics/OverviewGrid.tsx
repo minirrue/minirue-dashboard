@@ -10,6 +10,7 @@ import {
 } from '@/lib/analytics/layout-store';
 import type { LayoutAction, LayoutItem, WidgetSize } from '@/lib/analytics/layout-store';
 import {
+  buildAnalyticsQueryString,
   egpShort,
 } from '@/lib/api/analytics-insights';
 import type {
@@ -17,6 +18,7 @@ import type {
   AnalyticsEnvelope,
   AudienceSummary,
   AudienceTimeseriesPoint,
+  GeoRow,
   ProductRow,
   TechRow,
   ReconcileReport,
@@ -195,28 +197,8 @@ function ProductFunnelRender({ data }: { data: AnalyticsEnvelope<ProductRow[]> }
   );
 }
 
-interface GeoRow {
-  key: string;
-  sessions: number;
-  visitors: number;
-  revenueMinor: number;
-}
-
-function buildAnalyticsQueryString(params: AnalyticsQueryParams, extra?: Record<string, string>): string {
-  const q = new URLSearchParams();
-  q.set('from', params.from);
-  q.set('to', params.to);
-  // The backend's `compare` param is `'previous' | 'year' | 'none'`, not a
-  // boolean (`BaseQuerySchema` in `common.dto.ts`) — matches the mapping
-  // `buildQuery` in `analytics-insights.ts` uses for every other endpoint.
-  // Sending `compare=true` here would 422 exactly like it used to everywhere
-  // else before that file's reconciliation.
-  if (params.compare) q.set('compare', 'previous');
-  if (extra) {
-    for (const [key, value] of Object.entries(extra)) q.set(key, value);
-  }
-  return q.toString();
-}
+// GeoRow and buildAnalyticsQueryString now live in lib/api/analytics-insights.ts —
+// promoted once Acquisition needed them too, so there is one copy, not two.
 
 /** `GET /analytics/geo` is real (`web-analytics.controller.ts`) but has no
  * client function or hook yet — see this file's header comment for why this

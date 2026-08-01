@@ -2,44 +2,35 @@
 
 import React from 'react';
 import AnalyticsSubnav from '@/components/dashboard/AnalyticsSubnav';
-import { useAnalyticsRange, useAudienceSummary } from '@/lib/hooks/use-analytics';
+import {
+  useAnalyticsRange,
+  useAudienceSummary,
+  usePurchaseReconciliation,
+} from '@/lib/hooks/use-analytics';
 import type { AnalyticsRangeState } from '@/lib/hooks/use-analytics';
 import {
   MEASURED_AT,
   MEASURED_HARDWARE,
   READ_CAPACITY,
-  REQUEST_COST,
-  TRAFFIC_SHAPE,
   WRITE_CAPACITY,
-  drainTimeSeconds,
-  project,
 } from '@/lib/capacity-model';
 
 /**
- * Capacity, not traffic.
+ * System health, measured now — with the last load test kept at the bottom as
+ * a dated reference rather than presented as if it were live.
  *
- * Every other analytics screen answers "what did people do". This one answers
- * "how much more of it can we take, and what breaks first" — a question that
- * usually gets answered for the first time on the day it matters.
- *
- * Two commitments shape the whole page:
- *
- * 1. Measured or labelled. The ceilings come from a real load test on this
- *    stack (lib/capacity-model.ts carries the date and method). The two
- *    industry-shape assumptions are called out as assumptions where they are
- *    used, not buried in a footnote.
- *
- * 2. The asymmetry leads. Reads sustain 200/sec and writes 10/sec — a 20x gap —
- *    so the page puts the two side by side rather than averaging them into one
- *    reassuring number. Everything downstream follows from that gap.
+ * That separation is the whole structure of this page. A benchmark and a live
+ * reading look identical once they are numbers on a screen, and mistaking one
+ * for the other is how people plan against a figure that stopped being true
+ * months ago. Everything above "Last load test" is computed from this shop's
+ * real traffic in the selected range; everything inside it is stamped with the
+ * date it was measured and the machine it was measured on.
  */
-
-const RANGE_DAYS_FALLBACK = 1;
 
 function daysBetween(from: string, to: string): number {
   const a = new Date(from).getTime();
   const b = new Date(to).getTime();
-  if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return RANGE_DAYS_FALLBACK;
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return 1;
   // Inclusive: a single-day range is one day of traffic, not zero.
   return Math.max(1, Math.round((b - a) / 86_400_000) + 1);
 }
@@ -77,125 +68,16 @@ function RangeControl({
   );
 }
 
-/**
- * One path's headroom, drawn to scale.
- *
- * The track is the measured ceiling and the fill is current load, so a glance
- * gives the ratio before any number is read — which is the point, because the
- * ratio is what decides whether to act. A numeric-only presentation would make
- * 2% and 60% look equally like "a number".
- */
-function HeadroomBar({
-  title,
-  unit,
-  current,
-  sustained,
-  ceiling,
-  p95Ms,
-  limitedBy,
-}: {
-  title: string;
-  unit: string;
-  current: number;
-  sustained: number;
-  ceiling: number;
-  p95Ms: number;
-  limitedBy: string;
-}) {
-  const usedPct = Math.min(100, (current / sustained) * 100);
-  // Where the hard ceiling sits relative to the safe figure, so the gap between
-  // "comfortable" and "falls over" is visible rather than implied.
-  const ceilingPct = Math.min(100, (sustained / ceiling) * 100);
-
-  const tone =
-    usedPct >= 80
-      ? { fg: 'var(--mr-crimson-600, #9B2C2C)', label: 'At capacity' }
-      : usedPct >= 40
-        ? { fg: 'var(--mr-gold-500)', label: 'Watch' }
-        : { fg: 'var(--mr-gold-400)', label: 'Comfortable' };
-
-  return (
-    <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-        <h3 className="dash-section-title" style={{ margin: 0 }}>
-          {title}
-        </h3>
-        <span style={{ fontSize: 12, color: tone.fg, whiteSpace: 'nowrap' }}>{tone.label}</span>
-      </div>
-
-      <div>
-        <div
-          style={{
-            position: 'relative',
-            height: 10,
-            borderRadius: 5,
-            background: 'var(--mr-line-2, rgba(0,0,0,0.07))',
-            overflow: 'hidden',
-          }}
-        >
-          <div
-            style={{
-              width: `${Math.max(usedPct, 0.8)}%`,
-              height: '100%',
-              background: tone.fg,
-              borderRadius: 5,
-            }}
-          />
-          {/* The safe/ceiling boundary. A 1px rule, not a coloured band — it
-              marks a threshold, it is not a second quantity. */}
-          <span
-            aria-hidden="true"
-            style={{
-              position: 'absolute',
-              insetBlock: 0,
-              left: `${ceilingPct}%`,
-              width: 1,
-              background: 'var(--mr-fg-4)',
-              opacity: 0.55,
-            }}
-          />
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            marginTop: 6,
-            fontSize: 12,
-            color: 'var(--mr-fg-4)',
-          }}
-        >
-          <span>
-            <span className="mr-num" style={{ color: 'var(--mr-fg-2)' }}>
-              {current < 1 ? current.toFixed(2) : current.toFixed(1)}
-            </span>{' '}
-            {unit} now
-          </span>
-          <span>
-            safe to <span className="mr-num">{sustained}</span> · breaks at{' '}
-            <span className="mr-num">{ceiling}</span>
-          </span>
-        </div>
-      </div>
-
-      <p style={{ margin: 0, fontSize: 13, color: 'var(--mr-fg-3)', lineHeight: 1.5 }}>
-        {limitedBy}
-      </p>
-      <p style={{ margin: 0, fontSize: 12, color: 'var(--mr-fg-4)' }}>
-        Response time at the safe figure: <span className="mr-num">{p95Ms} ms</span> for 95 of every
-        100 requests.
-      </p>
-    </section>
-  );
-}
-
-/** A label/value row. Used where the numbers are a derivation, not a dashboard. */
-function DerivationRow({
+/** A live reading. Value first, because that is what is being asked. */
+function LiveStat({
   label,
   value,
+  unit,
   note,
 }: {
   label: string;
   value: string;
+  unit?: string;
   note?: string;
 }) {
   return (
@@ -205,7 +87,7 @@ function DerivationRow({
         alignItems: 'baseline',
         justifyContent: 'space-between',
         gap: 16,
-        padding: '9px 0',
+        padding: '11px 0',
         borderTop: '1px solid var(--mr-line-2, rgba(0,0,0,0.07))',
       }}
     >
@@ -217,9 +99,49 @@ function DerivationRow({
           </span>
         ) : null}
       </span>
-      <span className="mr-num" style={{ fontSize: 14, whiteSpace: 'nowrap' }}>
-        {value}
+      <span style={{ whiteSpace: 'nowrap' }}>
+        <span className="mr-num" style={{ fontSize: 15 }}>
+          {value}
+        </span>
+        {unit ? (
+          <span style={{ fontSize: 12, color: 'var(--mr-fg-4)', marginLeft: 5 }}>{unit}</span>
+        ) : null}
       </span>
+    </div>
+  );
+}
+
+/** A pass/fail reading. Colour carries the state; the words carry the meaning. */
+function HealthRow({
+  label,
+  ok,
+  okText,
+  badText,
+}: {
+  label: string;
+  ok: boolean | null;
+  okText: string;
+  badText: string;
+}) {
+  const tone =
+    ok === null
+      ? { fg: 'var(--mr-fg-4)', text: 'Not known yet' }
+      : ok
+        ? { fg: 'var(--mr-gold-500)', text: okText }
+        : { fg: 'var(--mr-crimson-600, #9B2C2C)', text: badText };
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'baseline',
+        justifyContent: 'space-between',
+        gap: 16,
+        padding: '11px 0',
+        borderTop: '1px solid var(--mr-line-2, rgba(0,0,0,0.07))',
+      }}
+    >
+      <span style={{ fontSize: 13, color: 'var(--mr-fg-2)' }}>{label}</span>
+      <span style={{ fontSize: 13, color: tone.fg, textAlign: 'right' }}>{tone.text}</span>
     </div>
   );
 }
@@ -227,235 +149,179 @@ function DerivationRow({
 export default function DevOpsClient() {
   const { range, setRange } = useAnalyticsRange();
   const summary = useAudienceSummary(range);
-
-  const [buyers, setBuyers] = React.useState(500);
+  const reconcile = usePurchaseReconciliation(range);
 
   const days = daysBetween(range.from, range.to);
   const s = summary.data?.data;
+  const freshness = summary.data?.freshness;
 
   /**
-   * Current load, derived from real traffic in the selected range.
+   * Rates from this shop's own traffic. Real division of real counts — nothing
+   * here is a constant.
    *
-   * Pageviews are converted to API calls using the storefront's own fan-out
-   * (REQUEST_COST.perPageView) rather than counted directly — the analytics
-   * beacon records page views, not the four other calls each one triggers, so
-   * counting beacons alone would understate real load roughly fivefold.
-   *
-   * The peak-hour figure is what matters for capacity: a daily average would
-   * flatter the shop by exactly the amount that breaks it.
+   * Averaged over the selected range, so a wide range flattens the peaks. That
+   * is stated on the rows rather than corrected for, because "correcting" it
+   * would mean multiplying by an assumed traffic shape, which is exactly the
+   * kind of invented number this page is supposed to avoid.
    */
-  const avgRps = s ? (s.pageviews * REQUEST_COST.perPageView) / (days * 86_400) : 0;
-  const peakRps = avgRps * (24 * TRAFFIC_SHAPE.peakHourShare);
-  const peakOrdersPerSec = s ? (s.purchases / (days * 86_400)) * (24 * TRAFFIC_SHAPE.peakHourShare) : 0;
+  const seconds = days * 86_400;
+  const pageviewsPerSec = s ? s.pageviews / seconds : 0;
+  const sessionsPerDay = s ? s.sessions / days : 0;
+  const ordersPerDay = s ? s.purchases / days : 0;
 
-  const p = project();
-  const drain = drainTimeSeconds(buyers);
-  const fmt = (n: number) => Math.round(n).toLocaleString();
+  const rollupMinutesAgo = freshness?.rollupLastOkAt
+    ? Math.max(
+        0,
+        Math.round((Date.now() - new Date(freshness.rollupLastOkAt).getTime()) / 60_000),
+      )
+    : null;
+
+  const fmt = (n: number, dp = 0) =>
+    n.toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
 
   return (
     <div data-trace-id="PG-DASHBOARD-ANL-DEVOPS::EL-REGION-root">
       <header className="dash-page-header">
-        <h1 className="dash-page-title">Capacity</h1>
+        <h1 className="dash-page-title">System</h1>
       </header>
 
       <AnalyticsSubnav />
 
-      <p
-        className="dash-muted"
-        style={{ maxWidth: '68ch', margin: '20px 0 0', lineHeight: 1.6 }}
-      >
-        What this server can take before customers feel it. The ceilings below were measured
-        against this stack on {MEASURED_AT} — they are not estimates, and they stop being true
-        the day the hardware or the code changes.
+      <p className="dash-muted" style={{ maxWidth: '68ch', margin: '20px 0 0', lineHeight: 1.6 }}>
+        What the shop is actually doing, measured from its own traffic. The load test at the
+        bottom is a dated benchmark, not a live reading — it tells you what the server managed
+        on the day it was run.
       </p>
 
       <RangeControl range={range} onChange={setRange} />
 
       {summary.isLoading ? (
-        <div className="dash-skeleton" style={{ height: 220 }} />
+        <div className="dash-skeleton" style={{ height: 200 }} />
       ) : summary.isError ? (
         <p className="dash-inline-error">
-          Could not load traffic for this range, so current load is unknown. The measured ceilings
-          below are unaffected.
+          Could not load traffic for this range. Nothing below is current.
         </p>
-      ) : null}
+      ) : (
+        <>
+          <div className="dash-card" style={{ padding: 24, marginBottom: 20 }}>
+            <h2 className="dash-section-title" style={{ marginTop: 0 }}>
+              Load right now
+            </h2>
+            <p className="dash-muted" style={{ maxWidth: '62ch', lineHeight: 1.6 }}>
+              Averaged across the selected range. A wide range smooths out the busy hours, so
+              narrow it to a single day to see a real peak.
+            </p>
+            <div style={{ marginTop: 8 }}>
+              <LiveStat
+                label="Page views"
+                value={pageviewsPerSec < 1 ? pageviewsPerSec.toFixed(3) : fmt(pageviewsPerSec, 1)}
+                unit="per second"
+                note={`${fmt(s?.pageviews ?? 0)} across ${days} day${days === 1 ? '' : 's'}.`}
+              />
+              <LiveStat
+                label="Sessions"
+                value={fmt(sessionsPerDay, 1)}
+                unit="per day"
+                note={`${fmt(s?.sessions ?? 0)} in this range, from ${fmt(s?.visitors ?? 0)} visitors.`}
+              />
+              <LiveStat
+                label="Orders"
+                value={fmt(ordersPerDay, 1)}
+                unit="per day"
+                note={`${fmt(s?.purchases ?? 0)} in this range.`}
+              />
+              <LiveStat
+                label="Checkouts started"
+                value={fmt(s?.beginCheckouts ?? 0)}
+                note="Reaching checkout is the write-heavy path — it costs far more than browsing."
+              />
+            </div>
+          </div>
 
-      {/* The asymmetry, stated once and shown immediately. */}
-      <div
-        className="dash-card"
-        style={{ display: 'grid', gap: 32, padding: 24, marginBottom: 20 }}
-      >
-        <HeadroomBar
-          title="Browsing"
-          unit="req/sec"
-          current={peakRps}
-          sustained={READ_CAPACITY.sustained}
-          ceiling={READ_CAPACITY.ceiling}
-          p95Ms={READ_CAPACITY.p95Ms}
-          limitedBy={READ_CAPACITY.limitedBy}
-        />
-        <HeadroomBar
-          title="Buying"
-          unit="orders/sec"
-          current={peakOrdersPerSec}
-          sustained={WRITE_CAPACITY.sustained}
-          ceiling={WRITE_CAPACITY.ceiling}
-          p95Ms={WRITE_CAPACITY.p95Ms}
-          limitedBy={WRITE_CAPACITY.limitedBy}
-        />
-        <p style={{ margin: 0, fontSize: 13, color: 'var(--mr-fg-3)', lineHeight: 1.6 }}>
-          Buying sustains a twentieth of what browsing does, and adding servers does not change
-          it — every order goes through the one database. That gap, not the daily total, is what
-          capacity planning here is about.
-        </p>
-      </div>
+          <div className="dash-card" style={{ padding: 24, marginBottom: 20 }}>
+            <h2 className="dash-section-title" style={{ marginTop: 0 }}>
+              Is the data trustworthy
+            </h2>
+            <p className="dash-muted" style={{ maxWidth: '62ch', lineHeight: 1.6 }}>
+              Every number on every analytics screen depends on these. If one of them is wrong,
+              the reports are confidently wrong rather than obviously broken.
+            </p>
+            <div style={{ marginTop: 8 }}>
+              <HealthRow
+                label="Reporting pipeline"
+                ok={rollupMinutesAgo === null ? null : rollupMinutesAgo < 15}
+                okText={
+                  rollupMinutesAgo === 0
+                    ? 'Up to date, just now'
+                    : `Up to date, ${rollupMinutesAgo} min ago`
+                }
+                badText={`Behind by ${rollupMinutesAgo} minutes`}
+              />
+              <HealthRow
+                label="Buckets still catching up"
+                ok={freshness ? freshness.staleBuckets === 0 : null}
+                okText="None"
+                badText={`${freshness?.staleBuckets ?? 0} waiting`}
+              />
+              <HealthRow
+                label="Tracked purchases match real orders"
+                ok={reconcile.data?.data.healthy ?? null}
+                okText="Every order accounted for"
+                badText="Some orders and tracked purchases disagree"
+              />
+            </div>
+          </div>
+        </>
+      )}
 
-      {/* Concentration, made concrete. This is the failure mode that daily
-          totals hide entirely. */}
-      <div className="dash-card" style={{ padding: 24, marginBottom: 20 }}>
+      {/*
+        The benchmark, kept and clearly fenced off. It is genuinely useful — it
+        is the only evidence of what this server can take — but it is a
+        measurement from one day, not a live reading, and the heading says so
+        before any number appears.
+      */}
+      <div className="dash-card" style={{ padding: 24 }}>
         <h2 className="dash-section-title" style={{ marginTop: 0 }}>
-          A drop, or a campaign
+          Last load test
         </h2>
-        <p className="dash-muted" style={{ maxWidth: '62ch', lineHeight: 1.6 }}>
-          Daily volume is rarely the risk. Concentration is: the same orders that are effortless
-          across an afternoon will fail if they all arrive at once.
-        </p>
-
-        <label className="dash-field" style={{ maxWidth: 280, marginTop: 8 }}>
-          <span className="dash-label">People checking out at the same moment</span>
-          <input
-            type="number"
-            className="dash-input"
-            min={1}
-            max={100_000}
-            value={buyers}
-            onChange={(e) => setBuyers(Math.max(1, Number(e.target.value) || 1))}
-          />
-        </label>
-
-        <div style={{ marginTop: 16 }}>
-          <DerivationRow
-            label="Time to clear the queue"
-            value={
-              drain < 60
-                ? `${drain.toFixed(0)} seconds`
-                : `${(drain / 60).toFixed(1)} minutes`
-            }
-            note={`At ${WRITE_CAPACITY.sustained} orders per second.`}
-          />
-          <DerivationRow
-            label="The last person waits"
-            value={
-              drain < 60
-                ? `${drain.toFixed(0)} seconds`
-                : `${(drain / 60).toFixed(1)} minutes`
-            }
-            note={
-              drain > 30
-                ? 'Longer than most people will wait before reloading — and a reload adds another attempt to the queue.'
-                : 'Within what a checkout spinner can hold.'
-            }
-          />
-        </div>
-
-        {drain > 30 ? (
-          <p
-            style={{
-              margin: '14px 0 0',
-              fontSize: 13,
-              lineHeight: 1.6,
-              color: 'var(--mr-crimson-600, #9B2C2C)',
-            }}
-          >
-            Past the point where more servers help. Staggering access — a queue, timed entry, or
-            a waiting room — is the fix; the database is the constraint and there is only one.
-          </p>
-        ) : null}
-      </div>
-
-      {/* The projection. Shown as a derivation so each step is auditable rather
-          than a headline number nobody can check. */}
-      <div className="dash-card" style={{ padding: 24, marginBottom: 20 }}>
-        <h2 className="dash-section-title" style={{ marginTop: 0 }}>
-          How many customers this supports
-        </h2>
-        <p className="dash-muted" style={{ maxWidth: '62ch', lineHeight: 1.6 }}>
-          Every line is derived from the one above it, so you can see which assumption to argue
-          with rather than taking the last number on faith.
+        <p className="dash-muted" style={{ maxWidth: '64ch', lineHeight: 1.6 }}>
+          Measured {MEASURED_AT} with k6 against the live stack — {MEASURED_HARDWARE.cores} cores,{' '}
+          {MEASURED_HARDWARE.memoryGb} GB RAM,{' '}
+          {MEASURED_HARDWARE.swapGb === 0 ? 'no swap' : `${MEASURED_HARDWARE.swapGb} GB swap`}.
+          These are not live figures and they stop being true the day the server or the code
+          changes.
         </p>
 
         <div style={{ marginTop: 8 }}>
-          <DerivationRow
-            label="Sustained browsing capacity"
-            value={`${READ_CAPACITY.sustained} req/sec`}
-            note={`Measured ${MEASURED_AT}.`}
+          <LiveStat
+            label="Browsing held"
+            value={String(READ_CAPACITY.sustained)}
+            unit="req/sec"
+            note={`${READ_CAPACITY.p95Ms} ms for 95 of every 100 requests. Fell over past ${READ_CAPACITY.ceiling}.`}
           />
-          <DerivationRow
-            label="Reserved for bursts"
-            value={`÷ ${TRAFFIC_SHAPE.burstHeadroom}`}
-            note="Assumption: arrivals inside the busy hour are not evenly spaced."
-          />
-          <DerivationRow label="Safe peak-hour rate" value={`${fmt(p.safePeakRps)} req/sec`} />
-          <DerivationRow
-            label="Busiest hour as a share of the day"
-            value={`${TRAFFIC_SHAPE.peakHourShare * 100}%`}
-            note="Assumption: typical e-commerce shape, not measured on this shop."
-          />
-          <DerivationRow label="Requests per day" value={fmt(p.dailyRequests)} />
-          <DerivationRow
-            label="Requests per session"
-            value={String(REQUEST_COST.perSession)}
-            note={`About ${REQUEST_COST.pagesPerSession} pages at ~${REQUEST_COST.perPageView} API calls each, from the storefront's own code.`}
-          />
-          <DerivationRow label="Sessions per day" value={fmt(p.sessionsPerDay)} />
-          <DerivationRow
-            label="Daily active customers"
-            value={fmt(p.dau)}
-            note={`At ${TRAFFIC_SHAPE.sessionsPerUserPerDay} sessions per person per day.`}
-          />
-          <DerivationRow
-            label="Monthly active customers"
-            value={fmt(p.mau)}
-            note="The softest number here — it assumes a return rate this shop has not measured yet."
-          />
-          <DerivationRow
-            label="People browsing at once"
-            value={fmt(p.concurrentBrowsers)}
-            note="At roughly one request every ten seconds each."
+          <LiveStat
+            label="Buying held"
+            value={String(WRITE_CAPACITY.sustained)}
+            unit="orders/sec"
+            note={`${WRITE_CAPACITY.p95Ms} ms at that rate. Fell over past ${WRITE_CAPACITY.ceiling}.`}
           />
         </div>
-      </div>
 
-      {/* Provenance. A capacity figure nobody can trace is a number people
-          argue with instead of plan against. */}
-      <div className="dash-card" style={{ padding: 24 }}>
-        <h2 className="dash-section-title" style={{ marginTop: 0 }}>
-          Where these numbers came from
-        </h2>
-        <div>
-          <DerivationRow
-            label="Measured on"
-            value={MEASURED_AT}
-            note={`${MEASURED_HARDWARE.cores} cores · ${MEASURED_HARDWARE.memoryGb} GB RAM · ${
-              MEASURED_HARDWARE.swapGb === 0 ? 'no swap' : `${MEASURED_HARDWARE.swapGb} GB swap`
-            }. ${MEASURED_HARDWARE.note}`}
-          />
-          <DerivationRow
-            label="Method"
-            value="k6, external"
-            note="Load generated from outside the server. Running it on the box competes with the thing being measured and understates capacity by roughly a quarter."
-          />
-        </div>
         <p style={{ margin: '16px 0 0', fontSize: 13, color: 'var(--mr-fg-3)', lineHeight: 1.6 }}>
-          Two things these figures do not cover. The catalogue they were measured against carried
-          no product images, so image-heavy pages will behave differently. And the browsing number
-          assumes repeat requests are being served from cache — traffic where every visitor asks
-          for something unique pushes more of it through to the database.
+          Buying sustains a twentieth of browsing, and extra servers do not change it — every
+          order goes through the one database. Browsing is what scales; checkout is what has to
+          be protected. {WRITE_CAPACITY.limitedBy}
         </p>
         <p style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--mr-fg-3)', lineHeight: 1.6 }}>
-          Re-measure with <code>apps/minirue-backend/loadtest/</code> after any change to the
-          server, the database, or how much traffic the shop actually gets, and update{' '}
-          <code>lib/capacity-model.ts</code>.
+          Two caveats. The catalogue used for the test carried no product images, so image-heavy
+          pages behave differently. And the browsing figure assumes repeat requests are served
+          from cache — traffic where every visitor asks for something unique pushes more of it
+          through to the database.
+        </p>
+        <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--mr-fg-4)' }}>
+          Re-run with <code>apps/minirue-backend/loadtest/</code> and update{' '}
+          <code>lib/capacity-model.ts</code>. Generate the load from outside the server — running
+          it on the box competes with what it is measuring.
         </p>
       </div>
     </div>
