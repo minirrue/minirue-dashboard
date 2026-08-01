@@ -2,6 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 import {
   resolveActiveTab,
   CATALOG_TAB_LABELS,
+  ALL_TAB_LABELS,
 } from '@/components/dashboard/CatalogSubnav';
 
 /**
@@ -28,12 +29,23 @@ describe('CatalogSubnav active tab', () => {
     expect(resolveActiveTab(path)).toBe(expected);
   });
 
-  it('offers all four tabs in a stable order', () => {
+  /**
+   * Guards the trap that hid Bundles on 2026-08-01: a tab can be defined in
+   * TABS, route correctly and build clean while never rendering, because the
+   * bar renders from ORDER. Asserting the rendered list against every defined
+   * tab is what makes that impossible to ship again.
+   */
+  it('renders every defined tab, in a stable order', () => {
     expect(CATALOG_TAB_LABELS).toEqual([
       'Products',
       'Categories',
       'Brands',
       'Global variants',
+      'Bundles',
     ]);
+  });
+
+  it('leaves no tab defined but unrendered', () => {
+    expect([...CATALOG_TAB_LABELS].sort()).toEqual([...ALL_TAB_LABELS].sort());
   });
 });

@@ -55,8 +55,23 @@ const TABS: Tab[] = [
   },
 ];
 
-/** Display order, left to right — not the match order. */
-const ORDER = ['Products', 'Categories', 'Brands', 'Global variants'];
+/**
+ * Display order, left to right — NOT the match order above.
+ *
+ * This array is what actually renders. A tab added to TABS but not listed here
+ * exists in the matching logic and appears nowhere on screen, which is exactly
+ * what happened to Bundles on 2026-08-01: the tab was defined, the route
+ * worked, the build passed, and the bar still showed four tabs.
+ *
+ * Adding a catalogue tab means editing BOTH arrays.
+ */
+const ORDER = [
+  'Products',
+  'Categories',
+  'Brands',
+  'Global variants',
+  'Bundles',
+];
 
 /**
  * Which tab owns this path. Exported and pure so the /products/brands vs
@@ -72,6 +87,14 @@ export function resolveActiveTab(path: string): string {
 
 /** The tabs, in display order — exported for the same test. */
 export const CATALOG_TAB_LABELS = ORDER;
+
+/**
+ * Every tab that EXISTS, regardless of whether it renders.
+ *
+ * Exported so a test can assert the two lists match. That assertion is the only
+ * thing standing between "I added a tab" and "the tab is on screen".
+ */
+export const ALL_TAB_LABELS = TABS.map((t) => t.label);
 
 export default function CatalogSubnav() {
   const pathname = usePathname() ?? '/products';
