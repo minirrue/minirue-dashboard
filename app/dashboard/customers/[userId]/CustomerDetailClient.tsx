@@ -2,6 +2,7 @@
 
 import React, {useCallback, useState } from 'react';
 import Link from 'next/link';
+import CustomerDiscountUsage from './CustomerDiscountUsage';
 import {
   DEFAULT_DIAL_CODE,
   DIAL_CODES,
@@ -963,6 +964,12 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
               </div>
             </section>
           )}
+
+          {/* Between orders and addresses on purpose: it is about money this
+              customer was given, so it reads next to what they spent, not next
+              to where they live. Fetches its own data — a discounts outage
+              must not blank the whole customer page. */}
+          <CustomerDiscountUsage customerId={userId} />
 
           <section className="dash-form-section">
             <div
