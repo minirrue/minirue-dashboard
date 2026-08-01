@@ -21,6 +21,27 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 191,
+    date: '2026-08-01',
+    area: 'Analytics',
+    summary:
+      'New "Capacity" screen under Analytics, showing how much traffic the shop can take before customers feel it. It answers two questions the other reports cannot: how close today\'s traffic is to the limit, and what happens if a lot of people try to buy at the same moment — type a number of simultaneous shoppers and it tells you how long the queue would take to clear. The figures come from a real load test of the live setup, and the screen shows when it was measured and on what, so you can tell when they need checking again.',
+  },
+  {
+    id: 190,
+    date: '2026-08-01',
+    area: 'Analytics',
+    summary:
+      'The "Devices & OS" panel now shows the full breakdown instead of only the single most common device. You can see how your visitors split across phone, desktop and tablet — and across iOS, Android and Windows — with a share of the total next to each. Knowing that phones lead was never enough to act on; knowing they are 78% of your traffic is.',
+  },
+  {
+    id: 189,
+    date: '2026-08-01',
+    area: 'Analytics',
+    summary:
+      'The row of Analytics tabs is now grouped instead of being nine equal-looking links in a line. Related screens sit together under Audience, Behaviour and Revenue, so it is obvious which tab answers which question without having to remember. Nothing moved or was removed — every screen is where it was, just easier to find.',
+  },
+  {
     id: 188,
     date: '2026-07-31',
     area: 'Partner products',

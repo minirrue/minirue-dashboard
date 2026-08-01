@@ -99,3 +99,8 @@ minirue-dashboard PAGE /dashboard/analytics/events
 # own tab rather than replaced. Same reason as the other analytics entries:
 # minirue-us is deleted, so no citing story can exist.
 minirue-dashboard PAGE /dashboard/analytics/sales
+
+# The Capacity tab (2026-08-01) — server headroom, not shop traffic. Same
+# reason as every other analytics entry above: minirue-us is deleted, so no
+# citing story can exist to point at. Reviewed and intentional.
+minirue-dashboard PAGE /dashboard/analytics/devops

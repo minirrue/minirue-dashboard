@@ -296,20 +296,101 @@ function DeviceOsRender({ data }: { data: AnalyticsEnvelope<DeviceOsSplitData> }
     return <p className="dash-widget-empty">No device data in this range. Try a wider date range.</p>;
   }
   return (
-    <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-      {devices[0] ? (
-        <li style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--mr-fg-2)' }}>
-          <span>Top device</span>
-          <span className="mr-num">{devices[0].key} · {devices[0].sessions.toLocaleString()}</span>
-        </li>
-      ) : null}
-      {os[0] ? (
-        <li style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--mr-fg-2)' }}>
-          <span>Top OS</span>
-          <span className="mr-num">{os[0].key} · {os[0].sessions.toLocaleString()}</span>
-        </li>
-      ) : null}
-    </ul>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <ShareList label="Device" rows={devices} />
+      <ShareList label="Operating system" rows={os} />
+    </div>
+  );
+}
+
+/**
+ * A ranked breakdown with each row's share of the total drawn as a bar.
+ *
+ * This widget used to print only `devices[0]` and `os[0]` — "top device" and
+ * "top OS" — which answers "what is most common" but not the question anyone
+ * actually opens it for: how the audience SPLITS. Knowing mobile leads is
+ * worthless without knowing whether it is 55% or 95%; those two numbers imply
+ * completely different decisions about where design effort goes.
+ *
+ * The bar is the measurement, not decoration: its width IS the share, so the
+ * proportions are readable before any number is. Shares are computed against
+ * the summed total rather than against the largest row, so they add to 100%
+ * and can be read as "this much of my traffic".
+ */
+function ShareList({
+  label,
+  rows,
+}: {
+  label: string;
+  rows: { key: string; sessions: number }[];
+}) {
+  if (rows.length === 0) return null;
+  const total = rows.reduce((sum, r) => sum + r.sessions, 0);
+  if (total === 0) return null;
+
+  // Five keeps a medium widget readable; anything beyond it is long-tail noise
+  // that the Acquisition screen shows in full.
+  const shown = rows.slice(0, 5);
+  const remainder = rows.slice(5).reduce((sum, r) => sum + r.sessions, 0);
+
+  return (
+    <div>
+      <p
+        style={{
+          margin: '0 0 6px',
+          fontSize: 11,
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          color: 'var(--mr-fg-4)',
+        }}
+      >
+        {label}
+      </p>
+      <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {shown.map((row) => {
+          const pct = (row.sessions / total) * 100;
+          return (
+            <li key={row.key}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 13, color: 'var(--mr-fg-2)' }}>
+                {/* Capitalised for display only — the API returns lowercase keys
+                    like `mobile`, and rewriting them at the source would break
+                    the Acquisition screen's dimension filters. */}
+                <span style={{ textTransform: 'capitalize' }}>{row.key || 'Unknown'}</span>
+                <span className="mr-num" style={{ color: 'var(--mr-fg-3)', whiteSpace: 'nowrap' }}>
+                  {pct.toFixed(pct < 10 ? 1 : 0)}% · {row.sessions.toLocaleString()}
+                </span>
+              </div>
+              <div
+                aria-hidden="true"
+                style={{
+                  marginTop: 3,
+                  height: 3,
+                  borderRadius: 2,
+                  background: 'var(--mr-line-2, rgba(0,0,0,0.07))',
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    // Hairline minimum so a 0.2% row is still visibly present
+                    // rather than rendering as an empty track.
+                    width: `${Math.max(pct, 1.5)}%`,
+                    height: '100%',
+                    background: 'var(--mr-gold-400)',
+                  }}
+                />
+              </div>
+            </li>
+          );
+        })}
+        {remainder > 0 ? (
+          <li style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--mr-fg-4)' }}>
+            <span>{rows.length - shown.length} more</span>
+            <span className="mr-num">{((remainder / total) * 100).toFixed(0)}%</span>
+          </li>
+        ) : null}
+      </ul>
+    </div>
   );
 }
 
@@ -421,8 +502,13 @@ const LOCAL_WIDGETS: AnalyticsWidgetDefinition<any>[] = [
   {
     id: 'device-os-split',
     title: 'Devices & OS',
-    description: 'Leading device type and operating system in this range.',
-    defaultSize: 'md',
+    // Was "Leading device type and operating system" — the widget now shows the
+    // whole split, and the split is the point: "mobile leads" is not actionable,
+    // "mobile is 78%" is.
+    description: 'How your traffic splits across device types and operating systems.',
+    // Promoted from md: five device rows plus five OS rows need the height, and
+    // this is the widget marketing decisions are made from.
+    defaultSize: 'lg',
     href: '/analytics/acquisition',
     useData: useDeviceOsSplit,
     Render: DeviceOsRender,

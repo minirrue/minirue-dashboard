@@ -135,6 +135,7 @@ const nextConfig: NextConfig = {
       { source: "/analytics/acquisition", destination: "/dashboard/analytics/acquisition" },
       { source: "/analytics/checkout", destination: "/dashboard/analytics/checkout" },
       { source: "/analytics/events", destination: "/dashboard/analytics/events" },
+      { source: "/analytics/devops", destination: "/dashboard/analytics/devops" },
       { source: "/support", destination: "/dashboard/support" },
       { source: "/reviews", destination: "/dashboard/reviews" },
       { source: "/loyalty", destination: "/dashboard/loyalty" },
