@@ -107,6 +107,15 @@ function IconStar() {
   );
 }
 
+function IconTag() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z" />
+      <line x1="7" y1="7" x2="7.01" y2="7" />
+    </svg>
+  );
+}
+
 function IconTruck() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -238,6 +247,9 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
   {
     section: 'Operations',
     items: [
+      // Merchandising, but it lives with Operations rather than the catalogue:
+      // a code is something you run and watch, not something you shelve.
+      { label: 'Discounts', href: '/discounts', icon: <IconTag /> },
       { label: 'Support', href: '/support', icon: <IconUsers /> },
       // Moderation work, so it sits with support rather than with the
       // catalogue: nothing a shopper writes reaches a product page until

@@ -42,6 +42,11 @@ const TABS: Tab[] = [
     match: (p) => p.startsWith('/catalogue/categories'),
   },
   {
+    label: 'Bundles',
+    href: '/catalogue/bundles',
+    match: (p) => p.startsWith('/catalogue/bundles'),
+  },
+  {
     // Fallback: anything else under /catalogue (the list, New, Edit) is
     // Products. Listed last so the more specific sub-tabs above win.
     label: 'Products',

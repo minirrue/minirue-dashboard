@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 198,
+    date: '2026-08-01',
+    area: 'Discounts, Catalogue → Bundles, Support',
+    summary:
+      'Discount codes now exist, end to end. A new Discounts tab lets you create a code, watch how often it is used, and stop it on the spot if it leaks — stopping is never retroactive, so orders already placed keep what they were given. Codes look like MINIRUE-K7P2X4: short enough to read down the phone, and with no O, 0, I or 1 in them, which are the characters people mistype. Shoppers type it in the bag or on the payment screen, and the saving shows on every step of checkout. You can also run a sitewide discount with no code at all; a shopper never gets both, they get whichever saves them more on their actual bag. Codes only ever reduce MiniRue’s own products, never a partner’s price, and a mixed bag says so plainly. The Usage tab shows every use with the customer and order beside it, and flags four things worth a look: somebody guessing codes, one customer claiming many different codes, several accounts at one address using the same code, and a personal code that has leaked to someone who does not own it. Separately, Catalogue gained a Bundles tab: pick one to six MiniRue products, give the set a single price, and it appears in the shop at /bundles with an honest “instead of” comparison. A set hides itself if any piece runs out, and discount codes never apply to one, because a set is already discounted. In Support, a new action creates a code for that customer and posts it straight into the conversation.',
+  },
+  {
     id: 197,
     date: '2026-08-01',
     area: 'Sign in, Accounts',

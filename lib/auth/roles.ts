@@ -40,6 +40,13 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   '/customers': ADMIN_ONLY,
   '/fulfillment': ADMIN_ONLY,
   '/refunds': ADMIN_ONLY,
+  // Codes and the sitewide markdown. ADMIN_ONLY, deliberately: STAFF was
+  // scoped down to two jobs on 2026-07-30 (answer customers, see their
+  // orders), and this screen is neither. They still issue compensation — from
+  // inside a support conversation, which the backend allows them under a
+  // spending cap — and they still see what a customer has been given, on that
+  // customer's own page. Neither needs this tab.
+  '/discounts': ADMIN_ONLY,
   // Parked 2026-07-23: inventory is under active repair and is not trustworthy
   // for day-to-day admin use. SUPERADMIN keeps it so it can be worked on.
   // Restore ADMIN_ONLY when it comes back.
