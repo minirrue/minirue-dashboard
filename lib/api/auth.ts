@@ -150,20 +150,21 @@ export async function apiMe(): Promise<MeResponse> {
 
   if (!session?.user) {
     /**
-     * Fall back to the legacy `/auth/me` before declaring anyone signed out.
+     * No fallback here, deliberately.
      *
-     * An operator whose browser signed in BEFORE the cutover holds the old
-     * mr_dash_access / mr_dash_refresh pair, which Better Auth knows nothing
-     * about — so `get-session` correctly answers "no session" for someone who
-     * is still signed in. On the storefront this showed as SIGN IN in the
-     * header while the account pages rendered the profile; here it would have
-     * bounced a working admin session to /login.
-     *
-     * Delete this once the legacy cookie's lifetime has passed; the old
-     * `/auth/me` goes with it.
+     * An operator holding a PRE-CUTOVER mr_dash_access cookie is still
+     * recognised — but by `get-session` itself, on the server, not by this
+     * client trying a second endpoint. That is what allowed the old
+     * `/auth/me` to be deleted: the compatibility lives in one place rather
+     * than in each client, so there is a single answer to "who is signed in"
+     * whatever cookie the browser happens to hold.
      */
-    const legacy = await apiFetch<MeResponse>('/auth/me', { auth: true });
-    return parseAuthUser(legacy);
+    const err: ApiError = {
+      status: 401,
+      message: 'Session expired',
+      error: 'Unauthorized',
+    };
+    throw err;
   }
   return parseAuthUser({
     userId: session.user.id,
