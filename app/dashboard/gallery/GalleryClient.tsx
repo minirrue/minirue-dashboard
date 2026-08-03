@@ -24,6 +24,7 @@ import {
   restoreProductMedia,
   type DeletedMediaItem,
 } from '@/lib/catalog/api';
+import FolderTree from './FolderTree';
 
 const TRACE = 'PG-DASHBOARD-GAL-001';
 
@@ -181,179 +182,6 @@ function DeletedImagesPanel() {
   );
 }
 
-/* ── Folder list (top-level or one level of children) ── */
-interface FolderListProps {
-  folders: GalleryFolder[];
-  selectedId: string | null;
-  onSelect: (folder: GalleryFolder) => void;
-  onOpen: (folder: GalleryFolder) => void;
-  onRename: (id: string, name: string) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
-}
-
-function FolderRow({
-  folder,
-  selected,
-  onSelect,
-  onOpen,
-  onRename,
-  onDelete,
-}: {
-  folder: GalleryFolder;
-  selected: boolean;
-  onSelect: () => void;
-  onOpen: () => void;
-  onRename: (name: string) => Promise<void>;
-  onDelete: () => Promise<void>;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(folder.name);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function handleRename(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await onRename(name.trim());
-      setEditing(false);
-    } catch (e) {
-      const err = e as ApiError;
-      setError(err.message ?? 'Rename failed.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleDelete() {
-    setError(null);
-    setBusy(true);
-    try {
-      await onDelete();
-    } catch (e) {
-      const err = e as ApiError;
-      setError(
-        err.status === 409
-          ? 'Folder is not empty — remove its items first.'
-          : err.message ?? 'Delete failed.',
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (editing) {
-    return (
-      <form
-        className="dash-inline-form"
-        onSubmit={handleRename}
-        data-trace-id={`${TRACE}::EL-FORM-rename-folder@${folder.id}`}
-      >
-        <input
-          className="dash-input"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          disabled={busy}
-          autoFocus
-          data-trace-id={`${TRACE}::EL-INPUT-rename-folder-name@${folder.id}`}
-        />
-        <button type="submit" className="dash-btn-primary" disabled={busy}>
-          Save
-        </button>
-        <button
-          type="button"
-          className="dash-btn-ghost"
-          onClick={() => {
-            setEditing(false);
-            setName(folder.name);
-            setError(null);
-          }}
-          disabled={busy}
-        >
-          Cancel
-        </button>
-        {error && <p className="dash-field-error">{error}</p>}
-      </form>
-    );
-  }
-
-  return (
-    <div
-      className="dash-gallery-folder-row"
-      data-active={selected ? 'true' : undefined}
-      data-trace-id={`${TRACE}::EL-ROW-gallery-folder@${folder.id}`}
-    >
-      <button
-        type="button"
-        className="dash-gallery-folder-btn"
-        onClick={onSelect}
-        data-trace-id={`${TRACE}::EL-BTN-select-gallery-folder@${folder.id}`}
-      >
-        <span aria-hidden="true">📁</span>
-        <span>{folder.name}</span>
-        <span className="dash-gallery-folder-count">{folder.itemCount}</span>
-      </button>
-      <div className="dash-gallery-folder-actions">
-        {/* Open steps INTO the folder to show its subfolders; clicking the
-            folder name still selects it to show its images. Two different
-            things, so two controls rather than one overloaded click. */}
-        <button
-          type="button"
-          className="dash-btn-ghost"
-          onClick={onOpen}
-          disabled={busy}
-          data-trace-id={`${TRACE}::EL-BTN-open-gallery-folder@${folder.id}`}
-        >
-          Open
-        </button>
-        <button
-          type="button"
-          className="dash-btn-ghost"
-          onClick={() => setEditing(true)}
-          disabled={busy}
-          data-trace-id={`${TRACE}::EL-BTN-rename-gallery-folder@${folder.id}`}
-        >
-          Rename
-        </button>
-        <button
-          type="button"
-          className="dash-btn-ghost"
-          onClick={handleDelete}
-          disabled={busy}
-          data-trace-id={`${TRACE}::EL-BTN-delete-gallery-folder@${folder.id}`}
-        >
-          Delete
-        </button>
-      </div>
-      {error && <p className="dash-field-error">{error}</p>}
-    </div>
-  );
-}
-
-function FolderList({ folders, selectedId, onSelect, onOpen, onRename, onDelete }: FolderListProps) {
-  if (folders.length === 0) {
-    return <p className="dash-help-text">No folders yet.</p>;
-  }
-  return (
-    <div className="dash-gallery-folder-list" data-trace-id={`${TRACE}::EL-LIST-gallery-folders`}>
-      {folders.map((folder) => (
-        <FolderRow
-          key={folder.id}
-          folder={folder}
-          selected={selectedId === folder.id}
-          onSelect={() => onSelect(folder)}
-          onOpen={() => onOpen(folder)}
-          onRename={(name) => onRename(folder.id, name)}
-          onDelete={() => onDelete(folder.id)}
-        />
-      ))}
-    </div>
-  );
-}
-
-/* ── Upload dropzone (drag-drop + click-to-browse) ── */
 interface UploadDropzoneProps {
   folderId: string;
   onUploaded: (item: GalleryItem, file: File) => void;
@@ -740,6 +568,19 @@ export default function GalleryClient() {
    * and are covered by tests — and this screen simply never passed it, so
    * every folder was forced to the top level.
    */
+  /**
+   * Ancestors of the selected folder, root first. The tree hands this over on
+   * select, so the right pane can print where it is without walking the rail.
+   */
+  const [selectedPath, setSelectedPath] = useState<GalleryFolder[]>([]);
+
+  /**
+   * Bumped whenever a folder is created, renamed or deleted. The tree caches
+   * each branch's children, so it has to be told the server's answer changed —
+   * otherwise a folder made here would not appear until a reload.
+   */
+  const [treeVersion, setTreeVersion] = useState(0);
+
   const [folderPath, setFolderPath] = useState<GalleryFolder[]>([]);
   const currentParent = folderPath.length
     ? folderPath[folderPath.length - 1]
@@ -764,20 +605,8 @@ export default function GalleryClient() {
   }, [loadFolders]);
 
   /** Step into a folder: it becomes the new parent and we list its children. */
-  function enterFolder(folder: GalleryFolder) {
-    setFolderPath((prev) => [...prev, folder]);
-    setSelectedFolder(null);
-    setItems([]);
-    setShowAddForm(false);
-  }
 
   /** Jump to a point in the breadcrumb. `-1` is the top level. */
-  function goToDepth(depth: number) {
-    setFolderPath((prev) => prev.slice(0, depth + 1));
-    setSelectedFolder(null);
-    setItems([]);
-    setShowAddForm(false);
-  }
 
   const loadFolderContents = useCallback(async (folder: GalleryFolder) => {
     // A top-level folder shows its subfolders; a subfolder shows its photos.
@@ -811,9 +640,68 @@ export default function GalleryClient() {
     }
   }, []);
 
-  function handleSelectFolder(folder: GalleryFolder) {
+
+  /** What the tree calls on a single click: show this folder on the right. */
+  function handleTreeSelect(folder: GalleryFolder, path: GalleryFolder[]) {
+    setSelectedPath(path);
     setSelectedFolder(folder);
+    // Keep the create-folder form's target in step: "New folder inside" has to
+    // mean inside the folder now on screen.
+    setFolderPath([...path, folder]);
     loadFolderContents(folder);
+  }
+
+  /**
+   * Rename / delete act on the ONE selected folder, from the right pane, rather
+   * than from a button-triple on every row in the rail.
+   *
+   * `prompt`/`confirm` deliberately: this is a two-field back-office action on a
+   * surface where a modal for a rename would be the heavier wrong answer, and
+   * the previous inline-form version is what made each row a card.
+   */
+  async function handleRenameSelected() {
+    if (!selectedFolder) return;
+    const next = window.prompt('Rename folder', selectedFolder.name);
+    if (next === null) return;
+    const name = next.trim();
+    if (!name || name === selectedFolder.name) return;
+    try {
+      await renameFolder(selectedFolder.id, name);
+      setSelectedFolder((prev) => (prev ? { ...prev, name } : prev));
+      setTreeVersion((v) => v + 1);
+    } catch (e) {
+      setAddError((e as ApiError).message ?? 'Rename failed.');
+    }
+  }
+
+  async function handleDeleteSelected() {
+    if (!selectedFolder) return;
+    const target = selectedFolder;
+    if (
+      !window.confirm(
+        `Delete “${target.name}”? Anything inside it goes too, and this cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      await deleteFolder(target.id);
+      // Fall back to the parent so the pane is never left describing a folder
+      // that no longer exists.
+      const parent = selectedPath.length ? selectedPath[selectedPath.length - 1] : null;
+      setSelectedFolder(parent);
+      setSelectedPath(parent ? selectedPath.slice(0, -1) : []);
+      setFolderPath(parent ? selectedPath : []);
+      setItems([]);
+      setChildFolders([]);
+      if (parent) loadFolderContents(parent);
+      setTreeVersion((v) => v + 1);
+    } catch (e) {
+      setAddError(
+        (e as ApiError).message ??
+          'Delete failed. A folder with photos or subfolders has to be emptied first.',
+      );
+    }
   }
 
   async function handleCreateFolder(e: React.FormEvent) {
@@ -834,6 +722,9 @@ export default function GalleryClient() {
       setNewFolderName('');
       setShowAddForm(false);
       await loadFolders();
+      setTreeVersion((v) => v + 1);
+      // Show what was just made, rather than leaving the pane on the parent.
+      if (currentParent) await loadFolderContents(currentParent);
     } catch (e) {
       const err = e as ApiError;
       setAddError(err.message ?? 'Failed to create folder.');
@@ -842,20 +733,7 @@ export default function GalleryClient() {
     }
   }
 
-  async function handleRenameTopLevel(id: string, name: string) {
-    await renameFolder(id, name);
-    await loadFolders();
-    if (selectedFolder?.id === id) setSelectedFolder((prev) => (prev ? { ...prev, name } : prev));
-  }
 
-  async function handleDeleteTopLevel(id: string) {
-    await deleteFolder(id);
-    await loadFolders();
-    if (selectedFolder?.id === id) {
-      setSelectedFolder(null);
-      setItems([]);
-    }
-  }
 
   async function handleRenameItemAlt(id: string, altText: string) {
     const updated = await updateItemAltText(id, altText);
@@ -937,7 +815,12 @@ export default function GalleryClient() {
   function goToSearchResultFolder(folder: GalleryFolder) {
     setQuery('');
     setSearchResult(null);
+    // Search returns a breadcrumb of NAMES, not rows, so the ancestor path is
+    // unknown here. Cleared rather than guessed — the pane prints the folder's
+    // own name and the rail still walks down from the root.
+    setSelectedPath([]);
     setSelectedFolder(folder);
+    setFolderPath([folder]);
     loadFolderContents(folder);
   }
 
@@ -996,7 +879,7 @@ export default function GalleryClient() {
                         onClick={() => goToSearchResultFolder(folder)}
                         data-trace-id={`${TRACE}::EL-BTN-search-result-folder@${folder.id}`}
                       >
-                        📁 {folder.breadcrumb.join(' / ') || folder.name} ({folder.itemCount})
+                        {folder.breadcrumb.join(' / ') || folder.name} ({folder.itemCount})
                       </button>
                     ))}
                   </div>
@@ -1110,138 +993,172 @@ export default function GalleryClient() {
       )}
 
       <div className="dash-gallery-layout">
-        <div className="dash-card" data-trace-id={`${TRACE}::EL-REGION-gallery-folder-panel`}>
+        {/* LEFT: the whole tree, expandable in place. Single click shows a
+            folder on the right; double click opens it (owner, 2026-08-03 —
+            replaces a per-row "Open" link). */}
+        <div
+          className="dash-card dash-gallery-rail"
+          data-trace-id={`${TRACE}::EL-REGION-gallery-folder-panel`}
+        >
           <h2 className="dash-section-title">Folders</h2>
-          {/* Where we are in the tree. Always shows "All folders" as the root
-              so there is a way back even one level deep. */}
-          <nav className="dash-gallery-breadcrumb" aria-label="Folder path">
-            <button
-              type="button"
-              className="dash-btn-ghost"
-              onClick={() => goToDepth(-1)}
-              disabled={folderPath.length === 0}
-            >
-              All folders
-            </button>
-            {folderPath.map((f, i) => (
-              <span key={f.id} className="dash-gallery-breadcrumb-step">
-                <span aria-hidden="true">/</span>
-                <button
-                  type="button"
-                  className="dash-btn-ghost"
-                  onClick={() => goToDepth(i)}
-                  disabled={i === folderPath.length - 1}
-                >
-                  {f.name}
-                </button>
-              </span>
-            ))}
-          </nav>
-          {loading ? (
-            <p className="dash-help-text">Loading folders…</p>
-          ) : loadError ? (
-            <div>
-              <p className="dash-inline-error">{loadError}</p>
-              <button className="dash-btn-secondary" onClick={loadFolders}>
-                Retry
-              </button>
-            </div>
-          ) : (
-            <FolderList
-              folders={folders}
-              selectedId={selectedFolder?.id ?? null}
-              onSelect={handleSelectFolder}
-              onOpen={enterFolder}
-              onRename={handleRenameTopLevel}
-              onDelete={handleDeleteTopLevel}
-            />
-          )}
+          <FolderTree
+            selectedId={selectedFolder?.id ?? null}
+            onSelect={handleTreeSelect}
+            refreshToken={treeVersion}
+          />
         </div>
 
+        {/* RIGHT: always carries something — the folder's media, its subfolders,
+            or the reason a top-level folder has neither. */}
         <div className="dash-card" data-trace-id={`${TRACE}::EL-REGION-gallery-content-panel`}>
           {!selectedFolder ? (
-            <p className="dash-help-text">Select a folder to view and upload photos or videos.</p>
+            /* Teaches the shape of the gallery rather than saying "nothing
+               here": the two-level rule is the one thing a new operator has to
+               understand before uploading anything. */
+            <>
+              <h2 className="dash-section-title">Your photos and videos</h2>
+              <p className="dash-gallery-rule">
+                The gallery is two levels. A folder on the left groups things —
+                <strong> Product Photos</strong>, <strong>All Products</strong> —
+                and the photos live in a folder inside it. Pick a folder to see
+                what is in it.
+              </p>
+            </>
           ) : (
             <>
-              <h2 className="dash-section-title">{selectedFolder.name}</h2>
+              {/* Where this folder sits, so the right pane is readable on its
+                  own without tracing the rail. */}
+              {selectedPath.length > 0 && (
+                <p className="dash-help-text" style={{ margin: '0 0 2px' }}>
+                  {selectedPath.map((f) => f.name).join(' / ')}
+                </p>
+              )}
 
-              {/* Owner rule 2026-07-29: a top-level folder holds folders, not
-                  files. Uploading into one is what turned the gallery into a
-                  flat pile in the first place — the level exists to group, and
-                  something dropped straight into it belongs to no group. */}
+              <div className="dash-gallery-pane-head">
+                <h2 className="dash-section-title" style={{ margin: 0 }}>
+                  {selectedFolder.name}
+                </h2>
+                {/* Rename and Delete live here, on the ONE selected folder,
+                    instead of on every row in the rail — that is what made the
+                    list read as stacked cards. */}
+                <div className="dash-gallery-pane-actions">
+                  <button
+                    type="button"
+                    className="dash-btn-secondary"
+                    onClick={() => setShowAddForm(true)}
+                    data-trace-id={`${TRACE}::EL-BTN-new-subfolder`}
+                  >
+                    New folder inside
+                  </button>
+                  <button
+                    type="button"
+                    className="dash-btn-ghost"
+                    onClick={handleRenameSelected}
+                    data-trace-id={`${TRACE}::EL-BTN-rename-selected-folder`}
+                  >
+                    Rename
+                  </button>
+                  <button
+                    type="button"
+                    className="dash-btn-ghost"
+                    onClick={handleDeleteSelected}
+                    data-trace-id={`${TRACE}::EL-BTN-delete-selected-folder`}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+
               {selectedFolder.parentId ? (
                 <>
                   <UploadDropzone
                     folderId={selectedFolder.id}
                     onUploaded={handleItemUploaded}
                   />
-                  <h3 className="dash-section-subtitle">Items</h3>
                   {itemsLoading ? (
                     <p className="dash-help-text">Loading items…</p>
                   ) : itemsError ? (
                     <p className="dash-inline-error">{itemsError}</p>
+                  ) : items.length === 0 ? (
+                    <p className="dash-help-text" style={{ marginTop: 0 }}>
+                      No photos in <strong>{selectedFolder.name}</strong> yet. Drop
+                      files above to add the first one.
+                    </p>
                   ) : (
-                    <ItemGrid
-                      items={items}
-                      onDelete={handleDeleteItem}
-                      onPreview={setPreviewItem}
-                      onRenameAlt={handleRenameItemAlt}
-                      onExchange={handleExchangeItem}
-                      exchangingId={exchangingId}
-                      localFiles={pendingLocalFiles}
-                    />
+                    <>
+                      <p className="dash-help-text" style={{ margin: '0 0 8px' }}>
+                        {items.length} {items.length === 1 ? 'item' : 'items'}
+                      </p>
+                      <ItemGrid
+                        items={items}
+                        onDelete={handleDeleteItem}
+                        onPreview={setPreviewItem}
+                        onRenameAlt={handleRenameItemAlt}
+                        onExchange={handleExchangeItem}
+                        exchangingId={exchangingId}
+                        localFiles={pendingLocalFiles}
+                      />
+                    </>
                   )}
                 </>
-              ) : childrenLoading ? (
-                <p className="dash-help-text">Loading…</p>
-              ) : childFolders.length === 0 ? (
-                <p className="dash-help-text" style={{ marginTop: 0 }}>
-                  Nothing inside <strong>{selectedFolder.name}</strong> yet. Open it
-                  and make a folder — photos go in there, not here.
-                </p>
               ) : (
-                /* The tree. A top-level folder holds folders, so this is what
-                   belongs in the panel — an Items grid here was always empty by
-                   construction, which read as "this folder is empty" about a
-                   folder that might hold six subfolders. */
-                <ul className="dash-gallery-tree" aria-label={`Inside ${selectedFolder.name}`}>
-                  {childFolders.map((child) => (
-                    <li key={child.id}>
-                      <button
-                        type="button"
-                        className="dash-gallery-tree-row"
-                        onClick={() => {
-                          // Step INTO the parent, so the folder list on the left
-                          // and the breadcrumb agree with what is now selected.
-                          // Selecting the child without moving the path would
-                          // show a folder that is not in the visible list.
-                          setFolderPath((prev) => [...prev, selectedFolder]);
-                          setSelectedFolder(child);
-                          loadFolderContents(child);
-                        }}
-                      >
-                        <span className="dash-gallery-tree-icon" aria-hidden="true">
-                          <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={1.8}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                <>
+                  {/* A top-level folder holds folders, not files. Stated here
+                      because this is exactly where an operator would otherwise
+                      look for a dropzone and find none — and because uploading
+                      into one is now refused by the server, so the screen has to
+                      say why before they try. */}
+                  <p className="dash-gallery-rule">
+                    <strong>{selectedFolder.name}</strong> is a top-level folder,
+                    so photos do not go straight into it. Make a folder inside it
+                    and upload there.
+                  </p>
+                  {childrenLoading ? (
+                    <p className="dash-help-text">Loading…</p>
+                  ) : childFolders.length === 0 ? (
+                    <p className="dash-help-text" style={{ marginTop: 0 }}>
+                      Nothing inside yet. Use <strong>New folder inside</strong>{' '}
+                      above to make the first one.
+                    </p>
+                  ) : (
+                    <ul
+                      className="dash-gallery-subfolder-grid"
+                      aria-label={`Inside ${selectedFolder.name}`}
+                    >
+                      {childFolders.map((child) => (
+                        <li key={child.id}>
+                          <button
+                            type="button"
+                            className="dash-gallery-subfolder-tile"
+                            onClick={() => handleTreeSelect(child, [...selectedPath, selectedFolder])}
+                            data-trace-id={`${TRACE}::EL-BTN-open-subfolder@${child.id}`}
                           >
-                            <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
-                          </svg>
-                        </span>
-                        <span className="dash-gallery-tree-name">{child.name}</span>
-                        <span className="dash-gallery-tree-count">
-                          {child.itemCount} {child.itemCount === 1 ? 'photo' : 'photos'}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                            <span className="dash-gallery-tree-icon" aria-hidden="true">
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={1.8}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+                              </svg>
+                            </span>
+                            <span className="dash-gallery-subfolder-name">
+                              {child.name}
+                            </span>
+                            <span className="dash-gallery-subfolder-count">
+                              {child.itemCount}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
               )}
             </>
           )}

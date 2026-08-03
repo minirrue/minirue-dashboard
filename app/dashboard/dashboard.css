@@ -3184,8 +3184,154 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Selected node. A tinted ground plus a hairline, not a colored side stripe:
+   the rail already reads as a list, so the fill is enough to say "this one". */
+.dash-gallery-tree-row[data-active="true"] {
+  background: var(--mr-dash-sub, #f4f1ec);
+  border-color: var(--mr-dash-hair);
+}
+.dash-gallery-tree-row[data-active="true"] .dash-gallery-tree-name {
+  font-weight: 500;
+}
+/* The expand/collapse control. Deliberately small and quiet — it is the
+   secondary gesture; double-clicking the row does the same thing. */
+.dash-gallery-tree-twisty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--mr-radius-sm);
+  background: transparent;
+  color: var(--mr-fg-3);
+  cursor: pointer;
+}
+.dash-gallery-tree-twisty:hover {
+  color: var(--mr-fg);
+  background: var(--mr-dash-surface-2, rgba(0, 0, 0, 0.04));
+}
+.dash-gallery-tree-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.dash-gallery-tree-hint {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: var(--mr-fg-3);
+}
+
+/* ── Gallery right pane ──
+   The empty column the owner pointed at (2026-08-03). It now always carries
+   something: the selected folder's media, or its subfolders, or the rule that
+   explains why a top-level folder has neither. */
+
+/* The rail scrolls on its own so a deep tree cannot push the contents grid off
+   the page, and stays put while the grid scrolls. */
+.dash-gallery-rail {
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+.dash-gallery-pane-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.dash-gallery-pane-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+/* Subfolders of a top-level folder, as targets rather than a bare list — this
+   is the level an operator actually navigates most. */
+.dash-gallery-subfolder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dash-gallery-subfolder-tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-dash-surface, #fff);
+  font: inherit;
+  color: var(--mr-fg);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--mr-dur-fast) var(--mr-ease-out),
+    border-color var(--mr-dur-fast) var(--mr-ease-out);
+}
+.dash-gallery-subfolder-tile:hover {
+  background: var(--mr-dash-sub, #f4f1ec);
+  border-color: var(--mr-gold-400);
+}
+.dash-gallery-subfolder-tile:focus-visible {
+  outline: 2px solid var(--mr-gold-500);
+  outline-offset: -2px;
+}
+.dash-gallery-subfolder-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+.dash-gallery-subfolder-count {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--mr-fg-3);
+  font-variant-numeric: tabular-nums;
+}
+/* The two-level rule, stated where it applies. A hairline note, not an alert:
+   it is how the gallery works, not something going wrong. */
+.dash-gallery-rule {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-dash-sub, #f4f1ec);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--mr-fg-2);
+}
+
+@media (max-width: 860px) {
+  .dash-gallery-rail {
+    position: static;
+    max-height: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .dash-gallery-tree-row {
+  .dash-gallery-tree-row,
+  .dash-gallery-subfolder-tile {
+    transition: none;
+  }
+  .dash-gallery-tree-twisty svg {
     transition: none;
   }
 }

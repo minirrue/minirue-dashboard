@@ -55,12 +55,31 @@ export async function uploadDeviceFileToGallery(
     return uploadItem(folderId, file);
   }
 
-  const folderName = productName?.trim() || DEFAULT_UPLOAD_FOLDER_NAME;
+  /*
+   * Two levels, always. This branch used to create a TOP-LEVEL folder and drop
+   * the file straight into it, which is exactly how "Product Photos" ended up
+   * holding one loose image (owner, 2026-08-03: "prevent image per folder please
+   * at all costs"). The server now refuses it outright, so nesting here is not a
+   * nicety — without it this path 422s.
+   *
+   * The top level is the bucket and the child is the grouping, so uploads from
+   * the same product land together instead of spawning a top-level folder each.
+   */
+  const parentName = DEFAULT_UPLOAD_FOLDER_NAME;
+  const childName = productName?.trim() || 'Uploads';
+
   const topLevel = await listFolders();
-  let folder = topLevel.find((f) => f.name === folderName);
-  if (!folder) {
-    folder = await createFolder({ name: folderName });
+  let parent = topLevel.find((f) => f.name === parentName);
+  if (!parent) {
+    parent = await createFolder({ name: parentName });
   }
+
+  const children = await listFolders(parent.id);
+  let folder = children.find((f) => f.name === childName);
+  if (!folder) {
+    folder = await createFolder({ name: childName, parentId: parent.id });
+  }
+
   return uploadItem(folder.id, file);
 }
 
@@ -185,9 +204,12 @@ export default function GalleryPickerModal({
         title: `Crop ${file.name}`,
       });
       if (!cropped) return;
-      const item = current
-        ? await uploadItem(current.id, cropped)
-        : await uploadDeviceFileToGallery(cropped);
+      // A top-level folder holds folders, not files, so an upload while one is
+      // open goes through the nesting fallback rather than into it.
+      const item =
+        current && current.parentId !== null
+          ? await uploadItem(current.id, cropped)
+          : await uploadDeviceFileToGallery(cropped);
       onSelect(item);
     } catch (e) {
       const err = e as ApiError;
@@ -241,7 +263,11 @@ export default function GalleryPickerModal({
               disabled={uploading}
               data-trace-id={`${TRACE}::EL-BTN-upload-from-device`}
             >
-              {uploading ? 'Uploading...' : current ? 'Upload here' : 'Upload from device'}
+              {uploading
+                ? 'Uploading...'
+                : current && current.parentId !== null
+                  ? 'Upload here'
+                  : 'Upload from device'}
             </button>
             <button
               type="button"

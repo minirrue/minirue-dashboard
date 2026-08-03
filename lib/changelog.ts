@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 203,
+    date: '2026-08-03',
+    area: 'Gallery',
+    summary:
+      'The Gallery is rebuilt around a folder tree. The left side now shows the whole structure at once — click a triangle to open a folder in place, or double-click the folder itself — so you can see where everything lives without walking in and out one level at a time. The right side, which used to sit empty, now always shows something: the photos in the folder you picked, the folders inside it, or a short note explaining why a top-level folder has neither. Rename and Delete moved out of the list and onto the folder you have selected, so the list stays readable. And the two-level rule is now enforced rather than suggested: a photo can only go in a folder inside a folder, so nothing can be dropped loose at the top again — which had already happened once from the products screen.',
+  },
+  {
     id: 202,
     date: '2026-08-03',
     area: 'Settings → Profile',
