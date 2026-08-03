@@ -166,11 +166,33 @@ export async function apiMe(): Promise<MeResponse> {
     };
     throw err;
   }
+  /**
+   * Identity comes from `get-session`; the PROFILE has to come from us.
+   *
+   * `get-session` cannot return `avatarUrl` or `fullName` — they are our own
+   * columns, not session data — and building the user from it alone is what made
+   * the avatar vanish on every load and the name field fall back to the greeting
+   * form and then SAVE that truncation ("MiniRue" persisted as "MINI"). See the
+   * restored `GET /auth/me` for the full account.
+   *
+   * Fails soft on purpose: if the profile read fails we still return a valid
+   * signed-in user built from the session, because a hiccup fetching a picture
+   * must never look like being signed out.
+   */
+  let profile: Partial<MeResponse> = {};
+  try {
+    profile = await apiFetch<MeResponse>('/auth/me', { auth: true });
+  } catch {
+    // Degrades to session-only, i.e. the behaviour before this call existed.
+  }
+
   return parseAuthUser({
     userId: session.user.id,
     role: session.user.role ?? '',
     email: session.user.email,
-    name: session.user.name ?? undefined,
+    name: profile.name ?? session.user.name ?? undefined,
+    fullName: profile.fullName,
+    avatarUrl: profile.avatarUrl,
   });
 }
 

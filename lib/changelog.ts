@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 202,
+    date: '2026-08-03',
+    area: 'Settings → Profile',
+    summary:
+      'Your photo and your name stopped disappearing. After any update your profile photo went back to the grey outline as though you had never set one, and it only came back if you uploaded a new one — and the name field quietly shortened “MiniRue” to “MINI” and then saved that. Both were the same cause: the dashboard was asking for who is signed in, which does not include your photo or your full name, and never asking for your profile. It does now, so both survive a reload and a deploy, and saving the form keeps the name exactly as you typed it.',
+  },
+  {
     id: 201,
     date: '2026-08-03',
     area: 'Anywhere you choose a picture',
