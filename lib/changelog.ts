@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 204,
+    date: '2026-08-03',
+    area: 'Gallery, and buttons everywhere',
+    summary:
+      'Three fixes. The Gallery is now strictly two levels — a folder, and the folders inside it that hold the photos — so a subfolder no longer shows an arrow suggesting you can nest further, and the shop refuses to create a third level. The photo that was stuck loose in Product Photos (uploaded before this rule existed, visible in the count but with nowhere to open it) has been moved into an Uploads folder inside it rather than deleted, so it is reachable again and anything using it still works. And the Delete, Remove and Rename buttons were taller than every other button on the dashboard, which made small rows look clumsy; they are now sized to match, while still staying big enough to tap on a phone.',
+  },
+  {
     id: 203,
     date: '2026-08-03',
     area: 'Gallery',

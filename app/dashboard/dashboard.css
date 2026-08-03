@@ -1292,7 +1292,12 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 10px 10px;
+  /* 6px, not 10px. Ghost is the row-action button — Delete, Remove, Rename,
+     Exchange — and at 10px vertical it stood TALLER than .dash-btn-danger
+     (7px 14px), so the quietest button on the screen was also the biggest.
+     Owner, 2026-08-03: "remove button or delete button is bigged globally".
+     Touch targets are unaffected: the <=860px block still forces min-height 40px. */
+  padding: 6px 10px;
   background: transparent;
   color: var(--mr-fg-3);
   border: 1px solid transparent;

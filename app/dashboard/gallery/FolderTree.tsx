@@ -119,6 +119,13 @@ function TreeNode({
 
   const isSelected = selectedId === folder.id;
   const childPath = [...path, folder];
+  /**
+   * The gallery is exactly two levels (owner, 2026-08-03: "there is no nesting
+   * inside subfolder ... only folder and subfolder"), so a subfolder is a LEAF.
+   * It gets no expander and no "no folders inside" line — both were noise
+   * inviting a third level that the server now refuses to create.
+   */
+  const canHoldFolders = folder.parentId === null;
 
   return (
     <li>
@@ -127,42 +134,48 @@ function TreeNode({
         data-active={isSelected ? 'true' : undefined}
         style={{ paddingLeft: 8 + depth * 14 }}
         role="treeitem"
-        aria-expanded={expanded}
+        aria-expanded={canHoldFolders ? expanded : undefined}
         aria-selected={isSelected}
         tabIndex={0}
         // Single click selects; DOUBLE click opens, which is the desktop
         // file-manager convention the owner asked for (2026-08-03) and replaces
         // a per-row "Open" link.
         onClick={() => onSelect(folder, path)}
-        onDoubleClick={toggle}
+        onDoubleClick={canHoldFolders ? toggle : undefined}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             onSelect(folder, path);
-          } else if (e.key === 'ArrowRight' && !expanded) {
+          } else if (e.key === 'ArrowRight' && canHoldFolders && !expanded) {
             e.preventDefault();
             toggle();
-          } else if (e.key === 'ArrowLeft' && expanded) {
+          } else if (e.key === 'ArrowLeft' && canHoldFolders && expanded) {
             e.preventDefault();
             toggle();
           }
         }}
         data-trace-id={`${TRACE}::EL-ROW-folder@${folder.id}`}
       >
-        <button
-          type="button"
-          className="dash-gallery-tree-twisty"
-          // The chevron is the only affordance that must not also select, or
-          // expanding a branch would swap the right pane out from under you.
-          onClick={(e) => {
-            e.stopPropagation();
-            toggle();
-          }}
-          aria-label={expanded ? `Collapse ${folder.name}` : `Expand ${folder.name}`}
-          tabIndex={-1}
-        >
-          <Chevron open={expanded} />
-        </button>
+        {canHoldFolders ? (
+          <button
+            type="button"
+            className="dash-gallery-tree-twisty"
+            // The chevron is the only affordance that must not also select, or
+            // expanding a branch would swap the right pane out from under you.
+            onClick={(e) => {
+              e.stopPropagation();
+              toggle();
+            }}
+            aria-label={expanded ? `Collapse ${folder.name}` : `Expand ${folder.name}`}
+            tabIndex={-1}
+          >
+            <Chevron open={expanded} />
+          </button>
+        ) : (
+          /* Keeps subfolder names aligned under their parent without pretending
+             there is something to expand. */
+          <span className="dash-gallery-tree-twisty" aria-hidden="true" />
+        )}
         <span className="dash-gallery-tree-icon">
           <FolderGlyph />
         </span>
@@ -175,7 +188,7 @@ function TreeNode({
         )}
       </div>
 
-      {expanded && (
+      {canHoldFolders && expanded && (
         <ul role="group" className="dash-gallery-tree-group">
           {loading && children === null ? (
             <li className="dash-gallery-tree-hint" style={{ paddingLeft: 22 + depth * 14 }}>
@@ -183,7 +196,7 @@ function TreeNode({
             </li>
           ) : children && children.length === 0 ? (
             <li className="dash-gallery-tree-hint" style={{ paddingLeft: 22 + depth * 14 }}>
-              {folder.parentId === null ? 'No folders inside yet' : 'No folders inside'}
+              No folders inside yet
             </li>
           ) : (
             (children ?? []).map((child) => (

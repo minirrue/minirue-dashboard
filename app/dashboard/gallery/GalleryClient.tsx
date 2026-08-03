@@ -1042,14 +1042,19 @@ export default function GalleryClient() {
                     instead of on every row in the rail — that is what made the
                     list read as stacked cards. */}
                 <div className="dash-gallery-pane-actions">
-                  <button
-                    type="button"
-                    className="dash-btn-secondary"
-                    onClick={() => setShowAddForm(true)}
-                    data-trace-id={`${TRACE}::EL-BTN-new-subfolder`}
-                  >
-                    New folder inside
-                  </button>
+                  {/* Only a top-level folder can contain folders — two levels,
+                      no third (owner, 2026-08-03). Offering it on a subfolder
+                      would be an action the server refuses. */}
+                  {selectedFolder.parentId === null && (
+                    <button
+                      type="button"
+                      className="dash-btn-secondary"
+                      onClick={() => setShowAddForm(true)}
+                      data-trace-id={`${TRACE}::EL-BTN-new-subfolder`}
+                    >
+                      New folder inside
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="dash-btn-ghost"
