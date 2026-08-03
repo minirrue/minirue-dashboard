@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import GalleryPickerModal from '@/components/dashboard/GalleryPickerModal';
 import { listFolders, listItems } from '@/lib/gallery/api';
+import type { GalleryFolder, GalleryItem } from '@/lib/gallery/types';
 
 /**
  * Owner report, 2026-08-03: "cant enter to subfolders and from subfolder to
@@ -40,7 +41,11 @@ jest.mock('@/components/dashboard/RetryingImage', () => ({
 const mockListFolders = listFolders as jest.MockedFunction<typeof listFolders>;
 const mockListItems = listItems as jest.MockedFunction<typeof listItems>;
 
-const folder = (id: string, name: string, parentId: string | null = null) => ({
+const folder = (
+  id: string,
+  name: string,
+  parentId: string | null = null,
+): GalleryFolder => ({
   id,
   name,
   parentId,
@@ -48,14 +53,17 @@ const folder = (id: string, name: string, parentId: string | null = null) => ({
   createdAt: '2026-08-03T00:00:00.000Z',
 });
 
-const item = (id: string, folderId: string) => ({
+const item = (id: string, folderId: string): GalleryItem => ({
   id,
   folderId,
   kind: 'image' as const,
   url: `https://img.test/${id}.webp`,
   posterUrl: null,
   altText: null,
-  breadcrumb: [],
+  mimeType: 'image/webp',
+  width: 800,
+  height: 800,
+  durationSeconds: null,
   createdAt: '2026-08-03T00:00:00.000Z',
 });
 
