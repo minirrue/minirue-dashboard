@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 201,
+    date: '2026-08-03',
+    area: 'Anywhere you choose a picture',
+    summary:
+      'Choosing a picture is fixed and now works two ways. Folders inside folders were unreachable: the chooser only ever listed your top-level folders, and opening one showed its loose photos but never the folders inside it, so anything filed one level down was invisible and the panel simply said there was nothing there. You can now click down through folders as deep as they go, with a trail along the top to click back out. And every place you choose a picture also has an Upload button beside it, so you can take one straight from your computer instead of adding it to the gallery first — it is cropped the same way and filed into whichever folder you are looking at.',
+  },
+  {
     id: 200,
     date: '2026-08-03',
     area: 'Categories, Catalogue → Bundles',

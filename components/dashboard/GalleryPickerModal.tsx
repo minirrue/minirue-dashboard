@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   createFolder,
   ensureProductFolder,
@@ -13,6 +13,7 @@ import type { GalleryFolder, GalleryItem, GallerySearchResult } from '@/lib/gall
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import RetryingImage from '@/components/dashboard/RetryingImage';
+import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 
 const TRACE = 'CMP-DASHBOARD-GALLERY-PICKER';
 
@@ -66,17 +67,43 @@ export async function uploadDeviceFileToGallery(
 interface GalleryPickerModalProps {
   onSelect: (item: GalleryItem) => void;
   onClose: () => void;
+  /**
+   * Crop aspect for the "Upload from this device" path, so a device upload is
+   * framed the same way the field that opened this picker renders it. Undefined
+   * means free crop.
+   */
+  aspectRatio?: number;
 }
 
-export default function GalleryPickerModal({ onSelect, onClose }: GalleryPickerModalProps) {
+export default function GalleryPickerModal({
+  onSelect,
+  onClose,
+  aspectRatio,
+}: GalleryPickerModalProps) {
+  /**
+   * The folder trail from the root to where we are now. `[]` is the root.
+   *
+   * This replaced a single `selectedFolder`, which is what made SUBFOLDERS
+   * UNREACHABLE (owner, 2026-08-03): `listFolders()` was only ever called with no
+   * parent, so it returned top-level folders and nothing else, and opening a
+   * folder loaded its ITEMS but never its child folders. A nested gallery was
+   * therefore invisible from every picker in the dashboard.
+   */
+  const [path, setPath] = useState<GalleryFolder[]>([]);
+  const current = path.length > 0 ? path[path.length - 1] : null;
+
   const [folders, setFolders] = useState<GalleryFolder[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [selectedFolder, setSelectedFolder] = useState<GalleryFolder | null>(null);
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(false);
   const [itemsError, setItemsError] = useState<string | null>(null);
+
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const deviceInputRef = useRef<HTMLInputElement>(null);
+  const cropImage = useImageCrop();
 
   const [query, setQuery] = useState('');
   const [searchResult, setSearchResult] = useState<GallerySearchResult | null>(null);
@@ -84,34 +111,89 @@ export default function GalleryPickerModal({ onSelect, onClose }: GalleryPickerM
   const [searchError, setSearchError] = useState<string | null>(null);
   const searching_ = query.trim().length > 0;
 
-  const loadFolders = useCallback(async () => {
+  /**
+   * Loads ONE level: the child folders of `folder` (or the roots) and the items
+   * directly inside it. Both, always — that is what makes the tree walkable.
+   */
+  const loadLevel = useCallback(async (folder: GalleryFolder | null) => {
     setLoadError(null);
+    setItemsError(null);
     setLoading(true);
+    setItemsLoading(true);
     try {
-      setFolders(await listFolders());
+      const [childFolders, folderItems] = await Promise.all([
+        listFolders(folder?.id),
+        folder ? listItems(folder.id) : Promise.resolve<GalleryItem[]>([]),
+      ]);
+      setFolders(childFolders);
+      setItems(folderItems);
     } catch (e) {
       const err = e as ApiError;
-      setLoadError(err.message ?? 'Failed to load gallery folders.');
+      setLoadError(err.message ?? 'Failed to load the gallery.');
     } finally {
       setLoading(false);
+      setItemsLoading(false);
     }
   }, []);
 
   useMountedEffect(() => {
-    loadFolders();
-  }, [loadFolders]);
+    loadLevel(null);
+  }, [loadLevel]);
 
-  async function handleSelectFolder(folder: GalleryFolder) {
-    setSelectedFolder(folder);
-    setItemsLoading(true);
-    setItemsError(null);
+  /** Step INTO a folder. */
+  function openFolder(folder: GalleryFolder) {
+    setPath((p) => [...p, folder]);
+    loadLevel(folder);
+  }
+
+  /** Jump to a point in the breadcrumb. `-1` is the root. */
+  function goTo(index: number) {
+    const next = index < 0 ? [] : path.slice(0, index + 1);
+    setPath(next);
+    loadLevel(next.length ? next[next.length - 1] : null);
+  }
+
+  /**
+   * Jump straight to a folder found by search, wherever it lives.
+   *
+   * Its ancestors are not known here (search returns a breadcrumb of NAMES, not
+   * rows), so the trail is seeded with just this folder. Navigation still works
+   * downward, and the crumb offers "Gallery" to get back to the root.
+   */
+  function jumpToSearchFolder(folder: GalleryFolder) {
+    setQuery('');
+    setSearchResult(null);
+    setPath([folder]);
+    loadLevel(folder);
+  }
+
+  /**
+   * Upload from the device straight into the folder being viewed, then hand the
+   * new item back as if it had been picked — the owner asked for both routes side
+   * by side in every picker, rather than gallery-only.
+   *
+   * Cropped first, like every other upload path in the dashboard (RULEBOOK: crop
+   * everywhere). At the root there is no folder to put it in, so it falls back to
+   * the same by-name folder logic device uploads have always used.
+   */
+  async function handleDeviceFile(file: File) {
+    setUploadError(null);
+    setUploading(true);
     try {
-      setItems(await listItems(folder.id));
+      const cropped = await cropImage(file, {
+        initialAspect: aspectRatio,
+        title: `Crop ${file.name}`,
+      });
+      if (!cropped) return;
+      const item = current
+        ? await uploadItem(current.id, cropped)
+        : await uploadDeviceFileToGallery(cropped);
+      onSelect(item);
     } catch (e) {
       const err = e as ApiError;
-      setItemsError(err.message ?? 'Failed to load folder contents.');
+      setUploadError(err.message ?? 'Failed to upload that file.');
     } finally {
-      setItemsLoading(false);
+      setUploading(false);
     }
   }
 
@@ -148,14 +230,28 @@ export default function GalleryPickerModal({ onSelect, onClose }: GalleryPickerM
           <p className="dash-dialog-message" style={{ margin: 0 }}>
             Choose from Gallery
           </p>
-          <button
-            type="button"
-            className="dash-btn-ghost"
-            onClick={onClose}
-            data-trace-id={`${TRACE}::EL-BTN-close-gallery-picker`}
-          >
-            Close
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {/* Both routes side by side in every picker (owner 2026-08-03).
+                Uploads into whichever folder is open, so a device upload lands
+                where the admin is already looking, not in a generic bucket. */}
+            <button
+              type="button"
+              className="dash-btn-secondary"
+              onClick={() => deviceInputRef.current?.click()}
+              disabled={uploading}
+              data-trace-id={`${TRACE}::EL-BTN-upload-from-device`}
+            >
+              {uploading ? 'Uploading...' : current ? 'Upload here' : 'Upload from device'}
+            </button>
+            <button
+              type="button"
+              className="dash-btn-ghost"
+              onClick={onClose}
+              data-trace-id={`${TRACE}::EL-BTN-close-gallery-picker`}
+            >
+              Close
+            </button>
+          </div>
         </div>
 
         <div style={{ marginTop: 12 }}>
@@ -168,6 +264,19 @@ export default function GalleryPickerModal({ onSelect, onClose }: GalleryPickerM
             data-trace-id={`${TRACE}::EL-INPUT-picker-search`}
           />
         </div>
+
+        <input
+          ref={deviceInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/heic,image/heif,image/webp"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleDeviceFile(file);
+            e.target.value = '';
+          }}
+        />
+        {uploadError && <p className="dash-inline-error">{uploadError}</p>}
 
         {searching_ ? (
           <div style={{ marginTop: 16 }} data-trace-id={`${TRACE}::EL-REGION-picker-search-results`}>
@@ -190,9 +299,7 @@ export default function GalleryPickerModal({ onSelect, onClose }: GalleryPickerM
                           className="dash-btn-ghost"
                           style={{ justifyContent: 'flex-start', textAlign: 'left' }}
                           onClick={() => {
-                            setQuery('');
-                            setSearchResult(null);
-                            handleSelectFolder(folder);
+                            jumpToSearchFolder(folder);
                           }}
                           data-trace-id={`${TRACE}::EL-BTN-search-result-folder@${folder.id}`}
                         >
@@ -266,91 +373,128 @@ export default function GalleryPickerModal({ onSelect, onClose }: GalleryPickerM
             )}
           </div>
         ) : (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 16 }}>
-            <div style={{ flex: '0 0 160px', maxWidth: '100%', minWidth: 0 }}>
-              <p className="dash-section-subtitle" style={{ marginTop: 0 }}>Folders</p>
-              {loading ? (
-                <p className="dash-help-text">Loading…</p>
-              ) : loadError ? (
-                <p className="dash-inline-error">{loadError}</p>
-              ) : folders.length === 0 ? (
-                <p className="dash-help-text">No folders yet.</p>
-              ) : (
-                <div
-                  style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
-                  data-trace-id={`${TRACE}::EL-LIST-picker-folders`}
-                >
-                  {folders.map((folder) => (
-                    <button
-                      key={folder.id}
-                      type="button"
-                      className="dash-btn-ghost"
-                      data-active={selectedFolder?.id === folder.id ? 'true' : undefined}
-                      onClick={() => handleSelectFolder(folder)}
-                      style={{ justifyContent: 'flex-start', textAlign: 'left' }}
-                      data-trace-id={`${TRACE}::EL-BTN-picker-folder@${folder.id}`}
-                    >
-                      📁 {folder.name} ({folder.itemCount})
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+          <div style={{ marginTop: 16 }}>
+            {/* Breadcrumb - the way BACK out of a subfolder. Without one, stepping
+                into a nested folder was a dead end. */}
+            <nav
+              aria-label="Gallery folders"
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: 4,
+                marginBottom: 12,
+              }}
+              data-trace-id={`${TRACE}::EL-REGION-picker-breadcrumb`}
+            >
+              <button
+                type="button"
+                className="dash-btn-ghost"
+                onClick={() => goTo(-1)}
+                disabled={path.length === 0}
+                data-trace-id={`${TRACE}::EL-BTN-picker-crumb-root`}
+              >
+                Gallery
+              </button>
+              {path.map((folder, i) => (
+                <React.Fragment key={folder.id}>
+                  <span aria-hidden="true" className="dash-help-text">/</span>
+                  <button
+                    type="button"
+                    className="dash-btn-ghost"
+                    onClick={() => goTo(i)}
+                    disabled={i === path.length - 1}
+                    data-trace-id={`${TRACE}::EL-BTN-picker-crumb@${folder.id}`}
+                  >
+                    {folder.name}
+                  </button>
+                </React.Fragment>
+              ))}
+            </nav>
 
-            <div style={{ flex: '1 1 200px', maxWidth: '100%', minWidth: 0 }}>
-              <p className="dash-section-subtitle" style={{ marginTop: 0 }}>Items</p>
-              {!selectedFolder ? (
-                <p className="dash-help-text">Select a folder to view its photos and videos.</p>
-              ) : itemsLoading ? (
-                <p className="dash-help-text">Loading items…</p>
-              ) : itemsError ? (
-                <p className="dash-inline-error">{itemsError}</p>
-              ) : items.length === 0 ? (
-                <p className="dash-help-text">No items in this folder yet.</p>
-              ) : (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
-                    gap: 12,
-                  }}
-                  data-trace-id={`${TRACE}::EL-GRID-picker-items`}
-                >
-                  {items.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => onSelect(item)}
-                      style={{
-                        padding: 0,
-                        border: '1px solid var(--mr-dash-hair)',
-                        borderRadius: 'var(--mr-radius-sm)',
-                        overflow: 'hidden',
-                        cursor: 'pointer',
-                        background: 'none',
-                      }}
-                      data-trace-id={`${TRACE}::EL-BTN-select-picker-item@${item.id}`}
-                    >
-                      {item.kind === 'video' ? (
-                        <video
-                          src={item.url}
-                          poster={item.posterUrl ?? undefined}
-                          muted
-                          preload={item.posterUrl ? 'none' : 'metadata'}
-                          style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <RetryingImage
-                          src={item.url}
-                          alt=""
-                          style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover' }}
-                        />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            {loadError && <p className="dash-inline-error">{loadError}</p>}
+
+            {/* Folders and items for THIS level, folders first, so a folder that
+                holds both is fully browsable. */}
+            <p className="dash-section-subtitle" style={{ marginTop: 0 }}>Folders</p>
+            {loading ? (
+              <p className="dash-help-text">Loading...</p>
+            ) : folders.length === 0 ? (
+              <p className="dash-help-text">
+                {current ? 'No folders inside this one.' : 'No folders yet.'}
+              </p>
+            ) : (
+              <div
+                style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 16 }}
+                data-trace-id={`${TRACE}::EL-LIST-picker-folders`}
+              >
+                {folders.map((folder) => (
+                  <button
+                    key={folder.id}
+                    type="button"
+                    className="dash-btn-ghost"
+                    onClick={() => openFolder(folder)}
+                    style={{ justifyContent: 'flex-start', textAlign: 'left' }}
+                    data-trace-id={`${TRACE}::EL-BTN-picker-folder@${folder.id}`}
+                  >
+                    {folder.name} ({folder.itemCount})
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <p className="dash-section-subtitle">Items</p>
+            {!current ? (
+              <p className="dash-help-text">Open a folder to see its photos and videos.</p>
+            ) : itemsLoading ? (
+              <p className="dash-help-text">Loading items...</p>
+            ) : itemsError ? (
+              <p className="dash-inline-error">{itemsError}</p>
+            ) : items.length === 0 ? (
+              <p className="dash-help-text">Nothing directly in this folder.</p>
+            ) : (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+                  gap: 12,
+                }}
+                data-trace-id={`${TRACE}::EL-GRID-picker-items`}
+              >
+                {items.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => onSelect(item)}
+                    style={{
+                      padding: 0,
+                      border: '1px solid var(--mr-dash-hair)',
+                      borderRadius: 'var(--mr-radius-sm)',
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                      background: 'none',
+                    }}
+                    data-trace-id={`${TRACE}::EL-BTN-select-picker-item@${item.id}`}
+                  >
+                    {item.kind === 'video' ? (
+                      <video
+                        src={item.url}
+                        poster={item.posterUrl ?? undefined}
+                        muted
+                        preload={item.posterUrl ? 'none' : 'metadata'}
+                        style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <RetryingImage
+                        src={item.url}
+                        alt=""
+                        style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover' }}
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

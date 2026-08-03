@@ -198,6 +198,9 @@ export default function ImageField({
 
       {picking && (
         <GalleryPickerModal
+          // So an "Upload from device" inside the picker is cropped to the same
+          // shape this field renders, exactly as Exchange already is.
+          aspectRatio={aspectRatio}
           onSelect={(item) => {
             // A different EXISTING item, not bytes just uploaded here — clear
             // any stale local preview from a previous Exchange so this

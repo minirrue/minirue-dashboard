@@ -30,7 +30,7 @@ describe('GalleryPickerModal — search', () => {
   it('does not search on an empty query, and normal folder browsing shows instead', () => {
     render(<GalleryPickerModal onSelect={jest.fn()} onClose={jest.fn()} />);
     expect(searchGallery).not.toHaveBeenCalled();
-    expect(screen.getByText(/select a folder to view its photos/i)).toBeInTheDocument();
+    expect(screen.getByText(/open a folder to see its photos/i)).toBeInTheDocument();
   });
 
   it('typing a query searches and shows each result with its breadcrumb', async () => {
@@ -82,7 +82,7 @@ describe('GalleryPickerModal — search', () => {
 
     // Normal folder browsing is replaced by search results while a query is
     // present.
-    expect(screen.queryByText(/select a folder to view its photos/i)).toBeNull();
+    expect(screen.queryByText(/open a folder to see its photos/i)).toBeNull();
   });
 
   it('clearing the query back to empty returns to normal folder browsing', async () => {
@@ -95,7 +95,7 @@ describe('GalleryPickerModal — search', () => {
     await waitFor(() => expect(searchGallery).toHaveBeenCalled());
 
     await user.clear(input);
-    expect(screen.getByText(/select a folder to view its photos/i)).toBeInTheDocument();
+    expect(screen.getByText(/open a folder to see its photos/i)).toBeInTheDocument();
   });
 
   it('selecting a matched item calls onSelect directly', async () => {
