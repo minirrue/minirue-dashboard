@@ -48,6 +48,28 @@ export interface StoreSettings {
   brand: BrandConfig;
   maintenanceMode: boolean;
   storefront?: StorefrontLayout;
+  /**
+   * Covers for the shop panel's two shortcut tiles — "All Products" and
+   * "Bundles" on the storefront's /categories page. Gallery item ids: these are
+   * what you SEND.
+   *
+   * Absent on any store that has never set one, in which case both tiles keep
+   * their glyph.
+   */
+  shopPanel?: {
+    allProductsImageMediaId: string | null;
+    bundlesImageMediaId: string | null;
+  };
+  /**
+   * The same two covers as resolved URLs — read-only, server-attached, and
+   * never sent back. The picker needs a URL to draw the current choice while
+   * the database keeps ids; the API strips this from any patch, so including it
+   * in a save is harmless but pointless.
+   */
+  shopPanelImages?: {
+    allProductsImageUrl: string | null;
+    bundlesImageUrl: string | null;
+  };
 }
 
 export async function apiGetSettings(): Promise<StoreSettings> {

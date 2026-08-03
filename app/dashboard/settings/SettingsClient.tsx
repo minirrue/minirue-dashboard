@@ -2,6 +2,7 @@
 
 import React, {useState, useCallback, useRef } from 'react';
 import { apiGetSettings, apiUpdateSettings, apiUploadBrandLogo } from '@/lib/api/settings';
+import ImageField from '@/components/dashboard/ImageField';
 import type { StoreSettings } from '@/lib/api/settings';
 import type { ApiError } from '@/lib/api/client';
 import { useUser } from '@/lib/hooks/use-auth';
@@ -398,7 +399,36 @@ export default function SettingsClient() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  /**
+   * Shop-panel covers. Kept OUTSIDE `form` because they are gallery pointers,
+   * not text an admin types: the id is what gets saved and the url is only ever
+   * server-resolved for display. Seeded from the server on load, then updated in
+   * place when a picture is picked so the tile redraws immediately.
+   */
+  const [covers, setCovers] = useState<{
+    allProductsImageMediaId: string | null;
+    bundlesImageMediaId: string | null;
+    allProductsImageUrl: string | null;
+    bundlesImageUrl: string | null;
+  }>({
+    allProductsImageMediaId: null,
+    bundlesImageMediaId: null,
+    allProductsImageUrl: null,
+    bundlesImageUrl: null,
+  });
   const [saved, setSaved] = useState(false);
+
+  /** Seeds the two cover pickers from a settings document. Ids come from
+   *  `shopPanel` (what we save), urls from `shopPanelImages` (read-only, what we
+   *  draw) — see lib/api/settings.ts. */
+  const seedCovers = useCallback((d: StoreSettings) => {
+    setCovers({
+      allProductsImageMediaId: d.shopPanel?.allProductsImageMediaId ?? null,
+      bundlesImageMediaId: d.shopPanel?.bundlesImageMediaId ?? null,
+      allProductsImageUrl: d.shopPanelImages?.allProductsImageUrl ?? null,
+      bundlesImageUrl: d.shopPanelImages?.bundlesImageUrl ?? null,
+    });
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -407,12 +437,13 @@ export default function SettingsClient() {
       const data = await apiGetSettings();
       setRaw(data);
       setForm(settingsToForm(data));
+      seedCovers(data);
     } catch (e) {
       setLoadError((e as ApiError).message ?? 'Failed to load settings');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [seedCovers]);
 
   useMountedEffect(() => { load(); }, [load]);
 
@@ -442,6 +473,12 @@ export default function SettingsClient() {
     setSaved(false);
     try {
       const patch: Partial<StoreSettings> = {
+        // Both ids every time: the API merges this per-key, but sending the pair
+        // keeps "what the screen shows" and "what is stored" the same thing.
+        shopPanel: {
+          allProductsImageMediaId: covers.allProductsImageMediaId,
+          bundlesImageMediaId: covers.bundlesImageMediaId,
+        },
         currency: form.currency,
         // `locale` is deliberately NOT sent here: the field was removed from
         // this form (owner request, 2026-07-31) but the stored value is still
@@ -495,6 +532,9 @@ export default function SettingsClient() {
       const updated = await apiUpdateSettings(patch);
       setRaw(updated);
       setForm(settingsToForm(updated));
+      // Re-seed from the server so the tiles show the freshly-resolved URLs
+      // rather than whatever the picker happened to hold.
+      seedCovers(updated);
       setSaved(true);
     } catch (err) {
       setSaveError((err as ApiError).message ?? 'Failed to save settings');
@@ -649,6 +689,60 @@ export default function SettingsClient() {
               Shows the logo uploaded above. Leave as-is to keep it, paste a different
               image&apos;s URL to use that instead, or clear it to use the default wordmark.
             </p>
+          </div>
+
+          {/*
+            Shop panel covers (owner ask, 2026-08-03). The storefront's Shop page
+            shows one tile per category plus two that are NOT categories — "All
+            Products" and "Bundles" — and those two had no picture and no way to
+            set one, so they rendered a grey glyph beside real photographs.
+
+            Pictures come from the gallery, exactly like a category's or a
+            brand's, so there is one place images live. Leaving a slot empty is a
+            valid choice, not an omission: the tile keeps its glyph.
+          */}
+          <div className="dash-form-section">
+            <h3 className="dash-section-title">Shop page tiles</h3>
+            <p className="dash-help-text" style={{ marginTop: 0 }}>
+              The two shortcut tiles on the shop page, beside your categories.
+              Leave a tile without a picture to show its icon instead.
+            </p>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: 16,
+              }}
+            >
+              <ImageField
+                label="All Products tile"
+                helpText="Leads to every product in the shop."
+                imageUrl={covers.allProductsImageUrl}
+                mediaId={covers.allProductsImageMediaId}
+                disabled={saving}
+                onChange={(mediaId, item) =>
+                  setCovers((c) => ({
+                    ...c,
+                    allProductsImageMediaId: mediaId,
+                    allProductsImageUrl: item?.url ?? null,
+                  }))
+                }
+              />
+              <ImageField
+                label="Bundles tile"
+                helpText="Only appears on the shop page while a bundle is live."
+                imageUrl={covers.bundlesImageUrl}
+                mediaId={covers.bundlesImageMediaId}
+                disabled={saving}
+                onChange={(mediaId, item) =>
+                  setCovers((c) => ({
+                    ...c,
+                    bundlesImageMediaId: mediaId,
+                    bundlesImageUrl: item?.url ?? null,
+                  }))
+                }
+              />
+            </div>
           </div>
 
           {saveError && <p className="dash-inline-error">{saveError}</p>}

@@ -23,6 +23,17 @@ export interface CollabBrand {
   description: string | null;
   logoUrl: string | null;
   brandSlug: string;
+  /**
+   * Covers for this space's two shortcut tiles — "All Products" and "Bundles".
+   * Ids are what you SEND; the `*Url` pair is server-resolved for display only.
+   *
+   * Optional so an older API build simply has no covers and the tiles keep their
+   * glyph. Set only here, in the partner's own dashboard (owner, 2026-08-03).
+   */
+  allProductsImageMediaId?: string | null;
+  bundlesImageMediaId?: string | null;
+  allProductsImageUrl?: string | null;
+  bundlesImageUrl?: string | null;
 }
 
 export async function apiCollabOverview(): Promise<CollabOverview> {
@@ -77,6 +88,9 @@ export async function apiCollabGetBrand(): Promise<CollabBrand> {
 export async function apiCollabUpdateBrand(data: {
   displayName?: string;
   description?: string | null;
+  /** Omit to leave a cover alone; `null` clears it. */
+  allProductsImageMediaId?: string | null;
+  bundlesImageMediaId?: string | null;
 }): Promise<CollabBrand> {
   return apiFetch<CollabBrand>('/collab/brand', {
     method: 'PATCH',

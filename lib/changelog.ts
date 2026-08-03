@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 200,
+    date: '2026-08-03',
+    area: 'Settings → Shop page tiles, Collab → Brand',
+    summary:
+      'You can now put a picture on the “All Products” and “Bundles” tiles on the shop page. Until now those two showed a plain grey icon and there was nowhere to change them, which looked odd sitting next to your category tiles that all have real photographs. Pick the pictures under Settings, from your gallery, the same way you set a category or brand picture — and leaving one empty is still fine, it just keeps its icon. Partners get exactly the same thing on their own space: an “All Products” tile, which their space never had at all, with its picture set in their own Brand page. A partner can only choose from their own gallery and MiniRue only from its own, so nobody can accidentally use someone else’s photograph.',
+  },
+  {
     id: 199,
     date: '2026-08-01',
     area: 'Catalogue → Bundles, Customers, Storefront',

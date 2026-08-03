@@ -15,6 +15,7 @@ import {
 } from '@/components/collab/collab-ui';
 
 import { EnlargeableImage } from '@/components/dashboard/ImagePreviewModal';
+import ImageField from '@/components/dashboard/ImageField';
 
 import { GenericAvatarIcon } from '@/components/GenericAvatarIcon';
 
@@ -82,6 +83,32 @@ export default function CollabBrandClient() {
   // icon/placeholder over a photo that really did arrive.
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
   const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
+
+  /** Shop-panel covers. Same shape and same reasoning as MiniRue's own Settings
+   *  screen: the id is saved, the url is only ever server-resolved for drawing. */
+
+  const [covers, setCovers] = useState<{
+
+    allProductsImageMediaId: string | null;
+
+    bundlesImageMediaId: string | null;
+
+    allProductsImageUrl: string | null;
+
+    bundlesImageUrl: string | null;
+
+  }>({
+
+    allProductsImageMediaId: null,
+
+    bundlesImageMediaId: null,
+
+    allProductsImageUrl: null,
+
+    bundlesImageUrl: null,
+
+  });
+
   const [uploadedAvatarUrl, setUploadedAvatarUrl] = useState<string | null>(null);
   const [uploadedLogoUrl, setUploadedLogoUrl] = useState<string | null>(null);
 
@@ -119,6 +146,18 @@ export default function CollabBrandClient() {
 
         setDescription(b.description ?? '');
 
+        setCovers({
+
+          allProductsImageMediaId: b.allProductsImageMediaId ?? null,
+
+          bundlesImageMediaId: b.bundlesImageMediaId ?? null,
+
+          allProductsImageUrl: b.allProductsImageUrl ?? null,
+
+          bundlesImageUrl: b.bundlesImageUrl ?? null,
+
+        });
+
       })
 
       .catch((err: ApiError) => setError(err.message || 'Failed to load brand'))
@@ -147,9 +186,27 @@ export default function CollabBrandClient() {
 
         description: description || null,
 
+        allProductsImageMediaId: covers.allProductsImageMediaId,
+
+        bundlesImageMediaId: covers.bundlesImageMediaId,
+
       });
 
       setBrand(updated);
+
+      // Re-seed from the server so the tiles draw freshly-resolved URLs.
+
+      setCovers({
+
+        allProductsImageMediaId: updated.allProductsImageMediaId ?? null,
+
+        bundlesImageMediaId: updated.bundlesImageMediaId ?? null,
+
+        allProductsImageUrl: updated.allProductsImageUrl ?? null,
+
+        bundlesImageUrl: updated.bundlesImageUrl ?? null,
+
+      });
 
       setSaved(true);
 
@@ -625,6 +682,105 @@ export default function CollabBrandClient() {
             Changes saved.
           </p>
         ) : null}
+
+
+
+        {/*
+          Shop page tiles for THIS space (owner ask, 2026-08-03: "unify business
+          over minirue and collab, have same mindset here"). Your space shows a
+          tile per category plus an "All Products" shortcut that leads to
+          everything you sell — that tile had no picture and no way to set one.
+
+          Pictures come from your gallery, the same place category and brand
+          images come from. Only you can set these; MiniRue sets its own
+          separately.
+        */}
+
+        <div className="dash-form-section">
+
+          <h3 className="dash-section-title">Shop page tiles</h3>
+
+          <p className="dash-help-text" style={{ marginTop: 0 }}>
+
+            The shortcut tiles on your space, beside your categories. Leave one
+
+            without a picture to show its icon instead.
+
+          </p>
+
+          <div
+
+            style={{
+
+              display: 'grid',
+
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+
+              gap: 16,
+
+            }}
+
+          >
+
+            <ImageField
+
+              label="All Products tile"
+
+              helpText="Leads to everything you sell."
+
+              imageUrl={covers.allProductsImageUrl}
+
+              mediaId={covers.allProductsImageMediaId}
+
+              disabled={saving}
+
+              onChange={(mediaId, item) =>
+
+                setCovers((c) => ({
+
+                  ...c,
+
+                  allProductsImageMediaId: mediaId,
+
+                  allProductsImageUrl: item?.url ?? null,
+
+                }))
+
+              }
+
+            />
+
+            <ImageField
+
+              label="Bundles tile"
+
+              helpText="Only appears while a bundle is live."
+
+              imageUrl={covers.bundlesImageUrl}
+
+              mediaId={covers.bundlesImageMediaId}
+
+              disabled={saving}
+
+              onChange={(mediaId, item) =>
+
+                setCovers((c) => ({
+
+                  ...c,
+
+                  bundlesImageMediaId: mediaId,
+
+                  bundlesImageUrl: item?.url ?? null,
+
+                }))
+
+              }
+
+            />
+
+          </div>
+
+        </div>
 
 
 
