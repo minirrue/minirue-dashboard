@@ -23,9 +23,9 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     id: 200,
     date: '2026-08-03',
-    area: 'Settings → Shop page tiles, Collab → Brand',
+    area: 'Categories, Catalogue → Bundles',
     summary:
-      'You can now put a picture on the “All Products” and “Bundles” tiles on the shop page. Until now those two showed a plain grey icon and there was nowhere to change them, which looked odd sitting next to your category tiles that all have real photographs. Pick the pictures under Settings, from your gallery, the same way you set a category or brand picture — and leaving one empty is still fine, it just keeps its icon. Partners get exactly the same thing on their own space: an “All Products” tile, which their space never had at all, with its picture set in their own Brand page. A partner can only choose from their own gallery and MiniRue only from its own, so nobody can accidentally use someone else’s photograph.',
+      'Pictures for the shop page’s two shortcut tiles — “All Products” and “Bundles” — are now set on the Categories screen, right above your category list. Those two tiles used to show a plain grey icon with nowhere to change them, which looked odd beside category tiles that all have real photographs. Pick them from your gallery, the same way you set a category or brand picture; leaving one empty still just shows its icon. “All Products” is not a real category and never holds products — it is only the tile that leads to everything. Partners get exactly the same thing on their own Categories screen, including an “All Products” tile their space never had, and can only choose from their own gallery. Separately, each bundle now has its own photo chosen from the gallery instead of pasting a web link, which is both quicker and stops bundle photos breaking on their own later. A bundle’s own photo and the “Bundles” tile picture are two different things and are set in two different places.',
   },
   {
     id: 199,

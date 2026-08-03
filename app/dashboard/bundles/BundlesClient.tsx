@@ -2,6 +2,7 @@
 
 import React from 'react';
 import CatalogSubnav from '@/components/dashboard/CatalogSubnav';
+import ImageField from '@/components/dashboard/ImageField';
 import {
   createBundle,
   deleteBundle,
@@ -41,6 +42,10 @@ export default function BundlesClient() {
   const [price, setPrice] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [imageUrl, setImageUrl] = React.useState('');
+  /** This set's own cover, picked from the gallery (migration 0220). Replaces the
+   *  paste-a-URL box: a stored URL drifts out of imgproxy signature validity,
+   *  which is the defect already fixed twice for avatars and brand logos. */
+  const [imageMediaId, setImageMediaId] = React.useState<string | null>(null);
   const [isActive, setIsActive] = React.useState(false);
   const [members, setMembers] = React.useState<BundleMemberInput[]>([]);
 
@@ -99,6 +104,7 @@ export default function BundlesClient() {
         slug: slugify(name),
         description: description.trim() || null,
         imageUrl: imageUrl.trim() || null,
+        imageMediaId,
         priceMinor,
         isActive,
         members,
@@ -185,13 +191,17 @@ export default function BundlesClient() {
               </div>
 
               <div className="dash-field">
-                <label className="dash-label" htmlFor="b-image">Photo URL</label>
-                <input
-                  id="b-image"
-                  className="dash-input"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="paste from Gallery"
+                <ImageField
+                  label="Photo"
+                  helpText="This set's own picture. Separate from the Bundles tile on the shop page, which is set under Categories."
+                  imageUrl={imageUrl || null}
+                  mediaId={imageMediaId}
+                  onChange={(mediaId, item) => {
+                    setImageMediaId(mediaId);
+                    // Keep the display URL in step so the tile redraws at once;
+                    // the id is what actually gets saved.
+                    setImageUrl(item?.url ?? '');
+                  }}
                 />
               </div>
 

@@ -12,6 +12,7 @@ import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import CategoryTree, { type CategoryTreeApi } from '@/app/dashboard/categories/CategoryTree';
 import NewCategoryForm from '@/app/dashboard/categories/NewCategoryForm';
+import ShopPanelTiles from '@/components/dashboard/ShopPanelTiles';
 
 const TRACE = 'PG-COLLAB-CATEGORIES-001';
 
@@ -79,6 +80,12 @@ export default function CollabCategoriesClient() {
         browse what you sell. MiniRue&apos;s categories are separate — yours are
         yours to name.
       </p>
+
+      {/* Same component, same place as MiniRue's own — the owner asked for one
+          mindset across MiniRue and collab. It writes to this partner's own
+          brand profile, and its gallery picker can only see this partner's
+          pictures. */}
+      <ShopPanelTiles scope="collab" />
 
       <NewCategoryForm
         parentOptions={[]}

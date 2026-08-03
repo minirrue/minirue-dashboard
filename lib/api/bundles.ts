@@ -25,7 +25,11 @@ export interface Bundle {
   slug: string;
   name: string;
   description: string | null;
+  /** Resolved for display. Comes from `imageMediaId` when set, else the legacy
+   *  pasted URL — see migration 0220. */
   imageUrl: string | null;
+  /** The gallery item this bundle's cover points at, or null. What you SEND. */
+  imageMediaId?: string | null;
   priceMinor: number;
   currency: string;
   /** What the members cost separately — recomputed live, never stored. */
@@ -51,6 +55,10 @@ export interface BundleInput {
   slug: string;
   description?: string | null;
   imageUrl?: string | null;
+  /** Gallery pointer for this bundle's own cover. `null` clears it. Distinct
+   *  from the shop page's "Bundles" tile cover, which is a space-level setting
+   *  managed under Categories. */
+  imageMediaId?: string | null;
   priceMinor: number;
   isActive: boolean;
   ownerCustomerId?: string | null;

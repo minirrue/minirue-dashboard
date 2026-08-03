@@ -7,6 +7,7 @@ import type { ApiError } from '@/lib/api/client';
 import CategoryTree, { type CategoryTreeApi } from './CategoryTree';
 import NewCategoryForm, { type ParentOption } from './NewCategoryForm';
 import CatalogSubnav from '@/components/dashboard/CatalogSubnav';
+import ShopPanelTiles from '@/components/dashboard/ShopPanelTiles';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
 const TRACE = 'PG-DASHBOARD-CAT-004';
@@ -80,6 +81,14 @@ export default function CategoriesPage() {
       </div>
 
       <CatalogSubnav />
+
+      {/* The shop page's two non-category tiles. They live HERE, not in
+          Settings, because they sit in the same storefront grid as the category
+          tiles below and are set from the same gallery — this is where an admin
+          looks for them (owner, 2026-08-03). "All Products" is deliberately not a
+          real category: no product can be assigned to it, so this does not
+          reintroduce the fallback bucket migration 0084 removed. */}
+      <ShopPanelTiles scope="house" traceId={`${TRACE}::EL-REGION-shop-panel-tiles`} />
 
       <NewCategoryForm
         parentOptions={parentOptions}
