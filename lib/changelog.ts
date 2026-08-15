@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 205,
+    date: '2026-08-15',
+    area: 'Products → Brands',
+    summary:
+      'Clicking a brand now opens an edit view instead of only offering Rename — you can see its picture, change it, and edit the name, slug and description all in one Save. Each brand also shows a small picture in the list now, so the Brands screen is scannable the same way Categories already was. Changing a brand\'s slug now warns you first, since it breaks any link already pointing at that brand\'s page.',
+  },
+  {
     id: 204,
     date: '2026-08-03',
     area: 'Gallery, and buttons everywhere',

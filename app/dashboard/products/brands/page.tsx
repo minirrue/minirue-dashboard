@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
 import {
   listManagedBrands,
   createBrand,
-  renameBrand,
+  updateBrand,
   deleteBrand,
   type ManagedBrand,
 } from '@/lib/catalog/api';
@@ -12,53 +13,262 @@ import type { ApiError } from '@/lib/api/client';
 import CatalogSubnav from '@/components/dashboard/CatalogSubnav';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import ImageField from '@/components/dashboard/ImageField';
+import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
 import { uploadDeviceFileToGallery } from '@/components/dashboard/GalleryPickerModal';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 import type { GalleryItem } from '@/lib/gallery/types';
 
 const TRACE = 'PG-DASHBOARD-CAT-005';
 
-function BrandRow({
+interface BrandEditValues {
+  name: string;
+  slug: string;
+  description: string;
+}
+
+interface BrandEditErrors {
+  name?: string;
+  slug?: string;
+}
+
+function validateBrandEdit(v: BrandEditValues): BrandEditErrors {
+  const errors: BrandEditErrors = {};
+  if (!v.name.trim()) errors.name = 'Name is required.';
+  if (!v.slug.trim()) errors.slug = 'Slug is required.';
+  return errors;
+}
+
+/**
+ * The Brands row's edit view — image, name, slug, description, one Save.
+ * Rendered into <body> via createPortal, same pattern as RefundOrderModal /
+ * ManualOrderModal: .dash-dialog-overlay / .dash-dialog already exist, no
+ * new modal CSS to invent.
+ */
+function BrandEditModal({
   brand,
-  onRenamed,
-  onDeleted,
+  onClose,
+  onSaved,
 }: {
   brand: ManagedBrand;
-  onRenamed: (updated: ManagedBrand) => void;
-  onDeleted: () => void;
+  onClose: () => void;
+  onSaved: (updated: ManagedBrand, localImageFile: File | null) => void;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(brand.name);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
-  async function handleRename(e: React.FormEvent) {
+  const [values, setValues] = useState<BrandEditValues>({
+    name: brand.name,
+    slug: brand.slug,
+    description: brand.description ?? '',
+  });
+  const [errors, setErrors] = useState<BrandEditErrors>({});
+  const [imageMediaId, setImageMediaId] = useState<string | null>(brand.imageMediaId);
+  const [imageUrl, setImageUrl] = useState<string | null>(brand.imageUrl);
+  // Bytes an in-modal Exchange just uploaded — shown in the ImageField's own
+  // preview only; the row thumbnail gets its own copy via `onSaved` once this
+  // is actually persisted, same reasoning as CategoryTree's `localImage`.
+  const [localImageFile, setLocalImageFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  function setField<K extends keyof BrandEditValues>(key: K, value: string) {
+    setValues((prev) => ({ ...prev, [key]: value }));
+    if (errors[key as keyof BrandEditErrors]) {
+      setErrors((prev) => ({ ...prev, [key]: undefined }));
+    }
+  }
+
+  // Dirtied, not just present — the warning is about CHANGING the slug, so a
+  // field that still reads the brand's original slug has nothing to warn about.
+  const slugDirty = values.slug.trim() !== brand.slug;
+
+  async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
+    const errs = validateBrandEdit(values);
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
+    }
+    // One PATCH, only the fields that actually changed — not a blanket
+    // resend of everything the modal happens to hold.
+    const patch: Parameters<typeof updateBrand>[1] = {};
+    if (values.name.trim() !== brand.name) patch.name = values.name.trim();
+    if (values.slug.trim() !== brand.slug) patch.slug = values.slug.trim();
+    const trimmedDescription = values.description.trim();
+    if (trimmedDescription !== (brand.description ?? '')) {
+      patch.description = trimmedDescription || null;
+    }
+    if (imageMediaId !== brand.imageMediaId) patch.imageMediaId = imageMediaId;
+
+    if (Object.keys(patch).length === 0) {
+      onClose();
+      return;
+    }
+
+    setSaveError(null);
     setSaving(true);
-    setError(null);
     try {
-      const updated = await renameBrand(brand.id, name.trim());
-      onRenamed(updated);
-      setEditing(false);
+      const updated = await updateBrand(brand.id, patch);
+      onSaved(updated, patch.imageMediaId !== undefined ? localImageFile : null);
     } catch (e) {
       const err = e as ApiError;
-      setError(err.message ?? 'Rename failed.');
+      if (err.status === 409) {
+        // A slug collision belongs on the Slug field, not as a generic toast
+        // — it's the one field the error is actually about.
+        setErrors((prev) => ({ ...prev, slug: err.message ?? 'That slug is already in use.' }));
+      } else {
+        setSaveError(err.message ?? 'Save failed.');
+      }
     } finally {
       setSaving(false);
     }
   }
 
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className="dash-dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="brand-edit-title">
+      <div className="dash-dialog" style={{ maxWidth: 520, width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
+        <h2 id="brand-edit-title" className="dash-section-title" style={{ marginTop: 0 }}>
+          Edit brand
+        </h2>
+
+        <form
+          onSubmit={handleSave}
+          noValidate
+          data-trace-id={`${TRACE}::EL-FORM-edit-brand@${brand.id}`}
+        >
+          <ImageField
+            label="Brand image"
+            imageUrl={imageUrl}
+            mediaId={imageMediaId}
+            disabled={saving}
+            onChange={(mediaId, item, localFile) => {
+              setImageMediaId(mediaId);
+              setImageUrl(item?.url ?? null);
+              setLocalImageFile(localFile ?? null);
+            }}
+          />
+
+          <div className="dash-field">
+            <label className="dash-label" htmlFor={`brand-edit-name-${brand.id}`}>
+              Name <span className="dash-required">*</span>
+            </label>
+            <input
+              id={`brand-edit-name-${brand.id}`}
+              className={`dash-input${errors.name ? ' dash-input-error' : ''}`}
+              value={values.name}
+              onChange={(e) => setField('name', e.target.value)}
+              disabled={saving}
+              autoFocus
+              data-trace-id={`${TRACE}::EL-INPUT-edit-brand-name@${brand.id}`}
+            />
+            {errors.name && <p className="dash-field-error">{errors.name}</p>}
+          </div>
+
+          <div className="dash-field">
+            <label className="dash-label" htmlFor={`brand-edit-slug-${brand.id}`}>
+              Slug <span className="dash-required">*</span>
+            </label>
+            <input
+              id={`brand-edit-slug-${brand.id}`}
+              className={`dash-input${errors.slug ? ' dash-input-error' : ''}`}
+              value={values.slug}
+              onChange={(e) => setField('slug', e.target.value)}
+              disabled={saving}
+              data-trace-id={`${TRACE}::EL-INPUT-edit-brand-slug@${brand.id}`}
+            />
+            {errors.slug && <p className="dash-field-error">{errors.slug}</p>}
+            {slugDirty && !errors.slug && (
+              <p className="dash-help-text" style={{ color: 'var(--mr-st-warn-fg)' }}>
+                Changing the slug breaks any existing links to this brand&apos;s page.
+              </p>
+            )}
+          </div>
+
+          <div className="dash-field">
+            <label className="dash-label" htmlFor={`brand-edit-desc-${brand.id}`}>
+              Description
+            </label>
+            <textarea
+              id={`brand-edit-desc-${brand.id}`}
+              className="dash-textarea"
+              rows={4}
+              value={values.description}
+              onChange={(e) => setField('description', e.target.value)}
+              disabled={saving}
+              data-trace-id={`${TRACE}::EL-INPUT-edit-brand-description@${brand.id}`}
+            />
+          </div>
+
+          {saveError && <p className="dash-inline-error">{saveError}</p>}
+          <div className="dash-form-actions">
+            <button
+              type="button"
+              className="dash-btn-secondary"
+              onClick={onClose}
+              disabled={saving}
+              data-trace-id={`${TRACE}::EL-BTN-cancel-brand-edit@${brand.id}`}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="dash-btn-primary"
+              disabled={saving}
+              data-trace-id={`${TRACE}::EL-BTN-save-brand-edit@${brand.id}`}
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function BrandRow({
+  brand,
+  onUpdated,
+  onDeleted,
+}: {
+  brand: ManagedBrand;
+  onUpdated: (updated: ManagedBrand) => void;
+  onDeleted: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  // Same cold-miss fix as CategoryTree's row thumbnail (2026-07-31): bytes for
+  // a picture THIS row's brand was just given, tagged by media id so it drops
+  // the instant the row points at a DIFFERENT image.
+  const [localImage, setLocalImage] = useState<{ mediaId: string; file: File } | null>(null);
+  const localImageFile =
+    localImage && localImage.mediaId === brand.imageMediaId ? localImage.file : null;
+
+  function handleSaved(updated: ManagedBrand, localImageFile: File | null) {
+    setLocalImage(
+      localImageFile && updated.imageMediaId
+        ? { mediaId: updated.imageMediaId, file: localImageFile }
+        : null,
+    );
+    onUpdated(updated);
+    setEditing(false);
+  }
+
   async function handleDelete() {
-    setError(null);
+    setDeleteError(null);
     setDeleting(true);
     try {
       await deleteBrand(brand.id);
       onDeleted();
     } catch (e) {
       const err = e as ApiError;
-      setError(
+      setDeleteError(
         err.status === 409
           ? err.message ?? 'This brand is used by existing products — reassign them first.'
           : err.message ?? 'Delete failed.',
@@ -68,71 +278,71 @@ function BrandRow({
     }
   }
 
-  if (editing) {
-    return (
-      <tr data-trace-id={`${TRACE}::EL-ROW-brand-editing@${brand.id}`}>
-        <td colSpan={2}>
-          <form
-            className="dash-inline-form"
-            onSubmit={handleRename}
-            data-trace-id={`${TRACE}::EL-FORM-rename-brand@${brand.id}`}
+  return (
+    <>
+      <tr data-trace-id={`${TRACE}::EL-ROW-brand@${brand.id}`}>
+        <td style={{ minWidth: 0 }}>
+          {/* A real <button>, not a div with onClick — Enter/Space and a
+              focus ring come for free, and it's the whole image+name cell so
+              clicking the row (not a buried "Edit" link) opens the edit view. */}
+          <button
+            type="button"
+            className="dash-row-activate"
+            onClick={() => setEditing(true)}
+            data-trace-id={`${TRACE}::EL-BTN-edit-brand@${brand.id}`}
           >
-            <input
-              className="dash-input"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={saving}
-              autoFocus
-              data-trace-id={`${TRACE}::EL-INPUT-rename-brand-name@${brand.id}`}
-            />
-            <button type="submit" className="dash-btn-primary" disabled={saving}>
-              {saving ? 'Saving…' : 'Save'}
-            </button>
+            {brand.imageUrl ? (
+              <UploadPreviewImage
+                src={brand.imageUrl}
+                localFile={localImageFile}
+                alt=""
+                width={32}
+                height={32}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 4,
+                  objectFit: 'cover',
+                  flexShrink: 0,
+                }}
+              />
+            ) : (
+              <span
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 4,
+                  flexShrink: 0,
+                  display: 'inline-block',
+                  background: 'var(--mr-dash-sub, #f4f1ec)',
+                  border: '1px solid var(--mr-dash-hair)',
+                }}
+                title="No image yet"
+              />
+            )}
+            <span style={{ minWidth: 0, overflowWrap: 'break-word' }}>{brand.name}</span>
+          </button>
+        </td>
+        <td>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               type="button"
-              className="dash-btn-ghost"
-              onClick={() => {
-                setEditing(false);
-                setName(brand.name);
-                setError(null);
-              }}
-              disabled={saving}
+              className="dash-btn-ghost dash-btn-danger"
+              onClick={handleDelete}
+              disabled={deleting}
+              data-trace-id={`${TRACE}::EL-BTN-delete-brand@${brand.id}`}
             >
-              Cancel
+              {deleting ? 'Deleting…' : 'Delete'}
             </button>
-            {error && <p className="dash-field-error">{error}</p>}
-          </form>
+          </div>
+          {deleteError && <p className="dash-field-error">{deleteError}</p>}
         </td>
       </tr>
-    );
-  }
 
-  return (
-    <tr data-trace-id={`${TRACE}::EL-ROW-brand@${brand.id}`}>
-      <td>{brand.name}</td>
-      <td>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className="dash-btn-ghost"
-            onClick={() => setEditing(true)}
-            data-trace-id={`${TRACE}::EL-BTN-rename-brand@${brand.id}`}
-          >
-            Rename
-          </button>
-          <button
-            type="button"
-            className="dash-btn-ghost dash-btn-danger"
-            onClick={handleDelete}
-            disabled={deleting}
-            data-trace-id={`${TRACE}::EL-BTN-delete-brand@${brand.id}`}
-          >
-            {deleting ? 'Deleting…' : 'Delete'}
-          </button>
-        </div>
-        {error && <p className="dash-field-error">{error}</p>}
-      </td>
-    </tr>
+      {editing && (
+        <BrandEditModal brand={brand} onClose={() => setEditing(false)} onSaved={handleSaved} />
+      )}
+    </>
   );
 }
 
@@ -226,7 +436,7 @@ export default function BrandsPage() {
     }
   }
 
-  function handleRenamed(updated: ManagedBrand) {
+  function handleUpdated(updated: ManagedBrand) {
     setBrands((prev) =>
       prev.map((b) => (b.id === updated.id ? updated : b)).sort((a, b) => a.name.localeCompare(b.name)),
     );
@@ -368,7 +578,7 @@ export default function BrandsPage() {
               </thead>
               <tbody>
                 {brands.map((b) => (
-                  <BrandRow key={b.id} brand={b} onRenamed={handleRenamed} onDeleted={load} />
+                  <BrandRow key={b.id} brand={b} onUpdated={handleUpdated} onDeleted={load} />
                 ))}
               </tbody>
             </table>

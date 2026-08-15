@@ -1062,6 +1062,33 @@
   font-size: 14px;
 }
 
+/* ── Row-activating cell ──
+   Opens an edit view for the whole row (Brands: click the image/name to
+   edit, same as a real link would) via an actual <button>, not a div with a
+   hand-rolled onKeyDown — native Enter/Space activation and a real focus
+   ring for free. Styled to disappear into the row until hovered or
+   focused, so it still reads as plain cell content. */
+.dash-row-activate {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 4px 0;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.dash-row-activate:hover {
+  color: var(--mr-fg);
+}
+.dash-row-activate:focus-visible {
+  outline: 2px solid var(--mr-gold-500);
+  outline-offset: 2px;
+}
+
 /* ── Mobile card layout ── */
 .dash-mobile-cards {
   display: flex;

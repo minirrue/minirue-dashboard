@@ -300,6 +300,10 @@ export async function listCategories(opts: { space?: SpaceParam } = {}): Promise
 export interface ManagedBrand {
   id: string;
   name: string;
+  slug: string;
+  description: string | null;
+  imageMediaId: string | null;
+  imageUrl: string | null;
   createdAt: string;
   /** True for the one auto-created "Generic" brand every space gets. Never
    *  offered as a pick in the brand dropdown — the blank option already means
@@ -564,11 +568,31 @@ export async function createBrand(
     }),
   });
 }
-export async function renameBrand(id: string, name: string): Promise<ManagedBrand> {
+/**
+ * The Brands edit modal's one save call — name, slug, description and image
+ * together, whichever of them actually changed. Replaces the old
+ * `renameBrand`, which only ever touched `name`; the edit screen now covers
+ * the whole managed-brand row in a single PATCH rather than one call per
+ * field.
+ */
+export async function updateBrand(
+  id: string,
+  data: {
+    name?: string;
+    slug?: string;
+    description?: string | null;
+    imageMediaId?: string | null;
+  },
+): Promise<ManagedBrand> {
   return apiFetch<ManagedBrand>(`${ADMIN}/brands/managed/${id}`, {
     method: 'PATCH',
     auth: true,
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({
+      ...(data.name !== undefined ? { name: data.name } : {}),
+      ...(data.slug !== undefined ? { slug: data.slug } : {}),
+      ...(data.description !== undefined ? { description: data.description } : {}),
+      ...(data.imageMediaId !== undefined ? { image_media_id: data.imageMediaId } : {}),
+    }),
   });
 }
 
