@@ -15,6 +15,7 @@ import type {
 } from '@/lib/catalog/types';
 import type { ProductVariant, ProductMedia } from '@/lib/catalog/types';
 import type { ApiError } from '@/lib/api/client';
+import { errorMessageToText } from '@/lib/api/client';
 import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
 import GalleryPickerModal from '@/components/dashboard/GalleryPickerModal';
 import type { GalleryItem } from '@/lib/gallery/types';
@@ -220,10 +221,17 @@ export default function VariantsSection({
         return next;
       });
     } catch (err) {
+      // apiFetch rejects with an ApiError OBJECT, not an Error instance, so the
+      // old `err instanceof Error` was never true and every failure here read
+      // "Could not save the quantity." — the one sentence that says nothing.
+      // The server had already sent the answer: on 2026-08-15 it was "No active
+      // warehouse to hold stock", and that sentence never reached the screen.
       setStockError((e) => ({
         ...e,
-        [variant.id]:
-          err instanceof Error ? err.message : 'Could not save the quantity.',
+        [variant.id]: errorMessageToText(
+          (err as ApiError | undefined)?.message,
+          'Could not save the quantity.',
+        ),
       }));
     } finally {
       setStockSavingId(null);

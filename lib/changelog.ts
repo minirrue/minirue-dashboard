@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 206,
+    date: '2026-08-15',
+    area: 'Products → Stock quantity',
+    summary:
+      'Setting a product\'s quantity works again. Saving a quantity was failing for every product, and the shop had no storage location on record — which also meant every product counted as sold out, so customers were told there was no stock even when there was. Both are fixed, and the box now tells you what actually went wrong instead of only saying "Could not save the quantity."',
+  },
+  {
     id: 205,
     date: '2026-08-15',
     area: 'Products → Brands',
