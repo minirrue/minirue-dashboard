@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 219,
+    date: '2026-08-21',
+    area: 'Checkout, the Catalogue and partner pages',
+    summary:
+      'Fixed an order-blocking bug: any customer who had a phone number on their account could not complete an order with a discount code — the shop errored and the order was thrown away. It needed both things at once, which is why it went unnoticed: a discount alone was fine, and a customer with no phone on file was fine. Adding or editing a variant now shows on the shop straight away. It used to keep serving the old version for up to a minute even after a refresh, because the shop was holding its own copy that nothing could clear. Partner pages moved to minirueshop.com/collab/their-name; the old address still works and forwards, so anything already shared or on Google keeps working. And the delete dialog now really does let you delete a variant that past orders reference — the extra detail it needed to offer that was being dropped before it reached the screen.',
+  },
+  {
     id: 218,
     date: '2026-08-21',
     area: 'Catalogue, and search on the shop',

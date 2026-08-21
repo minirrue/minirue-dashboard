@@ -154,7 +154,25 @@ export async function apiFetch<T>(
   if (!res.ok) {
     let body: Record<string, unknown> = {};
     try { body = (await res.json()) as Record<string, unknown>; } catch { /* ignore */ }
-    throw { status: res.status, message: errorMessageToText(body['message'], res.statusText), error: body['error'] as string | undefined } as ApiError;
+    /**
+     * The whole body is spread, not three hand-picked fields.
+     *
+     * An error body can carry MORE than a sentence — the variant hard-delete
+     * 409 sends `referencingCount` and `canForce` so the dialog can say "4
+     * orders reference this" and offer an override. Copying only
+     * status/message/error silently threw that away, and the screen showed the
+     * old flat refusal no matter what the server actually said (2026-08-21).
+     *
+     * `status` and `message` are assigned AFTER the spread so a body that
+     * happens to contain either cannot overwrite the real HTTP status or the
+     * normalised text.
+     */
+    throw {
+      ...body,
+      status: res.status,
+      message: errorMessageToText(body['message'], res.statusText),
+      error: body['error'] as string | undefined,
+    } as ApiError;
   }
 
   if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as T;
@@ -195,7 +213,25 @@ export async function apiUpload<T>(
   if (!res.ok) {
     let body: Record<string, unknown> = {};
     try { body = (await res.json()) as Record<string, unknown>; } catch { /* ignore */ }
-    throw { status: res.status, message: errorMessageToText(body['message'], res.statusText), error: body['error'] as string | undefined } as ApiError;
+    /**
+     * The whole body is spread, not three hand-picked fields.
+     *
+     * An error body can carry MORE than a sentence — the variant hard-delete
+     * 409 sends `referencingCount` and `canForce` so the dialog can say "4
+     * orders reference this" and offer an override. Copying only
+     * status/message/error silently threw that away, and the screen showed the
+     * old flat refusal no matter what the server actually said (2026-08-21).
+     *
+     * `status` and `message` are assigned AFTER the spread so a body that
+     * happens to contain either cannot overwrite the real HTTP status or the
+     * normalised text.
+     */
+    throw {
+      ...body,
+      status: res.status,
+      message: errorMessageToText(body['message'], res.statusText),
+      error: body['error'] as string | undefined,
+    } as ApiError;
   }
 
   if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as T;
