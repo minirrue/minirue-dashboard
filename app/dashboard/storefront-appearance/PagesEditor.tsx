@@ -26,7 +26,11 @@ import type { StorefrontPage } from '@/lib/api/storefront';
  * you read the directory.
  */
 const RESERVED_SLUGS = new Set([
-  'account', 'brands', 'cart', 'categories', 'checkout', 'login', 'logout',
+  // 'shop' joined the list on 2026-08-21 when the storefront's two front
+  // doors merged into it; 'categories' and 'products' stay reserved because
+  // they are permanent redirects INTO /shop, so a page slugged either of
+  // those would be unreachable behind a 308.
+  'account', 'brands', 'cart', 'categories', 'checkout', 'login', 'logout', 'shop',
   'orders', 'pages', 'products', 'search', 'signup', 'forgot',
   'reset-password', 'api', 'robots.txt', 'sitemap.xml', 'favicon.ico',
 ]);

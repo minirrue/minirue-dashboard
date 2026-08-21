@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 211,
+    date: '2026-08-21',
+    area: 'Storefront → Shop',
+    summary:
+      'The shop has one front door now. It used to have two — a "Shop" page whose address said /categories, and a separate All Products list at /products — which is why a link you shared could open a page whose name did not match it. Everything now lives under /shop: the category panel at /shop, the full catalogue at /shop/all, a category at /shop/perfumes, and a product at /shop/perfumes/its-name. Old links keep working; they forward to the new address automatically. Tapping "View all" under a section like "The Spring Edit" now opens a page headed "The Spring Edit" rather than "All Products". If you build a custom page in Storefront Appearance, "shop" is now a reserved word you cannot use as its address.',
+  },
+  {
     id: 210,
     date: '2026-08-21',
     area: 'Admin → Accounts',
