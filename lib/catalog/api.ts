@@ -134,6 +134,9 @@ function mapVariant(v: BackendVariant): ProductVariant {
     // Was hardcoded to 0, so the dashboard could never show or edit stock. The
     // read now carries it (backend 0.34.0).
     stock: v.availableQuantity ?? 0,
+    // Dropped here until 2026-08-21, which is why a soft-deleted variant came
+    // back looking untouched after a refresh.
+    isActive: v.isActive !== false,
   };
 }
 
@@ -275,6 +278,14 @@ export async function hardDeleteProduct(id: string): Promise<void> {
 
 export async function softDeleteVariant(productId: string, variantId: string): Promise<void> {
   await apiFetch(`${ADMIN}/products/${productId}/variants/${variantId}/delete-soft`, {
+    method: 'POST',
+    auth: true,
+  });
+}
+
+/** Undoes softDeleteVariant. Backend 0.86.0. */
+export async function restoreVariant(productId: string, variantId: string): Promise<void> {
+  await apiFetch(`${ADMIN}/products/${productId}/variants/${variantId}/restore`, {
     method: 'POST',
     auth: true,
   });

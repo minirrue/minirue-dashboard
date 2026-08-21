@@ -5,6 +5,7 @@ import {
   createVariant,
   updateVariant,
   softDeleteVariant,
+  restoreVariant,
   hardDeleteVariant,
   createProductMedia,
   listAttributes,
@@ -187,6 +188,7 @@ export default function VariantsSection({
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editSubmitError, setEditSubmitError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProductVariant | null>(null);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
   const [pickerVariantId, setPickerVariantId] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [copiedSku, setCopiedSku] = useState<string | null>(null);
@@ -404,10 +406,33 @@ export default function VariantsSection({
     return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
   }
 
+  /**
+   * A soft delete HIDES the variant, it does not remove it — so the row stays,
+   * marked, with a way back.
+   *
+   * This used to drop the row from local state, which read as a permanent
+   * delete until the next refresh brought it back looking untouched (owner,
+   * 2026-08-21: "when i soft delete it and refresh the page it returns again").
+   * The write was always fine; the screen was lying about what it did.
+   */
   async function handleSoftDeleteVariant(v: ProductVariant) {
     await softDeleteVariant(productId, v.id);
-    onVariantsChange(variants.filter((x) => x.id !== v.id));
+    onVariantsChange(
+      variants.map((x) => (x.id === v.id ? { ...x, isActive: false } : x)),
+    );
     setDeleteTarget(null);
+  }
+
+  async function handleRestoreVariant(v: ProductVariant) {
+    setRestoringId(v.id);
+    try {
+      await restoreVariant(productId, v.id);
+      onVariantsChange(
+        variants.map((x) => (x.id === v.id ? { ...x, isActive: true } : x)),
+      );
+    } finally {
+      setRestoringId(null);
+    }
   }
 
   async function handleHardDeleteVariant(v: ProductVariant) {
@@ -488,11 +513,19 @@ export default function VariantsSection({
             <tbody>
               {variants.map((v) => {
                 const isSelected = selectedVariantId === v.id;
+                // Absent means active — old fixtures and any read that predates
+                // the mapper carrying the flag must not all look deleted.
+                const hidden = v.isActive === false;
                 return (
                 <React.Fragment key={v.id}>
                   <tr
                     data-trace-id={`PG-DASHBOARD-CAT-003::EL-ROW-variant-row@${v.id}`}
                     data-active={isSelected ? 'true' : undefined}
+                    data-hidden={hidden ? 'true' : undefined}
+                    // Dimmed rather than removed: the operator needs to see
+                    // that the delete landed, and needs the row present to
+                    // undo it. Contrast stays above the readable floor.
+                    style={hidden ? { opacity: 0.55 } : undefined}
                   >
                     <td>
                       <button
@@ -520,6 +553,23 @@ export default function VariantsSection({
                           {copiedSku === v.sku ? 'COPIED' : 'COPY'}
                         </span>
                       </button>
+                      {hidden && (
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            marginLeft: 8,
+                            padding: '1px 6px',
+                            border: '1px solid var(--mr-dash-danger, #c0392b)',
+                            color: 'var(--mr-dash-danger, #c0392b)',
+                            fontFamily: 'var(--mr-font-label)',
+                            fontSize: 10,
+                            letterSpacing: '0.14em',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          Hidden
+                        </span>
+                      )}
                     </td>
                     <td>
                       {[
@@ -591,14 +641,26 @@ export default function VariantsSection({
                       >
                         Edit
                       </button>
-                      <button
-                        type="button"
-                        className="dash-btn-ghost dash-btn-danger"
-                        onClick={() => setDeleteTarget(v)}
-                        data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-delete-variant@${v.id}`}
-                      >
-                        Delete
-                      </button>
+                      {hidden ? (
+                        <button
+                          type="button"
+                          className="dash-btn-ghost"
+                          onClick={() => void handleRestoreVariant(v)}
+                          disabled={restoringId === v.id}
+                          data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-restore-variant@${v.id}`}
+                        >
+                          {restoringId === v.id ? 'Restoring…' : 'Restore'}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="dash-btn-ghost dash-btn-danger"
+                          onClick={() => setDeleteTarget(v)}
+                          data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-delete-variant@${v.id}`}
+                        >
+                          Delete
+                        </button>
+                      )}
                     </td>
                   </tr>
                   {editingId === v.id && (

@@ -71,6 +71,15 @@ export interface ProductVariant {
   priceAmount: number;
   currency: string;
   stock: number;
+  /**
+   * false once the variant has been soft-deleted.
+   *
+   * The backend has always sent this; `mapVariant` used to drop it, so the
+   * edit screen re-rendered a deleted variant identically to a live one and it
+   * looked like the delete had silently failed (owner, 2026-08-21). Optional
+   * only so existing fixtures need not set it — treat absent as active.
+   */
+  isActive?: boolean;
 }
 
 export interface ProductMedia {

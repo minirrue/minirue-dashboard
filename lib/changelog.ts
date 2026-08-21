@@ -21,6 +21,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 216,
+    date: '2026-08-21',
+    area: 'The shop — anyone can now order without an account',
+    summary:
+      'Shoppers no longer have to create an account to buy. Someone who fills a bag and goes to checkout is asked for their name, email, phone and address on the page, and orders straight away — we still hold every one of those details on the order, so you can deliver it and reach them. Before this, checkout sent them to a sign-in page, and for a guest it simply hung on "Loading your addresses…" — nobody without an account could complete a purchase at all. Guest orders show in Orders like any other, with the buyer’s details on them. Also fixed: the bag was showing the shipping fee on its own line but leaving it out of the estimated total, so the bag said EGP 180 and the very next screen said EGP 230.',
+  },
+  {
+    id: 215,
+    date: '2026-08-21',
+    area: 'Catalogue → a product’s variants',
+    summary:
+      'Deleting a variant used to look like it had failed: the row vanished, and came back looking untouched as soon as you refreshed the page. The delete was working the whole time — the screen was not showing it. A hidden variant now stays in the list marked "Hidden", greyed out, with a Restore button, so you can see what you have hidden and put it back. Customers cannot see or buy a hidden variant. In the products table the three action buttons are icons now, which leaves room for the long SKUs, the price range column is gone, and you can tap a SKU to copy it.',
+  },
+  {
     id: 214,
     date: '2026-08-21',
     area: 'Discounts, Customers and the shop',
