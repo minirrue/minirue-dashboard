@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 214,
+    date: '2026-08-21',
+    area: 'Discounts, Customers and the shop',
+    summary:
+      'Several fixes from today. A code made for one customer did not work for that customer — the shop could not tell who was asking, so it refused everyone; it works now. Stopping a code no longer opens that browser pop-up asking for a reason: it just stops. The codes table names the customer a personal code belongs to, and shows their id, instead of only saying "One customer". The customer page has a Copy button beside the long Customer ID. Product SKUs now really do read as name, category, brand and number — the category and brand were being left out. And a variant you delete no longer shows up in a customer’s existing basket, where it could still be bought.',
+  },
+  {
     id: 213,
     date: '2026-08-21',
     area: 'Discounts, and Customers',

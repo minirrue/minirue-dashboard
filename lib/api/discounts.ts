@@ -23,6 +23,10 @@ export interface Discount {
   amountMinor: number | null;
   productId: string | null;
   ownerCustomerId: string | null;
+  /** The owner's name, resolved by the API for the list. Null for a code
+   *  anyone can use, or when that account has since been deleted — in which
+   *  case the id is still shown rather than a name being invented. */
+  ownerCustomerName?: string | null;
   maxRedemptions: number | null;
   maxPerCustomer: number;
   usedCount: number;
@@ -125,12 +129,12 @@ export async function createDiscount(
  */
 export async function killDiscount(
   id: string,
-  reason: string,
+  reason?: string,
 ): Promise<Discount> {
   return apiFetch<Discount>(`/admin/discounts/${id}/kill`, {
     method: 'POST',
     auth: true,
-    body: JSON.stringify({ reason }),
+    body: JSON.stringify(reason ? { reason } : {}),
   });
 }
 

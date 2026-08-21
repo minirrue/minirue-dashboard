@@ -320,7 +320,32 @@ export default function CodesPanel({
                       )}
                     </td>
                     <td>{describeValue(d)}</td>
-                    <td>{d.kind === 'PERSONAL' ? 'One customer' : 'Anyone'}</td>
+                    {/* "One customer" without saying which is unusable once a
+                        shop has more than one personal code. Name them, with
+                        the id underneath — the id is what gets pasted back into
+                        the form, and what identifies them if the account is
+                        gone and there is no name left to show. */}
+                    <td>
+                      {d.kind !== 'PERSONAL' ? (
+                        'Anyone'
+                      ) : (
+                        <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                          <span>{d.ownerCustomerName ?? 'One customer'}</span>
+                          {d.ownerCustomerId && (
+                            <span
+                              style={{
+                                fontSize: 11,
+                                opacity: 0.6,
+                                fontVariantNumeric: 'tabular-nums',
+                                overflowWrap: 'anywhere',
+                              }}
+                            >
+                              {d.ownerCustomerId}
+                            </span>
+                          )}
+                        </span>
+                      )}
+                    </td>
                     <td>
                       {d.usedCount} / {d.maxRedemptions === null ? '∞' : d.maxRedemptions}
                     </td>

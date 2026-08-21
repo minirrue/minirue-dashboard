@@ -38,6 +38,7 @@ import FulfillmentControl from '@/components/dashboard/FulfillmentControl';
 import { formatOrderRef } from '@/lib/orders/order-format';
 import { EnlargeableImage } from '@/components/dashboard/ImagePreviewModal';
 import { GenericAvatarIcon } from '@/components/GenericAvatarIcon';
+import CopyButton from '@/components/dashboard/CopyButton';
 
 const TIER_OPTIONS: TierLevel[] = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM'];
 const ADDRESS_LABELS: CustomerAddressInput['label'][] = ['HOME', 'WORK', 'OTHER'];
@@ -551,7 +552,17 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                 )}
               </div>
               <p style={{ margin: '6px 0', fontSize: 14, color: 'var(--mr-fg-2)' }}>
-                <strong>Customer ID:</strong> {customer.customerId}
+                {/* A raw uuid is only ever useful somewhere else — a support
+                    thread, a discount code's owner field — so it needs a way
+                    off the page that is not "select 36 characters by hand". */}
+                <strong>Customer ID:</strong>{' '}
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {customer.customerId}
+                </span>
+                <CopyButton
+                  value={customer.customerId}
+                  traceId="PG-DASHBOARD-CUS-002::EL-BTN-copy-customer-id"
+                />
               </p>
               <p style={{ margin: '6px 0', fontSize: 14, color: 'var(--mr-fg-2)' }}>
                 <strong>Name:</strong> {customer.firstName} {customer.lastName}
