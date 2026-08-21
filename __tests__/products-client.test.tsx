@@ -32,6 +32,7 @@ function makeProduct(overrides: Partial<ProductListItem> & { id: string }): Prod
     brandId: overrides.brandId ?? 'brand_1',
     brandName: overrides.brandName ?? '',
     brandImageUrl: overrides.brandImageUrl ?? null,
+    coverUrl: overrides.coverUrl ?? null,
     sku: overrides.sku ?? '',
     status: overrides.status ?? 'PUBLISHED',
     variantCount: overrides.variantCount ?? 1,

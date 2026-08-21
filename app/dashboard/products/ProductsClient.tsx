@@ -228,13 +228,48 @@ export default function ProductsClient() {
       key: 'name',
       label: 'Product',
       sortable: true,
+      // The cover photo beside the name. A catalogue is scanned by picture
+      // long before it is read by name (owner, 2026-08-21).
       render: (row) => (
         <Link
           href={`/catalogue/products/${row.id}/edit`}
           className="dash-link"
           data-trace-id={`PG-DASHBOARD-CAT-001::EL-LINK-product-name@${row.id}`}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minWidth: 0 }}
         >
-          {row.name}
+          {row.coverUrl ? (
+            <UploadPreviewImage
+              src={row.coverUrl}
+              alt=""
+              width={36}
+              height={44}
+              style={{
+                width: 36,
+                height: 44,
+                borderRadius: 4,
+                // 'cover' here, unlike a brand logo: a product photo is a
+                // photograph, and filling the frame is the right crop for one.
+                objectFit: 'cover',
+                background: 'var(--mr-dash-sub, #f4f1ec)',
+                flexShrink: 0,
+              }}
+            />
+          ) : (
+            <span
+              aria-hidden="true"
+              title="No photo yet"
+              style={{
+                width: 36,
+                height: 44,
+                borderRadius: 4,
+                flexShrink: 0,
+                display: 'inline-block',
+                background: 'var(--mr-dash-sub, #f4f1ec)',
+                border: '1px solid var(--mr-dash-hair)',
+              }}
+            />
+          )}
+          <span style={{ minWidth: 0, overflowWrap: 'break-word' }}>{row.name}</span>
         </Link>
       ),
     },

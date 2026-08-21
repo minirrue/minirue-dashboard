@@ -64,6 +64,7 @@ const PRODUCT_LIST_ITEM: ProductListItem = {
   brandId: 'brand_1',
   brandName: 'Test Brand',
   brandImageUrl: null,
+  coverUrl: null,
   sku: '000001',
   status: 'PUBLISHED',
   variantCount: 1,

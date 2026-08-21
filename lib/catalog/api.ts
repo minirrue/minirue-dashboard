@@ -96,6 +96,14 @@ function mapListItem(p: BackendProduct): ProductListItem {
     brandId: p.brandId,
     brandName: p.brandName ?? '',
     brandImageUrl: p.brandImageUrl ?? null,
+    // COVER is the photo shoppers see in listings; falling back to the first
+    // image means a product uploaded before roles existed still shows
+    // something rather than an empty frame. `url` is already resolved by the
+    // admin list's own hydrateMediaUrls, so there is nothing to sign here.
+    coverUrl:
+      (p.media ?? []).find((m) => m.role === 'COVER')?.url ??
+      (p.media ?? [])[0]?.url ??
+      null,
     status: p.publishedState as ProductStatus,
     // The first variant's SKU. Sorted so the number shown is stable across
     // reloads rather than whatever order the variants query happened to

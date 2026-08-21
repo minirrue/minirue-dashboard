@@ -114,6 +114,9 @@ export interface ProductListItem {
    *  not only by its name (owner, 2026-08-21). Null when the brand has no
    *  image, or is the Generic brand. */
   brandImageUrl: string | null;
+  /** The product's own cover photo — the one shoppers see in listings. Null
+   *  when the product has no images yet. */
+  coverUrl: string | null;
   status: ProductStatus;
   /** The first variant's SKU — the number the DB sequence assigned (migration
    *  0250). Products with several variants each carry their own; this is the
