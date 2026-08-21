@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 220,
+    date: '2026-08-21',
+    area: 'The shop — filters and sort',
+    summary:
+      'Shoppers can now filter and sort the shop. On a computer the controls sit in a column beside the products; on a phone they open in a sheet with a badge showing how many filters are on. They can sort by newest or by price, narrow by brand or category, and set a price range. Your brands and categories fill the list automatically — add a brand and it appears there, with nothing to configure. The filtered view has its own web address, so a shopper can share it or use the back button and it still works. Also fixed while building it: pressing "Load more" on a filtered list used to bring back unfiltered products and add them underneath, which you would only notice by scrolling far enough down.',
+  },
+  {
     id: 219,
     date: '2026-08-21',
     area: 'Checkout, the Catalogue and partner pages',
