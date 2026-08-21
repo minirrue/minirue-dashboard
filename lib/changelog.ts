@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 217,
+    date: '2026-08-21',
+    area: 'The shop, and Partners',
+    summary:
+      'Product descriptions now actually appear on the shop, under the Add to bag button. The text you write in the Catalogue was being saved correctly and simply never shown, so a product with proper copy behind it was displaying a name and a price and nothing else. Sharing a product also sends the right link now — it was handing out the old /products/… address, which redirects, so everyone you shared with took an extra hop and saw a URL that did not match the page. The same wrong address was being given to Google as each product’s official one. A shopper who is not signed in and taps the heart to save something is taken to sign in, and if they choose "Create account" they now land back on the product afterwards instead of the home page. On a hidden variant you can still Delete permanently, not only Restore. And the Partners table no longer carries the Access column — that belongs on the partner’s own page, not in a table about how they are selling.',
+  },
+  {
     id: 216,
     date: '2026-08-21',
     area: 'The shop — anyone can now order without an account',

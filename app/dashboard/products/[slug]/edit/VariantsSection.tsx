@@ -641,7 +641,7 @@ export default function VariantsSection({
                       >
                         Edit
                       </button>
-                      {hidden ? (
+                      {hidden && (
                         <button
                           type="button"
                           className="dash-btn-ghost"
@@ -651,16 +651,26 @@ export default function VariantsSection({
                         >
                           {restoringId === v.id ? 'Restoring…' : 'Restore'}
                         </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="dash-btn-ghost dash-btn-danger"
-                          onClick={() => setDeleteTarget(v)}
-                          data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-delete-variant@${v.id}`}
-                        >
-                          Delete
-                        </button>
                       )}
+                      {/* Delete stays available on a HIDDEN row too (owner,
+                          2026-08-21: "what if i want to hard delete"). Hiding
+                          it there would have left the only route to a
+                          permanent delete running through Restore first — put
+                          it back on sale, then delete it — which is exactly
+                          the wrong order to do those two things in.
+
+                          The dialog is the same one, and its hard-delete path
+                          still refuses with a 409 when orders reference the
+                          variant, so a sales record cannot be destroyed by
+                          reaching this button from either state. */}
+                      <button
+                        type="button"
+                        className="dash-btn-ghost dash-btn-danger"
+                        onClick={() => setDeleteTarget(v)}
+                        data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-delete-variant@${v.id}`}
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                   {editingId === v.id && (

@@ -12,7 +12,6 @@ import { listAccounts, signInAsAccount } from '@/lib/api/platform';
 import { beginActingAs } from '@/lib/auth/acting-session';
 import {
   CollaboratorStatusBadge,
-  CollaboratorModuleChips,
   formatEgp,
 } from '@/components/collab/collab-ui';
 import type { ApiError } from '@/lib/api/client';
@@ -173,7 +172,12 @@ export default function PartnersOversightClient() {
                 <tr>
                   <th scope="col">Brand</th>
                   <th scope="col">Status</th>
-                  <th scope="col">Access</th>
+                  {/* Access chips removed 2026-08-21 (owner). This table is
+                      the "how are my partners SELLING" view — orders, revenue,
+                      commission, live products — and a list of which dashboard
+                      modules each one can open answers a different question
+                      entirely. It is still on the partner's own Manage screen,
+                      which is where you go to change it. */}
                   <th scope="col" style={{ textAlign: 'right' }}>Orders</th>
                   <th scope="col" style={{ textAlign: 'right' }}>Revenue</th>
                   <th scope="col" style={{ textAlign: 'right' }}>{shopName} commission</th>
@@ -195,7 +199,6 @@ export default function PartnersOversightClient() {
                       <div className="dash-muted" style={{ fontSize: 12 }}>{partner.email}</div>
                     </td>
                     <td><CollaboratorStatusBadge status={partner.status} /></td>
-                    <td><CollaboratorModuleChips modules={partner.modules} /></td>
                     <td style={{ textAlign: 'right' }}>
                       {statCell(partner.id, (a) => String(a.kpis.ordersCount))}
                     </td>
