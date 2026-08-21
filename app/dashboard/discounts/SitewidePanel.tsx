@@ -120,13 +120,15 @@ export default function SitewidePanel({
           <div className="dash-form-grid">
             <div className="dash-field">
               <label className="dash-label" htmlFor="auto-percent">Percent off</label>
+              {/* See CodesPanel: step counts from min, so 0.5 put whole numbers
+                  off the grid and a plain 10 was refused. */}
               <input
                 id="auto-percent"
                 className="dash-input"
                 type="number"
                 min="0.01"
                 max="100"
-                step="0.5"
+                step="0.01"
                 value={percent}
                 onChange={(e) => setPercent(e.target.value)}
                 required

@@ -183,13 +183,18 @@ export default function CodesPanel({
             {valueType === 'PERCENT' ? (
               <div className="dash-field">
                 <label className="dash-label" htmlFor="disc-percent">Percent</label>
+                {/* step counts FROM min, so min 0.01 with the old step 0.5
+                    made the valid values 0.01, 0.51 … 9.51, 10.01 — and a round
+                    10 was refused as invalid (owner, 2026-08-21). Two decimals
+                    accepts any real percentage. min stays 0.01 rather than 0: a
+                    0% code is a no-op that still looks like a live offer. */}
                 <input
                   id="disc-percent"
                   className="dash-input"
                   type="number"
                   min="0.01"
                   max="100"
-                  step="0.5"
+                  step="0.01"
                   value={percent}
                   onChange={(e) => setPercent(e.target.value)}
                   required

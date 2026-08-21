@@ -14,6 +14,9 @@ export interface CustomerListItem {
   lifetimeSpendCurrency: string;
   gdprEraseRequestedAt: string | null;
   createdAt: string;
+  /** Already resolved to a renderable URL by the API. Null when the customer
+   *  has no photo — render the generic silhouette, never an initial letter. */
+  avatarUrl: string | null;
   addressCount: number;
 }
 

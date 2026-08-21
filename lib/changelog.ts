@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 213,
+    date: '2026-08-21',
+    area: 'Discounts, and Customers',
+    summary:
+      'Two fixes. A discount percentage would not accept a round number — typing 10 was refused with "the two nearest valid values are 9.51 and 10.01", because the box was counting in steps of half a percent starting from 0.01. Any percentage up to 100 now works. And the Customers list shows each person’s photo beside their name, so you can find someone by face instead of reading every row.',
+  },
+  {
     id: 212,
     date: '2026-08-21',
     area: 'Orders → Package received back',

@@ -26,6 +26,8 @@ function makeCustomer(overrides: Partial<CustomerListItem> = {}): CustomerListIt
     lastName: 'Abdelrahman',
     displayName: 'Youssef',
     emailVerified: true,
+    // No photo — the list renders the shared silhouette for this case.
+    avatarUrl: null,
     tier: 'BRONZE',
     lifetimeSpendAmount: '0.00',
     lifetimeSpendCurrency: 'EGP',

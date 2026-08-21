@@ -92,14 +92,87 @@ const TIER_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'PLATINUM', label: 'Platinum' },
 ];
 
+/**
+ * One customer's picture, or the shared silhouette.
+ *
+ * Its own component so the error fallback has somewhere to live: a replaced
+ * photo lands on a fresh key and its first request is a cold miss through the
+ * whole image pipeline, so one failure must degrade to the silhouette rather
+ * than leave a broken frame in every row.
+ */
+function CustomerAvatar({ url }: { url: string | null }) {
+  const [errored, setErrored] = React.useState(false);
+  React.useEffect(() => setErrored(false), [url]);
+
+  const size = 28;
+  if (!url || errored) {
+    return (
+      <span
+        aria-hidden="true"
+        style={{
+          width: size,
+          height: size,
+          borderRadius: '50%',
+          flexShrink: 0,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--mr-dash-sub, #f4f1ec)',
+          border: '1px solid var(--mr-dash-hair)',
+          color: 'var(--mr-dash-sidebar-muted, #8A8376)',
+          fontSize: 14,
+          lineHeight: 1,
+        }}
+      >
+        {/* A drawn silhouette, not a letter. */}
+        <svg width={16} height={16} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="8" r="3.6" stroke="currentColor" strokeWidth="1.5" />
+          <path
+            d="M4.8 20c0-3.4 3.2-5.6 7.2-5.6s7.2 2.2 7.2 5.6"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </svg>
+      </span>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={url}
+      alt=""
+      onError={() => setErrored(true)}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        objectFit: 'cover',
+        flexShrink: 0,
+        border: '1px solid var(--mr-dash-hair)',
+      }}
+    />
+  );
+}
+
 const COLUMNS: Column<CustomerRow>[] = [
   {
     key: '_fullName',
     label: 'Name',
     sortable: true,
+    // The face beside the name. A list of names alone is slow to scan when
+    // half of them are similar, and the shop already knows what these people
+    // look like (owner, 2026-08-21). Generic silhouette when there is no
+    // photo — never an initial letter, which is the storefront-wide rule.
     render: (row) => (
-      <Link href={`/customers/${row.customerId}`} className="dash-link">
-        {row._fullName}
+      <Link
+        href={`/customers/${row.customerId}`}
+        className="dash-link"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minWidth: 0 }}
+      >
+        <CustomerAvatar url={row.avatarUrl} />
+        <span style={{ minWidth: 0, overflowWrap: 'break-word' }}>{row._fullName}</span>
       </Link>
     ),
   },
