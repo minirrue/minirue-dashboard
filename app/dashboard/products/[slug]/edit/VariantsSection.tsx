@@ -435,8 +435,8 @@ export default function VariantsSection({
     }
   }
 
-  async function handleHardDeleteVariant(v: ProductVariant) {
-    await hardDeleteVariant(productId, v.id);
+  async function handleHardDeleteVariant(v: ProductVariant, force = false) {
+    await hardDeleteVariant(productId, v.id, force);
     onVariantsChange(variants.filter((x) => x.id !== v.id));
     setDeleteTarget(null);
   }
@@ -447,7 +447,7 @@ export default function VariantsSection({
         <DeleteChoiceDialog
           productName={deleteTarget.sku}
           onSoftDelete={() => handleSoftDeleteVariant(deleteTarget)}
-          onHardDelete={() => handleHardDeleteVariant(deleteTarget)}
+          onHardDelete={(force) => handleHardDeleteVariant(deleteTarget, force)}
           onCancel={() => setDeleteTarget(null)}
           traceIdPrefix={`PG-DASHBOARD-CAT-003::EL-MODAL-delete-variant-confirm@${deleteTarget.id}`}
         />

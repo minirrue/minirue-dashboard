@@ -8,7 +8,11 @@ export interface DeleteChoiceDialogProps {
   /** What is being deleted, shown in the question. */
   productName: string;
   onSoftDelete: () => Promise<void>;
-  onHardDelete: () => Promise<void>;
+  /**
+   * `force` is passed only after the operator has been shown what a forced
+   * delete costs and pressed a second, differently-labelled button.
+   */
+  onHardDelete: (force?: boolean) => Promise<void>;
   onCancel: () => void;
   traceIdPrefix?: string;
   /**
@@ -36,6 +40,14 @@ export default function DeleteChoiceDialog({
   );
   const [busy, setBusy] = useState<'soft' | 'hard' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * How many orders the server said reference this record, set only after it
+   * refuses. The override is offered in RESPONSE to the refusal rather than
+   * sitting on the dialog from the start: an operator who has just been told
+   * "4 orders reference this" is making a different, better-informed decision
+   * than one who saw a "force" checkbox before they knew there was a problem.
+   */
+  const [blockedByOrders, setBlockedByOrders] = useState<number | null>(null);
 
   async function handleSoft() {
     setError(null);
@@ -50,14 +62,21 @@ export default function DeleteChoiceDialog({
     }
   }
 
-  async function handleHard() {
+  async function handleHard(force = false) {
     setError(null);
     setBusy('hard');
     try {
-      await onHardDelete();
+      await onHardDelete(force);
     } catch (e) {
-      const err = e as ApiError;
-      setError(err.message ?? 'Hard delete failed. Please try again.');
+      const err = e as ApiError & { referencingCount?: number; canForce?: boolean };
+      // A 409 that says it CAN be forced is not a dead end, so it is not
+      // presented as one.
+      if (err.status === 409 && err.canForce && typeof err.referencingCount === 'number') {
+        setBlockedByOrders(err.referencingCount);
+        setError(null);
+      } else {
+        setError(err.message ?? 'Hard delete failed. Please try again.');
+      }
     } finally {
       setBusy(null);
     }
@@ -94,6 +113,33 @@ export default function DeleteChoiceDialog({
 
         {error && <p className="dash-inline-error">{error}</p>}
 
+        {blockedByOrders !== null && (
+          <div
+            style={{
+              border: '1px solid var(--mr-dash-danger, #c0392b)',
+              borderRadius: 8,
+              padding: '12px 14px',
+              marginBottom: 12,
+            }}
+            data-trace-id={`${traceIdPrefix}::EL-REGION-force-delete-warning`}
+          >
+            <p className="dash-help-text" style={{ margin: 0 }}>
+              <strong>
+                {blockedByOrders} past order
+                {blockedByOrders === 1 ? '' : 's'} reference this.
+              </strong>{' '}
+              You can still delete it. Those orders are <strong>not</strong>{' '}
+              touched and will keep showing what the customer bought and paid —
+              the name, code and price are stored on the order itself.
+            </p>
+            <p className="dash-help-text" style={{ margin: '8px 0 0' }}>
+              What you lose: you will not be able to return those orders&rsquo;
+              stock to the shelf, because a return looks the item up by this
+              record. Refunding the money still works.
+            </p>
+          </div>
+        )}
+
         <div className="dash-form-actions">
           <button
             type="button"
@@ -104,15 +150,30 @@ export default function DeleteChoiceDialog({
           >
             {busy === 'soft' ? 'Soft deleting…' : 'Soft Delete'}
           </button>
-          <button
-            type="button"
-            className="dash-btn-danger"
-            onClick={handleHard}
-            disabled={busy !== null}
-            data-trace-id={`${traceIdPrefix}::EL-BTN-hard-delete-confirm`}
-          >
-            {busy === 'hard' ? 'Hard deleting…' : 'Hard Delete'}
-          </button>
+          {blockedByOrders === null ? (
+            <button
+              type="button"
+              className="dash-btn-danger"
+              onClick={() => void handleHard(false)}
+              disabled={busy !== null}
+              data-trace-id={`${traceIdPrefix}::EL-BTN-hard-delete-confirm`}
+            >
+              {busy === 'hard' ? 'Hard deleting…' : 'Hard Delete'}
+            </button>
+          ) : (
+            // Relabelled, not just re-enabled. The operator is agreeing to
+            // something different from what the first button offered, and the
+            // button should say which thing.
+            <button
+              type="button"
+              className="dash-btn-danger"
+              onClick={() => void handleHard(true)}
+              disabled={busy !== null}
+              data-trace-id={`${traceIdPrefix}::EL-BTN-force-hard-delete-confirm`}
+            >
+              {busy === 'hard' ? 'Deleting…' : 'Delete anyway, keep the orders'}
+            </button>
+          )}
           <button
             type="button"
             className="dash-btn-ghost"

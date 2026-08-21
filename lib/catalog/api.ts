@@ -291,11 +291,24 @@ export async function restoreVariant(productId: string, variantId: string): Prom
   });
 }
 
-export async function hardDeleteVariant(productId: string, variantId: string): Promise<void> {
-  await apiFetch(`${ADMIN}/products/${productId}/variants/${variantId}`, {
-    method: 'DELETE',
-    auth: true,
-  });
+/**
+ * `force` deletes even when past orders reference the variant.
+ *
+ * Safe for the ORDERS, which is the part that matters: order_items has no
+ * foreign key to the variant and each line carries a frozen product_snapshot,
+ * so every receipt still renders exactly as it did. What is lost is the
+ * ability to return those orders' stock to the shelf, since returns resolve
+ * by variant id. The dialog says so before offering the option.
+ */
+export async function hardDeleteVariant(
+  productId: string,
+  variantId: string,
+  force = false,
+): Promise<void> {
+  await apiFetch(
+    `${ADMIN}/products/${productId}/variants/${variantId}${force ? '?force=true' : ''}`,
+    { method: 'DELETE', auth: true },
+  );
 }
 
 export async function createProduct(

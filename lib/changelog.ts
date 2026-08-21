@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 218,
+    date: '2026-08-21',
+    area: 'Catalogue, and search on the shop',
+    summary:
+      'You can now permanently delete a variant even when past orders reference it. It used to refuse outright. The refusal was never protecting your records: an order stores the name, code and price the customer actually paid on the order itself, so every past order still reads exactly as it did after the variant is gone. What you do lose is the ability to put those particular orders’ stock back on the shelf, so the shop tells you how many orders are affected and asks a second time before doing it. Your orders are never deleted. Deleting the last variant of a product now takes that product off the shop automatically, so nobody clicks through to something that cannot be bought — publish it again once it has a variant. On the shop, search finds categories and brand partners too, not only products, so typing a partner’s name reaches their page instead of saying no matches; and pasting a product code finds the product. Each product page shows its code with a copy button beside Share, and the live-support box accepts that code so a customer can tell you exactly which item they mean. Product descriptions now appear on the shop, in the dark panel under the photographs.',
+  },
+  {
     id: 217,
     date: '2026-08-21',
     area: 'The shop, and Partners',
