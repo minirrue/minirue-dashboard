@@ -19,6 +19,7 @@ import FulfillmentControl from '@/components/dashboard/FulfillmentControl';
 import RefundOrderModal from '@/components/dashboard/RefundOrderModal';
 import type { RefundTicketDto } from '@/lib/api/refunds';
 import { formatOrderRef } from '@/lib/orders/order-format';
+import ReturnToStockModal from '@/components/dashboard/ReturnToStockModal';
 
 /* ── Helpers ── */
 function formatAmount(amount: string, currency: string): string {
@@ -57,12 +58,21 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
 }
 
 /* ── Action buttons based on current status ── */
+/**
+ * Statuses where goods have physically left, so a return is possible.
+ *
+ * Anything earlier releases its reservation on cancel and needs no
+ * confirmation — the stock never went anywhere.
+ */
+const SHIPPED_STATUSES: string[] = ['SHIPPED', 'DELIVERED', 'REFUNDED'];
+
 function OrderActions({
   order,
   onConfirm,
   onCancel,
   onShip,
   onRefund,
+  onReturnToStock,
   busy,
 }: {
   order: Order;
@@ -70,6 +80,7 @@ function OrderActions({
   onCancel: () => void;
   onShip: () => void;
   onRefund: () => void;
+  onReturnToStock: () => void;
   busy: boolean;
 }) {
   const { status } = order;
@@ -107,6 +118,24 @@ function OrderActions({
           Refund
         </button>
       )}
+      {/* Beside the refund, never instead of it. Refunding money and receiving
+          a parcel are separate events, often days apart and sometimes only one
+          of them happens — so stock moves when the operator says the goods
+          arrived, not when the money goes back.
+
+          Shown once an order has shipped, because that is the only case with
+          anything to return: cancelling BEFORE shipping releases the
+          reservation automatically and the goods are already back on sale. */}
+      {SHIPPED_STATUSES.includes(status) && (
+        <button
+          className="dash-btn-secondary"
+          disabled={busy}
+          onClick={onReturnToStock}
+          data-trace-id="PG-DASHBOARD-FUL-004::EL-BTN-open-return-to-stock"
+        >
+          Package received back
+        </button>
+      )}
     </div>
   );
 }
@@ -128,6 +157,10 @@ export default function OrderDetailClient({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  // A confirmed return changes a number the operator cannot see from here, so
+  // it has to say what it did — silence after "add back to stock" reads as
+  // nothing having happened.
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [payments, setPayments] = useState<AdminPaymentAttempt[]>([]);
   const [paymentBusy, setPaymentBusy] = useState<string | null>(null);
@@ -136,6 +169,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
   // so two lines sharing one product image cannot both open at once.
   const [itemPreview, setItemPreview] = useState<string | null>(null);
   const [refunding, setRefunding] = useState(false);
+  const [returningToStock, setReturningToStock] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -283,6 +317,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
             )
           }
           onRefund={() => setRefunding(true)}
+          onReturnToStock={() => setReturningToStock(true)}
         />
       </div>
 
@@ -294,6 +329,12 @@ export default function OrderDetailClient({ id }: { id: string }) {
 
       {actionError && (
         <p className="dash-inline-error" style={{ marginBottom: 16 }}>{actionError}</p>
+      )}
+
+      {actionNotice && (
+        <p className="dash-help-text" style={{ marginBottom: 16, color: 'var(--mr-st-ok-fg)' }}>
+          {actionNotice}
+        </p>
       )}
 
       {/* Meta */}
@@ -581,6 +622,22 @@ export default function OrderDetailClient({ id }: { id: string }) {
           order={order}
           onClose={() => setRefunding(false)}
           onRefunded={handleRefunded}
+        />
+      )}
+
+      {returningToStock && (
+        <ReturnToStockModal
+          orderId={order.id}
+          orderNumber={order.orderNumber}
+          onClose={() => setReturningToStock(false)}
+          onDone={(credited) => {
+            setReturningToStock(false);
+            setActionNotice(
+              credited > 0
+                ? `${credited} item${credited === 1 ? '' : 's'} added back to stock.`
+                : 'Nothing was added back — those items had already been returned.',
+            );
+          }}
         />
       )}
     </>

@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 212,
+    date: '2026-08-21',
+    area: 'Orders → Package received back',
+    summary:
+      'Stock now comes back when goods do. Cancelling an order before it ships already put the items back on sale, and still does — nothing to press. Once an order has shipped there is a new "Package received back" button beside Refund: you tick which items actually arrived and how many, and only those go back on the shelf. It is deliberately separate from the refund, because refunding money does not tell us where the goods are — a customer might be refunded out of goodwill and keep the item, or send back one bottle out of two, or return something broken you cannot sell again. Pressing it twice is safe: the second time adds nothing. Related fix underneath: marking an order shipped never actually took the items off the shelf count before, so the "on hand" number has been drifting upward on every order. It is correct from now on, though past orders are not retroactively adjusted.',
+  },
+  {
     id: 211,
     date: '2026-08-21',
     area: 'Storefront → Shop',
