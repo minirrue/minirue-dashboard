@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import type { AdminNotification } from '@/lib/api/notifications';
+import { isKnownDashboardPath } from '@/lib/auth/roles';
 
 const SEVERITY_STATUS: Record<AdminNotification['severity'], string> = {
   INFO: 'pending',
@@ -27,16 +28,47 @@ function typeMeta(n: AdminNotification): { label: string; tab: string } {
   }
 }
 
-/** entityType/category → clean dashboard URL (support carries the conversation id). */
+/**
+ * entityType/category → clean dashboard URL (support carries the conversation id).
+ *
+ * Every candidate goes through `reachable`, which drops anything this app does
+ * not actually serve. The stored `link` is the reason: it is a free-form column
+ * writable by any caller of the create endpoint, and it was rendered straight
+ * into `<Link href>`. A row naming a path with no page navigated to a hard 404
+ * — reported 2026-08-21 as the Notifications tab "crashing to /logout", which
+ * exists nowhere in this repo.
+ *
+ * Role is deliberately NOT consulted here. A row is a leaf rendered in a list
+ * and in the bell drawer; giving it its own identity query would make every
+ * row a data-fetching component for a check the dashboard layout already
+ * performs — it renders AccessDeniedPanel for any route the role cannot open,
+ * however the operator got there.
+ */
 function resolveHref(n: AdminNotification): string | null {
+  const reachable = (href: string | null): string | null =>
+    href && isKnownDashboardPath(href) ? href : null;
+
   const et = (n.entityType ?? '').toLowerCase();
   const convId =
     n.data && typeof n.data.conversationId === 'string' ? (n.data.conversationId as string) : null;
-  if (et === 'support') return convId ? `/support?c=${encodeURIComponent(convId)}` : '/support';
-  if (et === 'customer' && n.entityId) return `/customers/${n.entityId}`;
-  if ((et === 'order' || n.category === 'ORDER') && n.entityId) return `/orders/${n.entityId}`;
-  if (n.link) return n.link;
-  switch (n.category) {
+  if (et === 'support')
+    return reachable(convId ? `/support?c=${encodeURIComponent(convId)}` : '/support');
+  if (et === 'customer' && n.entityId) return reachable(`/customers/${n.entityId}`);
+  if ((et === 'order' || n.category === 'ORDER') && n.entityId)
+    return reachable(`/orders/${n.entityId}`);
+  // The stored `link` is free-form and writable by any caller of the create
+  // endpoint — validated, never trusted. See isKnownDashboardPath.
+  if (n.link) {
+    const vetted = reachable(n.link);
+    if (vetted) return vetted;
+    // A bad stored link falls through to the category default rather than
+    // rendering a dead View button.
+  }
+  return reachable(categoryHref(n.category));
+}
+
+function categoryHref(category: AdminNotification['category']): string {
+  switch (category) {
     case 'CUSTOMER': return '/customers';
     case 'ORDER':
     case 'PAYMENT': return '/orders';

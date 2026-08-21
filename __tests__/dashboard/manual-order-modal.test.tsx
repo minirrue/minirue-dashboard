@@ -63,6 +63,8 @@ const PRODUCT_LIST_ITEM: ProductListItem = {
   name: 'Test Product',
   brandId: 'brand_1',
   brandName: 'Test Brand',
+  brandImageUrl: null,
+  sku: '000001',
   status: 'PUBLISHED',
   variantCount: 1,
   basePrice: 125,

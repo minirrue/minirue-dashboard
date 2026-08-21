@@ -119,6 +119,32 @@ export function isAdminRole(role: string | undefined | null): boolean {
   return !!role && isRole(role) && ADMIN_ONLY.includes(role);
 }
 
+/**
+ * Is this a path the dashboard actually serves?
+ *
+ * `normalizeDashboardPath` cannot answer this — it falls back to '/overview'
+ * for anything it does not recognise, which is right for highlighting a sidebar
+ * item and wrong for deciding whether to follow a link.
+ *
+ * Needed because notification rows carry a free-form `link` column that the UI
+ * rendered straight into `<Link href>`. Every row the templates write is a real
+ * route, but the column is writable by any caller of the create endpoint, and a
+ * row naming a path this app has no page for navigates to a hard 404 — reported
+ * 2026-08-21 as the Notifications tab "crashing to /logout", a route that
+ * exists nowhere in this repo.
+ *
+ * Also rejects protocol-relative and absolute URLs, so a stored link can never
+ * send an operator off-site.
+ */
+export function isKnownDashboardPath(path: string): boolean {
+  const bare = path.split('?')[0].split('#')[0];
+  if (!bare.startsWith('/') || bare.startsWith('//')) return false;
+  const normalized = bare === '/dashboard' ? '/overview' : bare.replace(/^\/dashboard(?=\/)/, '');
+  return DASHBOARD_NAV_PATHS.some(
+    (href) => normalized === href || normalized.startsWith(`${href}/`),
+  );
+}
+
 export function normalizeDashboardPath(path: string): string {
   const normalizedPath = path === '/dashboard' ? '/overview' : path.replace(/^\/dashboard(?=\/)/, '');
   for (const href of DASHBOARD_NAV_PATHS) {

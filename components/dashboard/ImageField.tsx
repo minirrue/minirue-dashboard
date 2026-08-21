@@ -135,6 +135,9 @@ export default function ImageField({
             background: 'var(--mr-dash-sub, #f4f1ec)',
             overflow: 'hidden',
             flexShrink: 0,
+            // A little breathing room so a logo that fills its own canvas edge
+            // to edge does not touch the frame.
+            padding: 4,
           }}
         >
           {imageUrl ? (
@@ -142,7 +145,13 @@ export default function ImageField({
               src={imageUrl}
               localFile={pendingLocalFile}
               alt=""
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              // 'contain', not 'cover'. This is the "what did I just upload"
+              // preview, so it has to show the whole picture — a crop here is
+              // a lie about what was stored. A wide wordmark rendered as its
+              // own middle ("BURBERRY" as "BURB", reported 2026-08-21) and the
+              // admin had no way to tell a bad upload from a bad preview.
+              // Square sources are unaffected: contain and cover agree on them.
+              style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
             />
           ) : null}
         </div>

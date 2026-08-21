@@ -302,7 +302,14 @@ function BrandRow({
                   width: 32,
                   height: 32,
                   borderRadius: 4,
-                  objectFit: 'cover',
+                  // A brand image is a wordmark. 'cover' cropped wide logos to
+                  // their middle, so the Brands list showed "BURB" next to the
+                  // name "BURBERRY" (reported 2026-08-21). The backend now
+                  // serves these as a fit resize rather than a square crop, and
+                  // this places the whole thing inside its box.
+                  objectFit: 'contain',
+                  background: 'var(--mr-dash-sub, #f4f1ec)',
+                  padding: 2,
                   flexShrink: 0,
                 }}
               />

@@ -21,6 +21,34 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 210,
+    date: '2026-08-21',
+    area: 'Admin → Accounts',
+    summary:
+      'Setting someone\'s password from the Accounts screen works again, and so does creating an account. Both were saving the password in a place the sign-in screen stopped reading months ago — so a password you changed quietly stayed the old one, and a brand-new account could not sign in at all, no matter how carefully it was set up. Typing your own password to confirm the change was being checked against that same old place, which is why it kept saying it did not match even when it did. Changing a password now also signs that person out everywhere they were still logged in, which is the whole point of changing it.',
+  },
+  {
+    id: 209,
+    date: '2026-08-21',
+    area: 'Signing in and out',
+    summary:
+      'Signing out of one account and into another now shows you the right account. Before, an old sign-in could linger invisibly in the browser and the dashboard would keep treating you as the previous account — so a super admin could log in and be shown the smaller admin view, with some screens then throwing them out. Signing out now clears everything it should, and a session that has ended is treated as signed out rather than quietly falling back to who you used to be.',
+  },
+  {
+    id: 208,
+    date: '2026-08-21',
+    area: 'Notifications',
+    summary:
+      'Opening a notification can no longer land you on a broken page. A notification carries a link to whatever it is about, and if that link pointed somewhere the dashboard does not have, tapping it dropped you on an error screen. Those links are now checked before they are offered, so a notification either takes you somewhere real or simply has no button.',
+  },
+  {
+    id: 207,
+    date: '2026-08-21',
+    area: 'Products, Brands and Categories',
+    summary:
+      'Four things. Brand pictures are no longer cut off — a wide logo like BURBERRY was being trimmed to its middle ("BURB") everywhere it appeared, including on the shop itself, and now the whole logo is shown whatever shape it is. The Products list shows each brand\'s logo beside its name and a new SKU column, so you can find a product by its number. Two products in the same category can no longer share a name — the second one is numbered ("… 2") automatically, and its link is numbered to match. The same applies to two variants of one product with identical custom fields.',
+  },
+  {
     id: 206,
     date: '2026-08-15',
     area: 'Products → Stock quantity',

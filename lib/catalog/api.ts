@@ -73,6 +73,8 @@ interface BackendProduct {
   brandName: string | null;
   categoryId: string;
   categoryName: string | null;
+  /** Resolved by CatalogService.withBrandImages on the admin list only. */
+  brandImageUrl?: string | null;
   description?: string | null;
   publishedState: string;
   variants: BackendVariant[];
@@ -93,7 +95,12 @@ function mapListItem(p: BackendProduct): ProductListItem {
     name: p.name,
     brandId: p.brandId,
     brandName: p.brandName ?? '',
+    brandImageUrl: p.brandImageUrl ?? null,
     status: p.publishedState as ProductStatus,
+    // The first variant's SKU. Sorted so the number shown is stable across
+    // reloads rather than whatever order the variants query happened to
+    // return — a SKU that moves between renders is worse than none.
+    sku: [...(p.variants ?? [])].map((v) => v.sku).sort()[0] ?? '',
     variantCount: p.variants?.length ?? 0,
     basePrice: priceMin ?? 0,
     priceMin,

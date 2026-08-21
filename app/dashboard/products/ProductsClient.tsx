@@ -20,6 +20,7 @@ import type { ManagedBrand } from '@/lib/catalog/api';
 import type { ApiError } from '@/lib/api/client';
 import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
 import CatalogSubnav from '@/components/dashboard/CatalogSubnav';
+import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 
@@ -237,7 +238,46 @@ export default function ProductsClient() {
         </Link>
       ),
     },
-    { key: 'brandName', label: 'Brand', sortable: true },
+    {
+      key: 'brandName',
+      label: 'Brand',
+      sortable: true,
+      // The logo, then the name. A shop with several perfume houses is far
+      // quicker to scan by mark than by reading each name (owner, 2026-08-21).
+      render: (row) => (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          {row.brandImageUrl ? (
+            <UploadPreviewImage
+              src={row.brandImageUrl}
+              alt=""
+              width={20}
+              height={20}
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: 3,
+                // 'contain' — a brand image is a wordmark, and the backend now
+                // serves it as a fit resize. See resolveGalleryImage.
+                objectFit: 'contain',
+                background: 'var(--mr-dash-sub, #f4f1ec)',
+                flexShrink: 0,
+              }}
+            />
+          ) : null}
+          <span style={{ minWidth: 0, overflowWrap: 'break-word' }}>{row.brandName}</span>
+        </span>
+      ),
+    },
+    {
+      key: 'sku',
+      label: 'SKU',
+      // Tabular figures so a column of zero-padded sequence numbers lines up.
+      render: (row) => (
+        <span style={{ fontVariantNumeric: 'tabular-nums', opacity: row.sku ? 1 : 0.45 }}>
+          {row.sku || '—'}
+        </span>
+      ),
+    },
     {
       key: 'status',
       label: 'Status',

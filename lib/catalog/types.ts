@@ -110,7 +110,16 @@ export interface ProductListItem {
   name: string;
   brandId: string;
   brandName: string;
+  /** The brand's logo, so a brand is recognisable by its mark in the list and
+   *  not only by its name (owner, 2026-08-21). Null when the brand has no
+   *  image, or is the Generic brand. */
+  brandImageUrl: string | null;
   status: ProductStatus;
+  /** The first variant's SKU — the number the DB sequence assigned (migration
+   *  0250). Products with several variants each carry their own; this is the
+   *  one shown on the row, with the rest on the product's edit screen. Empty
+   *  string when a product has no variants yet. */
+  sku: string;
   variantCount: number;
   basePrice: number;
   priceMin: number | null;
