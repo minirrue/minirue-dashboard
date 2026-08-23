@@ -294,7 +294,7 @@ export default function GalleryPickerModal({
         <input
           ref={deviceInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/heic,image/heif,image/webp"
+          accept="image/jpeg,image/png,image/heic,image/heif,image/webp,.heic,.heif,.hif"
           hidden
           onChange={(e) => {
             const file = e.target.files?.[0];

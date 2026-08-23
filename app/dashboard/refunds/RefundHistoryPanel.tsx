@@ -63,6 +63,36 @@ function StatusBadge({ status }: { status: RefundStatus }) {
  * by id, and only tickets for an order outside that fetched page fall back
  * to a truncated UUID.
  */
+/**
+ * Whose refund this is, and a way to get to them.
+ *
+ * The table showed ticket, order, amount and reason but never a person, so
+ * deciding a refund meant opening the order in another tab just to find out
+ * who was asking (owner, 2026-08-23). `buyerName` is snapshotted onto the
+ * ticket at request time; `customerId` is null for a guest order, which has no
+ * profile to link to — that case shows the name as plain text rather than a
+ * dead link.
+ */
+function CustomerCell({ ticket }: { ticket: RefundTicketDto }) {
+  const name = ticket.buyerName?.trim();
+  if (!ticket.customerId) {
+    return (
+      <span style={{ color: 'var(--mr-fg-3)', fontSize: 13 }}>
+        {name || 'Guest'}
+      </span>
+    );
+  }
+  return (
+    <Link
+      href={`/customers/${ticket.customerId}`}
+      style={{ fontSize: 13, whiteSpace: 'nowrap' }}
+      title="Open this customer's profile"
+    >
+      {name || 'View customer'} →
+    </Link>
+  );
+}
+
 function OrderRefCell({ ticket, orderById }: { ticket: RefundTicketDto; orderById: Map<string, Order> }) {
   const order = orderById.get(ticket.orderId);
   if (order) {
@@ -147,7 +177,7 @@ function SkeletonRows() {
       <div className="dash-table-wrap">
         <table className="dash-table">
           <thead>
-            <tr>{['Ticket', 'Order', 'Status', 'Amount', 'Method', 'Source', 'Proof', 'Reason', 'Date', ''].map((h) => <th key={h}>{h}</th>)}</tr>
+            <tr>{['Ticket', 'Order', 'Customer', 'Status', 'Amount', 'Method', 'Source', 'Proof', 'Reason', 'Date', ''].map((h) => <th key={h}>{h}</th>)}</tr>
           </thead>
           <tbody>
             {Array.from({ length: 6 }).map((_, i) => (
@@ -258,6 +288,7 @@ export default function RefundHistoryPanel({ refreshToken }: { refreshToken: num
                 <tr>
                   <th>Ticket</th>
                   <th>Order</th>
+                  <th>Customer</th>
                   <th>Status</th>
                   <th style={{ textAlign: 'right' }}>Requested</th>
                   <th>Method</th>
@@ -271,7 +302,7 @@ export default function RefundHistoryPanel({ refreshToken }: { refreshToken: num
               <tbody>
                 {refunds.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="dash-table-empty">
+                    <td colSpan={11} className="dash-table-empty">
                       {statusFilter ? 'No refunds match the selected status.' : 'No refund requests yet.'}
                     </td>
                   </tr>
@@ -280,6 +311,7 @@ export default function RefundHistoryPanel({ refreshToken }: { refreshToken: num
                     <tr key={row.id}>
                       <td><code style={{ fontSize: 12 }}>{row.id.slice(0, 8)}…</code></td>
                       <td><OrderRefCell ticket={row} orderById={orderById} /></td>
+                      <td><CustomerCell ticket={row} /></td>
                       <td><StatusBadge status={row.status} /></td>
                       <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{egp(row.requestedAmountCents)}</td>
                       <td style={{ color: 'var(--mr-fg-3)', fontSize: 13 }}>{METHOD_LABELS[row.method]}</td>

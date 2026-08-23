@@ -55,6 +55,14 @@ export default function ImageCropProvider({
   const cropImage = React.useCallback<CropImage>((file, request) => {
     // Videos and anything non-image pass straight through — the cropper draws
     // to a canvas and would produce a broken still frame.
+    //
+    // A HEIC lands here too, and deliberately keeps passing through: on Windows
+    // its `type` is empty (no registry MIME for .heic) and no browser can decode
+    // HEIC to a canvas anyway, so opening the cropper on one would show a broken
+    // frame with no way out. It uploads uncropped and the server re-encodes it
+    // to WebP — do not "fix" this into a crop step. What DID need fixing was the
+    // server then rejecting those bytes for having no usable MIME; see the
+    // backend's gallery/upload-mime.ts.
     if (!file.type.startsWith('image/')) return Promise.resolve(file);
     return new Promise<File | null>((resolve) => {
       setPending((prev) => {

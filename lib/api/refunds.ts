@@ -19,7 +19,11 @@ export type RefundSource = 'CUSTOMER' | 'ADMIN';
 export interface RefundTicketDto {
   id: string;
   orderId: string;
-  customerId: string;
+  /** Null on a guest order — there is no account to open. */
+  customerId: string | null;
+  /** Who asked, snapshotted onto the ticket when it was raised. Null on
+   *  tickets created before that snapshot existed. */
+  buyerName: string | null;
   status: RefundStatus;
   method: RefundMethod;
   source: RefundSource;

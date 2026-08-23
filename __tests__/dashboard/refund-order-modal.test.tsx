@@ -36,9 +36,16 @@ function makeOrder(): Order {
 beforeEach(() => jest.clearAllMocks());
 
 describe('RefundOrderModal', () => {
-  it('defaults the amount to the full order total', () => {
+  // 150.00 total = 100.00 goods + 50.00 shipping. Shipping is never refunded
+  // (owner, 2026-08-23), so every refund on this order is exactly 100.00.
+  it('shows the order total MINUS shipping, not the full total', () => {
     render(<RefundOrderModal order={makeOrder()} onClose={jest.fn()} onRefunded={jest.fn()} />);
-    expect(screen.getByLabelText(/refund amount/i)).toHaveValue(150);
+    expect(screen.getByLabelText(/refund amount/i)).toHaveValue('100.00');
+  });
+
+  it('does not let the operator edit the amount', () => {
+    render(<RefundOrderModal order={makeOrder()} onClose={jest.fn()} onRefunded={jest.fn()} />);
+    expect(screen.getByLabelText(/refund amount/i)).toBeDisabled();
   });
 
   it('submits without an image, because proof is optional', async () => {
@@ -52,24 +59,28 @@ describe('RefundOrderModal', () => {
     await waitFor(() =>
       expect(apiAdminRefundOrder).toHaveBeenCalledWith(
         'order-1',
-        expect.objectContaining({ amountCents: 15000, reason: 'Damaged bottle' }),
+        expect.objectContaining({ amountCents: 10000, reason: 'Damaged bottle' }),
       ),
     );
     expect((apiAdminRefundOrder as jest.Mock).mock.calls[0][1]).not.toHaveProperty('proofDataUrl');
     await waitFor(() => expect(onRefunded).toHaveBeenCalled());
   });
 
-  it('refuses an amount greater than the order total before calling the API', async () => {
+  // The old "refuses an over-total amount" case is gone with the input it
+  // guarded: an operator can no longer enter any amount, so there is no
+  // over-total value to reject. The guarantee it protected — never refund more
+  // than was taken — is now structural rather than validated.
+  it('never sends an amount above the goods total, whatever the shipping', async () => {
+    (apiAdminRefundOrder as jest.Mock).mockResolvedValue({ id: 't1' });
     render(<RefundOrderModal order={makeOrder()} onClose={jest.fn()} onRefunded={jest.fn()} />);
 
-    const amount = screen.getByLabelText(/refund amount/i);
-    await userEvent.clear(amount);
-    await userEvent.type(amount, '500');
     await userEvent.type(screen.getByLabelText(/reason/i), 'x');
     await userEvent.click(screen.getByRole('button', { name: /^refund/i }));
 
-    expect(await screen.findByText(/cannot be more than/i)).toBeInTheDocument();
-    expect(apiAdminRefundOrder).not.toHaveBeenCalled();
+    await waitFor(() => expect(apiAdminRefundOrder).toHaveBeenCalled());
+    const sent = (apiAdminRefundOrder as jest.Mock).mock.calls[0][1];
+    expect(sent.amountCents).toBe(10000);
+    expect(sent.amountCents).toBeLessThan(15000);
   });
 
   it('requires a reason', async () => {

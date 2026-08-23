@@ -45,7 +45,20 @@ export default function RefundOrderModal({ order, onClose, onRefunded }: RefundO
   );
 
   const orderTotal = parseFloat(order.totalAmount);
-  const [amount, setAmount] = useState<string>(orderTotal.toFixed(2));
+  /*
+   * Shipping is never refunded, and the amount is not the operator's to choose
+   * (owner, 2026-08-23). A refund here always returns the goods total — the
+   * order total minus what the courier was paid — because the delivery
+   * happened whether or not the customer kept what was in the box.
+   *
+   * Derived rather than typed: a free-text amount on a hand-made bank transfer
+   * is a data-entry mistake waiting to happen, and every wrong figure has to be
+   * reconciled against Instapay by hand afterwards. The field below shows this
+   * number read-only so the operator can still SEE what is being returned.
+   */
+  const shippingTotal = parseFloat(order.shippingAmount || '0') || 0;
+  const refundTotal = Math.max(0, orderTotal - shippingTotal);
+  const amount = refundTotal.toFixed(2);
   const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
   const [proofDataUrl, setProofDataUrl] = useState<string | null>(null);
@@ -107,7 +120,7 @@ export default function RefundOrderModal({ order, onClose, onRefunded }: RefundO
     } finally {
       setBusy(false);
     }
-  }, [amount, reason, note, proofDataUrl, order, orderTotal, onRefunded]);
+  }, [amount, reason, note, proofDataUrl, order, onRefunded]);
 
   if (!mounted) return null;
 
@@ -131,20 +144,21 @@ export default function RefundOrderModal({ order, onClose, onRefunded }: RefundO
             <input
               id="refund-amount"
               className="dash-input"
-              type="number"
-              min="0"
-              step="0.01"
+              type="text"
+              readOnly
+              disabled
               aria-label={`Refund amount (${order.totalCurrency})`}
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
             />
             <p className="dash-help-text">
-              Order total is {order.totalCurrency} {orderTotal.toFixed(2)}.
+              Always the order total minus shipping — {order.totalCurrency}{' '}
+              {orderTotal.toFixed(2)} less {order.totalCurrency}{' '}
+              {shippingTotal.toFixed(2)} delivery. Shipping is not refunded.
             </p>
           </label>
 
           <label className="dash-field">
-            <span className="dash-label">Reason</span>
+            <span className="dash-label">Reason (required)</span>
             <input
               id="refund-reason"
               className="dash-input"

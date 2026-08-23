@@ -71,6 +71,7 @@ function OrderActions({
   onConfirm,
   onCancel,
   onShip,
+  onDeliver,
   onRefund,
   onReturnToStock,
   busy,
@@ -79,6 +80,7 @@ function OrderActions({
   onConfirm: () => void;
   onCancel: () => void;
   onShip: () => void;
+  onDeliver: () => void;
   onRefund: () => void;
   onReturnToStock: () => void;
   busy: boolean;
@@ -109,6 +111,23 @@ function OrderActions({
       {status === 'PROCESSING' && (
         <button className="dash-btn-primary" disabled={busy} onClick={onShip}>
           Mark shipped
+        </button>
+      )}
+      {/* The step after "Mark shipped", and the last one an order has.
+          SHIPPED used to render no action at all, so an order that had gone
+          out could only be closed off from the orders LIST — the detail page
+          for it was a dead end (owner, 2026-08-23). SHIPPED -> DELIVERED is
+          already the only forward transition the API allows from here
+          (ORDER_TRANSITIONS), so this exposes an existing rule rather than
+          adding one. */}
+      {status === 'SHIPPED' && (
+        <button
+          className="dash-btn-primary"
+          disabled={busy}
+          onClick={onDeliver}
+          data-trace-id="PG-DASHBOARD-FUL-004::EL-BTN-mark-delivered"
+        >
+          Mark delivered
         </button>
       )}
       {/* Same eligibility as the Refunds tab: not already refunded, and a
@@ -316,6 +335,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
               ),
             )
           }
+          onDeliver={() => runAction(() => apiAdminTransitionStatus(id, 'DELIVERED'))}
           onRefund={() => setRefunding(true)}
           onReturnToStock={() => setReturningToStock(true)}
         />
