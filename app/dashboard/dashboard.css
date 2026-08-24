@@ -4100,3 +4100,14 @@ a.dash-card:focus-visible {
     animation: none;
   }
 }
+
+/* ── Row a link arrived pointing at ──
+   Clicking a payment on an order lands on Refunds and payments with
+   ?payment=<id>. The row is marked rather than filtered to, so the surrounding
+   attempts on the same order — usually the reason for the click — stay visible.
+   Border-left rather than a background: it survives the striping on
+   .dash-table rows without fighting it for specificity. */
+.dash-table tbody tr[data-highlighted='true'] {
+  background: var(--mr-dash-sub);
+  box-shadow: inset 3px 0 0 0 var(--mr-st-danger-bg);
+}

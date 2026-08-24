@@ -503,7 +503,18 @@ export default function OrderDetailClient({ id }: { id: string }) {
                     (p.status === 'PROCESSING' || p.status === 'PENDING');
                   return (
                   <tr key={p.id}>
-                    <td>{p.method}</td>
+                    {/*
+                      The METHOD cell is the link, not the row. Three cells on
+                      this row are edited in place (Instapay ref, Sender, Ref)
+                      and a row-level link would swallow the click that starts
+                      an edit. Landing target is the Payments tab on Refunds and
+                      payments, with this attempt marked.
+                    */}
+                    <td>
+                      <Link href={`/refunds?payment=${p.id}`} className="dash-link">
+                        {p.method}
+                      </Link>
+                    </td>
                     <td>
                       <span className="dash-status" data-status={p.status.toLowerCase()}>
                         <span className="dash-status-dot" />

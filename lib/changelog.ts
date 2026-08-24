@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 226,
+    date: '2026-08-24',
+    area: 'Refunds and payments',
+    summary:
+      'Added a Payments tab listing every payment the shop has taken, newest first, with the order it belongs to, the method, the status, the amount and the Instapay details. On an order, clicking the payment method now opens that payment here with its row marked — and the other attempts on the same order visible around it, which is usually what you actually wanted to see.',
+  },
+  {
     id: 225,
     date: '2026-08-24',
     area: 'Refunds and payments',
