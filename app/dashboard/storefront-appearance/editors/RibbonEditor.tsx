@@ -3,6 +3,24 @@
 import React from 'react';
 import type { RibbonSection } from '@/lib/api/storefront';
 
+/**
+ * Editor for the scrolling ribbon.
+ *
+ * The textarea is deliberately LOSSLESS: it splits on '\n' and nothing else,
+ * so whatever is typed survives the round trip back through `items.join('\n')`.
+ *
+ * It used to trim each line and drop the empty ones right here in onChange,
+ * which made the box unusable. Pressing Enter created an empty line that was
+ * filtered out before React re-rendered, so the newline vanished and the caret
+ * jumped to the end of the box; a trailing space was eaten by .trim() the same
+ * way. The line only appeared once a real character followed, which reads as
+ * "space makes a new line". Owner, 2026-08-24: "this typing area is bugged".
+ *
+ * Blank lines are cleaned in normalizeStorefrontLayoutForSave instead — at
+ * save, once, rather than on every keystroke. The backend requires every
+ * phrase to be non-empty, so that cleanup is not optional; it just belongs at
+ * the other end of the edit.
+ */
 export default function RibbonEditor({
   section,
   onChange,
@@ -10,6 +28,10 @@ export default function RibbonEditor({
   section: RibbonSection;
   onChange: (next: RibbonSection) => void;
 }) {
+  // Blank lines are legitimate mid-edit now, so "is this ribbon empty?" has to
+  // ask whether anything non-blank is left rather than counting array entries.
+  const hasPhrase = section.items.some((item) => item.trim() !== '');
+
   return (
     <div className="dash-form-section">
       <label className="dash-field">
@@ -19,10 +41,7 @@ export default function RibbonEditor({
           rows={6}
           value={section.items.join('\n')}
           onChange={(e) =>
-            onChange({
-              ...section,
-              items: e.target.value.split('\n').map((l) => l.trim()).filter(Boolean),
-            })
+            onChange({ ...section, items: e.target.value.split('\n') })
           }
         />
       </label>
@@ -55,7 +74,7 @@ export default function RibbonEditor({
           </select>
         </label>
       </div>
-      {section.items.length === 0 && (
+      {!hasPhrase && (
         <p style={{ fontSize: 13, color: 'var(--mr-fg-4)' }}>
           No phrases yet — this ribbon will not appear on the storefront.
         </p>

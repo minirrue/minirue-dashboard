@@ -144,3 +144,52 @@ describe('normalizeStorefrontLayoutForSave', () => {
     ]);
   });
 });
+
+/**
+ * The ribbon textarea now keeps blank lines and trailing spaces while the
+ * admin is still typing (see ribbon-editor.test.tsx), so the cleanup that used
+ * to happen on every keystroke has to happen here instead. The backend rejects
+ * an empty phrase outright — `z.array(z.string().min(1))` — so a layout that
+ * reached the API with a blank item would fail the whole save.
+ */
+describe('normalizeStorefrontLayoutForSave — ribbon phrases', () => {
+  it('trims phrases and drops the blank lines left behind by typing', () => {
+    const layout = baseLayout();
+    layout.sections = [
+      {
+        id: 'ribbon-1',
+        type: 'ribbon',
+        enabled: true,
+        order: 0,
+        items: ['  shipping all over egypt ', '', '   ', "New S/S '26"],
+        speedSeconds: 38,
+        surface: 'ink',
+      },
+    ];
+
+    const { layout: out } = normalizeStorefrontLayoutForSave(layout);
+    const ribbon = out.sections[0];
+    if (ribbon.type !== 'ribbon') throw new Error('expected a ribbon section');
+    expect(ribbon.items).toEqual(['shipping all over egypt', "New S/S '26"]);
+  });
+
+  it('leaves the on-screen layout untouched', () => {
+    const layout = baseLayout();
+    layout.sections = [
+      {
+        id: 'ribbon-1',
+        type: 'ribbon',
+        enabled: true,
+        order: 0,
+        items: ['one', ''],
+        speedSeconds: 38,
+        surface: 'ink',
+      },
+    ];
+
+    normalizeStorefrontLayoutForSave(layout);
+    const original = layout.sections[0];
+    if (original.type !== 'ribbon') throw new Error('expected a ribbon section');
+    expect(original.items).toEqual(['one', '']);
+  });
+});

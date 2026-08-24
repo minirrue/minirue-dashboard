@@ -437,9 +437,21 @@ export function normalizeStorefrontLayoutForSave(layout: StorefrontLayout): Norm
   const next: StorefrontLayout = JSON.parse(JSON.stringify(layout));
 
   for (const section of next.sections) {
-    if (section.type !== 'hero') continue;
-    for (const slide of section.slides) {
-      slide.ctaTarget = normalizeCtaTarget(slide.ctaTarget);
+    if (section.type === 'hero') {
+      for (const slide of section.slides) {
+        slide.ctaTarget = normalizeCtaTarget(slide.ctaTarget);
+      }
+      continue;
+    }
+    // The ribbon textarea is lossless while it is being typed (see
+    // RibbonEditor) so the admin can press Enter and get a line. That leaves
+    // blank entries behind, and the API rejects them outright —
+    // `z.array(z.string().min(1))` — which would fail the entire save over a
+    // stray newline. Cleaning here is the other half of that trade.
+    if (section.type === 'ribbon') {
+      section.items = section.items
+        .map((item) => item.trim())
+        .filter((item) => item !== '');
     }
   }
 
