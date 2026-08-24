@@ -21,6 +21,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 225,
+    date: '2026-08-24',
+    area: 'Refunds and payments',
+    summary:
+      'The "Refunds" tab is now called "Refunds and payments", which is what it is for.',
+  },
+  {
+    id: 224,
+    date: '2026-08-24',
+    area: 'Settings — erase shop data',
+    summary:
+      'Erasing anything that included orders still failed with "Internal server error" after the last fix. A second record — the one that stops a checkout being submitted twice — was also being kept until after the orders it belongs to were erased, and the database refused that too. It is now erased with the orders. This one was hard to find because the rule tying the two together existed only inside the database and was written nowhere in the shop\'s own code; it is now written down in both places.',
+  },
+  {
     id: 223,
     date: '2026-08-24',
     area: 'Settings — erase shop data',

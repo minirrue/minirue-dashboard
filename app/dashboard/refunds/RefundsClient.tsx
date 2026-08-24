@@ -22,7 +22,7 @@ export default function RefundsClient() {
   return (
     <>
       <div className="dash-page-header">
-        <h1 className="dash-page-title">Refunds</h1>
+        <h1 className="dash-page-title">Refunds and payments</h1>
       </div>
 
       <div role="tablist" aria-label="Refunds view" className="dash-tabstrip">

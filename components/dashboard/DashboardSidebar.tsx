@@ -256,7 +256,7 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
       // somebody here says yes.
       { label: 'Reviews', href: '/reviews', icon: <IconStar /> },
       { label: 'Fulfillment', href: '/fulfillment', icon: <IconTruck /> },
-      { label: 'Refunds', href: '/refunds', icon: <IconRefreshCcw /> },
+      { label: 'Refunds and payments', href: '/refunds', icon: <IconRefreshCcw /> },
       { label: 'Inventory', href: '/inventory', icon: <IconPackage />, maintenance: true },
     ],
   },

@@ -47,7 +47,7 @@ export function routeSectionLabel(path: string): string {
     '/orders': 'Orders',
     '/customers': 'Customers',
     '/fulfillment': 'Fulfillment',
-    '/refunds': 'Refunds',
+    '/refunds': 'Refunds and payments',
     '/inventory': 'Inventory',
     '/analytics': 'Analytics',
     '/loyalty': 'Loyalty',
