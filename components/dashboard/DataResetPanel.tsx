@@ -25,6 +25,7 @@ const SUMMARY_NOUN: Record<string, string> = {
   carts: 'carts',
   inventory: 'stock',
   customers: 'customers',
+  discounts: 'offers',
   notifications: 'notifications',
   collaborators: 'collaborators',
   products: 'products',

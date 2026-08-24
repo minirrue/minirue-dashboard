@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 223,
+    date: '2026-08-24',
+    area: 'Settings — erase shop data',
+    summary:
+      'Erasing the ticked data failed with "Internal server error" whenever orders were part of it. Discount codes and product sets were missing from the list of things a reset knows about, so the records of which codes had been used were still attached to the orders being erased and the database refused the whole thing. Discounts and bundles are now their own item you can tick, and the used-code records go with the orders they belong to. A database refusal also now says which table caused it instead of just "Internal server error".',
+  },
+  {
     id: 222,
     date: '2026-08-24',
     area: 'Settings — erase shop data',
