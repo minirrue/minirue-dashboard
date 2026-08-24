@@ -1391,8 +1391,17 @@
   white-space: nowrap;
   transition: opacity var(--mr-dur-fast) ease;
 }
-.dash-btn-danger:hover {
+.dash-btn-danger:hover:not(:disabled) {
   opacity: 0.85;
+}
+/* This was the ONLY button variant with no :disabled rule, which is the worst
+   possible one to miss: a dead "Erase the ticked data" rendered at full danger
+   red with cursor:pointer, so clicking it and getting nothing looked like
+   broken software rather than an unmet precondition.
+   Owner, 2026-08-24: "erase ticked data isnt working". */
+.dash-btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ── Row actions ── */

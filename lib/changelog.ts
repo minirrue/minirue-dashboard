@@ -21,6 +21,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 222,
+    date: '2026-08-24',
+    area: 'Settings — erase shop data',
+    summary:
+      '"Erase the ticked data" used to look ready to press even when it was not, so clicking it appeared to do nothing. The button now dims when it cannot run, and tells you why underneath: you have to type DELETE in the box at the top of that panel first. The typing box is a long way above the ticked list on a busy shop, which is why the reason was easy to miss.',
+  },
+  {
+    id: 221,
+    date: '2026-08-24',
+    area: 'Storefront — scrolling ribbon',
+    summary:
+      'Fixed the phrases box on the scrolling ribbon. Pressing Enter did not start a new line, spaces at the end of a line disappeared as you typed, and the line break would then show up late as though the space had caused it. The box now keeps exactly what you type. Empty lines are tidied away when you save, so you can leave a gap while writing without it reaching the shop.',
+  },
+  {
     id: 220,
     date: '2026-08-21',
     area: 'The shop — filters and sort',

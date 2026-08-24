@@ -345,6 +345,19 @@ export default function DataResetPanel() {
             >
               {running ? 'Erasing…' : 'Erase the ticked data'}
             </button>
+
+            {/*
+              The typing box is at the TOP of this panel; this button is at the
+              bottom of a collapsed <details>, which on a real shop means the
+              two are a screen apart. Without this line the button just sat
+              there doing nothing when clicked, and the reason was scrolled out
+              of sight. Owner, 2026-08-24: "erase ticked data isnt working".
+            */}
+            {hasPhrase && !phraseMatches && !busy && (
+              <p className="dash-help-text" style={{ marginTop: 8 }}>
+                Type {confirmationPhrase} in the box above to enable this.
+              </p>
+            )}
           </>
         )}
       </details>
