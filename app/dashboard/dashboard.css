@@ -596,8 +596,13 @@
   }
 
   .dash-content-inner {
-    width: min(100%, var(--mr-content-max));
-    max-width: 100%;
+    /* Full-bleed by design. The dashboard is data-dense — the catalogue table
+       alone carries product, brand, SKU, status, variants, created and actions —
+       and a centred column left large displays with dead gutters while those
+       columns truncated. Horizontal breathing room comes from .dash-content's
+       padding, which already steps 36px -> 24px (960px) -> 20px (760px). Forms
+       that need a readable measure set their own max-width locally. */
+    width: 100%;
   }
 
   /* ── Notification drawer — same fixed-panel pattern as storefront CartDrawer ── */
