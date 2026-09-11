@@ -8,6 +8,7 @@ import {
   usePurchaseReconciliation,
 } from '@/lib/hooks/use-analytics';
 import type { AnalyticsRangeState } from '@/lib/hooks/use-analytics';
+import { useMinutesAgo } from '@/lib/hooks/use-minutes-ago';
 import {
   MEASURED_AT,
   MEASURED_HARDWARE,
@@ -169,12 +170,11 @@ export default function DevOpsClient() {
   const sessionsPerDay = s ? s.sessions / days : 0;
   const ordersPerDay = s ? s.purchases / days : 0;
 
-  const rollupMinutesAgo = freshness?.rollupLastOkAt
-    ? Math.max(
-        0,
-        Math.round((Date.now() - new Date(freshness.rollupLastOkAt).getTime()) / 60_000),
-      )
-    : null;
+  // Read on a timer rather than during render: `Date.now()` in a render body is
+  // impure, and this particular number decides whether the rollup pill says
+  // healthy or behind — a value frozen at the last unrelated re-render is the
+  // wrong thing to show on a staleness indicator.
+  const rollupMinutesAgo = useMinutesAgo(freshness?.rollupLastOkAt);
 
   const fmt = (n: number, dp = 0) =>
     n.toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });

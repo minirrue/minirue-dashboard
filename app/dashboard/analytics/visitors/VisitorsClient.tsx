@@ -9,6 +9,7 @@ import { LineChart } from '@/components/dashboard/charts';
 import { useAnalyticsRange, useAudienceSummary, useAudienceTimeseries, useVisitors } from '@/lib/hooks/use-analytics';
 import type { AnalyticsRangeState } from '@/lib/hooks/use-analytics';
 import type { AnalyticsFreshness, VisitorListRow } from '@/lib/api/analytics-insights';
+import { useMinutesAgoLabel } from '@/lib/hooks/use-minutes-ago';
 
 function RangeControl({
   range,
@@ -36,9 +37,11 @@ function RangeControl({
 }
 
 function FreshnessNote({ freshness }: { freshness: AnalyticsFreshness }) {
-  if (!freshness.rollupLastOkAt) return null;
-  const minutesAgo = Math.max(0, Math.round((Date.now() - new Date(freshness.rollupLastOkAt).getTime()) / 60_000));
-  const label = minutesAgo === 0 ? 'just now' : `${minutesAgo} minute${minutesAgo === 1 ? '' : 's'} ago`;
+  // Clock read in an effect, and re-read on a timer — see useMinutesAgoLabel.
+  // Computing it inline during render was impure AND left the label frozen at
+  // whatever it said when the screen last re-rendered for some other reason.
+  const label = useMinutesAgoLabel(freshness.rollupLastOkAt);
+  if (!label) return null;
   return (
     <p style={{ fontSize: 12, color: 'var(--mr-fg-4)', margin: '4px 0 0' }}>
       Updated {label}

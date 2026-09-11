@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
 import {
   CollabLoadingBlock,
@@ -27,7 +26,6 @@ import VariantFieldsEditor, {
 const TRACE = 'PG-COLLAB-PRODUCT-NEW-001';
 
 export default function CollabAddProductClient() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);

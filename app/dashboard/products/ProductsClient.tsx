@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState, useTransition, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import DashboardTable from '@/components/dashboard/DashboardTable';
 import StatusBadge from '@/components/dashboard/StatusBadge';
 import type { Column } from '@/components/dashboard/DashboardTable';
@@ -163,7 +162,6 @@ const iconBtn: React.CSSProperties = {
 
 /* ── Main Component ── */
 export default function ProductsClient() {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [items, setItems] = useState<ProductListItem[]>([]);
@@ -174,7 +172,6 @@ export default function ProductsClient() {
   const [brandFilter, setBrandFilter] = useState('');
   const [brands, setBrands] = useState<ManagedBrand[]>([]);
   const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
   const debouncedSearchInput = useDebounce(searchInput, 350);
 
   const [actionError, setActionError] = useState<string | null>(null);
@@ -233,7 +230,9 @@ export default function ProductsClient() {
 
   /* Search submit — immediate trigger, bypassing the debounce wait */
   function triggerImmediateSearch() {
-    setSearch(searchInput);
+    // `load` takes the term directly; there was also a `search` state set here
+    // and read nowhere — the query uses `debouncedSearchInput`. All it did was
+    // force an extra render on every submit.
     load(searchInput);
   }
 

@@ -74,19 +74,6 @@ beforeEach(() => {
   (listItems as jest.Mock).mockResolvedValue([makeItem()]);
 });
 
-async function openFolderAndGetExchangeInput() {
-  const user = userEvent.setup();
-  render(<GalleryClient />);
-  await waitFor(() => expect(listFolders).toHaveBeenCalled());
-  // The folder rail is a tree now (2026-08-03 redesign): each row is a
-  // `role="treeitem"`, not a button — a button cannot contain the
-  // expand/collapse button that sits inside the row.
-  await user.click(await screen.findByRole('treeitem', { name: /aventus/i }));
-  await waitFor(() => expect(listItems).toHaveBeenCalled());
-  const input = await screen.findByRole('button', { name: /exchange/i });
-  return input;
-}
-
 describe('GalleryClient — Exchange', () => {
   it('crops a replacement file through the shared crop step BEFORE calling exchangeItem', async () => {
     (exchangeItem as jest.Mock).mockResolvedValue(makeItem({ url: 'https://storage.example/replaced.webp' }));

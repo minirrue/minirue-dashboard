@@ -518,9 +518,15 @@ export default function GalleryClient() {
   // (CatalogService.listDeletedMedia 403s anyone else regardless).
   const { data: user } = useUser();
   const isSuperAdmin = user?.role === Role.SUPERADMIN;
-  const [folders, setFolders] = useState<GalleryFolder[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  // Set and never read — see issue #15. `setLoadError` is called in three
+  // places and `loadError` is rendered in none, so a gallery that fails to load
+  // shows an empty grid and says nothing; `loading` and `folders` are the same
+  // shape. Underscored to keep the file lint-clean WITHOUT deleting the state,
+  // because deleting it is how the bug becomes permanent: the values are
+  // correct, it is the UI that never shows them.
+  const [_folders, setFolders] = useState<GalleryFolder[]>([]);
+  const [_loading, setLoading] = useState(true);
+  const [_loadError, setLoadError] = useState<string | null>(null);
 
   const [selectedFolder, setSelectedFolder] = useState<GalleryFolder | null>(null);
   const [items, setItems] = useState<GalleryItem[]>([]);
