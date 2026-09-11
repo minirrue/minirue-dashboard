@@ -6,14 +6,6 @@ import type { ApiError } from './client';
 
 export type { AuthSuccessResponse as AuthResponse, MeResponse } from '@/lib/auth/types';
 
-function createIdempotencyKey(prefix: string): string {
-  const id =
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  return `${prefix}-${id}`;
-}
-
 /**
  * Signs an operator in through Better Auth.
  *

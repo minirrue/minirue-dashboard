@@ -391,7 +391,12 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   // Admin notifications, used only to auto-mark-read any notification that
   // points at the conversation currently open in this inbox (so the admin
   // doesn't have to separately dismiss it in the notification centre).
-  const { items: notifications, markRead: markNotificationRead, refresh: refreshNotifications } = useAdminNotifications({ enabled: true });
+  // `items` and `markRead` are unused — see issue #15. The comment above
+  // describes auto-dismiss ("so the admin doesn't have to separately dismiss it
+  // in the notification centre") and those are exactly the two it needs;
+  // nothing wires them, so opening a conversation still leaves its notification
+  // unread. Underscored rather than dropped so the gap stays visible here.
+  const { items: _notifications, markRead: _markNotificationRead, refresh: refreshNotifications } = useAdminNotifications({ enabled: true });
 
   useEffect(() => {
     let cancelled = false;

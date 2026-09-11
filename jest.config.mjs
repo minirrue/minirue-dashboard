@@ -1,9 +1,25 @@
-import type { Config } from 'jest';
 import nextJest from 'next/jest.js';
+
+/**
+ * Plain .mjs, not .ts, deliberately.
+ *
+ * Jest only reads a TypeScript config when it can strip the types — either
+ * `ts-node` is installed, or the Node running it is new enough to do it
+ * natively. Neither held in CI: `ts-node` is not a dependency of this project
+ * and CI runs Node 20, so every CI run died before a single test with
+ * "Jest: 'ts-node' is required for the TypeScript configuration files".
+ *
+ * It passed locally only because a developer's Node (24) strips types on its
+ * own — exactly the shape of bug that stays invisible until someone reads a CI
+ * log. A .mjs config needs neither.
+ */
+
+/** @typedef {import('jest').Config} Config */
 
 const createJestConfig = nextJest({ dir: './' });
 
-const config: Config = {
+/** @type {Config} */
+const config = {
   coverageProvider: 'v8',
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],

@@ -123,9 +123,20 @@ describe('Category row thumbnail — the picture a replaced category image lands
     const { container } = renderTree();
 
     await user.click(screen.getByRole('button', { name: /^edit$/i }));
-    // ImageField's hidden Exchange input is the first file input inside the
-    // expanded edit form.
-    const input = container.querySelectorAll('input[type="file"]')[1] as HTMLInputElement;
+    // ImageField's hidden Exchange input, selected by the image types it
+    // accepts rather than by position.
+    //
+    // This used to index [1] while its own comment said "the first file
+    // input" — there were two, and the standalone "change image" control was
+    // removed (it duplicated the exchange already inside edit). The exchange
+    // input is now the only one, so [1] was undefined and user.upload failed
+    // deep inside testing-library on `namespaceURI`, which points nowhere near
+    // the cause. Matching on `accept` survives another control being added or
+    // removed either side of it.
+    const input = container.querySelector(
+      'input[type="file"][accept*="image/png"]',
+    ) as HTMLInputElement;
+    expect(input).toBeTruthy();
     await user.upload(input, new File(['bytes'], 'new.png', { type: 'image/png' }));
 
     await waitFor(() => expect(exchangeItem).toHaveBeenCalledWith('gal-1', expect.any(File)));

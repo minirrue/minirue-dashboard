@@ -175,7 +175,9 @@ export default function VariantsSection({
   media,
   onMediaChange,
   selectedVariantId,
-  onSelectVariant,
+  // Never called — see issue #15. `selectedVariantId` IS used, so the section
+  // renders a selection but never reports a change back to the parent.
+  onSelectVariant: _onSelectVariant,
 }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [formValues, setFormValues] = useState<VariantFormValues>(EMPTY_FORM);
