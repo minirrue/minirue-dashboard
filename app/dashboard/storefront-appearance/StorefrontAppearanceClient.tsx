@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   apiGetStorefrontLayout,
   apiSaveStorefrontLayout,
@@ -53,6 +53,56 @@ const TAB_LABELS: Record<Tab, string> = {
   productSection: 'Product section',
   pages: 'Pages',
 };
+
+
+/**
+ * The announcement messages editor, one per line.
+ *
+ * Keeps what the admin typed verbatim while the field has focus, and only
+ * converts it to the stored `string[]` on blur. See the comment at the call
+ * site for what the previous every-keystroke conversion did to typing.
+ */
+function AnnouncementMessagesField({
+  messages,
+  onCommit,
+}: {
+  messages: string[];
+  onCommit: (messages: string[]) => void;
+}) {
+  const [draft, setDraft] = useState(messages.join('\n'));
+
+  // Re-sync when the value changes from elsewhere (a reload, or a discard),
+  // but never while the admin is mid-edit — that is what caused the original
+  // bug. Comparing against the committed form means an in-progress trailing
+  // space or blank line does not count as a change.
+  useEffect(() => {
+    const committed = draft
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (committed.join('\n') !== messages.join('\n')) {
+      setDraft(messages.join('\n'));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
+
+  return (
+    <textarea
+      className="dash-input"
+      rows={5}
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() =>
+        onCommit(
+          draft
+            .split('\n')
+            .map((l) => l.trim())
+            .filter(Boolean),
+        )
+      }
+    />
+  );
+}
 
 export default function StorefrontAppearanceClient() {
   const [layout, setLayout] = useState<StorefrontLayout | null>(null);
@@ -345,16 +395,26 @@ export default function StorefrontAppearanceClient() {
             </label>
             <label className="dash-field">
               <span className="dash-label">Messages (one per line)</span>
-              <textarea
-                className="dash-input"
-                rows={5}
-                value={layout.announcement.messages.join('\n')}
-                onChange={(e) =>
+              {/* Driven by its own draft state, not by messages.join('\n').
+
+                  Round-tripping the array on every keystroke made this field
+                  impossible to type in. Press Enter and the new line is empty,
+                  so .filter(Boolean) removed it and the re-joined value came
+                  back WITHOUT the newline — so the bar could only ever hold one
+                  message. Type a space and .map(l => l.trim()) deleted it
+                  before the next character arrived, so no message could contain
+                  a space.
+
+                  That is the "enter does nothing, space does nothing" report,
+                  and this — the announcement bar's own editor — is the screen it
+                  was on. Splitting and trimming now happen on blur, when the
+                  value is being committed rather than while it is being
+                  written. */}
+              <AnnouncementMessagesField
+                messages={layout.announcement.messages}
+                onCommit={(messages) =>
                   patch({
-                    announcement: {
-                      ...layout.announcement,
-                      messages: e.target.value.split('\n').map((l) => l.trim()).filter(Boolean),
-                    },
+                    announcement: { ...layout.announcement, messages },
                   })
                 }
               />
@@ -390,7 +450,8 @@ export default function StorefrontAppearanceClient() {
                 className="dash-input"
                 value={layout.faviconUrl ?? ''}
                 placeholder="https://…"
-                onChange={(e) => patch({ faviconUrl: e.target.value.trim() || null })}
+                onChange={(e) => patch({ faviconUrl: e.target.value || null })}
+                onBlur={(e) => patch({ faviconUrl: e.target.value.trim() || null })}
               />
             </label>
           </div>
