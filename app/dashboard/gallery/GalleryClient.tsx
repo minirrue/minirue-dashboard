@@ -14,7 +14,6 @@ import {
   uploadItem } from '@/lib/gallery/api';
 import type { GalleryFolder, GalleryItem, GallerySearchResult } from '@/lib/gallery/types';
 import type { ApiError } from '@/lib/api/client';
-import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
 import { useUser } from '@/lib/hooks/use-auth';
@@ -518,16 +517,19 @@ export default function GalleryClient() {
   // (CatalogService.listDeletedMedia 403s anyone else regardless).
   const { data: user } = useUser();
   const isSuperAdmin = user?.role === Role.SUPERADMIN;
-  // Set and never read — see issue #15. `setLoadError` is called in three
-  // places and `loadError` is rendered in none, so a gallery that fails to load
-  // shows an empty grid and says nothing; `loading` and `folders` are the same
-  // shape. Underscored to keep the file lint-clean WITHOUT deleting the state,
-  // because deleting it is how the bug becomes permanent: the values are
-  // correct, it is the UI that never shows them.
-  const [_folders, setFolders] = useState<GalleryFolder[]>([]);
-  const [_loading, setLoading] = useState(true);
-  const [_loadError, setLoadError] = useState<string | null>(null);
-
+  /*
+   * #15 reported three bindings set and never read, this page's `folders`,
+   * `loading` and `loadError` among them, and asked for the failure to be shown
+   * with a retry. It already is — by `FolderTree`, which owns the rail now and
+   * renders three distinct states: "Loading folders…", "Could not load folders."
+   * with a Retry button, and "No folders yet." So a failed load is already told
+   * apart from an empty gallery.
+   *
+   * What was left here was the OLD flat one-level list: a second `listFolders()`
+   * on mount whose result nothing rendered, and an error string nothing could
+   * show. Surfacing it would have put a second, redundant error banner beside
+   * the tree's. Deleted instead — one request, one owner, one message.
+   */
   const [selectedFolder, setSelectedFolder] = useState<GalleryFolder | null>(null);
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(false);
@@ -591,24 +593,6 @@ export default function GalleryClient() {
   const currentParent = folderPath.length
     ? folderPath[folderPath.length - 1]
     : null;
-
-  const loadFolders = useCallback(async () => {
-    setLoadError(null);
-    setLoading(true);
-    try {
-      const res = await listFolders(currentParent?.id);
-      setFolders(res);
-    } catch (e) {
-      const err = e as ApiError;
-      setLoadError(err.message ?? 'Failed to load gallery folders.');
-    } finally {
-      setLoading(false);
-    }
-  }, [currentParent?.id]);
-
-  useMountedEffect(() => {
-    loadFolders();
-  }, [loadFolders]);
 
   /** Step into a folder: it becomes the new parent and we list its children. */
 
@@ -727,7 +711,6 @@ export default function GalleryClient() {
       });
       setNewFolderName('');
       setShowAddForm(false);
-      await loadFolders();
       setTreeVersion((v) => v + 1);
       // Show what was just made, rather than leaving the pane on the parent.
       if (currentParent) await loadFolderContents(currentParent);
@@ -746,23 +729,36 @@ export default function GalleryClient() {
     setItems((prev) => prev.map((item) => (item.id === id ? updated : item)));
   }
 
+  /**
+   * Keep the counts honest after a photo comes or goes.
+   *
+   * Both of these used to adjust the `folders` array that nothing rendered, so
+   * the number beside the folder in the rail never moved and neither did the
+   * count the right pane quotes. That is not cosmetic: the pane shows "the 1
+   * photo counted here is inside a folder within it" whenever the grid is empty
+   * and the count is not, so deleting the last photo in a folder left it
+   * pointing at a subfolder that does not exist (#2, the contradiction the rail
+   * and the panel are not allowed to have).
+   *
+   * `selectedFolder` is corrected in place so the pane is right immediately;
+   * `treeVersion` refetches the rail so its number is the server's.
+   */
+  function adjustSelectedCount(delta: number) {
+    setSelectedFolder((prev) =>
+      prev ? { ...prev, itemCount: Math.max(0, prev.itemCount + delta) } : prev,
+    );
+    setTreeVersion((v) => v + 1);
+  }
+
   async function handleDeleteItem(id: string) {
     await deleteItem(id);
     setItems((prev) => prev.filter((item) => item.id !== id));
-    if (selectedFolder) {
-      setFolders((prev) =>
-        prev.map((f) =>
-          f.id === selectedFolder.id ? { ...f, itemCount: Math.max(0, f.itemCount - 1) } : f,
-        ),
-      );
-    }
+    if (selectedFolder) adjustSelectedCount(-1);
   }
 
   function handleItemUploaded(item: GalleryItem, file: File) {
     setItems((prev) => [item, ...prev]);
-    setFolders((prev) =>
-      prev.map((f) => (f.id === item.folderId ? { ...f, itemCount: f.itemCount + 1 } : f)),
-    );
+    if (selectedFolder?.id === item.folderId) adjustSelectedCount(1);
     setPendingLocalFiles((prev) => ({ ...prev, [item.id]: file }));
   }
 
