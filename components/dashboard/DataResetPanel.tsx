@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   getResetPreview,
-  runReset,
   runResetAll,
   type ResetGroupPreview,
   type ResetPreview,
@@ -58,13 +57,20 @@ function buildSummaryLine(groups: ResetGroupPreview[]): string {
  * Erase shop data. Super admin only.
  * specs/2026-07-22-platform-reset, W1.1
  *
- * Two ways in, one confirmation. The primary action erases every resettable
- * table Postgres currently has except sign-in accounts — the table list
- * comes from the server asking Postgres, not from a hand-maintained list, so
- * it cannot drift out of sync with the schema the way the eleven checkboxes
- * below have twice already. Those checkboxes still exist for the rarer case
- * of erasing only part of the shop, tucked behind "Or erase only some
- * things" so they no longer read as the main way to do this.
+ * One action, one confirmation, one answer.
+ *
+ * This panel used to offer thirteen tick boxes for erasing part of the shop,
+ * with a second button of their own below a collapsed "Or erase only some
+ * things". That shape produced two owner reports in a month: "erase ticked data
+ * isnt working" (2026-08-24 — it was disabled because the typing box, a screen
+ * above, had not been filled in), and then, plainly, remove the tick boxes,
+ * leave the one check that is actually needed, and say whether it worked.
+ *
+ * So: the only thing to decide here is whether to erase, the only gate is
+ * typing the confirmation word, and the outcome is announced next to the button
+ * that caused it rather than as a line of prose at the foot of the card. The
+ * per-group endpoint still exists on the server (`POST /platform/reset` with a
+ * group list) — this screen simply stops being a way to reach it.
  *
  * The server enforces all of this again — this panel is the explanation, not
  * the lock.
@@ -74,10 +80,8 @@ export default function DataResetPanel() {
   const [loading, setLoading] = useState(true);
   const [unavailable, setUnavailable] = useState<string | null>(null);
 
-  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [typed, setTyped] = useState('');
   const [running, setRunning] = useState(false);
-  const [runningAll, setRunningAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ResetResult | null>(null);
 
@@ -106,57 +110,25 @@ export default function DataResetPanel() {
     };
   }, []);
 
-  function toggle(key: string) {
-    setResult(null);
-    setError(null);
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-        return next;
-      }
-      next.add(key);
-      // Ticking something that cannot stand alone ticks what it needs too,
-      // rather than letting the admin discover the rule from an error.
-      const group = preview?.groups.find((g) => g.key === key);
-      for (const required of group?.requires ?? []) next.add(required);
-      return next;
-    });
-  }
-
   async function handleRun() {
     if (!preview) return;
     setRunning(true);
     setError(null);
+    setResult(null);
     try {
-      const res = await runReset([...selected], typed);
+      const res = await runResetAll(typed);
       setResult(res);
-      setSelected(new Set());
       setTyped('');
       // Re-read so the counts on screen reflect what is actually left.
       setPreview(await getResetPreview());
     } catch (e) {
-      setError((e as ApiError).message ?? 'Reset failed.');
+      // Whatever went wrong, the admin is told. An erase that quietly does
+      // nothing is the failure this panel keeps being reported for.
+      setError(
+        (e as ApiError).message ?? 'The erase did not run. Nothing was removed.',
+      );
     } finally {
       setRunning(false);
-    }
-  }
-
-  async function handleRunAll() {
-    if (!preview) return;
-    setRunningAll(true);
-    setError(null);
-    try {
-      const res = await runResetAll(typed);
-      setResult(res);
-      setSelected(new Set());
-      setTyped('');
-      // Same re-read handleRun does, so the panel reflects reality either way.
-      setPreview(await getResetPreview());
-    } catch (e) {
-      setError((e as ApiError).message ?? 'Reset failed.');
-    } finally {
-      setRunningAll(false);
     }
   }
 
@@ -174,20 +146,31 @@ export default function DataResetPanel() {
   const confirmationPhrase = (preview.confirmationPhrase ?? '').trim();
   const hasPhrase = confirmationPhrase.length > 0;
   const phraseMatches = hasPhrase && typed.trim() === confirmationPhrase;
-  const nothingToErase = preview.groups.every((g) => g.rowCount === 0 && g.fileCount === 0);
-  const busy = running || runningAll;
+  const nothingToErase = preview.groups.every(
+    (g) => g.rowCount === 0 && g.fileCount === 0,
+  );
 
-  const canRun = selected.size > 0 && phraseMatches && !busy && !nothingToErase;
-  const canRunAll = phraseMatches && !busy && !nothingToErase;
-
-  const totalRows = preview.groups
-    .filter((g) => selected.has(g.key))
-    .reduce((n, g) => n + g.rowCount, 0);
-  const totalFiles = preview.groups
-    .filter((g) => selected.has(g.key))
-    .reduce((n, g) => n + g.fileCount, 0);
-
+  const canRun = phraseMatches && !running && !nothingToErase;
   const summaryLine = buildSummaryLine(preview.groups);
+
+  /**
+   * Why the button is dead, said next to the button. `.dash-btn-danger` has a
+   * `:disabled` rule now, but "greyed out" still does not tell anyone what to
+   * do about it.
+   */
+  const blockedReason = running
+    ? null
+    : nothingToErase
+      ? 'There is nothing left to erase.'
+      : !hasPhrase
+        ? 'Blocked until the confirmation word loads.'
+        : !phraseMatches
+          ? `Type ${confirmationPhrase} in the box above to enable this.`
+          : null;
+
+  const removedRows = result
+    ? Object.values(result.deleted).reduce((a, b) => a + b, 0)
+    : 0;
 
   return (
     <section
@@ -225,10 +208,7 @@ export default function DataResetPanel() {
         <code>users</code> by role.
       </p>
 
-      <p
-        className="dash-muted"
-        data-trace-id={`${TRACE}::EL-TEXT-reset-summary`}
-      >
+      <p className="dash-muted" data-trace-id={`${TRACE}::EL-TEXT-reset-summary`}>
         {summaryLine}
       </p>
 
@@ -246,7 +226,7 @@ export default function DataResetPanel() {
               setResult(null);
               setError(null);
             }}
-            disabled={busy}
+            disabled={running}
             autoComplete="off"
             data-trace-id={`${TRACE}::EL-INPUT-reset-confirm`}
           />
@@ -258,124 +238,53 @@ export default function DataResetPanel() {
         </p>
       )}
 
+      {/*
+        The answer, where the question was asked. A failure is an alert, a
+        finished wipe is a status, so neither is only a colour.
+      */}
+      {error && (
+        <p
+          className="dash-inline-error"
+          role="alert"
+          style={{ marginTop: 12 }}
+          data-trace-id={`${TRACE}::EL-TEXT-reset-failed`}
+        >
+          Erase failed — {error}
+        </p>
+      )}
+
+      {result && (
+        <p
+          className="dash-inline-ok"
+          role="status"
+          style={{ marginTop: 12, marginBottom: 0 }}
+          data-trace-id={`${TRACE}::EL-TEXT-reset-result`}
+        >
+          Erase complete — removed {removedRows.toLocaleString()} record
+          {removedRows === 1 ? '' : 's'}
+          {result.filesDeleted > 0
+            ? ` and ${result.filesDeleted.toLocaleString()} file${
+                result.filesDeleted === 1 ? '' : 's'
+              }`
+            : ''}
+          . Your administrator sign-in still works.
+        </p>
+      )}
+
       <button
         type="button"
         className="dash-btn-danger"
-        onClick={handleRunAll}
-        disabled={!canRunAll}
+        onClick={handleRun}
+        disabled={!canRun}
         style={{ marginTop: 12 }}
         data-trace-id={`${TRACE}::EL-BTN-run-reset-all`}
       >
-        {runningAll
-          ? 'Erasing everything…'
-          : 'Erase everything except admin logins'}
+        {running ? 'Erasing everything…' : 'Erase everything except admin logins'}
       </button>
 
-      <details style={{ marginTop: 20 }}>
-        <summary
-          className="dash-muted"
-          style={{ cursor: 'pointer' }}
-          data-trace-id={`${TRACE}::EL-TOGGLE-reset-partial`}
-        >
-          Or erase only some things
-        </summary>
-
-        <div style={{ margin: '16px 0' }}>
-          {preview.groups.map((g) => {
-            const isOn = selected.has(g.key);
-            const empty = g.rowCount === 0 && g.fileCount === 0;
-            return (
-              <label
-                key={g.key}
-                className="dash-checkbox-label"
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 10,
-                  padding: '8px 0',
-                  opacity: empty ? 0.6 : 1,
-                }}
-                data-trace-id={`${TRACE}::EL-CHECK-reset-group@${g.key}`}
-              >
-                <input
-                  type="checkbox"
-                  className="dash-checkbox"
-                  checked={isOn}
-                  onChange={() => toggle(g.key)}
-                  disabled={busy || empty}
-                  style={{ marginTop: 3 }}
-                />
-                <span>
-                  <strong>{g.label}</strong>{' '}
-                  <span className="dash-muted">
-                    {empty
-                      ? '— nothing to remove'
-                      : `— ${g.rowCount.toLocaleString()} record${g.rowCount === 1 ? '' : 's'}${
-                          g.fileCount > 0
-                            ? ` and ${g.fileCount.toLocaleString()} file${g.fileCount === 1 ? '' : 's'}`
-                            : ''
-                        }`}
-                  </span>
-                  <br />
-                  <span className="dash-help-text">{g.description}</span>
-                </span>
-              </label>
-            );
-          })}
-        </div>
-
-        {selected.size > 0 && (
-          <>
-            <p>
-              <strong>
-                This will remove {totalRows.toLocaleString()} record
-                {totalRows === 1 ? '' : 's'}
-                {totalFiles > 0
-                  ? ` and ${totalFiles.toLocaleString()} file${totalFiles === 1 ? '' : 's'}`
-                  : ''}
-                .
-              </strong>
-            </p>
-
-            <button
-              type="button"
-              className="dash-btn-danger"
-              onClick={handleRun}
-              disabled={!canRun}
-              data-trace-id={`${TRACE}::EL-BTN-run-reset`}
-            >
-              {running ? 'Erasing…' : 'Erase the ticked data'}
-            </button>
-
-            {/*
-              The typing box is at the TOP of this panel; this button is at the
-              bottom of a collapsed <details>, which on a real shop means the
-              two are a screen apart. Without this line the button just sat
-              there doing nothing when clicked, and the reason was scrolled out
-              of sight. Owner, 2026-08-24: "erase ticked data isnt working".
-            */}
-            {hasPhrase && !phraseMatches && !busy && (
-              <p className="dash-help-text" style={{ marginTop: 8 }}>
-                Type {confirmationPhrase} in the box above to enable this.
-              </p>
-            )}
-          </>
-        )}
-      </details>
-
-      {error && <p className="dash-inline-error">{error}</p>}
-
-      {result && (
-        <p data-trace-id={`${TRACE}::EL-TEXT-reset-result`}>
-          Done. Removed{' '}
-          {Object.values(result.deleted)
-            .reduce((a, b) => a + b, 0)
-            .toLocaleString()}{' '}
-          records
-          {result.filesDeleted > 0
-            ? ` and ${result.filesDeleted.toLocaleString()} files`
-            : ''}
-          . Sign-in accounts were not touched.
+      {blockedReason && (
+        <p className="dash-help-text" style={{ marginTop: 8 }}>
+          {blockedReason}
         </p>
       )}
     </section>
