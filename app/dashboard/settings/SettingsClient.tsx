@@ -342,6 +342,8 @@ type BrandForm = {
 type SettingsForm = {
   currency: string;
   vatPct: string;
+  /** Whether this shop charges VAT at all — distinct from a 0% rate. */
+  vatEnabled: boolean;
   brand: BrandForm;
   /** What MiniRue charges to ship, in major units as typed (e.g. "50.00"). */
   shippingFlatRate: string;
@@ -368,6 +370,14 @@ function settingsToForm(s: StoreSettings): SettingsForm {
     // settings with no taxRules key at all, and an unguarded .find() there took
     // the whole Settings page down with "Cannot read properties of undefined".
     vatPct: String(s.taxRules?.find((r) => r.country === 'EG')?.vatPct ?? 14),
+    // A rule saved before the switch existed has no `enabled` key. Absent means
+    // "charging, if there is a rate" — which is what every shop that predates
+    // the switch meant, and what the server's isVatCharged decides.
+    vatEnabled: (() => {
+      const rule = s.taxRules?.find((r) => r.country === 'EG');
+      if (!rule) return true;
+      return rule.enabled ?? rule.vatPct > 0;
+    })(),
     // Optional-chained like taxRules above: a settings document that comes back
     // without a `brand` object (older row, or a partial save response) made
     // `s.brand.storeName` throw and crashed the page with a React error right
@@ -389,6 +399,7 @@ export default function SettingsClient() {
   const [form, setForm] = useState<SettingsForm>({
     currency: 'EGP',
     vatPct: '14',
+    vatEnabled: true,
     brand: { displayName: '', contactEmail: '', contactPhone: '', logoUrl: '' },
     shippingFlatRate: '',
     shippingFreeOver: '',
@@ -398,6 +409,14 @@ export default function SettingsClient() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  /**
+   * Whether the admin has asked to hand-type a logo URL.
+   *
+   * Off by default so the uploaded logo is the normal path — the field then
+   * shows the live link without inviting an edit that could paste an expiring
+   * signed URL.
+   */
+  const [logoUrlOverride, setLogoUrlOverride] = useState(false);
   const [saved, setSaved] = useState(false);
 
   const load = useCallback(async () => {
@@ -479,15 +498,26 @@ export default function SettingsClient() {
         taxRules: (() => {
           const existing = raw.taxRules ?? [];
           const vatPct = parseFloat(form.vatPct);
+          // The rate is kept even when VAT is switched off, so turning it back
+          // on restores what was configured instead of asking the admin to
+          // remember it.
           if (!existing.some((r) => r.country === 'EG')) {
             return [
               ...existing,
-              { country: 'EG', vatPct: Number.isFinite(vatPct) ? vatPct : 14 },
+              {
+                country: 'EG',
+                vatPct: Number.isFinite(vatPct) ? vatPct : 14,
+                enabled: form.vatEnabled,
+              },
             ];
           }
           return existing.map((r) =>
             r.country === 'EG'
-              ? { ...r, vatPct: Number.isFinite(vatPct) ? vatPct : r.vatPct }
+              ? {
+                  ...r,
+                  vatPct: Number.isFinite(vatPct) ? vatPct : r.vatPct,
+                  enabled: form.vatEnabled,
+                }
               : r,
           );
         })(),
@@ -584,10 +614,46 @@ export default function SettingsClient() {
             </div>
           </div>
 
+          {/* An explicit switch, because `0` could not say "this shop does not
+              charge VAT". It was the only way to express it and it was
+              ambiguous — disabled or zero-rated, with nothing on screen saying
+              which. The percentage stays visible but disabled when the switch is
+              off, so the configured rate is not lost and it is obvious that it
+              is not being applied. */}
+          <div className="dash-field-row">
+            <label
+              className="dash-field"
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+            >
+              <input
+                type="checkbox"
+                checked={form.vatEnabled}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, vatEnabled: e.target.checked }))
+                }
+              />
+              <span>Charge VAT on orders</span>
+            </label>
+          </div>
+
           <div className="dash-field-row">
             <div className="dash-field">
               <label className="dash-label">VAT % (Egypt)</label>
-              <input type="number" className="dash-input" value={form.vatPct} onChange={setField('vatPct')} min="0" max="100" step="0.01" />
+              <input
+                type="number"
+                className="dash-input"
+                value={form.vatPct}
+                onChange={setField('vatPct')}
+                min="0"
+                max="100"
+                step="0.01"
+                disabled={!form.vatEnabled}
+              />
+              <p className="dash-help-text">
+                {form.vatEnabled
+                  ? 'Applied to orders placed from Egypt.'
+                  : 'VAT is off — this rate is kept but not charged. Turn the switch on to apply it.'}
+              </p>
             </div>
           </div>
 
@@ -643,11 +709,48 @@ export default function SettingsClient() {
               with that link instead — it is stored and served exactly as
               typed, never touched by that normalisation.
             */}
+            {/* Read-only unless the admin asks to override.
+                
+                The uploaded logo above is the source of truth. This box shows
+                the live link so it can be copied or checked, but inviting
+                someone to hand-edit a 200-character signed URL is inviting them
+                to paste one that expires — presigned S3 links have a 7-day TTL,
+                and the backend's own comment says storing one verbatim "would
+                freeze a link that can expire and would break the old-object
+                cleanup on the NEXT real upload".
+                
+                The override still exists, because an externally-hosted logo is
+                a real case; it just is not the default path any more. */}
             <label className="dash-label">Logo URL</label>
-            <input type="url" className="dash-input" value={form.brand.logoUrl} onChange={setBrand('logoUrl')} placeholder="https://…" />
+            <input
+              type="url"
+              className="dash-input"
+              value={form.brand.logoUrl}
+              onChange={setBrand('logoUrl')}
+              placeholder="https://…"
+              readOnly={!logoUrlOverride}
+              aria-readonly={!logoUrlOverride}
+              style={
+                logoUrlOverride
+                  ? undefined
+                  : { background: 'var(--mr-bg-2)', cursor: 'default' }
+              }
+            />
+            <label
+              className="dash-help-text"
+              style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}
+            >
+              <input
+                type="checkbox"
+                checked={logoUrlOverride}
+                onChange={(e) => setLogoUrlOverride(e.target.checked)}
+              />
+              <span>Use a different image URL instead of the uploaded logo</span>
+            </label>
             <p className="dash-help-text">
-              Shows the logo uploaded above. Leave as-is to keep it, paste a different
-              image&apos;s URL to use that instead, or clear it to use the default wordmark.
+              {logoUrlOverride
+                ? 'Stored and served exactly as typed. Clear it to go back to the uploaded logo, or to the default wordmark if none is uploaded.'
+                : 'This is the link for the logo uploaded above — change it by uploading a new one.'}
             </p>
           </div>
 
