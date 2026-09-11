@@ -7,6 +7,11 @@ const eslintConfig = defineConfig([
   ...nextTs,
   // Override default ignores of eslint-config-next.
   globalIgnores([
+    // Installed Claude Code skill libraries — vendored third-party scripts,
+    // untracked by git and shipped to nobody. Not this project's code to hold
+    // to its rules.
+    ".claude/**",
+
     // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",

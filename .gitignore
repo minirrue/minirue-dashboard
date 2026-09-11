@@ -42,3 +42,6 @@ ruvector.db.lock
 
 .vercel
 .gstack/
+
+# Installed Claude Code skill libraries (vendored, per-project)
+.claude/
