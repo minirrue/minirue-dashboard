@@ -301,7 +301,27 @@ export default function BundlesClient() {
                         {money(b.listTotalMinor)}
                         {b.savingMinor > 0 && ` (saves ${money(b.savingMinor)})`}
                       </td>
-                      <td>{b.isActive ? 'Live' : 'Hidden'}</td>
+                      {/* "Live" has to mean "a shopper can see it".
+                          
+                          The storefront list ends in a stock filter — a set
+                          whose member sold out is hidden rather than shown as
+                          unavailable, because a shopper cannot buy it either
+                          way. So `isActive` is necessary and not sufficient,
+                          and a row reading plain "Live" over a bundle nobody
+                          can see sent the admin looking for a bug in the
+                          toggle. The next column already says a piece is out
+                          of stock; this one now agrees with it. */}
+                      <td>
+                        {!b.isActive ? (
+                          'Hidden'
+                        ) : b.inStock ? (
+                          'Live'
+                        ) : (
+                          <span title="Set to show, but the storefront hides a set that cannot be bought.">
+                            Live — not showing
+                          </span>
+                        )}
+                      </td>
                       <td>
                         {b.inStock ? (
                           'Available'
