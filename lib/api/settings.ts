@@ -20,6 +20,15 @@ export interface BrandConfig {
 }
 
 export interface TaxRule {
+  /**
+   * Whether this shop charges VAT at all — distinct from a 0% rate, which
+   * `vatPct: 0` alone could not express.
+   *
+   * Optional because a rule saved before the switch existed has no such key.
+   * Absent means "charging, if there is a rate", which is what every shop that
+   * predates the switch meant and what the server's `isVatCharged` decides.
+   */
+  enabled?: boolean;
   country: string;
   vatPct: number;
 }
