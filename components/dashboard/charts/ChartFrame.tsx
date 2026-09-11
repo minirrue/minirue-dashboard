@@ -8,7 +8,7 @@ import ChartSkeleton from './ChartSkeleton';
 import { useMeasuredSize, type MeasuredSize } from './chart-utils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export interface ChartFrameProps<T extends Record<string, any> = Record<string, any>> {
+export interface ChartFrameProps<T extends Record<string, unknown> = Record<string, unknown>> {
   title: string;
   /** Summary read by screen readers on the SVG region (role="img"). */
   ariaLabel: string;
@@ -25,7 +25,7 @@ export interface ChartFrameProps<T extends Record<string, any> = Record<string, 
   animationDelay?: string;
 }
 
-export default function ChartFrame<T extends Record<string, any> = Record<string, any>>({
+export default function ChartFrame<T extends Record<string, unknown> = Record<string, unknown>>({
   title,
   ariaLabel,
   legend,

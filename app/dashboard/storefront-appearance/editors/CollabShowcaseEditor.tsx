@@ -182,7 +182,7 @@ export default function CollabShowcaseEditor({
           />
           {tab.productIds.length === 0 && (
             <p style={{ fontSize: 13, color: 'var(--mr-fg-4)' }}>
-              Nothing picked — this tab shows the collaborator's newest {tab.limit} items instead.
+              Nothing picked — this tab shows the collaborator&apos;s newest {tab.limit} items instead.
             </p>
           )}
         </div>
