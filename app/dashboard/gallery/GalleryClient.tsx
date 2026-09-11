@@ -1090,6 +1090,32 @@ export default function GalleryClient() {
                     <p className="dash-help-text">Loading items…</p>
                   ) : itemsError ? (
                     <p className="dash-inline-error">{itemsError}</p>
+                  ) : items.length === 0 && selectedFolder.itemCount > 0 ? (
+                    /* Empty panel, non-zero count — say where the photos ARE.
+                       
+                       The sidebar count is deliberately recursive (it walks the
+                       folder and everything under it), because a direct-only
+                       count made every top-level folder read "(0)" over a
+                       gallery full of photos. The panel lists direct children
+                       only. For a two-level gallery those agree for a
+                       subfolder — but the depth limit was added on 2026-08-03
+                       and never backfilled, so a folder nested three deep before
+                       that date still counts upward into a parent that cannot
+                       show it.
+                       
+                       The old copy said "No photos in Karseell yet" beside a
+                       sidebar reading 1, which is the dashboard contradicting
+                       itself. Saying the photos are further in is the honest
+                       answer, and it points at where to look. */
+                    <p className="dash-help-text" style={{ marginTop: 0 }}>
+                      No photos directly in <strong>{selectedFolder.name}</strong>
+                      {' — '}the {selectedFolder.itemCount}{' '}
+                      {selectedFolder.itemCount === 1 ? 'photo' : 'photos'} counted
+                      here {selectedFolder.itemCount === 1 ? 'is' : 'are'} inside a
+                      folder within it. Open that folder to see{' '}
+                      {selectedFolder.itemCount === 1 ? 'it' : 'them'}, or drop
+                      files above to add one here.
+                    </p>
                   ) : items.length === 0 ? (
                     <p className="dash-help-text" style={{ marginTop: 0 }}>
                       No photos in <strong>{selectedFolder.name}</strong> yet. Drop
