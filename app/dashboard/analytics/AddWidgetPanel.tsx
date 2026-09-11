@@ -12,7 +12,7 @@ import type { LayoutItem } from '@/lib/analytics/layout-store';
 export interface AddWidgetPanelProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- same
   // heterogeneous-registry shape as `lib/analytics/widgets.tsx`.
-  widgets: AnalyticsWidgetDefinition<any>[];
+  widgets: AnalyticsWidgetDefinition<unknown>[];
   layout: LayoutItem[];
   onAdd: (id: string) => void;
   onReset: () => void;

@@ -27,7 +27,6 @@ import {
   type CustomerAddress,
   type CustomerAddressInput,
   type CustomerDetail,
-  type CustomerUserStatus,
   type TierLevel,
 } from '@/lib/api/customers';
 import type { Order } from '@/lib/api/orders';

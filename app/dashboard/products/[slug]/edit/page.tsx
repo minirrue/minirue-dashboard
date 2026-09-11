@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -8,8 +8,6 @@ import {
   updateProduct,
   publishProduct,
   archiveProduct,
-  listCategories,
-  listManagedBrands,
   softDeleteProduct,
   hardDeleteProduct,
   cloudinaryPreviewUrl,

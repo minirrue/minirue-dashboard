@@ -1625,7 +1625,7 @@ export function DashChatView({
                 <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
               </span>
               <span className="mrc-empty-title">No matches</span>
-              <span className="mrc-empty-copy">No customer matches "{search}".</span>
+              <span className="mrc-empty-copy">No customer matches &quot;{search}&quot;.</span>
             </div>
           ) : (
             <div className="mrc-list" role="list">

@@ -1,7 +1,7 @@
-import { apiFetch, API_BASE, CLIENT_HEADER, CLIENT_AUDIENCE } from './client';
+import { apiFetch } from './client';
 import { markAuthenticated } from '@/lib/auth/tokens';
 import { parseAuthUser } from '@/lib/auth/session-role';
-import type { AuthSuccessResponse, MeResponse, TokenPair } from '@/lib/auth/types';
+import type { AuthSuccessResponse, MeResponse } from '@/lib/auth/types';
 import type { ApiError } from './client';
 
 export type { AuthSuccessResponse as AuthResponse, MeResponse } from '@/lib/auth/types';

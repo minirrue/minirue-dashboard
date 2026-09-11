@@ -209,7 +209,7 @@ export default function HeroEditor({
           />
         </label>
         <label className="dash-field">
-          <span className="dash-label">"Scroll" hint label</span>
+          <span className="dash-label">&quot;Scroll&quot; hint label</span>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <input
               className="dash-input"

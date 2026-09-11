@@ -30,7 +30,7 @@ export default function CtaTargetField({
           <option value="scroll">Scroll to the products below</option>
           <option value="product">A product page</option>
           <option value="category">A category page</option>
-          <option value="brand">A brand's products</option>
+          <option value="brand">A brand&apos;s products</option>
           <option value="url">A custom link</option>
         </select>
       </label>
