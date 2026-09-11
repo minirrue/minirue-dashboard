@@ -86,7 +86,8 @@ export default function ProductGridEditor({
         <label className="dash-field">
           <span className="dash-label">&quot;View all&quot; link (blank to hide it)</span>
           <input className="dash-input" value={section.viewAllHref ?? ''} placeholder="/products"
-            onChange={(e) => onChange({ ...section, viewAllHref: e.target.value.trim() || null })} />
+            onChange={(e) => onChange({ ...section, viewAllHref: e.target.value || null })}
+            onBlur={(e) => onChange({ ...section, viewAllHref: e.target.value.trim() || null })} />
         </label>
       </div>
 

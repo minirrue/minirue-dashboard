@@ -141,8 +141,14 @@ export default function JournalEditor({
         </label>
         <label className="dash-field">
           <span className="dash-label">Badge on the image (blank to hide it)</span>
+          {/* Trimmed on BLUR, not on change. `.trim()` inside onChange deletes
+              the space the instant it is typed, so a value with a space in it
+              cannot be entered at all — the field silently refuses the key.
+              Trimming when the field is left keeps the stored value clean
+              without fighting the keyboard. */}
           <input className="dash-input" value={section.badge ?? ''} placeholder="Editorial · N°4"
-            onChange={(e) => onChange({ ...section, badge: e.target.value.trim() || null })} />
+            onChange={(e) => onChange({ ...section, badge: e.target.value || null })}
+            onBlur={(e) => onChange({ ...section, badge: e.target.value.trim() || null })} />
         </label>
       </div>
 
@@ -265,7 +271,8 @@ export default function JournalEditor({
             <label className="dash-field">
               <span className="dash-label">Button link</span>
               <input className="dash-input" value={section.ctaHref ?? ''} placeholder="/journal"
-                onChange={(e) => onChange({ ...section, ctaHref: e.target.value.trim() || null })} />
+                onChange={(e) => onChange({ ...section, ctaHref: e.target.value || null })}
+                onBlur={(e) => onChange({ ...section, ctaHref: e.target.value.trim() || null })} />
             </label>
           </div>
         </>
