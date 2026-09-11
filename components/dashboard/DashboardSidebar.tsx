@@ -232,9 +232,12 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
       { label: 'Orders', href: '/orders', icon: <IconShoppingBag /> },
       { label: 'Customers', href: '/customers', icon: <IconUsers /> },
       { label: 'Collaborators', href: '/collaborators', icon: <IconHandshake /> },
-      // Oversight, not management — watch partners' standing, access and sales.
-      // Admin + super admin (DASHBOARD_ROUTE_ACCESS['/partners'] = ADMIN_ONLY).
-      { label: 'Partners', href: '/partners', icon: <IconTrendingUp /> },
+      // Partners is no longer its own entry. Oversight — standing, access and
+      // sales, and the super admin's "open the dashboard as them" — is the
+      // "Business & performance" view of Collaborators, because managing a
+      // partner and watching one is a single relationship and two nav entries
+      // meant moving between screens for no reason a user could perceive.
+      // /partners still resolves; it redirects.
       { label: 'Storefront', href: '/storefront-appearance', icon: <IconPalette /> },
     ],
   },

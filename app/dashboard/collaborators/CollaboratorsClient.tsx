@@ -5,6 +5,7 @@
 import React, {useCallback, useState } from 'react';
 
 import Link from 'next/link';
+import PartnersOversightClient from '@/app/dashboard/partners/PartnersOversightClient';
 
 import DashboardTable from '@/components/dashboard/DashboardTable';
 
@@ -145,6 +146,15 @@ export default function CollaboratorsClient() {
 
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Which half of the merged screen is showing.
+   *
+   * `list` manages collaborators; `oversight` is what the Partners screen was —
+   * standing, access and sales per partner, plus the super admin's "open the
+   * dashboard as them". Two nav entries for one relationship meant moving
+   * between screens for no reason a user could perceive.
+   */
+  const [view, setView] = useState<'list' | 'oversight'>('list');
   const [statusFilter, setStatusFilter] = useState('');
 
 
@@ -214,6 +224,42 @@ export default function CollaboratorsClient() {
 
         <div className="collab-action-row" style={{ marginTop: 0 }}>
 
+          {/* Partners used to be its own nav entry and its own screen, for what
+              is operationally one relationship: you managed a partner here and
+              watched them there. It is a view of this screen now, not a
+              separate destination — grouped behind a switch rather than stacked
+              into one wall of controls, so the merged page stays usable at
+              laptop width. */}
+          <div
+            className="dash-segmented"
+            role="tablist"
+            aria-label="Collaborators view"
+            style={{ display: 'flex', gap: 4, marginRight: 8 }}
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === 'list'}
+              className={view === 'list' ? 'dash-btn-primary' : 'dash-btn-secondary'}
+              onClick={() => setView('list')}
+              data-trace-id="PG-DASHBOARD-COLLAB-011::EL-TAB-list"
+            >
+              Collaborators
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === 'oversight'}
+              className={
+                view === 'oversight' ? 'dash-btn-primary' : 'dash-btn-secondary'
+              }
+              onClick={() => setView('oversight')}
+              data-trace-id="PG-DASHBOARD-COLLAB-011::EL-TAB-oversight"
+            >
+              Business &amp; performance
+            </button>
+          </div>
+
           <Link
             href="/collaborators/review"
             className="dash-btn-secondary"
@@ -240,6 +286,10 @@ export default function CollaboratorsClient() {
 
 
 
+      {view === 'oversight' ? (
+        <PartnersOversightClient />
+      ) : (
+      <>
       <div className="dash-toolbar" style={{ marginBottom: 16 }}>
 
         <select
@@ -323,6 +373,9 @@ export default function CollaboratorsClient() {
           getRowTraceId={(row) => `PG-DASHBOARD-COLLAB-011::EL-ROW-collaborator-row@${row.id}`}
         />
 
+      )}
+
+      </>
       )}
 
     </>
