@@ -133,7 +133,6 @@
   --mr-scale-enter: 0.94;
 
   /* ── Layout ── */
-  --mr-content-max: 1280px;
   --mr-gutter: clamp(20px, 4vw, 48px);
 
   /* ── Status info pair ── */
