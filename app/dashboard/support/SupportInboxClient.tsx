@@ -29,6 +29,7 @@ import { apiSupportSend } from '@/lib/api/support';
 import type { PresenceDto, MessageAttachmentDto } from '@/lib/api/support';
 import type { ConversationDto, MessageDto, SupportPersonDto } from '@/lib/api/support';
 import { useAdminNotifications } from '@/components/dashboard/notifications/useAdminNotifications';
+import { useAutoDismissNotifications } from '@/components/dashboard/notifications/useAutoDismissNotifications';
 import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
 import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
 
@@ -391,12 +392,11 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   // Admin notifications, used only to auto-mark-read any notification that
   // points at the conversation currently open in this inbox (so the admin
   // doesn't have to separately dismiss it in the notification centre).
-  // `items` and `markRead` are unused — see issue #15. The comment above
-  // describes auto-dismiss ("so the admin doesn't have to separately dismiss it
-  // in the notification centre") and those are exactly the two it needs;
-  // nothing wires them, so opening a conversation still leaves its notification
-  // unread. Underscored rather than dropped so the gap stays visible here.
-  const { items: _notifications, markRead: _markNotificationRead, refresh: refreshNotifications } = useAdminNotifications({ enabled: true });
+  const {
+    items: notifications,
+    markRead: markNotificationRead,
+    refresh: refreshNotifications,
+  } = useAdminNotifications({ enabled: true });
 
   useEffect(() => {
     let cancelled = false;
@@ -447,6 +447,13 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
   useEffect(() => {
     if (activeId) void refreshNotifications();
   }, [activeId, threadData?.messages, refreshNotifications]);
+
+  /*
+   * The auto-dismiss the comment above has always described, and #15 found
+   * unwired: reading a conversation here is reading its notification, so the
+   * admin should not have to dismiss the same message twice.
+   */
+  useAutoDismissNotifications('support', activeId, notifications, markNotificationRead);
 
   // Keep the open conversation marked read on the server as new messages arrive
   // while you're viewing it, so its unread badge stays cleared everywhere (not

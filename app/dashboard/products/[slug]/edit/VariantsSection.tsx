@@ -175,9 +175,7 @@ export default function VariantsSection({
   media,
   onMediaChange,
   selectedVariantId,
-  // Never called — see issue #15. `selectedVariantId` IS used, so the section
-  // renders a selection but never reports a change back to the parent.
-  onSelectVariant: _onSelectVariant,
+  onSelectVariant,
 }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [formValues, setFormValues] = useState<VariantFormValues>(EMPTY_FORM);
@@ -440,6 +438,9 @@ export default function VariantsSection({
   async function handleHardDeleteVariant(v: ProductVariant, force = false) {
     await hardDeleteVariant(productId, v.id, force);
     onVariantsChange(variants.filter((x) => x.id !== v.id));
+    // The row is gone, so the photo panel below it cannot keep naming it —
+    // it would fall back to the literal words "selected variant".
+    if (selectedVariantId === v.id) onSelectVariant(null);
     setDeleteTarget(null);
   }
 
@@ -635,6 +636,29 @@ export default function VariantsSection({
                       )}
                     </td>
                     <td>
+                      {/* The only way to select a variant.
+
+                          `onSelectVariant` was declared, passed down by the
+                          page and never called (#15), so the row rendered a
+                          selected state nothing could reach — and with it the
+                          whole "Photos for <SKU>" section below the table,
+                          which the page only renders once a variant is
+                          selected (specs/006-gallery-module US3, T031). A
+                          feature reachable by no click at all.
+
+                          A toggle rather than a one-way select: clicking the
+                          open one closes it, which is the only way back to
+                          the unfiltered product photos above. */}
+                      <button
+                        type="button"
+                        className="dash-btn-ghost"
+                        aria-pressed={isSelected}
+                        onClick={() => onSelectVariant(isSelected ? null : v.id)}
+                        style={isSelected ? { fontWeight: 600 } : undefined}
+                        data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-select-variant@${v.id}`}
+                      >
+                        {isSelected ? 'Hide photos' : 'Photos'}
+                      </button>
                       <button
                         type="button"
                         className="dash-btn-ghost"
