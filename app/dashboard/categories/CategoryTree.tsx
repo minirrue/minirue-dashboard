@@ -1,11 +1,8 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import ImageField from '@/components/dashboard/ImageField';
 import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
-import { uploadDeviceFileToGallery } from '@/components/dashboard/GalleryPickerModal';
-import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
-import type { GalleryItem } from '@/lib/gallery/types';
 import type { ApiError } from '@/lib/api/client';
 
 /**
@@ -107,11 +104,8 @@ function CategoryRow<T extends CategoryTreeNode>({
   const [localImage, setLocalImage] = useState<{ mediaId: string; file: File } | null>(null);
   const localImageFile =
     localImage && localImage.mediaId === category.imageMediaId ? localImage.file : null;
-  const deviceInputRef = useRef<HTMLInputElement>(null);
-  const cropImage = useImageCrop();
 
   const hasChildren = (category.children ?? []).length > 0;
-  const childCount = category.children?.length ?? 0;
 
   function setField<K extends keyof EditValues>(key: K, value: string) {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -145,28 +139,6 @@ function CategoryRow<T extends CategoryTreeNode>({
     }
   }
 
-  /** The shop shows categories as picture tiles — a category without one
-   *  renders as an empty square, which is the whole reason it is required. */
-  async function handleDeviceImage(file: File) {
-    setImageError(null);
-    setUploadingImage(true);
-    try {
-      const cropped = await cropImage(file, {
-        initialAspect: 1,
-        title: 'Crop category image',
-      });
-      if (!cropped) return;
-      const item: GalleryItem = await uploadDeviceFileToGallery(cropped, category.name);
-      const updated = await api.update(category.id, { imageMediaId: item.id });
-      setLocalImage({ mediaId: item.id, file: cropped });
-      onUpdated(updated);
-    } catch (e) {
-      const err = e as ApiError;
-      setImageError(err.message ?? 'Failed to upload image.');
-    } finally {
-      setUploadingImage(false);
-    }
-  }
 
   async function handleGalleryPick(mediaId: string | null, localFile?: File | null) {
     // A category can never end up imageless — refuse the "Remove" affordance
@@ -267,31 +239,8 @@ function CategoryRow<T extends CategoryTreeNode>({
         <td>
           <code className="dash-slug">{category.slug}</code>
         </td>
-        <td style={{ textAlign: 'right' }}>
-          {childCount > 0 ? childCount : <span style={{ color: 'var(--mr-fg-4)' }}>—</span>}
-        </td>
         <td>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              className="dash-btn-ghost"
-              onClick={() => deviceInputRef.current?.click()}
-              disabled={uploadingImage}
-              data-trace-id={`PG-DASHBOARD-CAT-004::EL-BTN-change-category-image@${category.id}`}
-            >
-              {uploadingImage ? 'Uploading…' : 'Change image'}
-            </button>
-            <input
-              ref={deviceInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/heic,image/heif,image/webp"
-              hidden
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleDeviceImage(file);
-                e.target.value = '';
-              }}
-            />
             <button
               type="button"
               className="dash-btn-ghost"
@@ -463,7 +412,6 @@ export default function CategoryTree<T extends CategoryTreeNode = CategoryTreeNo
             <tr>
               <th>Name</th>
               <th>Slug</th>
-              <th style={{ textAlign: 'right' }}>Children</th>
               <th>Actions</th>
             </tr>
           </thead>
