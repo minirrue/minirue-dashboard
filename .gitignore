@@ -45,3 +45,13 @@ ruvector.db.lock
 
 # Installed Claude Code skill libraries (vendored, per-project)
 .claude/
+
+# Agent worktrees. Redundant today — the `.claude/` rule above already covers
+# this path — and kept anyway, because what it guards against is not obvious and
+# has already happened once: a worktree created inside the repo is an EMBEDDED
+# GIT REPOSITORY, and `git add -A` commits a gitlink to it. Git prints a hint
+# rather than an error, so it lands silently and has to be amended out.
+#
+# If `.claude/` above is ever narrowed to un-ignore part of that tree (agents,
+# skills, settings), this line is what stops the hazard coming back with it.
+.claude/worktrees/
