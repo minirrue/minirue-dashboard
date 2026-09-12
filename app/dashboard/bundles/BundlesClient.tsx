@@ -1,66 +1,45 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import CatalogSubnav from '@/components/dashboard/CatalogSubnav';
-import ImageField from '@/components/dashboard/ImageField';
+import RetryingImage from '@/components/dashboard/RetryingImage';
+import { errorMessageToText } from '@/lib/api/client';
+import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import {
-  createBundle,
   deleteBundle,
   listBundles,
-  slugify,
   updateBundle,
   type Bundle,
-  type BundleMemberInput,
 } from '@/lib/api/bundles';
-import { listProducts } from '@/lib/catalog/api';
-import BundleProductPicker from './BundleProductPicker';
-import type { ProductListItem } from '@/lib/catalog/types';
-import { errorMessageToText } from '@/lib/api/client';
-
-function money(minor: number): string {
-  return (minor / 100).toFixed(2);
-}
+import { MAX_MEMBERS, formatMinor, formatPercent } from './bundle-economics';
 
 /**
- * Bundles — import existing products, name the set, give it one price.
+ * Sets of products sold together at one price — the management view.
  *
- * A set can ONLY contain products that already exist in the Products tab. There
- * is no way to invent one here: the picker offers rows from the catalogue and
- * nothing else, the list is fetched with `space: 'house'` so a partner's product
- * is never offered, and the server re-reads every id on save and refuses the
- * request if any belongs to a collaborator. Three layers, because a picker is a
- * convenience and the endpoint takes ids that anything could send.
+ * This route used to be a create form with a table bolted underneath, and the
+ * table could do exactly two things to a set: hide it and delete it. Creating
+ * now has its own route (`/catalogue/bundles/new`) and so does changing one
+ * (`/catalogue/bundles/:id/edit`) — both URLs `next.config.ts` was already
+ * rewriting to app-router paths that did not exist, so both answered 404.
+ *
+ * What is left here is the thing a list is for: seeing, at a glance, which sets
+ * a shopper can currently buy and whether each one is actually cheaper than its
+ * parts. The saving and the discount percentage are on the row because a set
+ * that has quietly stopped being a saving — a component's price went up after
+ * the set was priced — is invisible otherwise, and the shop keeps selling it.
  */
 export default function BundlesClient() {
   const [rows, setRows] = React.useState<Bundle[]>([]);
-  const [products, setProducts] = React.useState<ProductListItem[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [saving, setSaving] = React.useState(false);
-
-  const [name, setName] = React.useState('');
-  const [price, setPrice] = React.useState('');
-  const [description, setDescription] = React.useState('');
-  const [imageUrl, setImageUrl] = React.useState('');
-  /** This set's own cover, picked from the gallery (migration 0220). Replaces the
-   *  paste-a-URL box: a stored URL drifts out of imgproxy signature validity,
-   *  which is the defect already fixed twice for avatars and brand logos. */
-  const [imageMediaId, setImageMediaId] = React.useState<string | null>(null);
-  const [isActive, setIsActive] = React.useState(false);
-  const [members, setMembers] = React.useState<BundleMemberInput[]>([]);
+  const [busyId, setBusyId] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [bundles, prods] = await Promise.all([
-        listBundles(),
-        // 'house' = MiniRue's own catalogue. A partner's product must never
-        // appear in this list.
-        listProducts({ limit: 200, space: 'house' }),
-      ]);
-      setRows(bundles);
-      setProducts(prods.items);
+      setRows(await listBundles());
     } catch (e) {
       setError(errorMessageToText(e, 'Could not load bundles'));
     } finally {
@@ -68,68 +47,18 @@ export default function BundlesClient() {
     }
   }, []);
 
-  React.useEffect(() => {
-    void load();
-  }, [load]);
-
-  const priceMinor = Math.round(Number(price || '0') * 100);
-
-  /**
-   * What the chosen members cost separately, so the saving is visible while the
-   * price is being typed. A set priced ABOVE its parts is not rejected — there
-   * are reasons to sell a gift box for more — but it should never happen by
-   * accident, and this makes it impossible to miss.
-   */
-  const listTotalMinor = React.useMemo(
-    () =>
-      members.reduce((sum, m) => {
-        const p = products.find((x) => x.id === m.productId);
-        const unit = p ? Math.round((p.basePrice ?? 0) * 100) : 0;
-        return sum + unit * m.quantity;
-      }, 0),
-    [members, products],
-  );
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (members.length === 0) {
-      setError('A set needs at least one product.');
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      await createBundle({
-        name: name.trim(),
-        slug: slugify(name),
-        description: description.trim() || null,
-        imageUrl: imageUrl.trim() || null,
-        imageMediaId,
-        priceMinor,
-        isActive,
-        members,
-      });
-      setName('');
-      setPrice('');
-      setDescription('');
-      setImageUrl('');
-      setIsActive(false);
-      setMembers([]);
-      await load();
-    } catch (e) {
-      setError(errorMessageToText(e, 'Could not create the set'));
-    } finally {
-      setSaving(false);
-    }
-  }
+  useMountedEffect(load, [load]);
 
   async function toggleLive(bundle: Bundle) {
     setError(null);
+    setBusyId(bundle.id);
     try {
       await updateBundle(bundle.id, { isActive: !bundle.isActive });
       await load();
     } catch (e) {
       setError(errorMessageToText(e, 'Could not change the set'));
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -137,183 +66,145 @@ export default function BundlesClient() {
     if (!window.confirm(`Delete "${bundle.name}"? Past orders are unaffected.`))
       return;
     setError(null);
+    setBusyId(bundle.id);
     try {
       await deleteBundle(bundle.id);
       await load();
     } catch (e) {
       setError(errorMessageToText(e, 'Could not delete the set'));
+    } finally {
+      setBusyId(null);
     }
   }
 
   return (
     <>
       <div className="dash-page-header">
-        <h1 className="dash-page-title">Bundles</h1>
+        <div>
+          <h1 className="dash-page-title">Bundles</h1>
+          <p className="dash-help-text">
+            Products you already sell, boxed together at one price. A set holds 1
+            to {MAX_MEMBERS} lines.
+          </p>
+        </div>
+        <Link className="dash-btn-primary" href="/catalogue/bundles/new">
+          New bundle
+        </Link>
       </div>
       <CatalogSubnav />
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-        {error && <p className="dash-error">{error}</p>}
+      {error && <p className="dash-error">{error}</p>}
 
-        <section className="dash-card">
-          <h2 className="dash-card-title">New bundle</h2>
-          <form onSubmit={submit}>
-            <div className="dash-form-grid">
-              <div className="dash-field">
-                <label className="dash-label" htmlFor="b-name">
-                  Name <span className="dash-required">*</span>
-                </label>
-                <input
-                  id="b-name"
-                  className="dash-input"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Evening Set"
-                  required
-                />
-                {name && <p className="dash-help-text">Web address: /bundles/{slugify(name)}</p>}
-              </div>
-
-              <div className="dash-field">
-                <label className="dash-label" htmlFor="b-price">
-                  Price for the whole set (EGP) <span className="dash-required">*</span>
-                </label>
-                <input
-                  id="b-price"
-                  className="dash-input"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="dash-field">
-                <ImageField
-                  label="Photo"
-                  helpText="This set's own picture. Separate from the Bundles tile on the shop page, which is set under Categories."
-                  imageUrl={imageUrl || null}
-                  mediaId={imageMediaId}
-                  onChange={(mediaId, item) => {
-                    setImageMediaId(mediaId);
-                    // Keep the display URL in step so the tile redraws at once;
-                    // the id is what actually gets saved.
-                    setImageUrl(item?.url ?? '');
-                  }}
-                />
-              </div>
-
-              <div className="dash-field">
-                <label className="dash-label" htmlFor="b-desc">Description</label>
-                <input
-                  id="b-desc"
-                  className="dash-input"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <BundleProductPicker
-              products={products}
-              members={members}
-              onChange={setMembers}
-              loading={loading}
-            />
-
-            <div className="dash-form-section">
-              {members.length > 0 && (
-                <p className="dash-help-text">
-                  Bought separately: EGP {money(listTotalMinor)}.{' '}
-                  {priceMinor > 0 && priceMinor < listTotalMinor
-                    ? `This set saves the shopper EGP ${money(listTotalMinor - priceMinor)}.`
-                    : priceMinor > listTotalMinor
-                      ? 'This set costs MORE than buying the pieces separately.'
-                      : ''}
-                </p>
-              )}
-            </div>
-
-            <div className="dash-field-row">
-              <label className="dash-checkbox-label">
-                <input
-                  type="checkbox"
-                  className="dash-checkbox"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                />
-                <span>Show it in the shop straight away</span>
-              </label>
-            </div>
-
-            <div className="dash-form-actions">
-              <button type="submit" className="dash-btn-primary" disabled={saving}>
-                {saving ? 'Saving…' : 'Create bundle'}
-              </button>
-            </div>
-            <p className="dash-help-text">
-              Only MiniRue&rsquo;s own products can go in a set. Discount codes
-              never apply to a set, and a set disappears from the shop by itself
-              if any piece runs out.
-            </p>
-          </form>
-        </section>
-
-        <section className="dash-card">
-          <h2 className="dash-card-title">Bundles</h2>
-          {loading ? (
-            <p className="dash-muted">Loading…</p>
-          ) : rows.length === 0 ? (
-            <p className="dash-panel-empty">No bundles yet.</p>
-          ) : (
-            <div className="dash-table-wrap">
-              <table className="dash-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Inside</th>
-                    <th>Price</th>
-                    <th>Separately</th>
-                    <th>In shop</th>
-                    <th>Stock</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((b) => (
+      <section className="dash-card">
+        {loading ? (
+          <p className="dash-muted">Loading…</p>
+        ) : rows.length === 0 ? (
+          <p className="dash-panel-empty">
+            No bundles yet.{' '}
+            <Link className="dash-link" href="/catalogue/bundles/new">
+              Build the first one
+            </Link>
+            .
+          </p>
+        ) : (
+          <div className="dash-table-wrap">
+            <table className="dash-table mr-bundle-table">
+              <thead>
+                <tr>
+                  <th>Set</th>
+                  <th>Inside</th>
+                  <th>Set price</th>
+                  <th>Separately</th>
+                  <th>Saving</th>
+                  <th>In shop</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((b) => {
+                  const pct =
+                    b.listTotalMinor > 0
+                      ? ((b.listTotalMinor - b.priceMinor) / b.listTotalMinor) *
+                        100
+                      : null;
+                  return (
                     <tr key={b.id}>
                       <td>
-                        {b.name}
-                        <br />
-                        <code className="dash-slug">/bundles/{b.slug}</code>
+                        <span className="mr-bundle-row-set">
+                          <span className="mr-bundle-thumb">
+                            {b.imageUrl ? (
+                              <RetryingImage src={b.imageUrl} alt="" />
+                            ) : (
+                              <span
+                                className="mr-bundle-thumb-empty"
+                                aria-hidden="true"
+                              />
+                            )}
+                          </span>
+                          <span>
+                            <Link
+                              className="dash-link"
+                              href={`/catalogue/bundles/${b.id}/edit`}
+                            >
+                              {b.name}
+                            </Link>
+                            <br />
+                            <code className="dash-slug">/bundles/{b.slug}</code>
+                          </span>
+                        </span>
                       </td>
                       <td>
-                        {b.members
-                          .map((m) => `${m.quantity > 1 ? `${m.quantity}× ` : ''}${m.productName}`)
-                          .join(', ')}
+                        <span className="mr-bundle-chips">
+                          {b.members.map((m, i) => (
+                            <span
+                              key={`${m.productId}-${m.variantId ?? '*'}-${i}`}
+                              className="mr-bundle-chip"
+                            >
+                              {m.quantity > 1 && (
+                                <strong>{m.quantity}× </strong>
+                              )}
+                              {m.productName}
+                            </span>
+                          ))}
+                        </span>
                       </td>
-                      <td>
-                        {b.currency} {money(b.priceMinor)}
+                      <td className="mr-num">
+                        {b.currency} {formatMinor(b.priceMinor)}
                       </td>
-                      <td>
-                        {money(b.listTotalMinor)}
-                        {b.savingMinor > 0 && ` (saves ${money(b.savingMinor)})`}
+                      <td className="mr-num dash-muted">
+                        {formatMinor(b.listTotalMinor)}
+                      </td>
+                      <td className="mr-num">
+                        {/* A set that is no longer a saving is the failure this
+                            column exists for: nothing else on the screen says
+                            so, and the shop keeps selling it regardless. */}
+                        {b.savingMinor > 0 ? (
+                          <span className="mr-bundle-saving" data-tone="ok">
+                            {formatMinor(b.savingMinor)}
+                            {pct != null && ` · ${formatPercent(pct)}`}
+                          </span>
+                        ) : (
+                          <span className="mr-bundle-saving" data-tone="warn">
+                            None
+                          </span>
+                        )}
                       </td>
                       {/* "Live" has to mean "a shopper can see it".
-                          
+
                           The storefront list ends in a stock filter — a set
                           whose member sold out is hidden rather than shown as
                           unavailable, because a shopper cannot buy it either
                           way. So `isActive` is necessary and not sufficient,
                           and a row reading plain "Live" over a bundle nobody
                           can see sent the admin looking for a bug in the
-                          toggle. The next column already says a piece is out
-                          of stock; this one now agrees with it. */}
+                          toggle. */}
                       <td>
                         {!b.isActive ? (
                           'Hidden'
+                        ) : expired(b) ? (
+                          <span title="Its end date has passed, so the shop no longer lists it.">
+                            Expired
+                          </span>
                         ) : b.inStock ? (
                           'Live'
                         ) : (
@@ -321,18 +212,26 @@ export default function BundlesClient() {
                             Live — not showing
                           </span>
                         )}
-                      </td>
-                      <td>
-                        {b.inStock ? (
-                          'Available'
-                        ) : (
-                          <span className="dash-muted">A piece is out of stock</span>
+                        {b.expiresAt && !expired(b) && (
+                          <>
+                            <br />
+                            <span className="dash-muted">
+                              until {new Date(b.expiresAt).toLocaleDateString()}
+                            </span>
+                          </>
                         )}
                       </td>
                       <td className="dash-row-actions">
+                        <Link
+                          className="dash-btn-secondary"
+                          href={`/catalogue/bundles/${b.id}/edit`}
+                        >
+                          Edit
+                        </Link>
                         <button
                           type="button"
                           className="dash-btn-secondary"
+                          disabled={busyId === b.id}
                           onClick={() => void toggleLive(b)}
                         >
                           {b.isActive ? 'Hide' : 'Show'}
@@ -340,19 +239,24 @@ export default function BundlesClient() {
                         <button
                           type="button"
                           className="dash-btn-danger"
+                          disabled={busyId === b.id}
                           onClick={() => void remove(b)}
                         >
                           Delete
                         </button>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      </div>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </>
   );
+}
+
+function expired(b: Bundle): boolean {
+  return !!b.expiresAt && new Date(b.expiresAt).getTime() <= Date.now();
 }
