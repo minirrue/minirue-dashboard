@@ -7,6 +7,10 @@ import GalleryPickerModal, { uploadDeviceFileToGallery } from '@/components/dash
 import ImageCropModal from '@/components/dashboard/ImageCropModal';
 import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
 import { getItem } from '@/lib/gallery/api';
+import {
+  heroImageWarning,
+  type HeroSlot as GuidanceSlot,
+} from '@/lib/storefront/hero-image-guidance';
 import type { ApiError } from '@/lib/api/client';
 import CtaTargetField from './CtaTargetField';
 
@@ -112,6 +116,16 @@ export default function HeroEditor({
     chainMobile: boolean;
   } | null>(null);
   const [urlById, setUrlById] = useState<Record<string, string>>({});
+  /*
+   * Source widths, captured from the SAME getItem call that resolves the
+   * preview URL — so the pixelation warning costs no extra request.
+   *
+   * `gallery_items.width` is nullable and is null for anything uploaded
+   * before the column existed, which is why an unknown width is not a
+   * warning: flagging a library of possibly-fine images would teach everyone
+   * to ignore the badge.
+   */
+  const [widthById, setWidthById] = useState<Record<string, number | null>>({});
   // Task FF (2026-07-30): cropped bytes for an image gallery item id that was
   // just uploaded THIS session, so its hero preview frame renders from local
   // bytes instead of a guaranteed-cold-miss remote fetch. Never populated for
@@ -122,6 +136,39 @@ export default function HeroEditor({
 
   const rememberUrl = (id: string, url: string) =>
     setUrlById((m) => (m[id] === url ? m : { ...m, [id]: url }));
+
+  /**
+   * "This one will look soft, and here is why."
+   *
+   * The hero renders full-bleed and the storefront asks imgproxy for renders up
+   * to 2560px. imgproxy does not upscale, so a smaller source is served at its
+   * own size and the browser stretches it — which is the pixelation in
+   * minirue-frontend#11, where every homepage image measured smaller than the
+   * size it was rendered at and the hero slides were the worst (340x454).
+   *
+   * A warning rather than a block: a shop owner mid-campaign with only a small
+   * crop should be able to ship it and fix it later. `role="status"` rather
+   * than `alert` for the same reason — it is advice, and an assertive
+   * announcement would interrupt them mid-task.
+   */
+  function SizeWarning({ id, slot }: { id: string | null; slot: GuidanceSlot }) {
+    if (!id) return null;
+    const warning = heroImageWarning(widthById[id], slot);
+    if (!warning) return null;
+    return (
+      <p
+        role="status"
+        style={{
+          margin: '6px 0 0',
+          fontSize: 12,
+          lineHeight: 1.5,
+          color: 'var(--mr-st-warning-fg, #b45309)',
+        }}
+      >
+        {warning.message}
+      </p>
+    );
+  }
 
   const patchSlide = (id: string, patch: Partial<HeroSlide>) =>
     onChange({
@@ -140,7 +187,10 @@ export default function HeroEditor({
     ids.forEach((id) => {
       if (!urlById[id]) {
         getItem(id)
-          .then((item) => rememberUrl(id, item.url))
+          .then((item) => {
+            rememberUrl(id, item.url);
+            setWidthById((prev) => ({ ...prev, [id]: item.width }));
+          })
           .catch(() => {});
       }
     });
@@ -324,6 +374,7 @@ export default function HeroEditor({
                     background={slide.background}
                     ratio="16 / 9"
                   />
+                  <SizeWarning id={slide.imageGalleryItemId} slot="desktop" />
                   <div className="dash-row-actions" style={{ flexWrap: 'wrap' }}>
                     <button type="button" className="dash-btn-ghost"
                       disabled={uploadingFor === slide.id}
@@ -358,6 +409,13 @@ export default function HeroEditor({
                     background={slide.background}
                     ratio="3 / 4"
                     muted={!slide.mobileImageGalleryItemId}
+                  />
+                  {/* Only when a mobile crop is actually set — the frame falls
+                      back to the desktop image, and warning about that one here
+                      would say the same thing twice. */}
+                  <SizeWarning
+                    id={slide.mobileImageGalleryItemId}
+                    slot="mobile"
                   />
                   <div className="dash-row-actions" style={{ flexWrap: 'wrap' }}>
                     <button type="button" className="dash-btn-ghost"
