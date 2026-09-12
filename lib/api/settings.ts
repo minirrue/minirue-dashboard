@@ -1,7 +1,9 @@
 import { apiFetch } from './client';
 import type { StorefrontLayout } from './storefront';
+import type { GovernorateRate } from '@/lib/shipping/governorate-rates';
 
 export type { StorefrontLayout };
+export type { GovernorateRate };
 
 export interface BrandConfig {
   logoUrl: string | null;
@@ -51,6 +53,23 @@ export interface StoreSettings {
     flatRateCents: number;
     currency: string;
     freeOverCents: number;
+    /**
+     * Per-governorate delivery fees (minirue-backend#83). The admin's table IS
+     * the enum the storefront's checkout select is built from.
+     *
+     * Optional on BOTH sides of the wire, and the two absences mean different
+     * things. Reading: a shop that has never configured one has no key at all.
+     * Writing: the server treats an ABSENT `rates` as "leave the stored table
+     * alone" and an explicit `[]` as "clear it" — deliberately, so an older
+     * dashboard PATCHing only `{ flatRateCents, currency, freeOverCents }`
+     * cannot wipe the table as a side effect of saving the flat rate. This
+     * dashboard always loads the table before it saves, so it sends the array
+     * explicitly; see `SettingsClient`'s `handleSubmit`.
+     *
+     * An empty table means "charge the global flat rate to everyone" — never
+     * "ship free".
+     */
+    rates?: GovernorateRate[];
   };
   /** Absent on a store that has never had tax rules configured. */
   taxRules?: TaxRule[];
