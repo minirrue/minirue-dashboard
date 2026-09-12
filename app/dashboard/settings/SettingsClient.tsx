@@ -15,6 +15,12 @@ import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 import { GenericAvatarIcon } from '@/components/GenericAvatarIcon';
 import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
+import GovernorateRatesEditor from './GovernorateRatesEditor';
+import {
+  ratesToDrafts,
+  validateGovernorateRates,
+  type GovernorateRateDraft,
+} from '@/lib/shipping/governorate-rates';
 
 /**
  * Exported (not just used locally) so the profile-by-role tests can render it
@@ -349,6 +355,13 @@ type SettingsForm = {
   shippingFlatRate: string;
   /** Order subtotal at or above which shipping is free. Blank or 0 disables it. */
   shippingFreeOver: string;
+  /**
+   * The per-governorate table mid-edit (minirue-backend#83).
+   *
+   * Drafts, not wire rows: a draft's fee is a STRING so "not yet typed" stays
+   * distinguishable from "zero". See lib/shipping/governorate-rates.ts.
+   */
+  shippingRates: GovernorateRateDraft[];
 };
 
 /** Minor units (what the API stores) to a major-unit string for an input. */
@@ -361,6 +374,20 @@ function centsToInput(cents: number | undefined | null): string {
 function inputToCents(value: string): number {
   const n = parseFloat(value);
   return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : 0;
+}
+
+/**
+ * The shipping block's `currency`, in the only shape the server accepts.
+ *
+ * `ShippingConfigSchema` validates `^[A-Z]{3}$`, and the Currency field on this
+ * page is free text — so an admin who types "egp" (or leaves a trailing space,
+ * or clears it) would have the WHOLE settings document rejected by zod, losing
+ * the governorate table and every other edit in the same save along with it.
+ * Coerced here rather than fought over, in the spirit of `sanitizeHeroColor`.
+ */
+export function normalizeCurrencyForShipping(value: string): string {
+  const code = value.trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(code) ? code : 'EGP';
 }
 
 function settingsToForm(s: StoreSettings): SettingsForm {
@@ -392,6 +419,10 @@ function settingsToForm(s: StoreSettings): SettingsForm {
     // pretending the admin chose 0.
     shippingFlatRate: centsToInput(s.shipping?.flatRateCents),
     shippingFreeOver: centsToInput(s.shipping?.freeOverCents),
+    // Every row here is one the server has already seen, so every key is
+    // frozen — `ratesToDrafts` marks them `isNew: false`. That is what stops a
+    // label rename from re-keying orders already placed against the row.
+    shippingRates: ratesToDrafts(s.shipping?.rates),
   };
 }
 
@@ -403,6 +434,7 @@ export default function SettingsClient() {
     brand: { displayName: '', contactEmail: '', contactPhone: '', logoUrl: '' },
     shippingFlatRate: '',
     shippingFreeOver: '',
+    shippingRates: [],
   });
   const [raw, setRaw] = useState<StoreSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -445,7 +477,7 @@ export default function SettingsClient() {
     setForm(settingsToForm(updated));
   }, []);
 
-  const setField = (field: keyof Omit<SettingsForm, 'brand'>) => (
+  const setField = (field: keyof Omit<SettingsForm, 'brand' | 'shippingRates' | 'vatEnabled'>) => (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => { setSaved(false); setForm((p) => ({ ...p, [field]: e.target.value })); };
 
@@ -456,6 +488,47 @@ export default function SettingsClient() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!raw) return;
+
+    /**
+     * The governorate table is checked BEFORE anything is sent (#83).
+     *
+     * The server's `ShippingConfigSchema` rejects the whole settings document
+     * over one bad row, so an admin with a blank fee would lose their currency,
+     * VAT and brand edits in the same save and get back one opaque message
+     * about `rates[2]`. Same trade `normalizeStorefrontLayoutForSave` makes —
+     * except that one DROPS what it cannot save, and a dropped governorate is a
+     * shopper silently charged the wrong fee, so this stops instead.
+     */
+    const ratesCheck = validateGovernorateRates(form.shippingRates);
+    if (ratesCheck.issues.length > 0) {
+      setSaveError(
+        ratesCheck.issues.length === 1
+          ? `Delivery fees: ${ratesCheck.issues[0].message}`
+          : `Delivery fees: ${ratesCheck.issues.length} governorate rows need fixing — see the highlighted fields below.`,
+      );
+      setSaved(false);
+      return;
+    }
+
+    /**
+     * `flatRateCents` is REQUIRED by the server's shipping schema, and it is
+     * also the fallback every unlisted governorate is charged — so a table
+     * without one is not a table anyone can reason about. Prefer what was
+     * typed; fall back to what is stored; refuse rather than invent a number
+     * the admin never chose.
+     */
+    const typedFlat = form.shippingFlatRate.trim() ? inputToCents(form.shippingFlatRate) : null;
+    const storedFlat =
+      typeof raw.shipping?.flatRateCents === 'number' ? raw.shipping.flatRateCents : null;
+    const flatForSave = typedFlat ?? storedFlat;
+    if (flatForSave === null && form.shippingRates.length > 0) {
+      setSaveError(
+        'Set a global delivery rate before saving governorate fees — it is what every governorate you have not listed gets charged.',
+      );
+      setSaved(false);
+      return;
+    }
+
     setSaving(true);
     setSaveError(null);
     setSaved(false);
@@ -468,14 +541,31 @@ export default function SettingsClient() {
         // what was checked. Omitting the key (not sending `locale: undefined`)
         // means the merge in settings.service.ts's updateSettings leaves
         // whatever is already stored untouched, rather than blanking it.
-        // Only sent when a rate has been typed: sending 0 for a blank field would
-        // silently make shipping free for the whole store.
-        ...(form.shippingFlatRate.trim()
+        // Only sent when a rate is KNOWN — typed now, or already stored.
+        // Sending 0 for a blank field would silently make shipping free for the
+        // whole store, which is the same mistake as an empty governorate fee
+        // one level up.
+        //
+        // `rates` is sent EXPLICITLY, including as `[]`. The server reads an
+        // absent `rates` as "leave the stored table alone" and `[]` as "clear
+        // it" — two different things, deliberately, so an older dashboard
+        // cannot wipe the table by saving the flat rate. This dashboard always
+        // loads the table before it saves, so what is on screen is the truth
+        // and an empty screen means an empty table. An empty table means
+        // "charge the global rate to everyone", NEVER "ship free": that is the
+        // whole back-compat guarantee of #83 and it is asserted in
+        // __tests__/dashboard/governorate-rates-save.test.tsx.
+        ...(flatForSave !== null
           ? {
               shipping: {
-                flatRateCents: inputToCents(form.shippingFlatRate),
-                currency: form.currency || 'EGP',
+                flatRateCents: flatForSave,
+                // Upper-cased and defaulted because the server's shipping
+                // block validates `^[A-Z]{3}$` — a currency typed as "egp"
+                // would fail zod for the ENTIRE settings document, taking the
+                // governorate table and every unrelated edit with it.
+                currency: normalizeCurrencyForShipping(form.currency),
                 freeOverCents: inputToCents(form.shippingFreeOver),
+                rates: ratesCheck.rates,
               },
             }
           : {}),
@@ -532,6 +622,21 @@ export default function SettingsClient() {
       setSaving(false);
     }
   };
+
+  /**
+   * The global rate as the governorate editor should READ it: what is typed if
+   * anything is, else what is stored, else `null`.
+   *
+   * `null` is not zero. It means this shop has never set a delivery fee, and
+   * the editor says so rather than drawing a fallback of "EGP 0.00" that would
+   * read as free delivery for every unlisted governorate — which is exactly
+   * the confusion this whole feature is trying to avoid.
+   */
+  const typedFlatRate = form.shippingFlatRate.trim() ? inputToCents(form.shippingFlatRate) : null;
+  const storedFlatRate =
+    typeof raw?.shipping?.flatRateCents === 'number' ? raw.shipping.flatRateCents : null;
+  const effectiveFlatRate = typedFlatRate ?? storedFlatRate;
+  const effectiveFreeOver = form.shippingFreeOver.trim() ? inputToCents(form.shippingFreeOver) : 0;
 
   if (loading) return <Skeleton />;
   if (loadError) {
@@ -691,6 +796,20 @@ export default function SettingsClient() {
               </p>
             </div>
           </div>
+
+          {/* Per-governorate fees (minirue-backend#83). Sits directly under the
+              global rate because that rate is its fallback — the two numbers
+              only make sense read together. */}
+          <GovernorateRatesEditor
+            drafts={form.shippingRates}
+            onChange={(next) => {
+              setSaved(false);
+              setForm((p) => ({ ...p, shippingRates: next }));
+            }}
+            flatRateCents={effectiveFlatRate}
+            freeOverCents={effectiveFreeOver}
+            currency={form.currency || 'EGP'}
+          />
 
           <div className="dash-field">
             {/*
