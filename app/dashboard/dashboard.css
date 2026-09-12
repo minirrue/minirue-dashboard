@@ -1514,6 +1514,150 @@
   margin: 0;
 }
 
+/* ── Hero slide colour overrides (HeroSlideColors.tsx) ──
+   Six pickers per slide on an editor that already runs long, so the whole
+   block is a collapsed <details>. Every row here is flex-wrap so that on a
+   narrow laptop pane the swatch/hex/reset triple wraps instead of forcing the
+   card wider than the viewport. */
+.hero-color-details {
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-dash-content-bg);
+}
+.hero-color-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mr-fg-2);
+  list-style: revert; /* keep the native disclosure triangle */
+  user-select: none;
+}
+.hero-color-summary:hover {
+  color: var(--mr-fg);
+}
+.hero-color-count {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mr-fg-4);
+}
+.hero-color-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--mr-dash-hair);
+  padding-top: 14px;
+}
+
+.hero-color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+/* Native <input type="color"> — no dependency needed, and it is the only
+   widget that cannot emit a value the backend's hex regex would reject. */
+.hero-color-swatch {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 34px;
+  padding: 2px;
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-dash-content-bg);
+  cursor: pointer;
+}
+.hero-color-hex {
+  flex: 1 1 92px;
+  min-width: 92px;
+  max-width: 120px;
+  font-family: var(--mr-font-mono, ui-monospace, monospace);
+  text-transform: lowercase;
+}
+/* The unset state's read-only sample of what the theme paints today. */
+.hero-color-chip {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--mr-dash-hair);
+}
+.hero-color-default-note {
+  flex: 1 1 auto;
+  font-size: 13px;
+  color: var(--mr-fg-4);
+}
+
+/* Legibility check, not a second renderer — see ColorPreview's comment. */
+.hero-color-preview {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--mr-radius-md);
+  border: 1px solid var(--mr-dash-hair);
+  min-height: 190px;
+  display: flex;
+  align-items: flex-end;
+}
+.hero-color-preview-copy {
+  position: relative;
+  z-index: 1;
+  padding: 18px 20px;
+  max-width: 100%;
+  /* The storefront lays a dark scrim under this copy. Reproducing the exact
+     gradients here would be a second renderer to keep in sync; a single soft
+     one keeps the preview honest about the fact that a scrim exists without
+     pretending to be pixel-accurate. */
+  background: linear-gradient(to top, rgba(11, 11, 11, 0.45), transparent);
+  width: 100%;
+  box-sizing: border-box;
+}
+.hero-color-preview-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+.hero-color-preview-headline {
+  font-family: var(--mr-font-display, Georgia, serif);
+  font-size: 30px;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+.hero-color-preview-sub {
+  font-family: var(--mr-font-display, Georgia, serif);
+  font-style: italic;
+  font-size: 20px;
+  line-height: 1.1;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+.hero-color-preview-tagline {
+  font-style: italic;
+  font-size: 13px;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+.hero-color-preview-cta {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 8px 20px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
 /* ── Checkbox grid ── */
 .dash-checkbox-grid {
   display: flex;
