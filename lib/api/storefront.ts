@@ -1,4 +1,5 @@
 import { apiFetch } from './client';
+import { HERO_COLOR_FIELDS, sanitizeHeroColor } from '../hero-slide-colors';
 
 export type SectionType =
   | 'hero'
@@ -50,6 +51,30 @@ export interface HeroSlide {
   cap: string | null;
   ctaLabel: string | null;
   ctaTarget: CtaTarget;
+  /*
+   * Per-slide colour overrides for the four text runs and the CTA.
+   *
+   * `null` means "use the storefront theme default" and is the value every
+   * existing slide has — these are overrides, not settings, and a slide nobody
+   * has touched must keep rendering exactly as it does today.
+   *
+   * The backend accepts a hex string matching
+   * /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/ or null, and nothing else. An
+   * empty string is NOT a way to clear one: it fails the regex and zod
+   * rejects the entire layout save. Produce values only via
+   * `lib/hero-slide-colors.ts`; `normalizeStorefrontLayoutForSave` sanitises
+   * all six on the way out as a backstop.
+   *
+   * Optional because a layout saved before this feature existed has no such
+   * keys, and an absent key and a null both mean the same thing to the
+   * backend: theme default.
+   */
+  eyebrowColor?: string | null;
+  headlineColor?: string | null;
+  subColor?: string | null;
+  taglineColor?: string | null;
+  ctaBgColor?: string | null;
+  ctaTextColor?: string | null;
 }
 
 export interface HeroSection extends SectionBase {
@@ -440,6 +465,13 @@ export function normalizeStorefrontLayoutForSave(layout: StorefrontLayout): Norm
     if (section.type === 'hero') {
       for (const slide of section.slides) {
         slide.ctaTarget = normalizeCtaTarget(slide.ctaTarget);
+        // Belt and braces on the colour contract. The editor cannot emit a
+        // bad hex, but one malformed value fails zod for the WHOLE layout —
+        // the admin would lose every unrelated edit in the same save. Coerce
+        // anything unexpected to null, which renders as the theme default.
+        for (const field of HERO_COLOR_FIELDS) {
+          slide[field] = sanitizeHeroColor(slide[field]);
+        }
       }
       continue;
     }

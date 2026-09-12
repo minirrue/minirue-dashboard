@@ -13,6 +13,7 @@ import {
 } from '@/lib/storefront/hero-image-guidance';
 import type { ApiError } from '@/lib/api/client';
 import CtaTargetField from './CtaTargetField';
+import HeroSlideColors from './HeroSlideColors';
 
 /** A fixed-aspect preview frame — this is what the admin sees the crop will look
  *  like on that device (16:9 for desktop, 3:4 for mobile). Falls back to the
@@ -92,6 +93,16 @@ function blankSlide(): HeroSlide {
     cap: null,
     ctaLabel: 'Shop the edit',
     ctaTarget: { kind: 'scroll' },
+    // All six colour overrides start unset. `null` is "follow the storefront
+    // theme", which is what every slide did before this feature existed and
+    // what a brand-new slide must keep doing — a default of anything else
+    // would mean adding a slide silently opts it out of the theme.
+    eyebrowColor: null,
+    headlineColor: null,
+    subColor: null,
+    taglineColor: null,
+    ctaBgColor: null,
+    ctaTextColor: null,
   };
 }
 
@@ -485,6 +496,16 @@ export default function HeroEditor({
           <CtaTargetField
             value={slide.ctaTarget}
             onChange={(ctaTarget) => patchSlide(slide.id, { ctaTarget })}
+          />
+
+          {/* Last in the card and collapsed by default: colours are an
+              exception most slides never need, and the preview inside wants
+              the text and image above it to already be set. */}
+          <HeroSlideColors
+            slide={slide}
+            imageUrl={urlById[slide.imageGalleryItemId ?? '']}
+            localFile={localFileById[slide.imageGalleryItemId ?? '']}
+            onPatch={(patch) => patchSlide(slide.id, patch)}
           />
         </div>
       ))}
