@@ -8,6 +8,7 @@ import {
   type Discount,
 } from '@/lib/api/discounts';
 import { errorMessageToText } from '@/lib/api/client';
+import { endOfShopDayIso, SHOP_TIME_ZONE } from '@/lib/dates/end-of-shop-day';
 
 function money(minor: number): string {
   return (minor / 100).toFixed(2);
@@ -81,7 +82,10 @@ export default function CodesPanel({
         ownerCustomerId: kind === 'PERSONAL' ? ownerCustomerId.trim() : null,
         maxRedemptions: maxRedemptions.trim() ? Number(maxRedemptions) : null,
         maxPerCustomer: Number(maxPerCustomer) || 1,
-        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+        // End of the chosen day in Cairo, not UTC midnight — which switched the
+        // offer off in the small hours of the day it was meant to run through,
+        // and made an offer ending today already expired (frontend#83).
+        expiresAt: expiresAt ? endOfShopDayIso(expiresAt) : null,
         note: note.trim() || null,
       });
       // Shown on its own rather than left to be found in the list: this is the
@@ -350,7 +354,7 @@ export default function CodesPanel({
                       {d.usedCount} / {d.maxRedemptions === null ? '∞' : d.maxRedemptions}
                     </td>
                     <td>
-                      {d.expiresAt ? new Date(d.expiresAt).toLocaleDateString() : '—'}
+                      {d.expiresAt ? new Date(d.expiresAt).toLocaleDateString(undefined, { timeZone: SHOP_TIME_ZONE }) : '—'}
                     </td>
                     <td>{d.note ?? '—'}</td>
                     <td>
