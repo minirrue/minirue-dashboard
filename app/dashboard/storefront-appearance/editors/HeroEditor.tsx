@@ -24,6 +24,7 @@ function HeroImageFrame({
   background,
   ratio,
   muted,
+  video,
 }: {
   url?: string;
   /** Cropped bytes for THIS image if it was just uploaded this session —
@@ -33,6 +34,8 @@ function HeroImageFrame({
   background: string;
   ratio: string;
   muted?: boolean;
+  /** Set when the item is a video (backend#89): preview it as one. */
+  video?: { poster: string | null };
 }) {
   return (
     <div
@@ -48,7 +51,20 @@ function HeroImageFrame({
         marginBottom: 8,
       }}
     >
-      {url && (
+      {url && video ? (
+        // A muted, controls-free thumbnail that answers "which clip is this".
+        // A video URL in an image tag is a broken frame that reads as a failed
+        // upload — which is what the gallery picker's videos used to produce here.
+        <video
+          src={url}
+          poster={video.poster ?? undefined}
+          muted
+          playsInline
+          preload="metadata"
+          aria-label="Chosen video"
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
+      ) : url && (
         <UploadPreviewImage
           src={url}
           localFile={localFile}
@@ -137,6 +153,18 @@ export default function HeroEditor({
    * to ignore the badge.
    */
   const [widthById, setWidthById] = useState<Record<string, number | null>>({});
+  /** Gallery ids that are videos, with their posters (backend#89). */
+  const [videoById, setVideoById] = useState<Record<string, { poster: string | null }>>({});
+  const rememberKind = (item: { id: string; kind: string; posterUrl: string | null }) =>
+    setVideoById((m) => {
+      if (item.kind !== 'video') {
+        if (!(item.id in m)) return m;
+        const next = { ...m };
+        delete next[item.id];
+        return next;
+      }
+      return { ...m, [item.id]: { poster: item.posterUrl } };
+    });
   // Task FF (2026-07-30): cropped bytes for an image gallery item id that was
   // just uploaded THIS session, so its hero preview frame renders from local
   // bytes instead of a guaranteed-cold-miss remote fetch. Never populated for
@@ -200,6 +228,7 @@ export default function HeroEditor({
         getItem(id)
           .then((item) => {
             rememberUrl(id, item.url);
+            rememberKind(item);
             setWidthById((prev) => ({ ...prev, [id]: item.width }));
           })
           .catch(() => {});
@@ -355,12 +384,18 @@ export default function HeroEditor({
 
           {slide.mode === 'image' ? (
             <div className="dash-field">
-              <span className="dash-label">Photograph</span>
+              <span className="dash-label">Photograph or video</span>
               <p className="dash-help-text" style={{ marginTop: 0 }}>
                 Two crops keep the hero right everywhere: a wide landscape for
                 desktop and a tall portrait for phones. Upload one photo and crop
                 both, or set each separately. The frames below are exactly what
                 shoppers see on each device.
+              </p>
+              <p className="dash-help-text" style={{ marginTop: 0 }}>
+                A video can be chosen from the <strong>Gallery</strong>. On the
+                storefront it plays muted and on a loop, only while its slide is
+                showing, and visitors who have asked their device for less motion
+                see its first frame as a still instead.
               </p>
 
               <button
@@ -378,12 +413,13 @@ export default function HeroEditor({
               <div className="dash-form-grid">
                 {/* Desktop (landscape) */}
                 <div className="dash-field">
-                  <span className="dash-label">Desktop image (landscape)</span>
+                  <span className="dash-label">Desktop (landscape)</span>
                   <HeroImageFrame
                     url={urlById[slide.imageGalleryItemId ?? '']}
                     localFile={localFileById[slide.imageGalleryItemId ?? '']}
                     background={slide.background}
                     ratio="16 / 9"
+                    video={videoById[slide.imageGalleryItemId ?? '']}
                   />
                   <SizeWarning id={slide.imageGalleryItemId} slot="desktop" />
                   <div className="dash-row-actions" style={{ flexWrap: 'wrap' }}>
@@ -407,7 +443,7 @@ export default function HeroEditor({
 
                 {/* Mobile (portrait) */}
                 <div className="dash-field">
-                  <span className="dash-label">Mobile image (portrait)</span>
+                  <span className="dash-label">Mobile (portrait)</span>
                   <HeroImageFrame
                     url={
                       urlById[slide.mobileImageGalleryItemId ?? ''] ??
@@ -420,6 +456,13 @@ export default function HeroEditor({
                     background={slide.background}
                     ratio="3 / 4"
                     muted={!slide.mobileImageGalleryItemId}
+                    // Same fallback as the URL above: no mobile crop means the
+                    // desktop media, so its kind too.
+                    video={
+                      slide.mobileImageGalleryItemId
+                        ? videoById[slide.mobileImageGalleryItemId]
+                        : videoById[slide.imageGalleryItemId ?? '']
+                    }
                   />
                   {/* Only when a mobile crop is actually set — the frame falls
                       back to the desktop image, and warning about that one here
@@ -503,7 +546,11 @@ export default function HeroEditor({
               the text and image above it to already be set. */}
           <HeroSlideColors
             slide={slide}
-            imageUrl={urlById[slide.imageGalleryItemId ?? '']}
+            imageUrl={
+              videoById[slide.imageGalleryItemId ?? '']
+                ? videoById[slide.imageGalleryItemId ?? ''].poster ?? undefined
+                : urlById[slide.imageGalleryItemId ?? '']
+            }
             localFile={localFileById[slide.imageGalleryItemId ?? '']}
             onPatch={(patch) => patchSlide(slide.id, patch)}
           />
@@ -534,6 +581,7 @@ export default function HeroEditor({
           onClose={() => setPickingFor(null)}
           onSelect={(item) => {
             rememberUrl(item.id, item.url);
+            rememberKind(item);
             patchSlide(pickingFor.slideId, {
               [slotField(pickingFor.slot)]: item.id,
             } as Partial<HeroSlide>);
