@@ -31,6 +31,24 @@ export function endOfShopDayIso(dateInput: string, timeZone: string = SHOP_TIME_
   return new Date(instant).toISOString();
 }
 
+/**
+ * The FIRST instant of a calendar day in the shop's time zone, as an ISO string.
+ *
+ * The start-date twin of `endOfShopDayIso` (backend#103): a code that "starts
+ * on the 1st" must work from midnight in Cairo, not from 02:00/03:00 (UTC
+ * midnight) and not from the evening before.
+ */
+export function startOfShopDayIso(dateInput: string, timeZone: string = SHOP_TIME_ZONE): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateInput.trim());
+  if (!match) return null;
+  const [, y, m, d] = match.map(Number) as unknown as [number, number, number, number];
+
+  const wallClockUtc = Date.UTC(y, m - 1, d, 0, 0, 0, 0);
+  let instant = wallClockUtc - offsetMs(wallClockUtc, timeZone);
+  instant = wallClockUtc - offsetMs(instant, timeZone);
+  return new Date(instant).toISOString();
+}
+
 /** The zone's offset from UTC at a given instant, in milliseconds. */
 function offsetMs(instantMs: number, timeZone: string): number {
   const parts = new Intl.DateTimeFormat('en-US', {
