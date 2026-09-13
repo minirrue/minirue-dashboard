@@ -20,7 +20,7 @@ import type { ApiError } from '@/lib/api/client';
 import StatusBadge from '@/components/dashboard/StatusBadge';
 import type { StatusKind } from '@/components/dashboard/StatusBadge';
 import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
-import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
+import MediaThumb from '@/components/dashboard/MediaThumb';
 import VariantsSection from './VariantsSection';
 import MediaSection from './MediaSection';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
@@ -474,10 +474,12 @@ export default function EditProductPage() {
                       page reload (owner, 2026-07-31). No `localFile` here — the
                       bytes live in MediaSection's own state; the retry is what
                       this grid needs. */}
-                  <UploadPreviewImage
-                    src={mediaPreviewUrl(m)}
+                  {/* A variant can hold a video too — drawn as its poster
+                      with a play glyph, never its movie url (dashboard#51). */}
+                  <MediaThumb
+                    media={{ ...m, url: m.kind === 'video' ? (m.url ?? '') : mediaPreviewUrl(m) }}
                     alt={m.altText ?? ''}
-                    data-trace-id={`PG-DASHBOARD-CAT-003::EL-IMG-variant-photo@${m.id}`}
+                    traceId={`PG-DASHBOARD-CAT-003::EL-IMG-variant-photo@${m.id}`}
                     style={{
                       width: '100%',
                       aspectRatio: '4/5',

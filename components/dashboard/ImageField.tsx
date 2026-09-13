@@ -3,7 +3,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import GalleryPickerModal from './GalleryPickerModal';
 import UploadPreviewImage from './UploadPreviewImage';
-import { exchangeItem } from '@/lib/gallery/api';
+import MediaThumb from './MediaThumb';
+import { exchangeItem, getItem } from '@/lib/gallery/api';
 import { useImageCrop } from './ImageCropProvider';
 import type { ApiError } from '@/lib/api/client';
 import type { GalleryItem } from '@/lib/gallery/types';
@@ -81,6 +82,36 @@ export default function ImageField({
   const [pendingLocalFile, setPendingLocalFile] = useState<File | null>(null);
   const pendingForMediaId = useRef<string | null | undefined>(undefined);
 
+  /*
+   * dashboard#51: this picture is always a still, and the picker below refuses
+   * videos. But a field saved before that rule may already point at one, and
+   * `imageUrl` is then an imgproxy render of a movie — a broken frame. None of
+   * the reads behind this field (categories, brands, bundles, shop tiles) say
+   * what the item is, so ask the Gallery once per id. A failed lookup (another
+   * seller's item, a blip) changes nothing: the picture is drawn as before.
+   */
+  const [videoLookup, setVideoLookup] = useState<{ mediaId: string; item: GalleryItem } | null>(
+    null,
+  );
+  useEffect(() => {
+    if (!mediaId || !imageUrl) return;
+    let cancelled = false;
+    Promise.resolve()
+      .then(() => getItem(mediaId))
+      .then((item) => {
+        if (!cancelled) setVideoLookup(item?.kind === 'video' ? { mediaId, item } : null);
+      })
+      .catch(() => {
+        if (!cancelled) setVideoLookup(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // `imageUrl` changes on an Exchange of the same id — ask again then too.
+  }, [mediaId, imageUrl]);
+  // Only ever about the id on screen now — a lookup for a previous id is stale.
+  const attachedVideo = videoLookup && videoLookup.mediaId === mediaId ? videoLookup.item : null;
+
   useEffect(() => {
     if (pendingForMediaId.current !== undefined && pendingForMediaId.current !== mediaId) {
       setPendingLocalFile(null);
@@ -140,7 +171,13 @@ export default function ImageField({
             padding: 4,
           }}
         >
-          {imageUrl ? (
+          {imageUrl && attachedVideo ? (
+            <MediaThumb
+              media={attachedVideo}
+              alt=""
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          ) : imageUrl ? (
             <UploadPreviewImage
               src={imageUrl}
               localFile={pendingLocalFile}
@@ -190,6 +227,12 @@ export default function ImageField({
           )}
         </div>
       </div>
+      {imageUrl && attachedVideo && (
+        <p className="dash-inline-error" style={{ marginTop: 6 }}>
+          This is a video, and this picture is shown as a still — the shop cannot display it here.
+          Choose a photo instead.
+        </p>
+      )}
       {helpText && <p className="dash-help-text">{helpText}</p>}
       {exchangeError && <p className="dash-inline-error">{exchangeError}</p>}
 
@@ -210,6 +253,9 @@ export default function ImageField({
           // So an "Upload from device" inside the picker is cropped to the same
           // shape this field renders, exactly as Exchange already is.
           aspectRatio={aspectRatio}
+          // A category, brand, bundle or shop tile is a still picture
+          // (dashboard#51) — videos are shown but refused, with the reason.
+          imagesOnly
           onSelect={(item) => {
             // A different EXISTING item, not bytes just uploaded here — clear
             // any stale local preview from a previous Exchange so this
