@@ -88,6 +88,31 @@ describe('HeroEditor with a video', () => {
     expect(await screen.findAllByLabelText('Chosen video')).toHaveLength(1);
   });
 
+  it('shows a converting video as its poster with a label, never the unplayable original (dashboard#45)', async () => {
+    (getItem as jest.Mock).mockImplementation(async (id: string) => ({
+      id,
+      kind: 'video',
+      url: 'https://s3.test/raw.avi',
+      posterUrl: 'https://img.test/raw-poster.webp',
+      width: 1920,
+      status: 'processing',
+      processingError: null,
+    }));
+    const { container } = render(
+      <HeroEditor section={section(slide({ imageGalleryItemId: 'raw' }))} onChange={() => {}} />,
+    );
+
+    // Desktop and the mobile fallback both say so.
+    expect(await screen.findAllByText(/converting/i)).toHaveLength(2);
+    expect(screen.queryByLabelText('Chosen video')).not.toBeInTheDocument();
+    expect(container.querySelector('video')).toBeNull();
+    const posters = Array.from(container.querySelectorAll('img')).filter(
+      (img) => img.getAttribute('src') === 'https://img.test/raw-poster.webp',
+    );
+    expect(posters.length).toBeGreaterThanOrEqual(2);
+    expect(container.querySelector('img[src="https://s3.test/raw.avi"]')).toBeNull();
+  });
+
   it('leaves a photo slide as before', async () => {
     render(<HeroEditor section={section(slide({ imageGalleryItemId: 'photo' }))} onChange={() => {}} />);
 

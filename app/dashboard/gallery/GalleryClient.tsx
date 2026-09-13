@@ -24,6 +24,18 @@ import {
   type DeletedMediaItem,
 } from '@/lib/catalog/api';
 import FolderTree from './FolderTree';
+import {
+  GalleryItemStatusBadge,
+  NotReadyVideoStill,
+  galleryItemFailureMessage,
+} from '@/components/dashboard/GalleryItemStatus';
+import {
+  GALLERY_UPLOAD_ACCEPT,
+  GALLERY_VIDEO_UPLOAD_HINT,
+  galleryItemStatus,
+  isPlayableGalleryItem,
+} from '@/lib/gallery/status';
+import { useProcessingItemsPoll } from '@/lib/gallery/use-processing-poll';
 
 const TRACE = 'PG-DASHBOARD-GAL-001';
 
@@ -241,7 +253,7 @@ function UploadDropzone({ folderId, onUploaded }: UploadDropzoneProps) {
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/heic,image/heif,image/webp,video/mp4,video/quicktime"
+        accept={GALLERY_UPLOAD_ACCEPT}
         multiple
         hidden
         onChange={(e) => {
@@ -253,7 +265,8 @@ function UploadDropzone({ folderId, onUploaded }: UploadDropzoneProps) {
       <p className="dash-gallery-dropzone-text">
         {uploading ? 'Uploading…' : 'Drag photos or videos here, or click to browse'}
       </p>
-      <p className="dash-help-text">JPEG, PNG, HEIC, HEIF, WEBP, MP4, MOV</p>
+      <p className="dash-help-text" style={{ margin: 0 }}>Photos: JPEG, PNG, HEIC, HEIF, WEBP.</p>
+      <p className="dash-help-text" style={{ margin: 0 }}>{GALLERY_VIDEO_UPLOAD_HINT}</p>
       {error && <p className="dash-inline-error">{error}</p>}
     </div>
   );
@@ -301,7 +314,18 @@ function ItemPreviewModal({
         ✕
       </button>
       <div className="dash-gallery-preview-frame" onClick={(e) => e.stopPropagation()}>
-        {item.kind === 'video' ? (
+        {item.kind === 'video' && !isPlayableGalleryItem(item) ? (
+          // The original upload may not play here (dashboard#45) — show the
+          // still and say what is happening instead of a dead player.
+          <div className="dash-gallery-preview-pending">
+            <NotReadyVideoStill item={item} className="dash-gallery-preview-media" />
+            <p className="dash-gallery-preview-pending-text">
+              {galleryItemStatus(item) === 'processing'
+                ? 'Converting… this video will play here once it has been converted to MP4.'
+                : galleryItemFailureMessage(item)}
+            </p>
+          </div>
+        ) : item.kind === 'video' ? (
           <video
             src={item.url}
             poster={item.posterUrl ?? undefined}
@@ -400,6 +424,45 @@ function AltTextField({
   );
 }
 
+/**
+ * One tile's picture: a photo, a playable video, or — for a video still
+ * converting or failed (dashboard#45) — its poster with a status pill. The
+ * original upload behind a non-ready item may not play in a browser, so it is
+ * never handed to a `<video>`.
+ */
+function GalleryTileMedia({ item, localFile }: { item: GalleryItem; localFile: File | null }) {
+  if (item.kind !== 'video') {
+    return (
+      <UploadPreviewImage
+        src={item.url}
+        localFile={localFile}
+        alt={item.altText ?? ''}
+        className="dash-gallery-item-media"
+      />
+    );
+  }
+  if (!isPlayableGalleryItem(item)) {
+    return (
+      <span className="dash-gallery-item-media-frame">
+        <NotReadyVideoStill item={item} className="dash-gallery-item-media" />
+        <GalleryItemStatusBadge item={item} />
+      </span>
+    );
+  }
+  return (
+    <video
+      src={item.url}
+      poster={item.posterUrl ?? undefined}
+      className="dash-gallery-item-media"
+      muted
+      /* A poster means the grid never needs the video bytes to draw
+         a tile — without this every clip in the folder starts
+         downloading just to paint one frame. */
+      preload={item.posterUrl ? 'none' : 'metadata'}
+    />
+  );
+}
+
 /* ── Item grid ── */
 function ItemGrid({
   items,
@@ -436,7 +499,7 @@ function ItemGrid({
       <input
         ref={exchangeInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/heic,image/heif,image/webp,video/mp4,video/quicktime"
+        accept={GALLERY_UPLOAD_ACCEPT}
         hidden
         onChange={(e) => {
           const file = e.target.files?.[0];
@@ -458,26 +521,11 @@ function ItemGrid({
             aria-label="View full size"
             data-trace-id={`${TRACE}::EL-BTN-preview-gallery-item@${item.id}`}
           >
-            {item.kind === 'video' ? (
-              <video
-                src={item.url}
-                poster={item.posterUrl ?? undefined}
-                className="dash-gallery-item-media"
-                muted
-                /* A poster means the grid never needs the video bytes to draw
-                   a tile — without this every clip in the folder starts
-                   downloading just to paint one frame. */
-                preload={item.posterUrl ? 'none' : 'metadata'}
-              />
-            ) : (
-              <UploadPreviewImage
-                src={item.url}
-                localFile={localFiles[item.id] ?? null}
-                alt={item.altText ?? ''}
-                className="dash-gallery-item-media"
-              />
-            )}
+            <GalleryTileMedia item={item} localFile={localFiles[item.id] ?? null} />
           </button>
+          {galleryItemStatus(item) === 'failed' && (
+            <p className="dash-gallery-item-error">{galleryItemFailureMessage(item)}</p>
+          )}
           <AltTextField item={item} onSave={(altText) => onRenameAlt(item.id, altText)} />
           <div className="dash-gallery-item-meta">
             <span>{formatDate(item.createdAt)}</span>
@@ -613,6 +661,27 @@ export default function GalleryClient() {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const isSearching = query.trim().length > 0;
+
+  /*
+   * A video in a format browsers cannot play arrives `processing` and is
+   * converted on the server (backend#123). Ask about just those items until
+   * they are not, and swap the answers in wherever the item is on screen — the
+   * folder grid, search results, the open preview — so a tile turns into a
+   * playing MP4 without a reload (dashboard#45).
+   */
+  useProcessingItemsPoll(
+    [...items, ...(searchResult?.items ?? []), ...(previewItem ? [previewItem] : [])],
+    (fresh) => {
+      const byId = new Map(fresh.map((f) => [f.id, f]));
+      const swap = <T extends GalleryItem>(it: T): T => {
+        const next = byId.get(it.id);
+        return next ? { ...it, ...next } : it;
+      };
+      setItems((prev) => prev.map(swap));
+      setSearchResult((prev) => (prev ? { ...prev, items: prev.items.map(swap) } : prev));
+      setPreviewItem((prev) => (prev ? swap(prev) : prev));
+    },
+  );
 
   /**
    * Where in the tree we are. `[]` is the top level; each entry is a folder we
@@ -963,29 +1032,17 @@ export default function GalleryClient() {
                           title={item.breadcrumb.join(' / ')}
                           data-trace-id={`${TRACE}::EL-BTN-preview-search-result-item@${item.id}`}
                         >
-                          {item.kind === 'video' ? (
-                            <video
-                src={item.url}
-                poster={item.posterUrl ?? undefined}
-                className="dash-gallery-item-media"
-                muted
-                /* A poster means the grid never needs the video bytes to draw
-                   a tile — without this every clip in the folder starts
-                   downloading just to paint one frame. */
-                preload={item.posterUrl ? 'none' : 'metadata'}
-              />
-                          ) : (
-                            <UploadPreviewImage
-                              src={item.url}
-                              // A search result can be the very item just
-                              // exchanged in the folder view behind this
-                              // overlay — same bytes, same cold-miss url.
-                              localFile={pendingLocalFiles[item.id] ?? null}
-                              alt={item.altText ?? ''}
-                              className="dash-gallery-item-media"
-                            />
-                          )}
+                          <GalleryTileMedia
+                            item={item}
+                            // A search result can be the very item just
+                            // exchanged in the folder view behind this
+                            // overlay — same bytes, same cold-miss url.
+                            localFile={pendingLocalFiles[item.id] ?? null}
+                          />
                         </button>
+                        {galleryItemStatus(item) === 'failed' && (
+                          <p className="dash-gallery-item-error">{galleryItemFailureMessage(item)}</p>
+                        )}
                         <p
                           className="dash-help-text"
                           style={{

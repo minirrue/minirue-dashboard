@@ -9,6 +9,13 @@ import GalleryPickerModal, { uploadDeviceFileToGallery } from '@/components/dash
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
 import { getItem } from '@/lib/gallery/api';
+import { galleryItemStatus } from '@/lib/gallery/status';
+import { useProcessingItemsPoll } from '@/lib/gallery/use-processing-poll';
+import {
+  GalleryItemStatusBadge,
+  NotReadyVideoStill,
+  galleryItemFailureMessage,
+} from '@/components/dashboard/GalleryItemStatus';
 
 /** True when the admin has typed editorial copy or attached an image that
  * would be silently thrown away by switching into product mode (product
@@ -53,9 +60,33 @@ export default function JournalEditor({
    */
   const [previewKind, setPreviewKind] = useState<GalleryItem['kind']>('image');
   const [previewPoster, setPreviewPoster] = useState<string | null>(null);
+  /** Where a chosen video is in its conversion to MP4 (dashboard#45). */
+  const [previewStatus, setPreviewStatus] = useState<
+    Pick<GalleryItem, 'status' | 'processingError'>
+  >({ status: 'ready', processingError: null });
   const previewForId = useRef<string | null>(null);
 
+  /** Everything the tile needs from a gallery item, in one place. */
+  function showItem(item: GalleryItem) {
+    previewForId.current = item.id;
+    setPreviewUrl(item.url);
+    setPreviewKind(item.kind);
+    setPreviewPoster(item.posterUrl);
+    setPreviewStatus({ status: item.status, processingError: item.processingError ?? null });
+  }
+
   const imageId = section.imageGalleryItemId ?? null;
+  const notReadyVideo = previewKind === 'video' && galleryItemStatus(previewStatus) !== 'ready';
+
+  // The tile turns into the playing clip once the server has converted it.
+  useProcessingItemsPoll(
+    imageId && notReadyVideo ? [{ id: imageId, status: previewStatus.status }] : [],
+    (fresh) => {
+      const item = fresh.find((f) => f.id === imageId);
+      if (item) showItem(item);
+    },
+  );
+
   useEffect(() => {
     if (!imageId) {
       setPreviewUrl(null);
@@ -73,6 +104,7 @@ export default function JournalEditor({
         setPreviewUrl(item.url);
         setPreviewKind(item.kind);
         setPreviewPoster(item.posterUrl);
+        setPreviewStatus({ status: item.status, processingError: item.processingError ?? null });
       })
       // A thumbnail is a convenience; a saved section id that no longer
       // resolves must not break the editor around it.
@@ -103,10 +135,9 @@ export default function JournalEditor({
       const cropped = await cropImage(file, { title: `Crop ${file.name}` });
       if (!cropped) return;
       const item: GalleryItem = await uploadDeviceFileToGallery(cropped, section.title || undefined);
-      previewForId.current = item.id;
-      setPreviewUrl(item.url);
-      setPreviewKind('image');
-      setPreviewPoster(null);
+      // This button takes photos only, so the item is an image whatever the
+      // response says about itself.
+      showItem({ ...item, kind: 'image', posterUrl: null, status: 'ready', processingError: null });
       // Local bytes only when the browser can actually paint them. A HEIC
       // passes through the cropper untouched (see ImageCropProvider) and no
       // browser decodes it, so showing the local file would be a broken frame
@@ -216,7 +247,14 @@ export default function JournalEditor({
                     padding: 4,
                   }}
                 >
-                  {previewUrl && previewKind === 'video' && !previewFile ? (
+                  {previewUrl && notReadyVideo && !previewFile ? (
+                    // Converting or failed (dashboard#45): the original upload
+                    // may not play here — show the still the storefront shows.
+                    <NotReadyVideoStill
+                      item={{ posterUrl: previewPoster, status: previewStatus.status }}
+                      style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                    />
+                  ) : previewUrl && previewKind === 'video' && !previewFile ? (
                     // Muted and without controls: this is a thumbnail that
                     // answers "which clip did I attach", not a player.
                     <video
@@ -279,6 +317,17 @@ export default function JournalEditor({
               )}
             </div>
             {uploadError && <p className="dash-inline-error">{uploadError}</p>}
+            {imageId && previewUrl && notReadyVideo && !previewFile && (
+              <p
+                className={previewStatus.status === 'failed' ? 'dash-inline-error' : 'dash-help-text'}
+                style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', marginTop: 6 }}
+              >
+                <GalleryItemStatusBadge item={previewStatus} inline />
+                {previewStatus.status === 'failed'
+                  ? `${galleryItemFailureMessage(previewStatus)} The storefront will only show its still — exchange it in the Gallery or pick another.`
+                  : 'The storefront shows its still until the video has been converted.'}
+              </p>
+            )}
             {!section.imageGalleryItemId && (
               <p className="dash-help-text" style={{ marginTop: 6 }}>
                 No photo or video chosen yet — this block will render without one on the live
@@ -309,11 +358,8 @@ export default function JournalEditor({
           onSelect={(item) => {
             // A different EXISTING item — drop any local bytes from a previous
             // device upload so the tile cannot keep showing the old photo.
-            previewForId.current = item.id;
             setPreviewFile(null);
-            setPreviewUrl(item.url);
-            setPreviewKind(item.kind);
-            setPreviewPoster(item.posterUrl);
+            showItem(item);
             onChange({ ...section, imageGalleryItemId: item.id });
             setPicking(false);
           }}

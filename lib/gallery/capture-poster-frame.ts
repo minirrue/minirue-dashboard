@@ -25,6 +25,17 @@
 const CAPTURE_AT_SECONDS = 0.1;
 const OUTPUT_QUALITY = 0.85;
 
+/**
+ * The longest a capture may hold up an upload (dashboard#45).
+ *
+ * Since backend#123 the gallery takes formats this browser often cannot
+ * decode — ProRes/HEVC .mov, .avi, .mkv. A decoder that refuses a file usually
+ * fires `error`, but nothing guarantees it fires anything, and `uploadItem`
+ * awaits this before sending a byte. The server makes its own poster when none
+ * is sent, so giving up costs nothing.
+ */
+export const POSTER_CAPTURE_TIMEOUT_MS = 8_000;
+
 export async function capturePosterFrame(file: File): Promise<Blob | null> {
   if (typeof document === 'undefined') return null;
   if (!file.type.startsWith('video/')) return null;
@@ -36,6 +47,21 @@ export async function capturePosterFrame(file: File): Promise<Blob | null> {
   video.preload = 'auto';
   video.src = objectUrl;
 
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), POSTER_CAPTURE_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([grabFrame(video), timeout]);
+  } finally {
+    clearTimeout(timer);
+    video.removeAttribute('src');
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function grabFrame(video: HTMLVideoElement): Promise<Blob | null> {
   try {
     await waitFor(video, 'loadedmetadata');
 
@@ -60,8 +86,6 @@ export async function capturePosterFrame(file: File): Promise<Blob | null> {
     });
   } catch {
     return null;
-  } finally {
-    URL.revokeObjectURL(objectUrl);
   }
 }
 

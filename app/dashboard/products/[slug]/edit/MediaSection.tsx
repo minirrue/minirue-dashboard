@@ -17,6 +17,7 @@ import GalleryPickerModal, {
   uploadDeviceFileToGallery,
 } from '@/components/dashboard/GalleryPickerModal';
 import type { GalleryItem } from '@/lib/gallery/types';
+import { GALLERY_UPLOAD_ACCEPT, GALLERY_VIDEO_UPLOAD_HINT } from '@/lib/gallery/status';
 import { ImagePreviewModal } from '@/components/dashboard/ImagePreviewModal';
 import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
@@ -361,7 +362,7 @@ export default function MediaSection({
       <input
         ref={exchangeInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/heic,image/heif,image/webp,video/mp4,video/quicktime"
+        accept={GALLERY_UPLOAD_ACCEPT}
         hidden
         onChange={(e) => {
           const file = e.target.files?.[0];
@@ -574,7 +575,7 @@ export default function MediaSection({
           <input
             ref={inputRef}
             type="file"
-            accept="image/jpeg,image/png,image/heic,image/heif,image/webp,video/mp4,video/quicktime"
+            accept={GALLERY_UPLOAD_ACCEPT}
             hidden
             onChange={(e) => {
               const file = e.target.files?.[0];
@@ -594,6 +595,9 @@ export default function MediaSection({
           </button>
           <p className="dash-help-text" style={{ marginTop: 8 }}>
             Uploaded photos are also saved to your Gallery.
+          </p>
+          <p className="dash-help-text" style={{ marginTop: 0 }}>
+            {GALLERY_VIDEO_UPLOAD_HINT}
           </p>
         </div>
       ) : (
