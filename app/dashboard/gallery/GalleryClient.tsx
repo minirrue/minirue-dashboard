@@ -510,6 +510,49 @@ function ItemGrid({
 }
 
 /* ── Main page ── */
+/** A grid of folder tiles; tapping one opens it on the right. */
+function SubfolderTiles({
+  parentName,
+  folders,
+  onOpen,
+}: {
+  parentName: string;
+  folders: GalleryFolder[];
+  onOpen: (folder: GalleryFolder) => void;
+}) {
+  return (
+    <ul className="dash-gallery-subfolder-grid" aria-label={`Inside ${parentName}`}>
+      {folders.map((child) => (
+        <li key={child.id}>
+          <button
+            type="button"
+            className="dash-gallery-subfolder-tile"
+            onClick={() => onOpen(child)}
+            data-trace-id={`${TRACE}::EL-BTN-open-subfolder@${child.id}`}
+          >
+            <span className="dash-gallery-tree-icon" aria-hidden="true">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+              </svg>
+            </span>
+            <span className="dash-gallery-subfolder-name">{child.name}</span>
+            <span className="dash-gallery-subfolder-count">{child.itemCount}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function GalleryClient() {
   const cropImage = useImageCrop();
   // Task 39: the Deleted images panel is SUPERADMIN-only — gated here (never
@@ -620,8 +663,22 @@ export default function GalleryClient() {
     setItemsLoading(true);
     setItemsError(null);
     try {
-      const folderItems = await listItems(folder.id);
+      /*
+       * A subfolder can still HOLD folders (dashboard#30). The two-level rule
+       * (2026-08-03) stops new ones being made, but was never backfilled, so
+       * folders nested three deep before that date still exist — and the
+       * recursive item count walks into them. Listing items alone left those
+       * photos counted and unreachable. Ask for both; the child list is empty
+       * for every folder created under the current rule, so a normal
+       * subfolder renders exactly as before. A failure there must not cost
+       * the items, hence the catch.
+       */
+      const [folderItems, legacyChildren] = await Promise.all([
+        listItems(folder.id),
+        listFolders(folder.id).catch(() => [] as GalleryFolder[]),
+      ]);
       setItems(folderItems);
+      setChildFolders(legacyChildren);
     } catch (e) {
       const err = e as ApiError;
       setItemsError(err.message ?? 'Failed to load folder contents.');
@@ -1082,10 +1139,33 @@ export default function GalleryClient() {
                     folderId={selectedFolder.id}
                     onUploaded={handleItemUploaded}
                   />
+                  {/* Folders nested here before the two-level rule (#30).
+                      Shown above the photos so a counted photo is one tap
+                      away instead of described and unreachable. */}
+                  {!itemsLoading && childFolders.length > 0 && (
+                    <>
+                      <p className="dash-help-text" style={{ margin: '0 0 8px' }}>
+                        {childFolders.length === 1 ? 'Folder' : 'Folders'} inside{' '}
+                        <strong>{selectedFolder.name}</strong>
+                      </p>
+                      <SubfolderTiles
+                        parentName={selectedFolder.name}
+                        folders={childFolders}
+                        onOpen={(child) =>
+                          handleTreeSelect(child, [...selectedPath, selectedFolder])
+                        }
+                      />
+                    </>
+                  )}
                   {itemsLoading ? (
                     <p className="dash-help-text">Loading items…</p>
                   ) : itemsError ? (
                     <p className="dash-inline-error">{itemsError}</p>
+                  ) : items.length === 0 && childFolders.length > 0 ? (
+                    <p className="dash-help-text" style={{ marginTop: 0 }}>
+                      No photos directly in <strong>{selectedFolder.name}</strong> —
+                      open a folder above to see what it holds.
+                    </p>
                   ) : items.length === 0 && selectedFolder.itemCount > 0 ? (
                     /* Empty panel, non-zero count — say where the photos ARE.
                        
@@ -1154,42 +1234,13 @@ export default function GalleryClient() {
                       above to make the first one.
                     </p>
                   ) : (
-                    <ul
-                      className="dash-gallery-subfolder-grid"
-                      aria-label={`Inside ${selectedFolder.name}`}
-                    >
-                      {childFolders.map((child) => (
-                        <li key={child.id}>
-                          <button
-                            type="button"
-                            className="dash-gallery-subfolder-tile"
-                            onClick={() => handleTreeSelect(child, [...selectedPath, selectedFolder])}
-                            data-trace-id={`${TRACE}::EL-BTN-open-subfolder@${child.id}`}
-                          >
-                            <span className="dash-gallery-tree-icon" aria-hidden="true">
-                              <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth={1.8}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
-                              </svg>
-                            </span>
-                            <span className="dash-gallery-subfolder-name">
-                              {child.name}
-                            </span>
-                            <span className="dash-gallery-subfolder-count">
-                              {child.itemCount}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                    <SubfolderTiles
+                      parentName={selectedFolder.name}
+                      folders={childFolders}
+                      onOpen={(child) =>
+                        handleTreeSelect(child, [...selectedPath, selectedFolder])
+                      }
+                    />
                   )}
                 </>
               )}

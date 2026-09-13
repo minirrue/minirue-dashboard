@@ -91,7 +91,12 @@ async function findItemDeleteButton(): Promise<HTMLElement> {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  (listFolders as jest.Mock).mockResolvedValue([makeFolder()]);
+  // Answer by parent. A subfolder now also asks for its own children (#30,
+  // legacy three-level nesting), and a blanket mock would report this leaf as
+  // containing itself.
+  (listFolders as jest.Mock).mockImplementation(async (parentId?: string) =>
+    parentId ? [] : [makeFolder()],
+  );
   (listItems as jest.Mock).mockResolvedValue([makeItem()]);
   (deleteItem as jest.Mock).mockResolvedValue(undefined);
 });
