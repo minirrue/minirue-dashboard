@@ -362,6 +362,11 @@ type SettingsForm = {
    * distinguishable from "zero". See lib/shipping/governorate-rates.ts.
    */
   shippingRates: GovernorateRateDraft[];
+  /**
+   * Cash-on-delivery limit in major units as typed (minirue-backend#105).
+   * Blank means NO limit — COD allowed at any total — which is the default.
+   */
+  codLimit: string;
 };
 
 /** Minor units (what the API stores) to a major-unit string for an input. */
@@ -385,6 +390,30 @@ function inputToCents(value: string): number {
  * the governorate table and every other edit in the same save along with it.
  * Coerced here rather than fought over, in the spirit of `sanitizeHeroColor`.
  */
+/**
+ * The stored COD limit as the field shows it: blank for "no limit".
+ *
+ * `null` and `0` must not look alike. `0` is a real limit (COD refused on every
+ * order), so it reads "0.00"; `null` is no limit, so the field is empty.
+ */
+export function codLimitToInput(minor: number | null | undefined): string {
+  return typeof minor === 'number' && Number.isFinite(minor) ? (minor / 100).toFixed(2) : '';
+}
+
+/**
+ * The field as the server wants it: `null` when blank, else whole minor units.
+ *
+ * Blank is sent as `null`, never `0` — `inputToCents` would turn an empty field
+ * into 0, and a 0 limit refuses cash on delivery for every shopper. That is the
+ * exact opposite of what an admin clearing the field means.
+ */
+export function codLimitFromInput(value: string): number | null {
+  const trimmed = value.trim();
+  if (trimmed === '') return null;
+  const n = parseFloat(trimmed);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : null;
+}
+
 export function normalizeCurrencyForShipping(value: string): string {
   const code = value.trim().toUpperCase();
   return /^[A-Z]{3}$/.test(code) ? code : 'EGP';
@@ -423,6 +452,7 @@ function settingsToForm(s: StoreSettings): SettingsForm {
     // frozen — `ratesToDrafts` marks them `isNew: false`. That is what stops a
     // label rename from re-keying orders already placed against the row.
     shippingRates: ratesToDrafts(s.shipping?.rates),
+    codLimit: codLimitToInput(s.payments?.codMaxOrderMinor),
   };
 }
 
@@ -435,6 +465,7 @@ export default function SettingsClient() {
     shippingFlatRate: '',
     shippingFreeOver: '',
     shippingRates: [],
+    codLimit: '',
   });
   const [raw, setRaw] = useState<StoreSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -569,6 +600,9 @@ export default function SettingsClient() {
               },
             }
           : {}),
+        // Always sent: this page has loaded the stored value, so what is on
+        // screen is the truth, and a cleared field means "no limit".
+        payments: { codMaxOrderMinor: codLimitFromInput(form.codLimit) },
         brand: {
           // Sent EXACTLY as typed — free casing, free internal spaces
           // ("MINI RUE" must survive as "MINI RUE", never collapsed or
@@ -793,6 +827,25 @@ export default function SettingsClient() {
               />
               <p className="dash-help-text">
                 Order subtotal at or above which shipping is free. 0 disables it.
+              </p>
+            </div>
+            <div className="dash-field">
+              <label className="dash-label" htmlFor="cod-limit">
+                Cash on delivery limit ({form.currency || 'EGP'})
+              </label>
+              <input
+                id="cod-limit"
+                type="number"
+                className="dash-input"
+                value={form.codLimit}
+                onChange={setField('codLimit')}
+                min="0"
+                step="0.01"
+                placeholder="No limit"
+              />
+              <p className="dash-help-text">
+                Orders whose total (with delivery) is above this can&apos;t be paid cash on
+                delivery. Leave blank to allow cash on delivery on every order.
               </p>
             </div>
           </div>

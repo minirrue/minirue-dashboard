@@ -73,6 +73,13 @@ export interface StoreSettings {
   };
   /** Absent on a store that has never had tax rules configured. */
   taxRules?: TaxRule[];
+  /**
+   * Payment-method rules (minirue-backend#105). `codMaxOrderMinor: null` (or
+   * the block absent) means no cash-on-delivery limit — the default.
+   */
+  payments?: {
+    codMaxOrderMinor: number | null;
+  };
   brand: BrandConfig;
   maintenanceMode: boolean;
   storefront?: StorefrontLayout;
