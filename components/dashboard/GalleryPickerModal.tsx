@@ -383,9 +383,8 @@ export default function GalleryPickerModal({
                               display: 'block',
                               padding: '2px 4px',
                               fontSize: 10,
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
+                              // Wraps, never truncates (dashboard#34).
+                              overflowWrap: 'anywhere',
                             }}
                           >
                             {item.breadcrumb.join(' / ')}
