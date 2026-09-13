@@ -179,7 +179,7 @@ function TreeNode({
         <span className="dash-gallery-tree-icon">
           <FolderGlyph />
         </span>
-        <span className="dash-gallery-tree-name">{folder.name}</span>
+        <span className="dash-gallery-tree-name" title={folder.name}>{folder.name}</span>
         {/* Only meaningful for a folder that may hold media — a top-level
             folder's count is always 0 by design, and printing "0 photos" next to
             it reads as an error rather than a rule. */}

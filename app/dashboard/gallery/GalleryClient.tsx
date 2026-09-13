@@ -544,7 +544,9 @@ function SubfolderTiles({
                 <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
               </svg>
             </span>
-            <span className="dash-gallery-subfolder-name">{child.name}</span>
+            <span className="dash-gallery-subfolder-name" title={child.name}>
+              {child.name}
+            </span>
             <span className="dash-gallery-subfolder-count">{child.itemCount}</span>
           </button>
         </li>
@@ -989,10 +991,11 @@ export default function GalleryClient() {
                           style={{
                             margin: '4px 0 0',
                             fontSize: 11,
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
+                            // Wraps, never truncates: the breadcrumb is how an
+                            // admin tells two same-named photos apart (#34).
+                            overflowWrap: 'anywhere',
                           }}
+                          title={item.breadcrumb.join(' / ')}
                         >
                           {item.breadcrumb.join(' / ')}
                         </p>

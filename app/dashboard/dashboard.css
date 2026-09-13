@@ -3360,9 +3360,12 @@
 .dash-gallery-tree-name {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* Wraps rather than cutting off with an ellipsis (dashboard#34). A subfolder
+     sits one indent deeper in a narrow rail, so it lost the most characters,
+     and two folders sharing a prefix became indistinguishable. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
   font-size: 14px;
 }
 /* The count gives way before the name does — which folder it is matters more
@@ -3485,9 +3488,12 @@
 .dash-gallery-subfolder-name {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* Wraps rather than cutting off with an ellipsis (dashboard#34). A subfolder
+     sits one indent deeper in a narrow rail, so it lost the most characters,
+     and two folders sharing a prefix became indistinguishable. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
   font-size: 14px;
 }
 .dash-gallery-subfolder-count {
