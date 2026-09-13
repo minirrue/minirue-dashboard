@@ -100,6 +100,12 @@ export async function listDiscounts(includeKilled = false): Promise<Discount[]> 
 
 export interface CreateDiscountInput {
   kind: 'GLOBAL' | 'PERSONAL';
+  /**
+   * The name shoppers type, e.g. `SUMMER SALE`. Omitted = generated
+   * (`MINIRUE-K7P2X4`). The server stores it UPPERCASE with single spaces and
+   * refuses one that matches an existing code ignoring spaces (409).
+   */
+  code?: string | null;
   valueType: 'PERCENT' | 'FIXED';
   percent?: number;
   amountMinor?: number;
@@ -112,7 +118,23 @@ export interface CreateDiscountInput {
   note?: string | null;
 }
 
-/** The code itself is generated server-side and comes back on the response. */
+/**
+ * A MANUAL sitewide code (backend#103): typed at checkout, takes a percentage
+ * off the whole eligible bag. Anyone may use it, it is not tied to one product,
+ * and it is not the automatic markdown. Nothing distinguishes it on the server
+ * beyond that shape — which is exactly what makes it apply to the whole bag.
+ */
+export function isManualSitewideCode(d: Discount): boolean {
+  return (
+    d.kind === 'GLOBAL' &&
+    d.valueType === 'PERCENT' &&
+    !d.productId &&
+    !d.ownerCustomerId &&
+    !!d.code
+  );
+}
+
+/** Without a `code` the server generates one; it comes back on the response. */
 export async function createDiscount(
   input: CreateDiscountInput,
 ): Promise<Discount> {

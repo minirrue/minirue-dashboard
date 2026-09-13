@@ -8,7 +8,12 @@ import {
   type Discount,
 } from '@/lib/api/discounts';
 import { errorMessageToText } from '@/lib/api/client';
-import { endOfShopDayIso, SHOP_TIME_ZONE } from '@/lib/dates/end-of-shop-day';
+import {
+  endOfShopDayIso,
+  SHOP_TIME_ZONE,
+  startOfShopDayIso,
+} from '@/lib/dates/end-of-shop-day';
+import { codeNameProblem, formatCodeName } from '@/lib/discounts/code-name';
 
 function money(minor: number): string {
   return (minor / 100).toFixed(2);
@@ -23,10 +28,13 @@ function describeValue(d: Discount): string {
 /**
  * Codes — create, watch, stop.
  *
- * There is no field for the code text. It is generated from a 32-character
+ * The code text is optional. Left blank it is generated from a 32-character
  * alphabet that leaves out O, 0, I and 1, the four characters people confuse
- * when reading a code aloud — and a hand-typed code would eventually collide
- * with one already issued.
+ * when reading a code aloud — right for a code sent to one person. A campaign
+ * code has to be printable, so the admin can name it (`SUMMER SALE`); the
+ * server saves it in capitals and refuses a name that collides with an existing
+ * code ignoring spaces (backend#103). A whole-bag percentage code for everyone
+ * is the same thing the Sitewide tab calls a manual code.
  */
 export default function CodesPanel({
   onChanged,
@@ -50,6 +58,13 @@ export default function CodesPanel({
   const [maxRedemptions, setMaxRedemptions] = React.useState('');
   const [maxPerCustomer, setMaxPerCustomer] = React.useState('1');
   const [expiresAt, setExpiresAt] = React.useState('');
+  const [codeName, setCodeName] = React.useState('');
+  const [startsAt, setStartsAt] = React.useState('');
+  const codeProblem = codeName.trim() ? codeNameProblem(codeName) : null;
+  const datesProblem =
+    startsAt && expiresAt && expiresAt < startsAt
+      ? 'It ends before it starts — pick an end date on or after the start.'
+      : null;
   const [note, setNote] = React.useState('');
 
   const load = React.useCallback(async () => {
@@ -86,6 +101,9 @@ export default function CodesPanel({
         // offer off in the small hours of the day it was meant to run through,
         // and made an offer ending today already expired (frontend#83).
         expiresAt: expiresAt ? endOfShopDayIso(expiresAt) : null,
+        startsAt: startsAt ? startOfShopDayIso(startsAt) : null,
+        // Blank = generated. Named = exactly what the preview showed.
+        ...(codeName.trim() ? { code: formatCodeName(codeName) } : {}),
         note: note.trim() || null,
       });
       // Shown on its own rather than left to be found in the list: this is the
@@ -94,6 +112,7 @@ export default function CodesPanel({
       setJustCreated(created.code);
       setNote('');
       setOwnerCustomerId('');
+      setCodeName('');
       onChanged();
       await load();
     } catch (e) {
@@ -142,6 +161,27 @@ export default function CodesPanel({
         <h2 className="dash-card-title">New code</h2>
         <form onSubmit={submit}>
           <div className="dash-form-grid">
+            <div className="dash-field">
+              <label className="dash-label" htmlFor="disc-code">Code</label>
+              <input
+                id="disc-code"
+                className="dash-input"
+                value={codeName}
+                onChange={(e) => setCodeName(e.target.value)}
+                placeholder="blank = generated"
+                autoComplete="off"
+                spellCheck={false}
+                aria-invalid={!!codeProblem}
+              />
+              {codeProblem ? (
+                <p className="dash-field-error" role="alert">{codeProblem}</p>
+              ) : codeName.trim() ? (
+                <p className="dash-help-text" style={{ marginTop: 4 }}>
+                  Saved as <strong data-testid="codes-code-preview">{formatCodeName(codeName)}</strong>
+                </p>
+              ) : null}
+            </div>
+
             <div className="dash-field">
               <label className="dash-label" htmlFor="disc-kind">Who can use it</label>
               <select
@@ -246,6 +286,17 @@ export default function CodesPanel({
             </div>
 
             <div className="dash-field">
+              <label className="dash-label" htmlFor="disc-starts">Starts</label>
+              <input
+                id="disc-starts"
+                className="dash-input"
+                type="date"
+                value={startsAt}
+                onChange={(e) => setStartsAt(e.target.value)}
+              />
+            </div>
+
+            <div className="dash-field">
               <label className="dash-label" htmlFor="disc-expires">Expires</label>
               <input
                 id="disc-expires"
@@ -268,8 +319,14 @@ export default function CodesPanel({
             </div>
           </div>
 
+          {datesProblem && <p className="dash-error" role="alert">{datesProblem}</p>}
+
           <div className="dash-form-actions">
-            <button type="submit" className="dash-btn-primary" disabled={creating}>
+            <button
+              type="submit"
+              className="dash-btn-primary"
+              disabled={creating || !!codeProblem || !!datesProblem}
+            >
               {creating ? 'Creating…' : 'Create code'}
             </button>
           </div>
