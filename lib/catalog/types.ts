@@ -102,6 +102,18 @@ export interface ProductMedia {
    * that ends the product page. CAROUSEL = everything else in the gallery. */
   role: 'COVER' | 'CAROUSEL' | 'CLOSING';
   url?: string | null;
+  /**
+   * What the linked gallery item really is (dashboard#51, backend 0.116.0).
+   * Optional so fixtures and an older API still read as a ready image —
+   * `mapMedia` always fills them.
+   *
+   * For a `video`, `url` may be its POSTER while it converts (the server never
+   * hands out the unconverted original), so draw a video through `MediaThumb`:
+   * poster + play glyph, and the Converting/Failed badge from `status`.
+   */
+  kind?: 'image' | 'video';
+  posterUrl?: string | null;
+  status?: 'ready' | 'processing' | 'failed';
   width: number | null;
   height: number | null;
   altText: string | null;

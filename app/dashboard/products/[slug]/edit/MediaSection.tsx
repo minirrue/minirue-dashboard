@@ -17,9 +17,18 @@ import GalleryPickerModal, {
   uploadDeviceFileToGallery,
 } from '@/components/dashboard/GalleryPickerModal';
 import type { GalleryItem } from '@/lib/gallery/types';
-import { GALLERY_UPLOAD_ACCEPT, GALLERY_VIDEO_UPLOAD_HINT } from '@/lib/gallery/status';
+import {
+  GALLERY_UPLOAD_ACCEPT,
+  GALLERY_VIDEO_UPLOAD_HINT,
+  galleryItemStatus,
+} from '@/lib/gallery/status';
+import { useProcessingItemsPoll } from '@/lib/gallery/use-processing-poll';
 import { ImagePreviewModal } from '@/components/dashboard/ImagePreviewModal';
-import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
+import MediaThumb from '@/components/dashboard/MediaThumb';
+import {
+  NotReadyVideoStill,
+  galleryItemFailureMessage,
+} from '@/components/dashboard/GalleryItemStatus';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 
 interface Props {
@@ -43,6 +52,71 @@ interface Props {
 function previewUrl(m: ProductMedia): string {
   if (m.url) return m.url;
   return cloudinaryPreviewUrl(m.cloudinaryPublicId);
+}
+
+/**
+ * What a gallery item IS, copied onto the product media row that links it
+ * (dashboard#51). The item was read seconds ago — it is the truth about kind
+ * and conversion status whatever an older API's create response omitted.
+ */
+function withItemFacts(asset: ProductMedia, item: GalleryItem): ProductMedia {
+  return {
+    ...asset,
+    kind: item.kind,
+    posterUrl: item.posterUrl ?? asset.posterUrl ?? null,
+    status: galleryItemStatus(item),
+  };
+}
+
+/**
+ * The full-size view for a video row. A ready one plays; one still converting
+ * (or failed) shows its still and says why — its `url` is not a playable movie
+ * (see MediaThumb).
+ */
+function VideoPreviewModal({ media, onClose }: { media: ProductMedia; onClose: () => void }) {
+  const status = galleryItemStatus(media);
+  return (
+    <div
+      className="dash-gallery-preview-overlay"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Video preview"
+    >
+      <button
+        type="button"
+        className="dash-gallery-preview-close"
+        onClick={onClose}
+        aria-label="Close preview"
+      >
+        ✕
+      </button>
+      <div className="dash-gallery-preview-frame" onClick={(e) => e.stopPropagation()}>
+        {status === 'ready' && media.url ? (
+          <video
+            src={media.url}
+            poster={media.posterUrl ?? undefined}
+            className="dash-gallery-preview-media"
+            controls
+            autoPlay
+            playsInline
+          />
+        ) : (
+          <div className="dash-gallery-preview-pending">
+            <NotReadyVideoStill
+              item={{ posterUrl: media.posterUrl ?? null, status }}
+              className="dash-gallery-preview-media"
+            />
+            <p className="dash-gallery-preview-pending-text">
+              {status === 'processing'
+                ? 'Converting… this video will play here once it has been converted to MP4. The shop shows its still until then.'
+                : `${galleryItemFailureMessage({ processingError: null })} Exchange it, or delete it and add another.`}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function MediaSection({
@@ -91,6 +165,35 @@ export default function MediaSection({
   // remote URL. Rows never touched this session (the product's existing
   // media on first paint) have no entry here and fall back to plain retry.
   const [pendingLocalFiles, setPendingLocalFiles] = useState<Record<string, File>>({});
+
+  /*
+   * A video still converting turns into the playable clip on its own, as it
+   * does in the Gallery tab (dashboard#45/#51). Asks about the linked gallery
+   * items only while one is `processing`, and nothing otherwise.
+   */
+  useProcessingItemsPoll(
+    media
+      .filter((m) => m.kind === 'video' && m.galleryItemId)
+      .map((m) => ({ id: m.galleryItemId as string, status: m.status })),
+    (fresh) => {
+      const byId = new Map(fresh.map((f) => [f.id, f]));
+      let changed = false;
+      const next = media.map((m) => {
+        const item = m.galleryItemId ? byId.get(m.galleryItemId) : undefined;
+        if (!item) return m;
+        const status = galleryItemStatus(item);
+        if (status === galleryItemStatus(m)) return m;
+        changed = true;
+        return {
+          ...withItemFacts(m, item),
+          // Only a ready item's url is the movie; until then keep the still the
+          // server already gave this row.
+          url: status === 'ready' ? item.url : m.url,
+        };
+      });
+      if (changed) onMediaChange(next);
+    },
+  );
 
   /** Promote one image to the cover thumbnail; the old cover joins the carousel. */
   async function handleSetCover(m: ProductMedia) {
@@ -283,8 +386,11 @@ export default function MediaSection({
         { galleryItemId: item.id, sortOrder: media.length },
         mediaBasePath,
       );
-      onMediaChange([...media, asset]);
-      setPendingLocalFiles((prev) => ({ ...prev, [asset.id]: cropped }));
+      onMediaChange([...media, withItemFacts(asset, item)]);
+      // Local bytes only for a photo — a movie file cannot be painted as one.
+      if (item.kind !== 'video') {
+        setPendingLocalFiles((prev) => ({ ...prev, [asset.id]: cropped }));
+      }
     } catch (e) {
       const err = e as ApiError;
       setError(err.message || 'Failed to upload image.');
@@ -310,10 +416,22 @@ export default function MediaSection({
       const cropped = await cropImage(file, { title: `Crop replacement for ${file.name}` });
       if (!cropped) return;
       const updated = await exchangeItem(target.galleryItemId, cropped);
+      // Exchange can swap a photo for a video or back, so the row takes the
+      // replacement's kind and status along with its url.
       onMediaChange(
-        media.map((x) => (x.id === mediaId ? { ...x, url: updated.url } : x)),
+        media.map((x) =>
+          x.id === mediaId ? { ...withItemFacts(x, updated), url: updated.url } : x,
+        ),
       );
-      setPendingLocalFiles((prev) => ({ ...prev, [mediaId]: cropped }));
+      if (updated.kind !== 'video') {
+        setPendingLocalFiles((prev) => ({ ...prev, [mediaId]: cropped }));
+      } else {
+        setPendingLocalFiles((prev) => {
+          const next = { ...prev };
+          delete next[mediaId];
+          return next;
+        });
+      }
     } catch (e) {
       const err = e as ApiError;
       setError(err.message || 'Failed to exchange image.');
@@ -331,7 +449,7 @@ export default function MediaSection({
         { galleryItemId: item.id, sortOrder: media.length },
         mediaBasePath,
       );
-      onMediaChange([...media, asset]);
+      onMediaChange([...media, withItemFacts(asset, item)]);
     } catch (e) {
       const err = e as ApiError;
       setError(err.message || 'Failed to link gallery photo.');
@@ -390,11 +508,11 @@ export default function MediaSection({
                 data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-enlarge-product-image@${m.id}`}
                 style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
               >
-                <UploadPreviewImage
-                  src={previewUrl(m)}
+                <MediaThumb
+                  media={{ ...m, url: m.kind === 'video' ? (m.url ?? '') : previewUrl(m) }}
                   localFile={pendingLocalFiles[m.id] ?? null}
                   alt={m.altText ?? ''}
-                  data-trace-id={`PG-DASHBOARD-CAT-003::EL-IMG-product-image@${m.id}`}
+                  traceId={`PG-DASHBOARD-CAT-003::EL-IMG-product-image@${m.id}`}
                   style={{
                     width: '100%',
                     aspectRatio: '4/5',
@@ -615,7 +733,10 @@ export default function MediaSection({
 
       {error && <p className="dash-inline-error">{error}</p>}
 
-      {previewMedia && (
+      {previewMedia?.kind === 'video' && (
+        <VideoPreviewModal media={previewMedia} onClose={() => setPreviewMedia(null)} />
+      )}
+      {previewMedia && previewMedia.kind !== 'video' && (
         <ImagePreviewModal
           src={previewUrl(previewMedia)}
           // Enlarging a photo right after exchanging it is the likeliest cold

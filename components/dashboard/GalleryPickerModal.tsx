@@ -19,6 +19,7 @@ import {
   NotReadyVideoStill,
   galleryItemFailureMessage,
 } from '@/components/dashboard/GalleryItemStatus';
+import MediaThumb from '@/components/dashboard/MediaThumb';
 import { galleryItemStatus } from '@/lib/gallery/status';
 import { useProcessingItemsPoll } from '@/lib/gallery/use-processing-poll';
 
@@ -119,37 +120,49 @@ function PickerItemTile({
   onSelect,
   traceId,
   title,
+  imagesOnly = false,
   children,
 }: {
   item: GalleryItem;
   onSelect: (item: GalleryItem) => void;
   traceId: string;
   title?: string;
+  imagesOnly?: boolean;
   children?: React.ReactNode;
 }) {
   const status = galleryItemStatus(item);
+  // A video where only a still picture works (dashboard#51) is refused the
+  // same way a failed video is: visible, disabled, with the reason.
+  const wrongKind = imagesOnly && item.kind === 'video';
   const failed = status === 'failed';
-  const reasonId = `gallery-picker-failed-${item.id}`;
+  const refused = failed || wrongKind;
+  const reasonId = `gallery-picker-refused-${item.id}`;
   return (
     <button
       type="button"
       onClick={() => onSelect(item)}
-      disabled={failed}
+      disabled={refused}
       title={title}
-      aria-describedby={failed ? reasonId : undefined}
+      aria-describedby={refused ? reasonId : undefined}
       style={{
         position: 'relative',
         padding: 0,
         border: '1px solid var(--mr-dash-hair)',
         borderRadius: 'var(--mr-radius-sm)',
         overflow: 'hidden',
-        cursor: failed ? 'not-allowed' : 'pointer',
+        cursor: refused ? 'not-allowed' : 'pointer',
         background: 'none',
         textAlign: 'left',
       }}
       data-trace-id={traceId}
     >
-      {item.kind === 'video' && status !== 'ready' ? (
+      {wrongKind ? (
+        // Its still, never a playing clip, with the same play glyph and badge
+        // as every other video thumbnail.
+        <span style={{ display: 'block', opacity: 0.45 }}>
+          <MediaThumb media={item} alt="" style={TILE_MEDIA_STYLE} />
+        </span>
+      ) : item.kind === 'video' && status !== 'ready' ? (
         <>
           <NotReadyVideoStill
             item={item}
@@ -168,7 +181,7 @@ function PickerItemTile({
       ) : (
         <RetryingImage src={item.url} alt="" style={TILE_MEDIA_STYLE} />
       )}
-      {failed && (
+      {refused && (
         <span
           id={reasonId}
           style={{
@@ -180,7 +193,13 @@ function PickerItemTile({
             overflowWrap: 'anywhere',
           }}
         >
-          Can&rsquo;t be used: {galleryItemFailureMessage(item)} Exchange or delete it in the Gallery.
+          {wrongKind ? (
+            <>Photos only here &mdash; this picture is shown as a still, so a video can&rsquo;t be used.</>
+          ) : (
+            <>
+              Can&rsquo;t be used: {galleryItemFailureMessage(item)} Exchange or delete it in the Gallery.
+            </>
+          )}
         </span>
       )}
       {children}
@@ -197,12 +216,20 @@ interface GalleryPickerModalProps {
    * means free crop.
    */
   aspectRatio?: number;
+  /**
+   * For a field whose picture is always a still — a category, brand, bundle
+   * or shop tile (dashboard#51). Videos stay visible but disabled, with the
+   * reason. Product media, variant photos, hero and journal leave it off:
+   * they take videos.
+   */
+  imagesOnly?: boolean;
 }
 
 export default function GalleryPickerModal({
   onSelect,
   onClose,
   aspectRatio,
+  imagesOnly = false,
 }: GalleryPickerModalProps) {
   /**
    * The folder trail from the root to where we are now. `[]` is the root.
@@ -468,6 +495,7 @@ export default function GalleryPickerModal({
                           key={item.id}
                           item={item}
                           onSelect={onSelect}
+                          imagesOnly={imagesOnly}
                           title={item.breadcrumb.join(' / ')}
                           traceId={`${TRACE}::EL-BTN-select-search-result-item@${item.id}`}
                         >
@@ -585,6 +613,7 @@ export default function GalleryPickerModal({
                     key={item.id}
                     item={item}
                     onSelect={onSelect}
+                    imagesOnly={imagesOnly}
                     traceId={`${TRACE}::EL-BTN-select-picker-item@${item.id}`}
                   />
                 ))}

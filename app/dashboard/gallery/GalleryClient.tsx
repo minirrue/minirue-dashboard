@@ -16,6 +16,7 @@ import type { GalleryFolder, GalleryItem, GallerySearchResult } from '@/lib/gall
 import type { ApiError } from '@/lib/api/client';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
+import MediaThumb from '@/components/dashboard/MediaThumb';
 import { useUser } from '@/lib/hooks/use-auth';
 import { Role } from '@/lib/auth/role';
 import {
@@ -139,10 +140,10 @@ function DeletedImagesPanel() {
             >
               {items.map((m) => (
                 <figure key={m.id} style={{ margin: 0, opacity: 0.6 }}>
-                  {m.url ? (
-                    <UploadPreviewImage
-                      src={m.url}
-                      localFile={null}
+                  {m.url || (m.kind === 'video' && m.posterUrl) ? (
+                    // A deleted product video is drawn as a video (dashboard#51).
+                    <MediaThumb
+                      media={{ ...m, url: m.url ?? '' }}
                       alt={m.altText ?? ''}
                       style={{
                         width: '100%',

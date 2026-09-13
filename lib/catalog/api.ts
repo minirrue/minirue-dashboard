@@ -55,6 +55,11 @@ interface BackendMedia {
   /** 'COVER' | 'CAROUSEL' — absent on responses from an older API build. */
   role?: string | null;
   url?: string | null;
+  /** From the linked gallery item — backend 0.116.0 (dashboard#51). Absent on
+   *  an older API, a legacy Cloudinary row, or a row whose item is gone. */
+  kind?: 'image' | 'video';
+  posterUrl?: string | null;
+  status?: 'ready' | 'processing' | 'failed';
   width: number | null;
   height: number | null;
   altText: string | null;
@@ -83,6 +88,17 @@ interface BackendProduct {
   updatedAt?: string;
 }
 
+/**
+ * A still for the cover thumbnail. Every caller of `coverUrl` (the products
+ * table, the bundle member picker) draws it into an `<img>`, so a video cover
+ * gives its poster, or nothing — never the movie's URL (dashboard#51).
+ */
+function coverStill(m: BackendMedia | undefined): string | null {
+  if (!m) return null;
+  if (m.kind === 'video') return m.posterUrl ?? null;
+  return m.url ?? null;
+}
+
 function mapListItem(p: BackendProduct): ProductListItem {
   const active = p.variants?.filter((v) => v.isActive) ?? [];
   const prices = active.map((v) => parseFloat(v.priceAmount));
@@ -100,10 +116,7 @@ function mapListItem(p: BackendProduct): ProductListItem {
     // image means a product uploaded before roles existed still shows
     // something rather than an empty frame. `url` is already resolved by the
     // admin list's own hydrateMediaUrls, so there is nothing to sign here.
-    coverUrl:
-      (p.media ?? []).find((m) => m.role === 'COVER')?.url ??
-      (p.media ?? [])[0]?.url ??
-      null,
+    coverUrl: coverStill((p.media ?? []).find((m) => m.role === 'COVER') ?? (p.media ?? [])[0]),
     status: p.publishedState as ProductStatus,
     // The first variant's SKU. Sorted so the number shown is stable across
     // reloads rather than whatever order the variants query happened to
@@ -154,6 +167,9 @@ function mapMedia(m: BackendMedia): ProductMedia {
     // do, so this had to be right for all three, not just two of them.
     role: m.role === 'COVER' ? 'COVER' : m.role === 'CLOSING' ? 'CLOSING' : 'CAROUSEL',
     url: m.url ?? null,
+    kind: m.kind === 'video' ? 'video' : 'image',
+    posterUrl: m.posterUrl ?? null,
+    status: m.status ?? 'ready',
     width: m.width,
     height: m.height,
     altText: m.altText,
