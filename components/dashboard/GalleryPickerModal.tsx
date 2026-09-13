@@ -14,6 +14,13 @@ import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import RetryingImage from '@/components/dashboard/RetryingImage';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
+import {
+  GalleryItemStatusBadge,
+  NotReadyVideoStill,
+  galleryItemFailureMessage,
+} from '@/components/dashboard/GalleryItemStatus';
+import { galleryItemStatus } from '@/lib/gallery/status';
+import { useProcessingItemsPoll } from '@/lib/gallery/use-processing-poll';
 
 const TRACE = 'CMP-DASHBOARD-GALLERY-PICKER';
 
@@ -83,6 +90,104 @@ export async function uploadDeviceFileToGallery(
   return uploadItem(folder.id, file);
 }
 
+const TILE_MEDIA_STYLE: React.CSSProperties = {
+  width: '100%',
+  aspectRatio: '4/5',
+  objectFit: 'cover',
+  display: 'block',
+};
+
+/**
+ * One pickable item.
+ *
+ * What a video that is not ready does here (dashboard#45) — this picker is the
+ * one every media field opens (hero, journal, product and variant media,
+ * category/brand/bundle images), so the rule is decided once:
+ *
+ * - `processing`: SELECTABLE, labelled "Converting…". The storefront serves the
+ *   poster until the MP4 exists and the real video after (backend#123), so the
+ *   pick is safe, and an admin building a hero around a clip that is still
+ *   converting should not have to come back later to finish the job.
+ * - `failed`: DISABLED, with the reason and the way out. It will never play, so
+ *   picking it would put a still — or nothing — on the storefront for good,
+ *   with no sign anything is wrong.
+ *
+ * Neither is drawn as a `<video>`: the original upload may not decode here.
+ */
+function PickerItemTile({
+  item,
+  onSelect,
+  traceId,
+  title,
+  children,
+}: {
+  item: GalleryItem;
+  onSelect: (item: GalleryItem) => void;
+  traceId: string;
+  title?: string;
+  children?: React.ReactNode;
+}) {
+  const status = galleryItemStatus(item);
+  const failed = status === 'failed';
+  const reasonId = `gallery-picker-failed-${item.id}`;
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(item)}
+      disabled={failed}
+      title={title}
+      aria-describedby={failed ? reasonId : undefined}
+      style={{
+        position: 'relative',
+        padding: 0,
+        border: '1px solid var(--mr-dash-hair)',
+        borderRadius: 'var(--mr-radius-sm)',
+        overflow: 'hidden',
+        cursor: failed ? 'not-allowed' : 'pointer',
+        background: 'none',
+        textAlign: 'left',
+      }}
+      data-trace-id={traceId}
+    >
+      {item.kind === 'video' && status !== 'ready' ? (
+        <>
+          <NotReadyVideoStill
+            item={item}
+            style={{ ...TILE_MEDIA_STYLE, opacity: failed ? 0.45 : 1 }}
+          />
+          <GalleryItemStatusBadge item={item} />
+        </>
+      ) : item.kind === 'video' ? (
+        <video
+          src={item.url}
+          poster={item.posterUrl ?? undefined}
+          muted
+          preload={item.posterUrl ? 'none' : 'metadata'}
+          style={TILE_MEDIA_STYLE}
+        />
+      ) : (
+        <RetryingImage src={item.url} alt="" style={TILE_MEDIA_STYLE} />
+      )}
+      {failed && (
+        <span
+          id={reasonId}
+          style={{
+            display: 'block',
+            padding: '4px',
+            fontSize: 10,
+            lineHeight: 1.35,
+            color: 'var(--mr-st-danger-fg)',
+            overflowWrap: 'anywhere',
+          }}
+        >
+          Can&rsquo;t be used: {galleryItemFailureMessage(item)} Exchange or delete it in the Gallery.
+        </span>
+      )}
+      {children}
+    </button>
+  );
+}
+
 interface GalleryPickerModalProps {
   onSelect: (item: GalleryItem) => void;
   onClose: () => void;
@@ -129,6 +234,18 @@ export default function GalleryPickerModal({
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const searching_ = query.trim().length > 0;
+
+  // A converting video drops its label here as soon as it is ready, same as
+  // on the Gallery tab (dashboard#45).
+  useProcessingItemsPoll([...items, ...(searchResult?.items ?? [])], (fresh) => {
+    const byId = new Map(fresh.map((f) => [f.id, f]));
+    const swap = <T extends GalleryItem>(it: T): T => {
+      const next = byId.get(it.id);
+      return next ? { ...it, ...next } : it;
+    };
+    setItems((prev) => prev.map(swap));
+    setSearchResult((prev) => (prev ? { ...prev, items: prev.items.map(swap) } : prev));
+  });
 
   /**
    * Loads ONE level: the child folders of `folder` (or the roots) and the items
@@ -347,36 +464,13 @@ export default function GalleryPickerModal({
                       data-trace-id={`${TRACE}::EL-GRID-search-result-items`}
                     >
                       {searchResult.items.map((item) => (
-                        <button
+                        <PickerItemTile
                           key={item.id}
-                          type="button"
-                          onClick={() => onSelect(item)}
+                          item={item}
+                          onSelect={onSelect}
                           title={item.breadcrumb.join(' / ')}
-                          style={{
-                            padding: 0,
-                            border: '1px solid var(--mr-dash-hair)',
-                            borderRadius: 'var(--mr-radius-sm)',
-                            overflow: 'hidden',
-                            cursor: 'pointer',
-                            background: 'none',
-                          }}
-                          data-trace-id={`${TRACE}::EL-BTN-select-search-result-item@${item.id}`}
+                          traceId={`${TRACE}::EL-BTN-select-search-result-item@${item.id}`}
                         >
-                          {item.kind === 'video' ? (
-                            <video
-                              src={item.url}
-                              poster={item.posterUrl ?? undefined}
-                              muted
-                              preload={item.posterUrl ? 'none' : 'metadata'}
-                              style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover' }}
-                            />
-                          ) : (
-                            <RetryingImage
-                              src={item.url}
-                              alt=""
-                              style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover' }}
-                            />
-                          )}
                           <span
                             className="dash-help-text"
                             style={{
@@ -389,7 +483,7 @@ export default function GalleryPickerModal({
                           >
                             {item.breadcrumb.join(' / ')}
                           </span>
-                        </button>
+                        </PickerItemTile>
                       ))}
                     </div>
                   </div>
@@ -487,36 +581,12 @@ export default function GalleryPickerModal({
                 data-trace-id={`${TRACE}::EL-GRID-picker-items`}
               >
                 {items.map((item) => (
-                  <button
+                  <PickerItemTile
                     key={item.id}
-                    type="button"
-                    onClick={() => onSelect(item)}
-                    style={{
-                      padding: 0,
-                      border: '1px solid var(--mr-dash-hair)',
-                      borderRadius: 'var(--mr-radius-sm)',
-                      overflow: 'hidden',
-                      cursor: 'pointer',
-                      background: 'none',
-                    }}
-                    data-trace-id={`${TRACE}::EL-BTN-select-picker-item@${item.id}`}
-                  >
-                    {item.kind === 'video' ? (
-                      <video
-                        src={item.url}
-                        poster={item.posterUrl ?? undefined}
-                        muted
-                        preload={item.posterUrl ? 'none' : 'metadata'}
-                        style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <RetryingImage
-                        src={item.url}
-                        alt=""
-                        style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover' }}
-                      />
-                    )}
-                  </button>
+                    item={item}
+                    onSelect={onSelect}
+                    traceId={`${TRACE}::EL-BTN-select-picker-item@${item.id}`}
+                  />
                 ))}
               </div>
             )}

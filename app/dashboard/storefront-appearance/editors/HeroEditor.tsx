@@ -7,6 +7,14 @@ import GalleryPickerModal, { uploadDeviceFileToGallery } from '@/components/dash
 import ImageCropModal from '@/components/dashboard/ImageCropModal';
 import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
 import { getItem } from '@/lib/gallery/api';
+import type { GalleryItem, GalleryItemStatus } from '@/lib/gallery/types';
+import { galleryItemStatus } from '@/lib/gallery/status';
+import { useProcessingItemsPoll } from '@/lib/gallery/use-processing-poll';
+import {
+  GalleryItemStatusBadge,
+  NotReadyVideoStill,
+  galleryItemFailureMessage,
+} from '@/components/dashboard/GalleryItemStatus';
 import {
   heroImageWarning,
   type HeroSlot as GuidanceSlot,
@@ -35,11 +43,14 @@ function HeroImageFrame({
   ratio: string;
   muted?: boolean;
   /** Set when the item is a video (backend#89): preview it as one. */
-  video?: { poster: string | null };
+  video?: HeroVideoInfo;
 }) {
+  const status = video ? galleryItemStatus(video) : 'ready';
   return (
+    <>
     <div
       style={{
+        position: 'relative',
         aspectRatio: ratio,
         width: '100%',
         maxWidth: 200,
@@ -51,7 +62,18 @@ function HeroImageFrame({
         marginBottom: 8,
       }}
     >
-      {url && video ? (
+      {url && video && status !== 'ready' ? (
+        // Still converting, or failed (dashboard#45): the original upload may
+        // not play in a browser. The storefront shows this same poster until
+        // the MP4 exists, so the frame shows it too.
+        <>
+          <NotReadyVideoStill
+            item={{ posterUrl: video.poster, status }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+          <GalleryItemStatusBadge item={{ status }} />
+        </>
+      ) : url && video ? (
         // A muted, controls-free thumbnail that answers "which clip is this".
         // A video URL in an image tag is a broken frame that reads as a failed
         // upload — which is what the gallery picker's videos used to produce here.
@@ -73,8 +95,24 @@ function HeroImageFrame({
         />
       )}
     </div>
+    {/* Once, on the slot that owns the clip — not again on a mobile frame
+        that is only falling back to it. */}
+    {url && video && status === 'failed' && !muted && (
+      <p className="dash-inline-error" style={{ margin: '0 0 8px', fontSize: 12 }}>
+        {galleryItemFailureMessage({ processingError: video.processingError })} The storefront
+        will only show its still — exchange it in the Gallery or pick another.
+      </p>
+    )}
+    </>
   );
 }
+
+/** What the frames need to know about a video gallery item. */
+type HeroVideoInfo = {
+  poster: string | null;
+  status?: GalleryItemStatus;
+  processingError?: string | null;
+};
 
 /** BottleSVG's real accepted prop values (apps/minirue-frontend/components/ui/BottleSVG.tsx) —
  * do not add values here without adding a matching FILLS/CAP_COLORS entry there first. */
@@ -154,8 +192,10 @@ export default function HeroEditor({
    */
   const [widthById, setWidthById] = useState<Record<string, number | null>>({});
   /** Gallery ids that are videos, with their posters (backend#89). */
-  const [videoById, setVideoById] = useState<Record<string, { poster: string | null }>>({});
-  const rememberKind = (item: { id: string; kind: string; posterUrl: string | null }) =>
+  const [videoById, setVideoById] = useState<Record<string, HeroVideoInfo>>({});
+  const rememberKind = (
+    item: Pick<GalleryItem, 'id' | 'kind' | 'posterUrl' | 'status' | 'processingError'>,
+  ) =>
     setVideoById((m) => {
       if (item.kind !== 'video') {
         if (!(item.id in m)) return m;
@@ -163,8 +203,25 @@ export default function HeroEditor({
         delete next[item.id];
         return next;
       }
-      return { ...m, [item.id]: { poster: item.posterUrl } };
+      return {
+        ...m,
+        [item.id]: {
+          poster: item.posterUrl,
+          status: item.status,
+          processingError: item.processingError ?? null,
+        },
+      };
     });
+  // A chosen clip still converting flips to the playing preview once ready
+  // (dashboard#45) — the url changes too, from the original to the MP4.
+  useProcessingItemsPoll(
+    Object.entries(videoById).map(([id, v]) => ({ id, status: v.status })),
+    (fresh) =>
+      fresh.forEach((item) => {
+        setUrlById((m) => (m[item.id] === item.url ? m : { ...m, [item.id]: item.url }));
+        rememberKind(item);
+      }),
+  );
   // Task FF (2026-07-30): cropped bytes for an image gallery item id that was
   // just uploaded THIS session, so its hero preview frame renders from local
   // bytes instead of a guaranteed-cold-miss remote fetch. Never populated for

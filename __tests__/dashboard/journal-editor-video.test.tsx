@@ -78,6 +78,41 @@ describe('JournalEditor preview tile', () => {
     expect(video).not.toHaveAttribute('controls');
   });
 
+  it('previews a converting video as its poster, labelled, not the unplayable original (dashboard#45)', async () => {
+    (getItem as jest.Mock).mockResolvedValue(
+      item({
+        id: 'raw',
+        kind: 'video',
+        url: 'https://s3.test/raw.mkv',
+        posterUrl: 'https://img.test/raw-poster.webp',
+        status: 'processing',
+        processingError: null,
+      }),
+    );
+    const { container } = render(<JournalEditor section={section('raw')} onChange={() => {}} />);
+
+    expect(await screen.findByText(/converting/i)).toBeInTheDocument();
+    expect(container.querySelector('video')).toBeNull();
+    expect(container.querySelector('img')).toHaveAttribute('src', 'https://img.test/raw-poster.webp');
+  });
+
+  it('warns when the chosen video failed to convert (dashboard#45)', async () => {
+    (getItem as jest.Mock).mockResolvedValue(
+      item({
+        id: 'bad',
+        kind: 'video',
+        url: 'https://s3.test/bad.mkv',
+        posterUrl: null,
+        status: 'failed',
+        processingError: 'This file has no video stream.',
+      }),
+    );
+    const { container } = render(<JournalEditor section={section('bad')} onChange={() => {}} />);
+
+    expect(await screen.findByText(/This file has no video stream\./)).toBeInTheDocument();
+    expect(container.querySelector('video')).toBeNull();
+  });
+
   it('previews a photo exactly as before', async () => {
     (getItem as jest.Mock).mockResolvedValue(item({ id: 'photo' }));
     render(<JournalEditor section={section('photo')} onChange={() => {}} />);
