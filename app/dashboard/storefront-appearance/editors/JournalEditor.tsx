@@ -45,6 +45,14 @@ export default function JournalEditor({
    */
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewFile, setPreviewFile] = useState<File | null>(null);
+  /**
+   * What the chosen gallery item is (backend#89). The picker has always
+   * offered videos, and the tile below painted every pick as a photo — a
+   * video's URL in an image tag is a broken frame that looks like a failed
+   * upload.
+   */
+  const [previewKind, setPreviewKind] = useState<GalleryItem['kind']>('image');
+  const [previewPoster, setPreviewPoster] = useState<string | null>(null);
   const previewForId = useRef<string | null>(null);
 
   const imageId = section.imageGalleryItemId ?? null;
@@ -63,6 +71,8 @@ export default function JournalEditor({
         if (!live) return;
         previewForId.current = imageId;
         setPreviewUrl(item.url);
+        setPreviewKind(item.kind);
+        setPreviewPoster(item.posterUrl);
       })
       // A thumbnail is a convenience; a saved section id that no longer
       // resolves must not break the editor around it.
@@ -95,6 +105,8 @@ export default function JournalEditor({
       const item: GalleryItem = await uploadDeviceFileToGallery(cropped, section.title || undefined);
       previewForId.current = item.id;
       setPreviewUrl(item.url);
+      setPreviewKind('image');
+      setPreviewPoster(null);
       // Local bytes only when the browser can actually paint them. A HEIC
       // passes through the cropper untouched (see ImageCropProvider) and no
       // browser decodes it, so showing the local file would be a broken frame
@@ -189,7 +201,7 @@ export default function JournalEditor({
               onChange={(e) => onChange({ ...section, body: e.target.value })} />
           </label>
           <div className="dash-field">
-            <span className="dash-label">Image</span>
+            <span className="dash-label">Photo or video</span>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               {imageId && (
                 <div
@@ -204,7 +216,19 @@ export default function JournalEditor({
                     padding: 4,
                   }}
                 >
-                  {previewUrl || previewFile ? (
+                  {previewUrl && previewKind === 'video' && !previewFile ? (
+                    // Muted and without controls: this is a thumbnail that
+                    // answers "which clip did I attach", not a player.
+                    <video
+                      src={previewUrl}
+                      poster={previewPoster ?? undefined}
+                      muted
+                      playsInline
+                      preload="metadata"
+                      aria-label="Chosen video"
+                      style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                    />
+                  ) : previewUrl || previewFile ? (
                     <UploadPreviewImage
                       src={previewUrl ?? ''}
                       localFile={previewFile}
@@ -223,7 +247,7 @@ export default function JournalEditor({
                 </div>
               )}
               <button type="button" className="dash-btn-secondary" onClick={() => setPicking(true)}>
-                {section.imageGalleryItemId ? 'Change image (from gallery)' : 'Choose from gallery'}
+                {section.imageGalleryItemId ? 'Change (from gallery)' : 'Choose from gallery'}
               </button>
               <input
                 ref={fileInputRef}
@@ -257,8 +281,9 @@ export default function JournalEditor({
             {uploadError && <p className="dash-inline-error">{uploadError}</p>}
             {!section.imageGalleryItemId && (
               <p className="dash-help-text" style={{ marginTop: 6 }}>
-                No image chosen yet — this block will render without a photo on the live
-                storefront until one is picked or uploaded.
+                No photo or video chosen yet — this block will render without one on the live
+                storefront until one is picked. Videos are added from the Gallery; <strong>Upload
+                from this device</strong> takes photos.
               </p>
             )}
           </div>
@@ -287,6 +312,8 @@ export default function JournalEditor({
             previewForId.current = item.id;
             setPreviewFile(null);
             setPreviewUrl(item.url);
+            setPreviewKind(item.kind);
+            setPreviewPoster(item.posterUrl);
             onChange({ ...section, imageGalleryItemId: item.id });
             setPicking(false);
           }}
