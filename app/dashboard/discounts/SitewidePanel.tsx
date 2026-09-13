@@ -54,6 +54,7 @@ export default function SitewidePanel({
   const [manualLive, setManualLive] = React.useState<Discount[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
+  const [stoppingAuto, setStoppingAuto] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [justCreated, setJustCreated] = React.useState<string | null>(null);
 
@@ -114,14 +115,19 @@ export default function SitewidePanel({
   }
 
   async function stop() {
-    if (!window.confirm('Stop the sitewide discount now?')) return;
+    // No confirm dialog, same as stopManual below and Codes → Stop: the owner
+    // asked for Stop to stop directly (2026-08-21, dashboard#47). Placed orders
+    // keep their discount, and an offer can be started again from the form.
     setError(null);
+    setStoppingAuto(true);
     try {
       await stopAutomatic();
       onChanged();
       await load();
     } catch (e) {
       setError(errorMessageToText(e, 'Could not stop the sitewide discount'));
+    } finally {
+      setStoppingAuto(false);
     }
   }
 
@@ -235,8 +241,13 @@ export default function SitewidePanel({
                   {live.note ? ` — ${live.note}` : ''}
                 </p>
                 <div className="dash-form-actions">
-                  <button type="button" className="dash-btn-danger" onClick={() => void stop()}>
-                    Stop it
+                  <button
+                    type="button"
+                    className="dash-btn-danger"
+                    disabled={stoppingAuto}
+                    onClick={() => void stop()}
+                  >
+                    {stoppingAuto ? 'Stopping…' : 'Stop it'}
                   </button>
                 </div>
               </>

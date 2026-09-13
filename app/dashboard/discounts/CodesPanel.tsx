@@ -49,6 +49,7 @@ export default function CodesPanel({
   const [showStopped, setShowStopped] = React.useState(false);
   const [creating, setCreating] = React.useState(false);
   const [justCreated, setJustCreated] = React.useState<string | null>(null);
+  const [stopping, setStopping] = React.useState<ReadonlySet<string>>(() => new Set());
 
   const [kind, setKind] = React.useState<'GLOBAL' | 'PERSONAL'>('GLOBAL');
   const [valueType, setValueType] = React.useState<'PERCENT' | 'FIXED'>('PERCENT');
@@ -122,18 +123,28 @@ export default function CodesPanel({
     }
   }
 
+  /**
+   * One tap stops it (owner, 2026-08-21: "when I tap stop it stops directly";
+   * dashboard#47). No prompt for a reason — the server made it optional — and
+   * no confirm: stopping is never retroactive, placed orders keep their
+   * discount. The row reads "Stopping…" at once; a failure puts the Stop button
+   * back and says why.
+   */
   async function stop(d: Discount) {
-    const reason = window.prompt(
-      `Stop ${d.code}? Orders already placed keep their discount — this only stops the next use.\n\nReason:`,
-    );
-    if (!reason) return;
     setError(null);
+    setStopping((prev) => new Set(prev).add(d.id));
     try {
-      await killDiscount(d.id, reason);
+      await killDiscount(d.id);
       onChanged();
       await load();
     } catch (e) {
       setError(errorMessageToText(e, 'Could not stop the code'));
+    } finally {
+      setStopping((prev) => {
+        const next = new Set(prev);
+        next.delete(d.id);
+        return next;
+      });
     }
   }
 
@@ -417,6 +428,8 @@ export default function CodesPanel({
                     <td>
                       {d.killedAt ? (
                         <span className="dash-muted">Stopped</span>
+                      ) : stopping.has(d.id) ? (
+                        <span className="dash-muted" aria-live="polite">Stopping…</span>
                       ) : (
                         <button
                           type="button"
