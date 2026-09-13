@@ -8,6 +8,7 @@ import {
   type Discount,
 } from '@/lib/api/discounts';
 import { errorMessageToText } from '@/lib/api/client';
+import { endOfShopDayIso, SHOP_TIME_ZONE } from '@/lib/dates/end-of-shop-day';
 
 /**
  * The sitewide markdown — a percentage off everything MiniRue makes, with no
@@ -59,7 +60,10 @@ export default function SitewidePanel({
     try {
       await setAutomatic({
         percent: Number(percent),
-        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+        // End of the chosen day in Cairo, not UTC midnight — which switched the
+        // offer off in the small hours of the day it was meant to run through,
+        // and made an offer ending today already expired (frontend#83).
+        expiresAt: expiresAt ? endOfShopDayIso(expiresAt) : null,
         note: note.trim() || null,
       });
       setNote('');
@@ -97,7 +101,7 @@ export default function SitewidePanel({
             <p>
               <strong>{live.percent}% off</strong> everything MiniRue makes.
               {live.expiresAt
-                ? ` Ends ${new Date(live.expiresAt).toLocaleDateString()}.`
+                ? ` Ends ${new Date(live.expiresAt).toLocaleDateString(undefined, { timeZone: SHOP_TIME_ZONE })}.`
                 : ' No end date.'}
               {live.note ? ` — ${live.note}` : ''}
             </p>
