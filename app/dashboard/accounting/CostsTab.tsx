@@ -118,8 +118,8 @@ export default function CostsTab() {
     apiAccountingOverview()
       .then((o) => {
         if (cancelled) return;
-        setBase(o.settings);
-        setDraft(toDraft(o.settings));
+        setBase(o.pricing);
+        setDraft(toDraft(o.pricing));
       })
       .catch(() => {
         if (!cancelled) setLoadError(true);
@@ -200,8 +200,8 @@ export default function CostsTab() {
     setStatus(null);
     try {
       const res = await apiUpdatePricingSettings(result.settings);
-      setBase(res.overview.settings);
-      setDraft(toDraft(res.overview.settings));
+      setBase(res.overview.pricing);
+      setDraft(toDraft(res.overview.pricing));
       const n = res.run.changedCount;
       setStatus({
         tone: 'ok',

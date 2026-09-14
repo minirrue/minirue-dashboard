@@ -174,25 +174,42 @@ export interface SetRow {
   warnings: Warning[];
 }
 
+export interface PriceChangeSummary {
+  variantId: string;
+  oldPriceMinor: number;
+  newPriceMinor: number;
+}
+
+/** Matches backend#159 `RunSummary`. */
 export interface RunSummary {
-  runId: string;
+  id: string;
+  /** STRATEGY · RATE · SETTINGS · UNDO · ITEM */
   cause: string;
   changedCount: number;
-  avgChangeBp: number;
-  undoable: boolean;
+  /** Mean of each change's (new − old) ÷ old; null when nothing changed. */
+  averageChangeBp: number | null;
   createdAt: string;
+  undoneAt: string | null;
+  /** Present on PATCH/Undo responses, omitted on `overview.lastRun`. */
+  changes?: PriceChangeSummary[];
 }
 
 export interface AccountingOverview {
-  settings: PricingSettings;
+  /** The `pricing` settings block (backend#159 names it `pricing`). */
+  pricing: PricingSettings;
+  fees?: { fulfillmentMinor: number; deliveryFeeMinor: number };
   variants: VariantRow[];
   sets: SetRow[];
   lastRun: RunSummary | null;
+  /** The run Undo would reverse right now, if any. */
+  undoableRunId?: string | null;
 }
 
 /** Every pricing write reprices live and answers with the run and a fresh overview. */
 export interface RepriceResponse {
   run: RunSummary;
+  /** Only on Undo responses. */
+  undoneRunId?: string;
   overview: AccountingOverview;
 }
 
@@ -299,8 +316,12 @@ export function apiAccountingOverview(): Promise<AccountingOverview> {
   return apiFetch(`${BASE}/overview`, { auth: true });
 }
 
+/**
+ * The backend takes `{pricing: Partial<PricingSettings>}` and rejects any other
+ * top-level key (422), so the slider can send `{strategyBp}` alone.
+ */
 export function apiUpdatePricingSettings(patch: PricingSettingsPatch): Promise<RepriceResponse> {
-  return apiFetch(`${BASE}/settings`, { method: 'PATCH', auth: true, body: json(patch) });
+  return apiFetch(`${BASE}/settings`, { method: 'PATCH', auth: true, body: json({ pricing: patch }) });
 }
 
 /** 409 "prices were edited since" when a later change exists. */

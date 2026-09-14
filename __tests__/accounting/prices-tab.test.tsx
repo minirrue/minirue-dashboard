@@ -52,7 +52,7 @@ const settings = {
 } as const;
 
 const overview: AccountingOverview = {
-  settings: { ...settings, fulfillmentItems: [...settings.fulfillmentItems] },
+  pricing: { ...settings, fulfillmentItems: [...settings.fulfillmentItems] },
   lastRun: null,
   sets: [],
   variants: [

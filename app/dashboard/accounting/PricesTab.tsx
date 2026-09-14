@@ -103,7 +103,7 @@ export default function PricesTab() {
     [overview],
   );
   const fulfillmentMinor = useMemo(
-    () => overview?.settings.fulfillmentItems.reduce((sum, i) => sum + i.amountMinor, 0) ?? 0,
+    () => overview?.pricing.fulfillmentItems.reduce((sum, i) => sum + i.amountMinor, 0) ?? 0,
     [overview],
   );
   const openItem = items.find((i) => keyOf(i) === openKey) ?? null;

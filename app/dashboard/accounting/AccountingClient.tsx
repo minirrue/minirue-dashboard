@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import StrategyBar from './StrategyBar';
 import PricesTab from './PricesTab';
@@ -32,6 +32,7 @@ export default function AccountingClient() {
   const pathname = usePathname();
   const params = useSearchParams();
   const tab = toTab(params.get('tab'));
+  const [repriced, setRepriced] = useState(0);
 
   const selectTab = useCallback(
     (next: AccountingTab) => {
@@ -56,7 +57,8 @@ export default function AccountingClient() {
         </div>
       </div>
 
-      <StrategyBar />
+      {/* A reprice changes prices and the saved block, so the open tab remounts and refetches. */}
+      <StrategyBar onRepriced={() => setRepriced((n) => n + 1)} />
 
       <div role="tablist" aria-label="Accounting view" className="dash-tabstrip acct-tabs">
         {ACCOUNTING_TABS.map((t) => (
@@ -85,7 +87,7 @@ export default function AccountingClient() {
       </div>
 
       <div role="tabpanel" id={`acct-panel-${tab}`} aria-labelledby={`acct-tab-${tab}`}>
-        <Panel />
+        <Panel key={repriced} />
       </div>
     </div>
   );
