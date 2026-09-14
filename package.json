@@ -1,6 +1,6 @@
 {
   "name": "minirue-dashboard",
-  "version": "0.89.10",
+  "version": "0.89.11",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack --port 3021",

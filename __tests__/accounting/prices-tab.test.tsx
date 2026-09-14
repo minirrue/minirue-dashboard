@@ -12,6 +12,16 @@ import type { AccountingOverview, SetRow, VariantRow } from '@/lib/api/accountin
 
 jest.mock('@/lib/api/client', () => ({ apiFetch: jest.fn() }));
 
+const replace = jest.fn();
+let search = new URLSearchParams();
+
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ replace, push: jest.fn() }),
+  usePathname: () => '/accounting',
+  useSearchParams: () => search,
+  useParams: () => ({}),
+}));
+
 import { apiFetch } from '@/lib/api/client';
 import PricesTab from '@/app/dashboard/accounting/PricesTab';
 import { whyFromTrace } from '@/app/dashboard/accounting/PricingDrawer';
@@ -186,7 +196,12 @@ async function openDrawer(name: RegExp) {
   return screen.getByRole('dialog', { name });
 }
 
-beforeEach(() => mockFetch.mockReset());
+beforeEach(() => {
+  mockFetch.mockReset();
+  replace.mockReset();
+  search = new URLSearchParams();
+  Element.prototype.scrollIntoView = jest.fn();
+});
 afterEach(() => cleanup());
 
 describe('PricesTab', () => {
@@ -418,6 +433,79 @@ describe('PricesTab', () => {
     mockFetch.mockRejectedValue({ status: 500, message: 'boom' });
     render(<PricesTab />);
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not load/i);
+  });
+
+  describe('opening from a link (minirue-dashboard#67)', () => {
+    const set: SetRow = {
+      bundleId: 'b-evening',
+      slug: 'evening-set',
+      name: 'Evening Set',
+      isActive: true,
+      mode: 'MANUAL',
+      savingBp: null,
+      effectiveSavingBp: 1000,
+      currentPriceMinor: 120000,
+      members: [{ productId: 'p-a', productName: 'A', variantId: 'v-a', sku: 'A-1', quantity: 1, unitPriceMinor: 80900, costMinor: 65000 }],
+      listTotalMinor: 167800,
+      costMinor: 135000,
+      system: { ...revox.system, priceMinor: 155900, floors: { law1Minor: 139750, noLossMinor: 135000, law1ShownMinor: 139900, noLossShownMinor: 135900 } },
+      why: 'The pieces cost 1,678.00, less a saving of 10%.',
+      current: { marginBp: -1250, markupBp: null, productProfitMinor: -19750, orderProfitMinor: -9750 },
+      warnings: [],
+    };
+
+    it('opens the drawer for ?open=<variantId> once the overview loads', async () => {
+      search = new URLSearchParams('open=v-revox');
+      serve(overviewOf([revox, mist]));
+      render(<PricesTab />);
+
+      expect(await screen.findByRole('dialog', { name: /REVOX PLEX/ })).toBeInTheDocument();
+    });
+
+    it('does nothing for an unknown ?open id', async () => {
+      search = new URLSearchParams('open=does-not-exist');
+      serve(overviewOf([revox, mist]));
+      render(<PricesTab />);
+
+      await screen.findByRole('table', { name: /prices/i });
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(replace).not.toHaveBeenCalled();
+    });
+
+    it('closing the drawer removes ?open with router.replace, so a refresh will not reopen it', async () => {
+      search = new URLSearchParams('open=v-revox');
+      serve(overviewOf([revox]));
+      render(<PricesTab />);
+
+      const drawer = await screen.findByRole('dialog', { name: /REVOX PLEX/ });
+      fireEvent.keyDown(drawer, { key: 'Escape' });
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(replace).toHaveBeenCalledWith('/accounting?', { scroll: false });
+    });
+
+    it('scrolls the set row into view and highlights it for ?openSet=<bundleId>', async () => {
+      search = new URLSearchParams('openSet=b-evening');
+      serve({ ...overviewOf([revox]), sets: [set] });
+      render(<PricesTab />);
+
+      const table = await screen.findByRole('table', { name: /prices/i });
+      const setRow = within(table).getByText('Evening Set').closest('tr')!;
+      await waitFor(() => expect(setRow).toHaveAttribute('data-highlight', 'true'));
+      expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('does nothing for an unknown ?openSet id', async () => {
+      search = new URLSearchParams('openSet=does-not-exist');
+      serve({ ...overviewOf([revox]), sets: [set] });
+      render(<PricesTab />);
+
+      const table = await screen.findByRole('table', { name: /prices/i });
+      const setRow = within(table).getByText('Evening Set').closest('tr')!;
+      expect(setRow).not.toHaveAttribute('data-highlight', 'true');
+      expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+    });
   });
 });
 

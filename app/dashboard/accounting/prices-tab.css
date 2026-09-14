@@ -51,6 +51,23 @@
 .acct-prices-row:focus-within {
   background: var(--mr-dash-table-row-hover);
 }
+/* A Warnings-tab link (?openSet=<bundleId>, minirue-dashboard#67) lands on this row. */
+.acct-prices-row[data-highlight='true'] {
+  outline: 2px solid var(--mr-gold-500);
+  outline-offset: -2px;
+  background: var(--mr-gold-100);
+  animation: acct-prices-highlight 2.4s var(--mr-ease-out) 1;
+}
+@keyframes acct-prices-highlight {
+  from {
+    background: var(--mr-gold-200);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .acct-prices-row[data-highlight='true'] {
+    animation: none;
+  }
+}
 
 .acct-prices-open {
   display: flex;

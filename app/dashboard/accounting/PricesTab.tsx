@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { floorBreach } from '@/app/dashboard/bundles/bundle-economics';
 import { formatEgpMinor } from '@/components/dashboard/charts';
 import { apiAccountingOverview, type AccountingOverview, type PriceFlag } from '@/lib/api/accounting';
@@ -52,9 +53,15 @@ function WarnIcon() {
  * drawer, whose saves refetch the overview.
  */
 export default function PricesTab() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
   const [overview, setOverview] = useState<AccountingOverview | null>(null);
   const [error, setError] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [highlightSetId, setHighlightSetId] = useState<string | null>(null);
+  const [linkParamsApplied, setLinkParamsApplied] = useState(false);
+  const setRowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -83,6 +90,39 @@ export default function PricesTab() {
   const fulfillmentMinor = overview?.fees.fulfillmentMinor ?? 0;
   const openRow = items.find((r) => r.variantId === openId) ?? null;
   const withFlags = items.filter((r) => r.system.flags.length > 0).length;
+
+  /**
+   * A Warnings-tab link (minirue-dashboard#61, #67) lands here with
+   * `?open=<variantId>` or `?openSet=<bundleId>`. Applied once, after the
+   * overview loads; an unknown id does nothing. Adjusting state during
+   * render (not in an effect) applies it before paint, so there is no
+   * open-then-jump flash.
+   */
+  if (!linkParamsApplied && overview) {
+    const openParam = params.get('open');
+    const openSetParam = params.get('openSet');
+    if (openParam && items.some((r) => r.variantId === openParam)) {
+      setOpenId(openParam);
+    } else if (openSetParam && sets.some((s) => s.bundleId === openSetParam)) {
+      setHighlightSetId(openSetParam);
+    }
+    setLinkParamsApplied(true);
+  }
+
+  useEffect(() => {
+    if (!highlightSetId) return;
+    setRowRefs.current[highlightSetId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlightSetId]);
+
+  /** Closing the drawer clears `?open` so a refresh does not reopen it. */
+  const closeDrawer = useCallback(() => {
+    setOpenId(null);
+    if (params.get('open')) {
+      const qs = new URLSearchParams(params.toString());
+      qs.delete('open');
+      router.replace(`${pathname}?${qs.toString()}`, { scroll: false });
+    }
+  }, [params, pathname, router]);
 
   if (error) {
     return (
@@ -251,7 +291,15 @@ export default function PricesTab() {
                 const breach = floorBreach(price, floors);
                 const warningLabel = set.warnings.map((w) => w.title).join(', ');
                 return (
-                  <tr key={set.bundleId} className="acct-prices-row" data-kind="set">
+                  <tr
+                    key={set.bundleId}
+                    ref={(el) => {
+                      setRowRefs.current[set.bundleId] = el;
+                    }}
+                    className="acct-prices-row"
+                    data-kind="set"
+                    data-highlight={set.bundleId === highlightSetId ? 'true' : undefined}
+                  >
                     <td data-label="Item" className="acct-prices-item">
                       <Link href={`/catalogue/bundles/${set.bundleId}/edit`} className="acct-prices-open">
                         <span className="acct-prices-name">{set.name}</span>{' '}
@@ -349,7 +397,7 @@ export default function PricesTab() {
           key={openRow.variantId}
           row={openRow}
           fulfillmentMinor={fulfillmentMinor}
-          onClose={() => setOpenId(null)}
+          onClose={closeDrawer}
           onSaved={refresh}
         />
       )}
