@@ -21,6 +21,7 @@ import StatusBadge from '@/components/dashboard/StatusBadge';
 import type { StatusKind } from '@/components/dashboard/StatusBadge';
 import DeleteChoiceDialog from '@/components/dashboard/DeleteChoiceDialog';
 import MediaThumb from '@/components/dashboard/MediaThumb';
+import ProductWarningsBadge from '@/components/dashboard/ProductWarningsBadge';
 import VariantsSection from './VariantsSection';
 import MediaSection from './MediaSection';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
@@ -301,6 +302,7 @@ export default function EditProductPage() {
           <span data-trace-id="PG-DASHBOARD-CAT-003::EL-BADGE-product-status-edit">
             <StatusBadge status={statusKind} />
           </span>
+          <ProductWarningsBadge productId={product.id} />
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {product.status !== 'PUBLISHED' && (

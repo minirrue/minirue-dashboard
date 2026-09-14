@@ -1,0 +1,30 @@
+/* Product page warnings badge (minirue-dashboard#61). Same tint and ink as the
+   Accounting nav pill (.dash-sidebar-link-warn), sized to sit beside the
+   status badge in the page title row. */
+
+.dash-product-warn {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 9px 0 7px;
+  box-sizing: border-box;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-st-warn-bg);
+  color: var(--mr-st-warn-fg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mr-st-warn-fg) 30%, transparent);
+  font-size: var(--mr-text-xs);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  transition: box-shadow var(--mr-dur-fast) var(--mr-ease-snappy);
+}
+.dash-product-warn:hover {
+  box-shadow: inset 0 0 0 1px var(--mr-st-warn-fg);
+}
+.dash-product-warn:focus-visible {
+  outline: 2px solid var(--mr-st-warn-fg);
+  outline-offset: 2px;
+}

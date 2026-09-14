@@ -1,0 +1,185 @@
+/* Warnings tab (minirue-dashboard#61). Speaks the yellow language of
+   components/dashboard/pricing-warnings.css: warn tint and ink, never red pills.
+   Losing money gets danger ink on its heading only; the rows stay calm. */
+
+.acct-warn {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px 24px 24px;
+}
+
+.acct-warn-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+.acct-warn-head .dash-section-title {
+  margin: 0;
+}
+.acct-warn-summary {
+  margin: 4px 0 0;
+  font-size: var(--mr-text-sm);
+  color: var(--mr-fg-3);
+  font-variant-numeric: tabular-nums;
+}
+.acct-warn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.acct-warn-error {
+  margin: 0;
+  color: var(--mr-st-danger-fg);
+  font-size: var(--mr-text-sm);
+}
+.acct-warn-empty {
+  margin: 0;
+  padding: 16px;
+  border: 1px dashed var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+  color: var(--mr-fg-3);
+  font-size: var(--mr-text-sm);
+}
+.acct-warn-skeleton {
+  display: block;
+  height: 56px;
+  margin-bottom: 12px;
+}
+
+/* ── Groups ── */
+.acct-warn-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.acct-warn-group-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.acct-warn-group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--mr-text-base);
+  font-weight: 600;
+  color: var(--mr-fg);
+}
+.acct-warn-group-title svg {
+  flex-shrink: 0;
+  color: var(--mr-st-warn-fg);
+}
+.acct-warn-group[data-tone='danger'] .acct-warn-group-title svg {
+  color: var(--mr-st-danger-fg);
+}
+.acct-warn-group-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-st-warn-bg);
+  color: var(--mr-st-warn-fg);
+  font-size: var(--mr-text-xs);
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.acct-warn-todo {
+  margin: 0;
+  max-width: 72ch;
+  font-size: var(--mr-text-sm);
+  line-height: 1.5;
+  color: var(--mr-fg-3);
+  text-wrap: pretty;
+}
+
+/* ── Items: whole row is the link ── */
+.acct-warn-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--mr-dash-hair);
+}
+.acct-warn-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 20px;
+  padding: 12px 10px;
+  margin: 2px -10px;
+  border-radius: var(--mr-radius-sm);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color var(--mr-dur-fast) var(--mr-ease-snappy);
+}
+/* The hairline sits on the row, so the link's hover bleed never extends it. */
+.acct-warn-items li + li {
+  border-top: 1px solid var(--mr-dash-hair);
+}
+.acct-warn-item:hover {
+  background: var(--mr-dash-sub);
+}
+.acct-warn-item:focus-visible {
+  outline: 2px solid var(--mr-st-warn-fg);
+  outline-offset: -2px;
+}
+.acct-warn-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.acct-warn-item-title {
+  font-size: var(--mr-text-sm);
+  font-weight: 500;
+  color: var(--mr-fg);
+  overflow-wrap: anywhere;
+}
+.acct-warn-item-detail {
+  font-size: var(--mr-text-xs);
+  line-height: 1.45;
+  color: var(--mr-fg-3);
+}
+.acct-warn-item-go {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--mr-text-xs);
+  font-weight: 500;
+  color: var(--mr-fg-2);
+  white-space: nowrap;
+}
+.acct-warn-item-go svg {
+  transition: transform var(--mr-dur-fast) var(--mr-ease-out);
+}
+.acct-warn-item:hover .acct-warn-item-go {
+  color: var(--mr-fg);
+}
+.acct-warn-item:hover .acct-warn-item-go svg {
+  transform: translateX(2px);
+}
+
+@media (max-width: 640px) {
+  .acct-warn {
+    padding: 16px;
+  }
+  .acct-warn-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .acct-warn-item-go svg {
+    transition: none;
+  }
+}
