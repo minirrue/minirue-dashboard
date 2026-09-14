@@ -1,0 +1,146 @@
+/* Variant form pricing paths: System price / My price (minirue-dashboard#62). dashboard.css is owned elsewhere. */
+
+.vp-paths {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 20px 0 4px;
+}
+@media (max-width: 760px) {
+  .vp-paths {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.vp-path {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px 18px 16px;
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-dash-surface);
+  transition: border-color var(--mr-dur-fast) var(--mr-ease-snappy);
+}
+.vp-path:focus-within {
+  border-color: var(--mr-gold-300);
+}
+
+.vp-path-title {
+  margin: 0;
+  font-family: var(--mr-font-label);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--mr-fg);
+}
+.vp-path-line {
+  margin: -6px 0 2px;
+  max-width: 52ch;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--mr-fg-3);
+}
+
+.vp-path-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.vp-path-fields > .dash-field {
+  flex: 1 1 160px;
+  min-width: 0;
+  margin-bottom: 0;
+}
+.vp-path-fields > .vp-field-amount {
+  flex: 0 1 190px;
+}
+.vp-path-fields select.dash-input {
+  width: 100%;
+}
+.vp-path .dash-field-error {
+  margin: 0;
+}
+
+.vp-path-add {
+  align-self: flex-start;
+  margin-top: auto;
+}
+
+/* Existing rows: the mode under the price. */
+.vp-mode {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+.vp-mode-label {
+  color: var(--mr-fg-3);
+}
+.vp-mode-label[data-mode='SYSTEM'] {
+  color: var(--mr-st-ok-fg);
+}
+.vp-mode-link {
+  color: var(--mr-fg-2);
+  text-decoration: underline;
+  text-decoration-color: var(--mr-dash-hair);
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--mr-dur-fast) var(--mr-ease-snappy);
+}
+.vp-mode-link:hover {
+  text-decoration-color: currentColor;
+}
+.vp-mode-link:focus-visible {
+  outline: 2px solid var(--mr-gold-500);
+  outline-offset: 2px;
+  border-radius: var(--mr-radius-sm);
+}
+
+.vp-locked {
+  margin: 0 0 12px;
+  max-width: 68ch;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--mr-fg-2);
+}
+
+/* After a house add: the price, read-only, with how it was set. */
+.vp-result {
+  margin: 4px 0 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-dash-sub);
+}
+.vp-result p {
+  margin: 0;
+}
+.vp-result p + p {
+  margin-top: 6px;
+}
+.vp-result-head {
+  font-size: 14px;
+  color: var(--mr-fg);
+}
+.vp-result-head strong {
+  font-weight: 600;
+}
+.vp-result-sku {
+  font-family: var(--mr-font-mono);
+  font-size: 12px;
+}
+.vp-result-why {
+  max-width: 72ch;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--mr-fg-2);
+}
+.vp-result-warning {
+  color: var(--mr-st-warn-fg);
+  font-size: 13px;
+}

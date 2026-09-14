@@ -167,6 +167,8 @@ export interface Product {
   categoryName: string;
   variants: ProductVariant[];
   media: ProductMedia[];
+  /** MiniRue's own (house) product; false for a partner's. Accounting prices house products only. */
+  isMinirueOwned?: boolean;
   createdAt: string;
   updatedAt: string;
 }

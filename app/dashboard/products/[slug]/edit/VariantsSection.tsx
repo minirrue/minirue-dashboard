@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   createVariant,
   updateVariant,
@@ -9,7 +10,22 @@ import {
   hardDeleteVariant,
   createProductMedia,
   listAttributes,
-  listAttributeOptions, apiSetVariantStock } from '@/lib/catalog/api';
+  listAttributeOptions,
+  apiSetVariantStock,
+  toProductVariant,
+} from '@/lib/catalog/api';
+import {
+  apiAccountingOverview,
+  apiCreateSystemVariant,
+  apiUpdateVariantPricing,
+  type AccountingOverview,
+  type CostCurrency,
+  type PricingMode,
+} from '@/lib/api/accounting';
+import { parseAmountInput } from '@/lib/accounting/validate';
+import { formatEgpMinor } from '@/components/dashboard/charts';
+import { whyFromTrace } from '@/app/dashboard/accounting/PricingDrawer';
+import './variant-pricing.css';
 import type {
   AttributeRecord,
   AttributeOptionRecord,
@@ -150,10 +166,77 @@ const EMPTY_FORM: VariantFormValues = {
   currency: 'EGP',
 };
 
+/**
+ * Accounting DA-6 (minirue-dashboard#62, epic minirue-backend#155): how a
+ * house variant's cost is entered. "EGP that follows the dollar" is an EGP
+ * cost the USD rate moves.
+ */
+type CostKind = 'EGP' | 'USD' | 'EGP_USD';
+
+const COST_KINDS: { value: CostKind; label: string }[] = [
+  { value: 'EGP', label: 'EGP' },
+  { value: 'USD', label: 'USD' },
+  { value: 'EGP_USD', label: 'EGP that follows the dollar' },
+];
+
+function costFields(kind: CostKind): { costCurrency: CostCurrency; followsUsd: boolean } {
+  return { costCurrency: kind === 'USD' ? 'USD' : 'EGP', followsUsd: kind === 'EGP_USD' };
+}
+
+const MODE_LABEL: Record<PricingMode, string> = {
+  SYSTEM: 'System price',
+  MANUAL: 'My price',
+};
+
+const ACCOUNTING_PRICES = '/accounting?tab=prices';
+
+interface HouseDraft {
+  systemCost: string;
+  systemKind: CostKind;
+  myPrice: string;
+  myCost: string;
+  myKind: CostKind;
+}
+
+const EMPTY_HOUSE: HouseDraft = {
+  systemCost: '',
+  systemKind: 'EGP',
+  myPrice: '',
+  myCost: '',
+  myKind: 'EGP',
+};
+
+/** What the last house add produced, shown read-only after the form closes. */
+interface AddResult {
+  sku: string;
+  mode: PricingMode;
+  priceMinor: number;
+  why: string;
+  /** Set when the variant was created but a follow-up write failed. */
+  warning?: string;
+}
+
+/** This product's variant modes out of the Accounting overview. */
+function modesFrom(o: AccountingOverview, productId: string): Record<string, PricingMode> {
+  const out: Record<string, PricingMode> = {};
+  for (const r of o.variants) if (r.productId === productId) out[r.variantId] = r.mode;
+  return out;
+}
+
+function errorText(e: unknown, fallback: string): string {
+  return errorMessageToText((e as ApiError | undefined)?.message, fallback);
+}
+
 interface Props {
   productId: string;
   /** Decides which global variants apply to this product's variants. */
   categoryId: string;
+  /**
+   * MiniRue's own product. Only these are priced by Accounting, so only these
+   * get the System price / My price paths; a partner's product keeps the plain
+   * price form.
+   */
+  isHouse?: boolean;
   variants: ProductVariant[];
   onVariantsChange: (variants: ProductVariant[]) => void;
   // Added for the Gallery module (specs/006-gallery-module, US3): lets this
@@ -170,6 +253,7 @@ interface Props {
 export default function VariantsSection({
   productId,
   categoryId,
+  isHouse = false,
   variants,
   onVariantsChange,
   media,
@@ -177,6 +261,47 @@ export default function VariantsSection({
   selectedVariantId,
   onSelectVariant,
 }: Props) {
+  // ── Accounting (house products only) ──────────────────────────────────────
+  // Each variant's price mode, from the Accounting overview. Null until read.
+  // Backend#167 flips a SYSTEM variant to MANUAL on any catalog price write,
+  // so the inline price edit is offered only once a row is KNOWN to be My price.
+  const [modes, setModes] = useState<Record<string, PricingMode> | null>(null);
+  const [modesError, setModesError] = useState(false);
+  const [house, setHouse] = useState<HouseDraft>(EMPTY_HOUSE);
+  const [systemError, setSystemError] = useState<string | null>(null);
+  const [myError, setMyError] = useState<string | null>(null);
+  const [addResult, setAddResult] = useState<AddResult | null>(null);
+
+  useEffect(() => {
+    if (!isHouse) return;
+    let cancelled = false;
+    setModesError(false);
+    apiAccountingOverview()
+      .then((o) => {
+        if (!cancelled) setModes(modesFrom(o, productId));
+      })
+      .catch(() => {
+        if (!cancelled) setModesError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isHouse, productId]);
+
+  /** Folds a write's fresh overview in, keeping modes learned locally. */
+  function mergeModes(o: AccountingOverview | undefined, extra: Record<string, PricingMode>) {
+    setModes((prev) => ({ ...(prev ?? {}), ...(o ? modesFrom(o, productId) : {}), ...extra }));
+  }
+
+  function modeOf(v: ProductVariant): PricingMode | null {
+    return modes?.[v.id] ?? null;
+  }
+
+  /** Partner rows always; house rows only when known to be My price. */
+  function priceEditable(v: ProductVariant): boolean {
+    return !isHouse || modeOf(v) === 'MANUAL';
+  }
+
   const [showForm, setShowForm] = useState(false);
   const [formValues, setFormValues] = useState<VariantFormValues>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<VariantFormErrors>({});
@@ -315,6 +440,8 @@ export default function VariantsSection({
 
   async function handleAddVariant(e: React.FormEvent) {
     e.preventDefault();
+    // A house variant is added through one of its two pricing paths.
+    if (isHouse) return;
     const errs = validateVariant(formValues);
     if (Object.keys(errs).length > 0) {
       setFormErrors(errs);
@@ -338,6 +465,117 @@ export default function VariantsSection({
       setSubmitError(err.message ?? 'Failed to add variant.');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  function setHouseField<K extends keyof HouseDraft>(key: K, value: HouseDraft[K]) {
+    setHouse((prev) => ({ ...prev, [key]: value }));
+    if (key === 'systemCost' || key === 'systemKind') setSystemError(null);
+    else setMyError(null);
+  }
+
+  function closeAddForm() {
+    setShowForm(false);
+    setFormValues(EMPTY_FORM);
+    setFormErrors({});
+    setSubmitError(null);
+    setHouse(EMPTY_HOUSE);
+    setSystemError(null);
+    setMyError(null);
+  }
+
+  /** System price: cost in, the engine's price out, in one backend call. */
+  async function handleAddSystem() {
+    const costMinor = parseAmountInput(house.systemCost);
+    if (costMinor === null) {
+      setSystemError('Enter what one unit cost you, for example 650 or 12.50.');
+      return;
+    }
+    setSystemError(null);
+    setMyError(null);
+    setSubmitting(true);
+    try {
+      const res = await apiCreateSystemVariant(productId, {
+        values: formValues.values,
+        custom_values: customFieldsToMap(formValues.customFields),
+        costAmountMinor: costMinor,
+        ...costFields(house.systemKind),
+      });
+      const id = String(res.variant.id);
+      const row = res.overview.variants.find((r) => r.variantId === id);
+      const created = toProductVariant(res.variant, row?.currentPriceMinor);
+      onVariantsChange([...variants, created]);
+      mergeModes(res.overview, { [id]: 'SYSTEM' });
+      setAddResult({
+        sku: created.sku,
+        mode: 'SYSTEM',
+        priceMinor: row?.currentPriceMinor ?? Math.round(created.priceAmount * 100),
+        why: row ? whyFromTrace(row.system.trace) : '',
+      });
+      closeAddForm();
+    } catch (e) {
+      setSystemError(`Could not add it: ${errorText(e, 'the server refused the save.')} Nothing was created.`);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  /** My price: the catalog create, then the cost through Accounting when one is given. */
+  async function handleAddMine() {
+    const priceMinor = parseAmountInput(house.myPrice);
+    if (priceMinor === null || priceMinor < 1) {
+      setMyError('Enter the price customers pay, for example 950.');
+      return;
+    }
+    const costMinor = house.myCost.trim() === '' ? null : parseAmountInput(house.myCost);
+    if (house.myCost.trim() !== '' && costMinor === null) {
+      setMyError('Enter the cost as a number, for example 650, or leave it blank.');
+      return;
+    }
+    setSystemError(null);
+    setMyError(null);
+    setSubmitting(true);
+    let created: ProductVariant;
+    try {
+      created = await createVariant(productId, {
+        priceAmount: priceMinor / 100,
+        currency: 'EGP',
+        values: formValues.values,
+        customValues: customFieldsToMap(formValues.customFields),
+      });
+    } catch (e) {
+      setMyError(`Could not add it: ${errorText(e, 'the server refused the save.')} Nothing was created.`);
+      setSubmitting(false);
+      return;
+    }
+    onVariantsChange([...variants, created]);
+    // No pricing row reads as My price, so the new row is My price either way.
+    let warning: string | undefined;
+    let fresh: AccountingOverview | undefined;
+    if (costMinor !== null) {
+      try {
+        const res = await apiUpdateVariantPricing(created.id, {
+          mode: 'MANUAL',
+          manualPriceMinor: priceMinor,
+          costAmountMinor: costMinor,
+          ...costFields(house.myKind),
+        });
+        fresh = res.overview;
+      } catch (e) {
+        warning = `The variant was added, but its cost was not saved: ${errorText(e, 'the server refused it.')} Add the cost in Accounting.`;
+      }
+    }
+    mergeModes(fresh, { [created.id]: 'MANUAL' });
+    setAddResult({ sku: created.sku, mode: 'MANUAL', priceMinor, why: '', warning });
+    closeAddForm();
+    setSubmitting(false);
+  }
+
+  /** Enter inside a path's inputs adds on that path. */
+  function submitOnEnter(e: React.KeyboardEvent, add: () => void) {
+    if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') {
+      e.preventDefault();
+      if (!submitting) add();
     }
   }
 
@@ -375,7 +613,10 @@ export default function VariantsSection({
 
   async function handleEditSave(e: React.FormEvent, v: ProductVariant) {
     e.preventDefault();
-    const errs = validateVariant(editValues);
+    // A price the row may not edit is never validated or sent: on a System
+    // price variant any catalog price write switches it to My price (#167).
+    const withPrice = priceEditable(v);
+    const errs = withPrice ? validateVariant(editValues) : {};
     if (Object.keys(errs).length > 0) {
       setEditErrors(errs);
       return;
@@ -384,8 +625,12 @@ export default function VariantsSection({
     setEditSubmitting(true);
     try {
       const updated = await updateVariant(productId, v.id, {
-        priceAmount: Number(editValues.priceAmount),
-        currency: editValues.currency.trim() || 'EGP',
+        ...(withPrice
+          ? {
+              priceAmount: Number(editValues.priceAmount),
+              currency: editValues.currency.trim() || 'EGP',
+            }
+          : {}),
         values: editValues.values,
         customValues: customFieldsToMap(editValues.customFields),
       });
@@ -475,7 +720,10 @@ export default function VariantsSection({
           <button
             type="button"
             className="dash-btn-secondary"
-            onClick={() => setShowForm(true)}
+            onClick={() => {
+              setAddResult(null);
+              setShowForm(true);
+            }}
             data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-add-variant-toggle"
           >
             + Add Variant
@@ -582,7 +830,31 @@ export default function VariantsSection({
                         ),
                       ].join(' · ') || '—'}
                     </td>
-                    <td style={{ textAlign: 'right' }}>{formatPrice(v.priceAmount, v.currency)}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      {formatPrice(v.priceAmount, v.currency)}
+                      {isHouse && (
+                        <span className="vp-mode">
+                          <span
+                            className="vp-mode-label"
+                            data-mode={modeOf(v) ?? 'unknown'}
+                            data-trace-id={`PG-DASHBOARD-CAT-003::EL-TEXT-variant-mode@${v.id}`}
+                          >
+                            {modeOf(v)
+                              ? MODE_LABEL[modeOf(v) as PricingMode]
+                              : modes === null && !modesError
+                                ? 'Reading mode…'
+                                : 'Mode unavailable'}
+                          </span>
+                          <Link
+                            href={ACCOUNTING_PRICES}
+                            className="vp-mode-link"
+                            data-trace-id={`PG-DASHBOARD-CAT-003::EL-LINK-variant-change-in-accounting@${v.id}`}
+                          >
+                            Change in Accounting
+                          </Link>
+                        </span>
+                      )}
+                    </td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <input
                         className="dash-input"
@@ -737,6 +1009,17 @@ export default function VariantsSection({
                                 </div>
                               ))}
                           </div>
+                          {!priceEditable(v) && (
+                            <p className="vp-locked" data-trace-id={`PG-DASHBOARD-CAT-003::EL-TEXT-edit-variant-price-locked@${v.id}`}>
+                              {modeOf(v) === 'SYSTEM'
+                                ? `${formatPrice(v.priceAmount, v.currency)} is set by the system from this variant's cost, so it is not edited here. `
+                                : `The price mode could not be read, so the price is not edited here. `}
+                              <Link href={ACCOUNTING_PRICES} className="vp-mode-link">
+                                Change in Accounting
+                              </Link>
+                            </p>
+                          )}
+                          {priceEditable(v) && (
                           <div className="dash-field-row">
                             <div className="dash-field">
                               <label className="dash-label" htmlFor={`edit-price-${v.id}`}>
@@ -774,6 +1057,7 @@ export default function VariantsSection({
                               />
                             </div>
                           </div>
+                          )}
                           <CustomFieldsEditor
                             fields={editValues.customFields}
                             onChange={(cf) => editSetField('customFields', cf)}
@@ -877,6 +1161,7 @@ export default function VariantsSection({
                 </div>
               ))}
           </div>
+          {!isHouse && (
           <div className="dash-field-row">
             <div className="dash-field">
               <label className="dash-label" htmlFor="var-price">
@@ -914,6 +1199,7 @@ export default function VariantsSection({
               />
             </div>
           </div>
+          )}
 
           <CustomFieldsEditor
             fields={formValues.customFields}
@@ -922,26 +1208,176 @@ export default function VariantsSection({
             idScope="add"
           />
 
+          {isHouse && (
+            <div className="vp-paths" data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-add-variant-pricing-paths">
+              <section
+                className="vp-path"
+                aria-labelledby="vp-system-title"
+                onKeyDown={(e) => submitOnEnter(e, () => void handleAddSystem())}
+                data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-add-variant-system-price"
+              >
+                <h3 id="vp-system-title" className="vp-path-title">System price</h3>
+                <p className="vp-path-line">Type what one unit cost you; the shop sets and updates the price.</p>
+                <div className="vp-path-fields">
+                  <div className="dash-field vp-field-amount">
+                    <label className="dash-label" htmlFor="vp-system-cost">
+                      Cost per unit ({house.systemKind === 'USD' ? 'USD' : 'EGP'})
+                    </label>
+                    <input
+                      id="vp-system-cost"
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      className={`dash-input mr-num${systemError ? ' dash-input-error' : ''}`}
+                      value={house.systemCost}
+                      onChange={(e) => setHouseField('systemCost', e.target.value)}
+                      placeholder="650"
+                      disabled={submitting}
+                      aria-invalid={systemError ? true : undefined}
+                      aria-describedby={systemError ? 'vp-system-error' : undefined}
+                      data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-add-variant-system-cost"
+                    />
+                  </div>
+                  <div className="dash-field">
+                    <label className="dash-label" htmlFor="vp-system-kind">
+                      Currency
+                    </label>
+                    <select
+                      id="vp-system-kind"
+                      className="dash-input"
+                      value={house.systemKind}
+                      onChange={(e) => setHouseField('systemKind', e.target.value as CostKind)}
+                      disabled={submitting}
+                      data-trace-id="PG-DASHBOARD-CAT-003::EL-SELECT-add-variant-system-currency"
+                    >
+                      {COST_KINDS.map((k) => (
+                        <option key={k.value} value={k.value}>
+                          {k.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                {systemError && (
+                  <p id="vp-system-error" role="alert" className="dash-field-error">
+                    {systemError}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  className="dash-btn-primary vp-path-add"
+                  onClick={() => void handleAddSystem()}
+                  disabled={submitting}
+                  data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-add-variant-system-price"
+                >
+                  {submitting ? 'Adding…' : 'Add on System price'}
+                </button>
+              </section>
+
+              <section
+                className="vp-path"
+                aria-labelledby="vp-my-title"
+                onKeyDown={(e) => submitOnEnter(e, () => void handleAddMine())}
+                data-trace-id="PG-DASHBOARD-CAT-003::EL-REGION-add-variant-my-price"
+              >
+                <h3 id="vp-my-title" className="vp-path-title">My price</h3>
+                <p className="vp-path-line">
+                  You set it; the slider and USD rate won&apos;t change it. Add the cost to see profit and get floor protection.
+                </p>
+                <div className="vp-path-fields">
+                  <div className="dash-field vp-field-amount">
+                    <label className="dash-label" htmlFor="vp-my-price">
+                      Price (EGP)
+                    </label>
+                    <input
+                      id="vp-my-price"
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      className={`dash-input mr-num${myError ? ' dash-input-error' : ''}`}
+                      value={house.myPrice}
+                      onChange={(e) => setHouseField('myPrice', e.target.value)}
+                      placeholder="950"
+                      disabled={submitting}
+                      aria-invalid={myError ? true : undefined}
+                      aria-describedby={myError ? 'vp-my-error' : undefined}
+                      data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-add-variant-my-price"
+                    />
+                  </div>
+                </div>
+                <div className="vp-path-fields">
+                  <div className="dash-field vp-field-amount">
+                    <label className="dash-label" htmlFor="vp-my-cost">
+                      Cost per unit (optional)
+                    </label>
+                    <input
+                      id="vp-my-cost"
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      className="dash-input mr-num"
+                      value={house.myCost}
+                      onChange={(e) => setHouseField('myCost', e.target.value)}
+                      placeholder="650"
+                      disabled={submitting}
+                      data-trace-id="PG-DASHBOARD-CAT-003::EL-INPUT-add-variant-my-cost"
+                    />
+                  </div>
+                  <div className="dash-field">
+                    <label className="dash-label" htmlFor="vp-my-kind">
+                      Cost in
+                    </label>
+                    <select
+                      id="vp-my-kind"
+                      className="dash-input"
+                      value={house.myKind}
+                      onChange={(e) => setHouseField('myKind', e.target.value as CostKind)}
+                      disabled={submitting}
+                      data-trace-id="PG-DASHBOARD-CAT-003::EL-SELECT-add-variant-my-cost-currency"
+                    >
+                      {COST_KINDS.map((k) => (
+                        <option key={k.value} value={k.value}>
+                          {k.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                {myError && (
+                  <p id="vp-my-error" role="alert" className="dash-field-error">
+                    {myError}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  className="dash-btn-secondary vp-path-add"
+                  onClick={() => void handleAddMine()}
+                  disabled={submitting}
+                  data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-add-variant-my-price"
+                >
+                  {submitting ? 'Adding…' : 'Add on My price'}
+                </button>
+              </section>
+            </div>
+          )}
+
           {submitError && <p className="dash-inline-error">{submitError}</p>}
 
           <div className="dash-form-actions">
-            <button
-              type="submit"
-              className="dash-btn-primary"
-              disabled={submitting}
-              data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-submit-add-variant"
-            >
-              {submitting ? 'Adding…' : 'Add Variant'}
-            </button>
+            {!isHouse && (
+              <button
+                type="submit"
+                className="dash-btn-primary"
+                disabled={submitting}
+                data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-submit-add-variant"
+              >
+                {submitting ? 'Adding…' : 'Add Variant'}
+              </button>
+            )}
             <button
               type="button"
               className="dash-btn-ghost"
-              onClick={() => {
-                setShowForm(false);
-                setFormValues(EMPTY_FORM);
-                setFormErrors({});
-                setSubmitError(null);
-              }}
+              onClick={closeAddForm}
               disabled={submitting}
               data-trace-id="PG-DASHBOARD-CAT-003::EL-BTN-cancel-add-variant"
             >
@@ -949,6 +1385,22 @@ export default function VariantsSection({
             </button>
           </div>
         </form>
+      )}
+
+      {addResult && !showForm && (
+        <div
+          role="status"
+          className="vp-result"
+          data-mode={addResult.mode}
+          data-trace-id="PG-DASHBOARD-CAT-003::EL-TEXT-add-variant-result"
+        >
+          <p className="vp-result-head">
+            Added <span className="vp-result-sku">{addResult.sku}</span> on {MODE_LABEL[addResult.mode]}:{' '}
+            <strong className="mr-num">{formatEgpMinor(addResult.priceMinor)}</strong>
+          </p>
+          {addResult.why && <p className="vp-result-why">{addResult.why}</p>}
+          {addResult.warning && <p className="vp-result-warning">{addResult.warning}</p>}
+        </div>
       )}
     </section>
   );

@@ -84,6 +84,8 @@ interface BackendProduct {
   publishedState: string;
   variants: BackendVariant[];
   media?: BackendMedia[];
+  /** Neither the product nor its brand has a partner (backend `serializeProduct`). */
+  isMinirueOwned?: boolean;
   createdAt: string;
   updatedAt?: string;
 }
@@ -187,8 +189,22 @@ function mapProduct(p: BackendProduct): Product {
     categoryName: p.categoryName ?? '',
     variants: (p.variants ?? []).map(mapVariant),
     media: (p.media ?? []).map(mapMedia),
+    // Absent (an older API) reads as not house, so the screen keeps the plain
+    // price form rather than offering Accounting paths the backend may refuse.
+    isMinirueOwned: p.isMinirueOwned === true,
     updatedAt: p.updatedAt ?? p.createdAt,
   };
+}
+
+/**
+ * The variant inside `POST /accounting/products/:id/variants`'s answer, in the
+ * catalog's own read shape. `priceMinor` is the stored System price, which
+ * wins over the price the variant was inserted at.
+ */
+export function toProductVariant(raw: Record<string, unknown>, priceMinor?: number): ProductVariant {
+  const v = mapVariant(raw as unknown as BackendVariant);
+  if (priceMinor === undefined) return v;
+  return { ...v, price: priceMinor / 100, priceAmount: priceMinor / 100 };
 }
 
 /**

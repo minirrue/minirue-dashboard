@@ -432,6 +432,7 @@ export default function EditProductPage() {
       <VariantsSection
         productId={id}
         categoryId={values.classification.categoryId}
+        isHouse={product?.isMinirueOwned === true}
         variants={variants}
         onVariantsChange={setVariants}
         media={media}
