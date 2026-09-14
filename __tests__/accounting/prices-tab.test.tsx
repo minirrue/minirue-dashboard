@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, cleanup, within, waitFor } from '@testing-library/react';
-import type { AccountingOverview, VariantRow } from '@/lib/api/accounting';
+import type { AccountingOverview, SetRow, VariantRow } from '@/lib/api/accounting';
 
 /**
  * PG-DASHBOARD-ACCTG-005 (minirue-dashboard#57, #66). The Prices tab lists every
@@ -375,6 +375,43 @@ describe('PricesTab', () => {
     fireEvent.click(within(drawer).getByRole('button', { name: 'Save mode' }));
     expect(within(drawer).getByRole('alert')).toHaveTextContent('Enter a cost first. A System price is worked out from it.');
     expect(writes()).toHaveLength(1);
+  });
+
+  it('lists sets below the variants with mode, price, floors and warnings (backend#166)', async () => {
+    const set: SetRow = {
+      bundleId: 'b-evening',
+      slug: 'evening-set',
+      name: 'Evening Set',
+      isActive: true,
+      mode: 'MANUAL',
+      savingBp: null,
+      effectiveSavingBp: 1000,
+      currentPriceMinor: 120000,
+      members: [
+        { productId: 'p-a', productName: 'A', variantId: 'v-a', sku: 'A-1', quantity: 1, unitPriceMinor: 80900, costMinor: 65000 },
+        { productId: 'p-b', productName: 'B', variantId: 'v-b', sku: 'B-1', quantity: 1, unitPriceMinor: 86900, costMinor: 70000 },
+      ],
+      listTotalMinor: 167800,
+      costMinor: 135000,
+      system: { ...revox.system, priceMinor: 155900, floors: { law1Minor: 139750, noLossMinor: 135000, law1ShownMinor: 139900, noLossShownMinor: 135900 } },
+      why: 'The pieces cost 1,678.00, less a saving of 10%.',
+      current: { marginBp: -1250, markupBp: null, productProfitMinor: -19750, orderProfitMinor: -9750 },
+      warnings: [{ key: 'LOSES_MONEY:b-evening', kind: 'LOSES_MONEY', variantId: null, productId: null, title: 'Evening Set loses money', detail: '', bundleId: 'b-evening' }],
+    };
+    serve({ ...overviewOf([revox]), sets: [set] });
+    render(<PricesTab />);
+
+    const table = await screen.findByRole('table', { name: /prices/i });
+    const rows = within(table).getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(2);
+    const setRow = rows[1];
+    expect(within(setRow).getByRole('link', { name: /evening set/i })).toHaveAttribute('href', '/catalogue/bundles/b-evening/edit');
+    expect(setRow).toHaveTextContent('My price');
+    expect(setRow).toHaveTextContent('1,399.00');
+    expect(setRow).toHaveTextContent('1,200.00');
+    expect(setRow).toHaveTextContent('Below no-loss');
+    expect(within(setRow).getByLabelText('1 warning: Evening Set loses money')).toBeInTheDocument();
+    expect(document.querySelector('.acct-prices-summary')).toHaveTextContent('1 item · 1 set');
   });
 
   it('shows the error when the overview cannot load', async () => {

@@ -1,4 +1,11 @@
 import {
+  DEFAULT_SET_SAVING_BP,
+  MAX_SET_SAVING_BP,
+  estimateSetPriceMinor,
+  floorBreach,
+  parseSavingToBp,
+  savingBpToText,
+  setPricingBody,
   MAX_MEMBERS,
   MAX_UNITS_PER_LINE,
   computeEconomics,
@@ -234,5 +241,55 @@ describe('formatting', () => {
     expect(formatPercent(12)).toBe('12%');
     expect(formatPercent(12.5)).toBe('12.5%');
     expect(formatPercent(12.04)).toBe('12%');
+  });
+});
+
+/**
+ * Set pricing (minirue-dashboard#65). The wire bodies are backend#166's
+ * `PUT /v1/accounting/sets/:id` contract: savingBp 0..9000, manualPriceMinor ≥ 1.
+ */
+describe('set pricing', () => {
+  it('reads a saving percent as basis points, and refuses what the backend refuses', () => {
+    expect(parseSavingToBp('15')).toBe(1500);
+    expect(parseSavingToBp(' 12.5 ')).toBe(1250);
+    expect(parseSavingToBp('0')).toBe(0);
+    expect(parseSavingToBp('90')).toBe(MAX_SET_SAVING_BP);
+    expect(parseSavingToBp('90.01')).toBeNull();
+    expect(parseSavingToBp('-1')).toBeNull();
+    expect(parseSavingToBp('')).toBeNull();
+    expect(parseSavingToBp('ten')).toBeNull();
+  });
+
+  it('shows a saving in basis points as the percent the admin typed', () => {
+    expect(savingBpToText(1500)).toBe('15');
+    expect(savingBpToText(1250)).toBe('12.5');
+    expect(savingBpToText(DEFAULT_SET_SAVING_BP)).toBe('10');
+  });
+
+  it('estimates the System price as the parts less the saving', () => {
+    expect(estimateSetPriceMinor(167800, 1000)).toBe(151020);
+    expect(estimateSetPriceMinor(167800, 0)).toBe(167800);
+    expect(estimateSetPriceMinor(0, 1000)).toBe(0);
+  });
+
+  it('builds the exact PUT sets/:id body for each mode', () => {
+    expect(setPricingBody('SYSTEM', { savingBp: 1500, manualPriceMinor: 99900 })).toEqual({
+      mode: 'SYSTEM',
+      savingBp: 1500,
+    });
+    expect(setPricingBody('MANUAL', { savingBp: 1500, manualPriceMinor: 99900 })).toEqual({
+      mode: 'MANUAL',
+      manualPriceMinor: 99900,
+    });
+  });
+
+  it('says which floor a typed price is under, the lower floor first', () => {
+    const floors = { law1ShownMinor: 139900, noLossShownMinor: 135900 };
+    expect(floorBreach(140000, floors)).toBeNull();
+    expect(floorBreach(139900, floors)).toBeNull();
+    expect(floorBreach(139000, floors)).toBe('LAW1');
+    expect(floorBreach(120000, floors)).toBe('NO_LOSS');
+    expect(floorBreach(120000, null)).toBeNull();
+    expect(floorBreach(0, floors)).toBeNull();
   });
 });

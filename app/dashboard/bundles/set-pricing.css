@@ -1,0 +1,181 @@
+/* Set pricing: System price / My price (minirue-dashboard#65). dashboard.css is owned elsewhere. */
+
+.sp {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--mr-dash-hair);
+}
+
+.sp-legend {
+  margin: 0 0 2px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mr-fg-3);
+}
+
+.sp-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--mr-st-warn-fg);
+}
+
+.sp-option {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-dash-surface);
+  transition: border-color var(--mr-dur-fast) var(--mr-ease-snappy);
+}
+.sp-option[data-selected] {
+  border-color: var(--mr-gold-300);
+}
+
+.sp-option-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sp-radio {
+  margin: 0;
+  accent-color: var(--mr-ink-900);
+}
+.sp-radio:focus-visible {
+  outline: 2px solid var(--mr-gold-500);
+  outline-offset: 2px;
+}
+.sp-title {
+  margin: 0;
+  font-family: var(--mr-font-label);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--mr-fg);
+}
+.sp-title label {
+  cursor: pointer;
+}
+.sp-in-use {
+  margin-left: auto;
+  padding: 1px 8px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-st-ok-bg);
+  color: var(--mr-st-ok-fg);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sp-line {
+  margin: 4px 0 0 24px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--mr-fg-3);
+}
+
+.sp-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+.sp-field {
+  margin-bottom: 0;
+}
+.sp-body .dash-field-error {
+  margin: 4px 0 0;
+}
+
+.sp-result {
+  padding: 10px 12px;
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-dash-sub);
+}
+.sp-figures {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+}
+.sp-figures > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.sp-figures dt {
+  font-size: 12px;
+  color: var(--mr-fg-3);
+}
+.sp-figures dd {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin: 0;
+  font-size: 13px;
+  color: var(--mr-fg);
+  text-align: right;
+}
+.sp-figures .sp-price {
+  font-size: 17px;
+  font-weight: 600;
+}
+.sp-sub {
+  font-size: 11px;
+  color: var(--mr-fg-3);
+}
+.sp-why {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--mr-fg-2);
+}
+
+.sp-estimate,
+.sp-floor {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--mr-fg-3);
+}
+.sp-floor[data-tone='warn'] {
+  padding: 8px 10px;
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-st-warn-bg);
+  color: var(--mr-st-warn-fg);
+}
+
+.sp-save {
+  align-self: flex-start;
+}
+
+.sp-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 8px 10px 8px 26px;
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-st-warn-bg);
+  color: var(--mr-st-warn-fg);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.sp-status {
+  margin: 0;
+  min-height: 1em;
+  font-size: 12px;
+  color: var(--mr-st-ok-fg);
+}
+.sp-status:empty {
+  min-height: 0;
+}
+.sp-status[data-tone='error'] {
+  color: var(--mr-st-danger-fg);
+}

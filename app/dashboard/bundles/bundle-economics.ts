@@ -223,3 +223,57 @@ export function parsePriceToMinor(input: string): number {
   if (!Number.isFinite(n) || n <= 0) return 0;
   return Math.round(n * 100);
 }
+
+// ── Set pricing (minirue-dashboard#65, backend#166) ──────────────────────────
+
+/** The engine's default saving when a set stores none (backend `DEFAULT_SET_SAVING_BP`). */
+export const DEFAULT_SET_SAVING_BP = 1000;
+/** `savingBp: 0..9000` in the `PUT sets/:id` schema. */
+export const MAX_SET_SAVING_BP = 9000;
+
+/** `"15"` → `1500`. Null for anything the backend would reject. */
+export function parseSavingToBp(input: string): number | null {
+  const text = String(input).trim();
+  if (!text) return null;
+  const n = Number(text);
+  if (!Number.isFinite(n)) return null;
+  const bp = Math.round(n * 100);
+  return bp >= 0 && bp <= MAX_SET_SAVING_BP ? bp : null;
+}
+
+/** `1250` → `"12.5"`, for the saving input. */
+export function savingBpToText(bp: number): string {
+  return String(Math.round(bp) / 100);
+}
+
+/**
+ * The parts less the saving, before the engine's floor and …9 rounding. Only
+ * an estimate: the saved System price can come out higher.
+ */
+export function estimateSetPriceMinor(listTotalMinor: number, savingBp: number): number {
+  return Math.round((listTotalMinor * (10000 - savingBp)) / 10000);
+}
+
+/** The exact `PUT sets/:id` body for the chosen mode. */
+export function setPricingBody(
+  mode: 'SYSTEM' | 'MANUAL',
+  values: { savingBp: number; manualPriceMinor: number },
+): { mode: 'SYSTEM'; savingBp: number } | { mode: 'MANUAL'; manualPriceMinor: number } {
+  return mode === 'SYSTEM'
+    ? { mode, savingBp: values.savingBp }
+    : { mode, manualPriceMinor: values.manualPriceMinor };
+}
+
+/**
+ * Which floor a typed price sits under. The no-loss floor is the lower one, so
+ * a price under it is the worse news and is named first.
+ */
+export function floorBreach(
+  priceMinor: number,
+  floors: { law1ShownMinor: number; noLossShownMinor: number } | null,
+): 'NO_LOSS' | 'LAW1' | null {
+  if (!floors || priceMinor <= 0) return null;
+  if (priceMinor < floors.noLossShownMinor) return 'NO_LOSS';
+  if (priceMinor < floors.law1ShownMinor) return 'LAW1';
+  return null;
+}

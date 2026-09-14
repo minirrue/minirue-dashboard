@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 227,
+    date: '2026-09-14',
+    area: 'Accounting',
+    summary:
+      'There is a new Accounting section that works out what every product and set should cost, and shows you why. Under Costs & rules you enter what each product cost you (in pounds, in dollars, or in pounds that follow the dollar) and your box & trip costs: the box, the bag and the delivery trip you pay for on every order. From those, each price gets two floors. The Law 1 floor is cost plus box & trip, and a System price never goes below it. The no-loss floor is the lowest a discount can ever take a price without losing money on the order. At the top, one slider moves every System price between reach (cheaper, closer to the market) and profit (higher margin). Prices change when you let go, it tells you how many moved and by how much, and Undo puts them all back. You also set today\'s dollar rate there, and dollar costs reprice themselves when it changes. Each product variant and each set can be on System price or My price. System price follows your cost, competitor prices and the slider; a set on System price is its pieces less a saving you choose (10% if you do not), and never below its floor. My price is exactly what you type, nothing changes it, and you are warned when it is under a floor. The Prices tab lists every variant and set with its mode, cost, both floors, price, margin and profit, and a click shows the plain-English why behind a price. Sitewide offers and discount codes are capped at the no-loss floor, so a big sale can never sell something at a loss, and the offer editors tell you which products a percentage would hit the cap on. Anything that needs your attention, such as a product with no cost, a price under its floor or a thin margin, shows as a yellow warning, and you get a notification when a new one appears. The Growth tab shows your real order profit, what each new customer cost you by channel (Meta, TikTok, Google, influencers and so on), how many orders it takes to earn that back, and repeat, refused and cancelled rates. You record ad and influencer spend in its spend log, and it builds the tracking links for your campaigns.',
+  },
+  {
     id: 226,
     date: '2026-08-24',
     area: 'Refunds and payments',

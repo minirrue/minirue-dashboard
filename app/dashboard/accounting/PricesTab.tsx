@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { floorBreach } from '@/app/dashboard/bundles/bundle-economics';
 import { formatEgpMinor } from '@/components/dashboard/charts';
 import { apiAccountingOverview, type AccountingOverview, type PriceFlag } from '@/lib/api/accounting';
 import PricingDrawer, { FLAG_LABELS, MODE, formatSignedEgp } from './PricingDrawer';
@@ -24,15 +26,21 @@ function FlagCount({ flags }: { flags: PriceFlag[] }) {
   const label = `${count} ${count === 1 ? 'flag' : 'flags'}: ${flags.map((f) => FLAG_LABELS[f] ?? f).join(', ')}`;
   return (
     <span className="acct-prices-warn" aria-label={label} title={label}>
-      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
-        <line x1="12" y1="9" x2="12" y2="13" />
-        <line x1="12" y1="17" x2="12.01" y2="17" />
-      </svg>
+      <WarnIcon />
       <span className="mr-num" aria-hidden="true">
         {count}
       </span>
     </span>
+  );
+}
+
+function WarnIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
   );
 }
 
@@ -70,6 +78,8 @@ export default function PricesTab() {
   }, []);
 
   const items = overview?.variants ?? [];
+  /** Sets (backend#166) list below the variants and open in the bundle editor. */
+  const sets = overview?.sets ?? [];
   const fulfillmentMinor = overview?.fees.fulfillmentMinor ?? 0;
   const openRow = items.find((r) => r.variantId === openId) ?? null;
   const withFlags = items.filter((r) => r.system.flags.length > 0).length;
@@ -108,6 +118,12 @@ export default function PricesTab() {
         </h2>
         <p className="acct-prices-summary">
           <span className="mr-num">{items.length}</span> {items.length === 1 ? 'item' : 'items'}
+          {sets.length > 0 && (
+            <>
+              {' · '}
+              <span className="mr-num">{sets.length}</span> {sets.length === 1 ? 'set' : 'sets'}
+            </>
+          )}
           {withFlags > 0 && (
             <>
               {' · '}
@@ -118,7 +134,7 @@ export default function PricesTab() {
         </p>
       </header>
 
-      {items.length === 0 ? (
+      {items.length === 0 && sets.length === 0 ? (
         <p className="acct-prices-empty">No house products yet. Items you add to the catalogue appear here.</p>
       ) : (
         <div className="dash-table-wrap">
@@ -224,6 +240,101 @@ export default function PricesTab() {
                     </td>
                     <td data-label="Flags" className="acct-num">
                       <FlagCount flags={row.system.flags} />
+                    </td>
+                  </tr>
+                );
+              })}
+              {sets.map((set) => {
+                const floors = set.system?.floors ?? null;
+                const price = set.currentPriceMinor;
+                const { marginBp, productProfitMinor } = set.current;
+                const breach = floorBreach(price, floors);
+                const warningLabel = set.warnings.map((w) => w.title).join(', ');
+                return (
+                  <tr key={set.bundleId} className="acct-prices-row" data-kind="set">
+                    <td data-label="Item" className="acct-prices-item">
+                      <Link href={`/catalogue/bundles/${set.bundleId}/edit`} className="acct-prices-open">
+                        <span className="acct-prices-name">{set.name}</span>{' '}
+                        <span className="acct-prices-detail">
+                          Set · {set.members.length} {set.members.length === 1 ? 'piece' : 'pieces'}
+                          {set.mode === 'SYSTEM' && ` · ${formatMargin(set.effectiveSavingBp)} off`}
+                          {!set.isActive && ' · Inactive'}
+                        </span>
+                      </Link>
+                    </td>
+                    <td data-label="Mode">
+                      <span className="acct-prices-mode" data-mode={set.mode}>
+                        {MODE[set.mode].label}
+                      </span>
+                    </td>
+                    <td data-label="Cost" className="acct-num">
+                      {set.costMinor === null ? (
+                        <span className="acct-prices-missing">No cost</span>
+                      ) : (
+                        <span className="mr-num">{formatEgpMinor(set.costMinor)}</span>
+                      )}
+                    </td>
+                    <td data-label="Market" className="acct-num">
+                      <span className="acct-prices-none">—</span>
+                    </td>
+                    <td data-label="Law 1 / no-loss" className="acct-num">
+                      {floors ? (
+                        <span className="acct-prices-floors mr-num">
+                          <span>{formatEgpMinor(floors.law1ShownMinor)}</span>
+                          <span className="acct-prices-sub">{formatEgpMinor(floors.noLossShownMinor)}</span>
+                        </span>
+                      ) : (
+                        <span className="acct-prices-none">—</span>
+                      )}
+                    </td>
+                    <td data-label="Price" className="acct-num">
+                      <span
+                        className="acct-prices-price mr-num"
+                        data-tone={breach === 'NO_LOSS' ? 'danger' : breach === 'LAW1' ? 'warn' : undefined}
+                      >
+                        {formatEgpMinor(price)}
+                      </span>
+                      {breach && (
+                        <span className="acct-prices-sub" data-tone={breach === 'NO_LOSS' ? 'danger' : 'warn'}>
+                          {breach === 'NO_LOSS' ? 'Below no-loss' : 'Below Law 1'}
+                        </span>
+                      )}
+                    </td>
+                    <td data-label="Margin" className="acct-num">
+                      {marginBp === null ? (
+                        <span className="acct-prices-none">—</span>
+                      ) : (
+                        <span className="mr-num" data-tone={marginBp < 0 ? 'danger' : undefined}>
+                          {formatMargin(marginBp)}
+                        </span>
+                      )}
+                    </td>
+                    <td data-label="Profit" className="acct-num">
+                      {productProfitMinor === null ? (
+                        <span className="acct-prices-none">Unknown</span>
+                      ) : (
+                        <span className="mr-num" data-tone={productProfitMinor < 0 ? 'danger' : undefined}>
+                          {formatSignedEgp(productProfitMinor)}
+                        </span>
+                      )}
+                    </td>
+                    <td data-label="Warnings" className="acct-num">
+                      {set.warnings.length === 0 ? (
+                        <span className="acct-prices-none" aria-label="No warnings">
+                          —
+                        </span>
+                      ) : (
+                        <span
+                          className="acct-prices-warn"
+                          aria-label={`${set.warnings.length} ${set.warnings.length === 1 ? 'warning' : 'warnings'}: ${warningLabel}`}
+                          title={warningLabel}
+                        >
+                          <WarnIcon />
+                          <span className="mr-num" aria-hidden="true">
+                            {set.warnings.length}
+                          </span>
+                        </span>
+                      )}
                     </td>
                   </tr>
                 );

@@ -133,6 +133,8 @@ export interface PricingWarning {
   valueBp?: number;
   /** OFFER_BELOW_LAW1: the number of products. */
   count?: number;
+  /** Set warnings (backend#166): the set's bundle id. */
+  bundleId?: string;
 }
 
 export interface PricingWarningsResult {
@@ -219,6 +221,8 @@ export interface RunSummary {
   undoneAt: string | null;
   /** Present on write responses, omitted on `overview.lastRun`. */
   changes?: PriceChangeSummary[];
+  /** Set prices the run changed (backend#166); on write responses. */
+  setChanges?: { bundleId: string; oldPriceMinor: number; newPriceMinor: number }[];
 }
 
 /** Matches backend `PricingOverview`. */
@@ -226,8 +230,7 @@ export interface AccountingOverview {
   pricing: PricingSettings;
   fees: { fulfillmentMinor: number; deliveryFeeMinor: number };
   variants: VariantRow[];
-  /** Always empty until sets are priced (backend BE-10). */
-  sets: never[];
+  sets: SetRow[];
   lastRun: RunSummary | null;
   /** The run Undo would reverse right now, if any. */
   undoableRunId: string | null;
@@ -512,4 +515,57 @@ export function apiUpdateSpend(id: string, input: Partial<SpendInput>): Promise<
 
 export function apiDeleteSpend(id: string): Promise<void> {
   return apiFetch(`${BASE}/spend/${encodeURIComponent(id)}`, { method: 'DELETE', auth: true });
+}
+
+// ── Sets (backend#166) ───────────────────────────────────────────────────────
+
+/** One piece of a set, resolved the way the engine prices it. */
+export interface SetMemberRow {
+  productId: string;
+  productName: string;
+  /** Null when the member cannot be resolved (no active variant). */
+  variantId: string | null;
+  sku: string | null;
+  quantity: number;
+  unitPriceMinor: number | null;
+  costMinor: number | null;
+}
+
+/** Matches backend `overview.sets[]`. */
+export interface SetRow {
+  bundleId: string;
+  slug: string;
+  name: string;
+  isActive: boolean;
+  mode: PricingMode;
+  /** Stored saving; null = the default 10%. */
+  savingBp: number | null;
+  effectiveSavingBp: number;
+  currentPriceMinor: number;
+  members: SetMemberRow[];
+  listTotalMinor: number | null;
+  costMinor: number | null;
+  /** Null when a member has no active variant. */
+  system: PriceResult | null;
+  why: string;
+  current: CurrentEconomics;
+  /** Keys are `KIND:<bundleId>`, with `bundleId` set. */
+  warnings: PricingWarning[];
+}
+
+/**
+ * Body of `PUT sets/:id`. An omitted `savingBp` keeps the stored one; null
+ * restores the default 10%.
+ */
+export type SetPricingInput =
+  | { mode: 'SYSTEM'; savingBp?: number | null }
+  | { mode: 'MANUAL'; manualPriceMinor: number; savingBp?: number | null };
+
+/** Prices one set on System price (members less the saving) or My price. 422 invalid, 404 unknown. */
+export function apiUpdateSetPricing(bundleId: string, input: SetPricingInput): Promise<RepriceResponse> {
+  return apiFetch(`${BASE}/sets/${encodeURIComponent(bundleId)}`, {
+    method: 'PUT',
+    auth: true,
+    body: json(input),
+  });
 }
