@@ -1,0 +1,399 @@
+/* Growth tab and spend log (minirue-dashboard#64). dashboard.css is owned elsewhere. */
+
+.acct-growth {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.acct-growth-card {
+  gap: 16px;
+}
+.acct-growth-card .dash-section-title {
+  margin: 0;
+}
+.acct-growth-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+.acct-growth-lede {
+  margin: 4px 0 0;
+  max-width: 68ch;
+  font-size: var(--mr-text-sm);
+  line-height: 1.5;
+  color: var(--mr-fg-3);
+  text-wrap: pretty;
+}
+.acct-growth-muted {
+  margin: 0;
+  color: var(--mr-fg-3);
+}
+.acct-growth-empty {
+  margin: 0;
+  padding: 16px;
+  border: 1px dashed var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+  color: var(--mr-fg-3);
+  font-size: var(--mr-text-sm);
+}
+.acct-growth-status {
+  margin: 0;
+  font-size: var(--mr-text-sm);
+  color: var(--mr-fg-3);
+}
+.acct-growth-status:empty {
+  display: none;
+}
+.acct-growth-status[data-tone='ok'] {
+  color: var(--mr-st-ok-fg);
+}
+.acct-growth-status[data-tone='error'] {
+  color: var(--mr-st-danger-fg);
+}
+.acct-growth-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+}
+.acct-growth-state p {
+  margin: 0;
+  color: var(--mr-st-danger-fg);
+}
+.acct-growth-skeleton {
+  display: block;
+  min-height: 112px;
+  border-radius: 10px;
+}
+
+/* ── Period ── */
+.acct-growth-period {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 12px;
+}
+.acct-growth-period .dash-field {
+  width: 160px;
+}
+.acct-growth-period-text {
+  flex: 1 1 260px;
+  margin: 0 0 9px;
+  font-size: var(--mr-text-xs);
+  line-height: 1.45;
+  color: var(--mr-fg-3);
+}
+
+/* ── Cards ── */
+.acct-growth-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+/* Each card's sub line carries its n and low-data note, so it wraps instead of clipping. */
+.acct-growth-cards .dash-metric-sub {
+  white-space: normal;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+.acct-growth-cards .dash-metric-value {
+  font-size: 26px;
+}
+
+/* ── Channels ── */
+.acct-growth-explain {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  max-width: 76ch;
+  font-size: var(--mr-text-sm);
+  line-height: 1.5;
+  color: var(--mr-fg-3);
+}
+.acct-growth-explain div {
+  display: flex;
+  gap: 6px;
+}
+.acct-growth-explain dt {
+  flex: none;
+  min-width: 62px;
+  font-weight: 600;
+  color: var(--mr-fg);
+}
+.acct-growth-explain dd {
+  margin: 0;
+}
+.acct-growth-table th.acct-num,
+.acct-growth-table td.acct-num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* Row headers are channel names, not column labels: undo the eyebrow styling. */
+.acct-growth-table tbody th {
+  padding: 12px 14px;
+  background: none;
+  font-family: var(--mr-font-ui);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  text-align: left;
+  color: var(--mr-fg);
+  border-bottom: 1px solid var(--mr-dash-table-border);
+  user-select: text;
+}
+.acct-growth-table td {
+  vertical-align: top;
+}
+.acct-growth-n {
+  display: flex;
+  align-items: center;
+  justify-content: inherit;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: var(--mr-text-xs);
+  font-weight: 400;
+  color: var(--mr-fg-4);
+  font-variant-numeric: tabular-nums;
+}
+td.acct-num .acct-growth-n {
+  justify-content: flex-end;
+}
+.acct-growth-low {
+  padding: 0 7px;
+  letter-spacing: normal;
+  text-transform: none;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-st-warn-bg);
+  color: var(--mr-st-warn-fg);
+  font-family: var(--mr-font-label);
+  font-size: var(--mr-text-xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.acct-growth-pill {
+  display: inline-block;
+  padding: 1px 9px;
+  border-radius: var(--mr-radius-pill);
+  font-size: var(--mr-text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.acct-growth-pill[data-tone='danger'] {
+  background: var(--mr-st-danger-bg);
+  color: var(--mr-st-danger-fg);
+}
+.acct-growth-pill[data-tone='ok'] {
+  background: var(--mr-st-ok-bg);
+  color: var(--mr-st-ok-fg);
+}
+
+/* ── Spend log ── */
+.acct-spend-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--mr-gold-200);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-dash-sub);
+}
+.acct-spend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px 16px;
+}
+.acct-spend-wide {
+  grid-column: 1 / -1;
+}
+.acct-spend-amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.acct-spend-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.acct-spend-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--mr-dash-hair);
+}
+.acct-spend-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px 20px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--mr-dash-hair);
+}
+.acct-spend-row > .acct-spend-form {
+  grid-column: 1 / -1;
+}
+.acct-spend-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.acct-spend-main strong {
+  font-weight: 500;
+  color: var(--mr-fg);
+  overflow-wrap: anywhere;
+}
+.acct-spend-meta,
+.acct-spend-note {
+  font-size: var(--mr-text-xs);
+  color: var(--mr-fg-3);
+}
+.acct-spend-note {
+  overflow-wrap: anywhere;
+}
+.acct-spend-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.acct-spend-tags code {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--mr-dash-sub);
+  border: 1px solid var(--mr-dash-hair);
+  font-size: var(--mr-text-xs);
+  color: var(--mr-fg-2);
+  overflow-wrap: anywhere;
+}
+.acct-spend-amount-text {
+  font-weight: 600;
+  color: var(--mr-fg);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.acct-spend-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.acct-spend-confirm {
+  font-size: var(--mr-text-sm);
+  color: var(--mr-st-danger-fg);
+}
+
+/* ── Link builder ── */
+.acct-utm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px 16px;
+}
+.acct-utm-out {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 14px 16px;
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-dash-sub);
+  border: 1px solid var(--mr-dash-hair);
+}
+.acct-utm-url {
+  flex: 1 1 320px;
+  min-width: 0;
+  font-family: var(--mr-font-mono, ui-monospace, monospace);
+  font-size: var(--mr-text-sm);
+  line-height: 1.5;
+  color: var(--mr-fg);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.acct-utm-url::selection {
+  background: var(--mr-gold-200);
+}
+
+.acct-growth-footer {
+  margin: 0;
+  font-size: var(--mr-text-sm);
+  color: var(--mr-fg-3);
+}
+
+@media (max-width: 1100px) {
+  .acct-growth-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .acct-growth-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .acct-growth-period .dash-field {
+    width: calc(50% - 6px);
+  }
+  .acct-growth-period button {
+    width: 100%;
+  }
+  .acct-growth-explain div {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* Channels table becomes one block per channel. */
+  .acct-growth-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .acct-growth-table,
+  .acct-growth-table tbody {
+    display: block;
+  }
+  .acct-growth-table tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--mr-dash-hair);
+  }
+  .acct-growth-table tbody th,
+  .acct-growth-table td {
+    padding: 0;
+    border: 0;
+  }
+  .acct-growth-table tbody th {
+    grid-column: 1 / -1;
+  }
+  .acct-growth-table th.acct-num,
+  .acct-growth-table td.acct-num {
+    text-align: left;
+    white-space: normal;
+  }
+  td.acct-num .acct-growth-n {
+    justify-content: flex-start;
+  }
+  .acct-growth-table td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: var(--mr-text-xs);
+    color: var(--mr-fg-3);
+  }
+
+  .acct-spend-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .acct-spend-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+  .acct-spend-form-actions .dash-btn-primary {
+    flex: 1;
+  }
+}
