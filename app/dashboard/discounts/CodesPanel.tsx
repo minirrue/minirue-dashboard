@@ -14,6 +14,7 @@ import {
   startOfShopDayIso,
 } from '@/lib/dates/end-of-shop-day';
 import { codeNameProblem, formatCodeName } from '@/lib/discounts/code-name';
+import { OfferImpactLine } from './SitewidePanel';
 
 function money(minor: number): string {
   return (minor / 100).toFixed(2);
@@ -329,6 +330,9 @@ export default function CodesPanel({
               />
             </div>
           </div>
+
+          {/* A fixed amount has no percent to ask about. */}
+          <OfferImpactLine percent={valueType === 'PERCENT' ? percent : null} />
 
           {datesProblem && <p className="dash-error" role="alert">{datesProblem}</p>}
 

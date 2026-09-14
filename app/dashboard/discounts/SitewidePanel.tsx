@@ -17,8 +17,86 @@ import {
   startOfShopDayIso,
 } from '@/lib/dates/end-of-shop-day';
 import { codeNameProblem, formatCodeName } from '@/lib/discounts/code-name';
+import { apiOfferImpact } from '@/lib/api/accounting';
 
 type Mode = 'AUTOMATIC' | 'MANUAL';
+
+const IMPACT_DEBOUNCE_MS = 400;
+
+function products(n: number): string {
+  return `${n} ${n === 1 ? 'product' : 'products'}`;
+}
+
+/** "3 products will be capped at their floor · 2 dip below Law 1 (…)"; '' when nothing is hit. */
+function impactText(capped: number, belowLaw1: number): string {
+  const law1 = '(profit from the delivery fee)';
+  const dip = belowLaw1 === 1 ? 'dips' : 'dip';
+  if (capped > 0 && belowLaw1 > 0) {
+    return `${products(capped)} will be capped at their floor · ${belowLaw1} ${dip} below Law 1 ${law1}`;
+  }
+  if (capped > 0) return `${products(capped)} will be capped at their floor`;
+  if (belowLaw1 > 0) return `${products(belowLaw1)} ${dip} below Law 1 ${law1}`;
+  return '';
+}
+
+/**
+ * What a percent offer would do to the floors, before it is saved (epic
+ * backend#155, `GET accounting/offers/impact`). Asked 400ms after typing stops.
+ * Advisory only: a failed call shows nothing and never blocks saving. `percent`
+ * null = not a percent offer (a fixed-amount code), so nothing is asked.
+ *
+ * Shared with CodesPanel.
+ */
+export function OfferImpactLine({ percent }: { percent: string | null }) {
+  const n = percent === null ? NaN : Number(percent);
+  const percentBp = Number.isFinite(n) ? Math.round(n * 100) : NaN;
+  const valid = percentBp >= 1 && percentBp <= 10000;
+  // Keyed by the percent it answers, so a stale answer is never shown for a new value.
+  const [result, setResult] = React.useState<{ percentBp: number; text: string } | null>(null);
+
+  React.useEffect(() => {
+    if (!valid) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      apiOfferImpact({ percentBp }).then(
+        (r) => {
+          if (!cancelled) {
+            setResult({ percentBp, text: impactText(r.cappedProductCount, r.belowLaw1ProductCount) });
+          }
+        },
+        () => {
+          if (!cancelled) setResult(null);
+        },
+      );
+    }, IMPACT_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [percentBp, valid]);
+
+  const text = valid && result?.percentBp === percentBp ? result.text : '';
+  return (
+    <div role="status" aria-live="polite">
+      {text && (
+        <p
+          style={{
+            margin: '16px 0 0',
+            padding: '8px 12px',
+            fontSize: 13,
+            lineHeight: 1.45,
+            color: 'var(--mr-st-warn-fg)',
+            background: 'var(--mr-st-warn-bg)',
+            borderRadius: 'var(--mr-radius-sm)',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {text}
+        </p>
+      )}
+    </div>
+  );
+}
 
 function shopDate(iso: string | null): string {
   return iso
@@ -300,6 +378,8 @@ export default function SitewidePanel({
                 </div>
               </div>
 
+              <OfferImpactLine percent={percent} />
+
               <div className="dash-form-actions">
                 <button type="submit" className="dash-btn-primary" disabled={saving}>
                   {saving ? 'Saving…' : live ? 'Replace' : 'Start'}
@@ -492,6 +572,8 @@ export default function SitewidePanel({
                   />
                 </div>
               </div>
+
+              <OfferImpactLine percent={percent} />
 
               {datesProblem && <p className="dash-error" role="alert">{datesProblem}</p>}
 

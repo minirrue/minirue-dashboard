@@ -20,7 +20,13 @@ jest.mock('@/lib/api/discounts', () => {
   };
 });
 
+jest.mock('@/lib/api/accounting', () => ({
+  apiOfferImpact: jest.fn(),
+}));
+
 import SitewidePanel from '@/app/dashboard/discounts/SitewidePanel';
+import ImpactCodesPanel from '@/app/dashboard/discounts/CodesPanel';
+import { apiOfferImpact, type OfferImpact } from '@/lib/api/accounting';
 import {
   createDiscount,
   killDiscount,
@@ -35,6 +41,34 @@ const mockList = listDiscounts as jest.Mock;
 const mockCreate = createDiscount as jest.Mock;
 const mockSetAutomatic = setAutomatic as jest.Mock;
 const mockKill = killDiscount as jest.Mock;
+const mockImpact = apiOfferImpact as jest.Mock;
+
+/** The real `GET /v1/accounting/offers/impact` shape (backend#164). */
+function impact(percentBp: number, capped: number, belowLaw1: number): OfferImpact {
+  const ids = (n: number) => Array.from({ length: n }, (_, i) => `p-${i + 1}`);
+  return {
+    percentBp,
+    productId: null,
+    capped: ids(capped).map((productId, i) => ({
+      variantId: `v-${i + 1}`,
+      productId,
+      productName: `Product ${i + 1}`,
+      sku: `SKU-${i + 1}`,
+      priceMinor: 80900,
+      offerPriceMinor: 65900,
+      realPercentBp: 1854,
+    })),
+    cappedProductCount: capped,
+    belowLaw1: ids(belowLaw1).map((productId, i) => ({
+      variantId: `v-${i + 1}`,
+      productId,
+      offerPriceMinor: 65900,
+    })),
+    belowLaw1ProductCount: belowLaw1,
+  };
+}
+
+const IMPACT_LINE = /capped at their floor|below Law 1/;
 
 function discount(over: Partial<Discount>): Discount {
   return {
@@ -77,6 +111,10 @@ beforeEach(() => {
   );
   mockSetAutomatic.mockResolvedValue(discount({ kind: 'AUTOMATIC' }));
   mockKill.mockResolvedValue(discount({}));
+  // By argument: nothing is affected below 20%, 3 capped and 2 under Law 1 above.
+  mockImpact.mockImplementation(async ({ percentBp }: { percentBp: number }) =>
+    percentBp >= 2000 ? impact(percentBp, 3, 2) : impact(percentBp, 0, 0),
+  );
 });
 
 function mode(name: RegExp) {
@@ -231,5 +269,81 @@ describe('CodesPanel — the code name and start date (backend#103 audit)', () =
 
     expect(mockCreate).toHaveBeenCalledTimes(1);
     expect(mockCreate.mock.calls[0][0]).not.toHaveProperty('code');
+  });
+});
+
+describe('offer impact line (dashboard#63, backend#164)', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  async function settle(ms: number) {
+    await act(async () => {
+      jest.advanceTimersByTime(ms);
+    });
+  }
+
+  it('Sitewide: debounces typing into one impact call and shows both counts', async () => {
+    render(<SitewidePanel onChanged={jest.fn()} refreshToken={0} />);
+    const input = screen.getByLabelText('Percent off');
+
+    fireEvent.change(input, { target: { value: '2' } });
+    await settle(200);
+    fireEvent.change(input, { target: { value: '25' } });
+    await settle(399);
+    expect(mockImpact).not.toHaveBeenCalled();
+
+    await settle(1);
+    expect(mockImpact).toHaveBeenCalledTimes(1);
+    expect(mockImpact).toHaveBeenCalledWith({ percentBp: 2500 });
+    expect(
+      await screen.findByText(
+        '3 products will be capped at their floor · 2 dip below Law 1 (profit from the delivery fee)',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('Sitewide: shows nothing when both counts are 0', async () => {
+    render(<SitewidePanel onChanged={jest.fn()} refreshToken={0} />);
+    fireEvent.change(screen.getByLabelText('Percent off'), { target: { value: '25' } });
+    await settle(400);
+    await screen.findByText(IMPACT_LINE);
+
+    fireEvent.change(screen.getByLabelText('Percent off'), { target: { value: '15' } });
+    await settle(400);
+    expect(mockImpact).toHaveBeenLastCalledWith({ percentBp: 1500 });
+    await waitFor(() => expect(screen.queryByText(IMPACT_LINE)).not.toBeInTheDocument());
+  });
+
+  it('Sitewide: a failed impact call never blocks saving', async () => {
+    mockImpact.mockRejectedValue(new Error('offline'));
+    render(<SitewidePanel onChanged={jest.fn()} refreshToken={0} />);
+    fireEvent.change(screen.getByLabelText('Percent off'), { target: { value: '25' } });
+    await settle(400);
+
+    expect(mockImpact).toHaveBeenCalled();
+    expect(screen.queryByText(IMPACT_LINE)).not.toBeInTheDocument();
+    const start = await screen.findByRole('button', { name: 'Start' });
+    expect(start).toBeEnabled();
+    await act(async () => {
+      fireEvent.click(start);
+    });
+    expect(mockSetAutomatic).toHaveBeenCalledWith({ percent: 25, expiresAt: null, note: null });
+    expect(screen.queryByText(/offline/)).not.toBeInTheDocument();
+  });
+
+  it('Codes: shows the line for a percent code only, never for a fixed amount', async () => {
+    render(<ImpactCodesPanel onChanged={jest.fn()} refreshToken={0} />);
+    fireEvent.change(screen.getByLabelText('Percent'),{ target: { value: '25' } });
+    await settle(400);
+    expect(mockImpact).toHaveBeenCalledWith({ percentBp: 2500 });
+    expect(await screen.findByText(IMPACT_LINE)).toHaveTextContent(
+      '3 products will be capped at their floor · 2 dip below Law 1 (profit from the delivery fee)',
+    );
+
+    mockImpact.mockClear();
+    fireEvent.change(screen.getByLabelText('Takes off'), { target: { value: 'FIXED' } });
+    await settle(400);
+    expect(screen.queryByText(IMPACT_LINE)).not.toBeInTheDocument();
+    expect(mockImpact).not.toHaveBeenCalled();
   });
 });

@@ -278,10 +278,22 @@ export interface SystemVariantInput extends CostFields {
   costAmountMinor: number;
 }
 
+/** `GET offers/impact` (backend src/pricing/pricing-warnings.ts `OfferImpact`). */
 export interface OfferImpact {
-  cappedCount: number;
-  capped: { productId: string; variantId: string; productName: string; offerPriceMinor: number }[];
-  belowLaw1Count: number;
+  percentBp: number;
+  productId: string | null;
+  capped: {
+    variantId: string;
+    productId: string;
+    productName: string;
+    sku: string;
+    priceMinor: number;
+    offerPriceMinor: number;
+    realPercentBp: number;
+  }[];
+  cappedProductCount: number;
+  belowLaw1: { variantId: string; productId: string; offerPriceMinor: number }[];
+  belowLaw1ProductCount: number;
 }
 
 // ── Growth ───────────────────────────────────────────────────────────────────
