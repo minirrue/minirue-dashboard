@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import NotificationDrawer from './NotificationDrawer';
 import ServerStatus from './ServerStatus';
+import PricingWarningsLink from './PricingWarningsLink';
 import { useUnreadNotificationCount } from '@/lib/hooks/use-unread-notifications';
 
 // Kept for compatibility with existing callers passing breadcrumbs/eyebrow/
@@ -53,6 +54,9 @@ export default function DashboardTopbar({ onToggleDrawer }: DashboardTopbarProps
         {/* Is the API up. Sits before the bell because a dead server makes
             every other control in here a lie — including the bell's count. */}
         <ServerStatus variant="dot" />
+
+        {/* Yellow pricing warnings, beside the bell; renders nothing at 0. */}
+        <PricingWarningsLink />
 
         <button
           className="dash-notif-btn"

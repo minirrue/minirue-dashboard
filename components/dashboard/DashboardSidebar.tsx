@@ -15,6 +15,8 @@ import { useUnreadNotificationCount } from '@/lib/hooks/use-unread-notifications
 import { apiCollabOverview, type CollabModule } from '@/lib/api/collab-portal';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { useShopName } from '@/lib/hooks/use-shop-name';
+import { usePricingWarnings } from '@/lib/hooks/use-pricing-warnings';
+import PricingWarningsLink, { IconWarningTriangle, pricingWarningsLabel } from './PricingWarningsLink';
 
 /* ── Icon helpers (inline SVG to avoid external deps) ── */
 
@@ -393,6 +395,7 @@ export default function DashboardSidebar({
   // Per-tab unread counts, from the same request that feeds the bell above —
   // so a number on Support and the number on the bell can never contradict.
   const { byCategory } = useNotificationCounts();
+  const { total: pricingWarnings } = usePricingWarnings();
 
   const renderNav = () => (
     <nav className="dash-sidebar-nav" onClick={onMobileDrawerClose}>
@@ -427,6 +430,18 @@ export default function DashboardSidebar({
                       {formatNavCount(unread)}
                     </span>
                   )}
+                  {/* Yellow pricing warnings, from the same hook as the
+                      triangle by the bell. Not an unread count: PRICING is
+                      kept out of nav-counts so this is Accounting's only number. */}
+                  {item.href === '/accounting' && pricingWarnings > 0 && (
+                    <span
+                      className="dash-sidebar-link-warn"
+                      aria-label={pricingWarningsLabel(pricingWarnings)}
+                    >
+                      <IconWarningTriangle size={10} />
+                      {formatNavCount(pricingWarnings)}
+                    </span>
+                  )}
                   {item.maintenance && (
                     <span className="dash-sidebar-link-badge">Maintenance</span>
                   )}
@@ -454,6 +469,7 @@ export default function DashboardSidebar({
         <div className="dash-sidebar-subtitle">Atelier dashboard</div>
       </div>
       {showNotifButton && (
+        <div className="dash-sidebar-brand-actions">
         <button
           type="button"
           className="dash-notif-btn"
@@ -471,6 +487,10 @@ export default function DashboardSidebar({
             </span>
           )}
         </button>
+        {/* The topbar is hidden on desktop, so the yellow triangle joins the
+            bell here, as it does in the mobile topbar. */}
+        <PricingWarningsLink />
+        </div>
       )}
     </div>
   );

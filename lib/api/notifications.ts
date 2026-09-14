@@ -5,9 +5,13 @@ import { apiFetch } from './client';
 // of CUSTOMER so the sidebar can count chat messages against the Support tab
 // and account events against Customers, instead of showing both the same
 // combined number.
+//
+// PRICING (backend#164) is the yellow pricing warnings. It is deliberately not
+// mapped in lib/notifications/nav-counts.ts: Accounting shows the warnings
+// count from usePricingWarnings instead, never a second unread number.
 export const NOTIFICATION_CATEGORIES = [
   'ORDER', 'PAYMENT', 'FULFILLMENT', 'REFUND',
-  'INVENTORY', 'CUSTOMER', 'SUPPORT', 'COLLAB', 'SYSTEM',
+  'INVENTORY', 'CUSTOMER', 'SUPPORT', 'COLLAB', 'SYSTEM', 'PRICING',
 ] as const;
 export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
 

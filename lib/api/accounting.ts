@@ -104,35 +104,43 @@ export interface PricingSettings {
 
 // ── Warnings ─────────────────────────────────────────────────────────────────
 
+// Matches backend src/pricing/pricing-warnings.ts (`WARNING_KINDS`,
+// `PricingWarning`, `WarningsResult`), as returned by `POST warnings/check`.
+
 export type WarningKind =
   | 'LOSES_MONEY'
   | 'BELOW_LAW1'
+  | 'THIN_MARGIN'
   | 'DISCOUNT_CAPPED'
   | 'CANT_COMPETE'
-  | 'THIN_MARGIN'
   | 'NO_COST'
   | 'NO_MARKET'
   | 'STALE_MARKET'
   | 'OFFER_BELOW_LAW1';
 
-export interface Warning {
-  /** Stable identity; notifications are emitted once per new key. */
+export interface PricingWarning {
+  /** `${kind}:${variantId|'shop'}`. Stable; a PRICING notification goes out once per new key. */
   key: string;
   /** Known kinds are listed; the string fallback keeps a newer backend renderable. */
   kind: WarningKind | (string & {});
+  /** Null for a shop-wide warning (OFFER_BELOW_LAW1). */
+  variantId: string | null;
+  productId: string | null;
+  /** Plain English; also the notification title. */
   title: string;
   detail: string;
-  productId?: string;
-  variantId?: string;
-  bundleId?: string;
-  /** Dashboard path that opens the offending row. */
-  link: string;
+  /** DISCOUNT_CAPPED: the real discount; THIN_MARGIN: the margin. */
+  valueBp?: number;
+  /** OFFER_BELOW_LAW1: the number of products. */
+  count?: number;
 }
 
-export interface WarningSummary {
+export interface PricingWarningsResult {
+  /** Every item, shop-wide ones included: the yellow count. */
   total: number;
+  /** Per-item warnings per product id; shop-wide warnings are not counted here. */
   byProduct: Record<string, number>;
-  items: Warning[];
+  items: PricingWarning[];
 }
 
 // ── Rows ─────────────────────────────────────────────────────────────────────
@@ -467,7 +475,7 @@ export function apiCreateSystemVariant(
 }
 
 /** Also emits one PRICING notification per new warning key. */
-export function apiCheckPricingWarnings(): Promise<WarningSummary> {
+export function apiCheckPricingWarnings(): Promise<PricingWarningsResult> {
   return apiFetch(`${BASE}/warnings/check`, { method: 'POST', auth: true });
 }
 

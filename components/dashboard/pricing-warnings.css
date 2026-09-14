@@ -1,0 +1,100 @@
+/* Yellow pricing warnings (minirue-dashboard#60). Deliberately a second visual
+   language from the red unread pills: red means "something new happened",
+   yellow means "something is standing wrong with a price". So it never
+   breathes, and its count is ink on the warn tint rather than white on red. */
+
+/* Same anatomy as .dash-notif-btn so it sits beside the bell as its twin. */
+.dash-warn-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  background: var(--mr-dash-surface);
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+  color: var(--mr-st-warn-fg);
+  text-decoration: none;
+  transition:
+    background var(--mr-dur-fast) var(--mr-ease-snappy),
+    transform var(--mr-dur-fast) var(--mr-ease-spring);
+}
+.dash-warn-btn:hover {
+  background: var(--mr-st-warn-bg);
+}
+.dash-warn-btn:active {
+  transform: scale(var(--mr-scale-press));
+}
+.dash-warn-btn:focus-visible {
+  outline: 2px solid var(--mr-st-warn-fg);
+  outline-offset: 2px;
+}
+
+/* The triangle itself is filled yellow; the stroke and mark stay dark ink so
+   the glyph clears 3:1 on the white surface. */
+.dash-warn-triangle-fill {
+  fill: var(--mr-warning);
+  fill-opacity: 0.35;
+}
+
+/* Hung off the corner exactly like .dash-notif-count, so the eye reads both
+   as "icon with a count". */
+.dash-warn-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  z-index: 1;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-st-warn-bg);
+  color: var(--mr-st-warn-fg);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--mr-st-warn-fg) 30%, transparent),
+    0 0 0 2px var(--mr-dash-surface);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The bell and the triangle in the sidebar brand. Stacked, bell on top where
+   it always was: the 232px sidebar has no width for the wordmark plus two
+   36px buttons in a row (the bell clipped and the subtitle wrapped), but the
+   brand block is tall enough for both. The gap leaves room for the count
+   hanging off the triangle's corner. */
+.dash-sidebar-brand-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* Warnings count on the Accounting nav item. Pinned right like
+   .dash-sidebar-link-count so the counts still form one column, but tinted
+   and carrying the triangle, so it cannot be mistaken for unread. */
+.dash-sidebar-link-warn {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 18px;
+  padding: 0 6px 0 4px;
+  box-sizing: border-box;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-st-warn-bg);
+  color: var(--mr-st-warn-fg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mr-st-warn-fg) 30%, transparent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
