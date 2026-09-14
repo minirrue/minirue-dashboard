@@ -1,57 +1,27 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { formatEgpMinor } from '@/components/dashboard/charts';
-import { apiAccountingOverview, type AccountingOverview } from '@/lib/api/accounting';
-import PricingDrawer, { MODE, formatSignedEgp, type PriceRow } from './PricingDrawer';
+import { apiAccountingOverview, type AccountingOverview, type PriceFlag } from '@/lib/api/accounting';
+import PricingDrawer, { FLAG_LABELS, MODE, formatSignedEgp } from './PricingDrawer';
 import './prices-tab.css';
-
-interface Economics {
-  costMinor: number | null;
-  marginBp: number | null;
-  profitMinor: number | null;
-}
-
-/**
- * Margin and profit at the price customers actually pay (the live price), so a
- * My price row shows what it really earns, not what the System price would.
- * Cost is today's cost from the trace, else a fixed EGP cost.
- */
-function economicsOf(item: PriceRow, fulfillmentMinor: number): Economics {
-  const { row } = item;
-  const traced = row.result?.trace.find((t) => t.step === 'COST')?.valueMinor ?? null;
-  const fixed =
-    item.kind === 'variant' && item.row.costCurrency === 'EGP' && !item.row.followsUsd
-      ? item.row.costAmountMinor
-      : null;
-  const costMinor = traced ?? fixed;
-  if (costMinor === null) return { costMinor, marginBp: null, profitMinor: null };
-  const price = row.livePriceMinor;
-  return {
-    costMinor,
-    marginBp: price > 0 ? ((price - costMinor) * 10000) / price : null,
-    profitMinor: price - costMinor - fulfillmentMinor,
-  };
-}
 
 function formatMargin(bp: number): string {
   const pct = Math.round(bp / 10) / 10;
   return pct < 0 ? `−${Math.abs(pct).toFixed(1)}%` : `${pct.toFixed(1)}%`;
 }
 
-function keyOf(item: PriceRow): string {
-  return item.kind === 'variant' ? `v:${item.row.variantId}` : `s:${item.row.bundleId}`;
-}
-
-function WarningCount({ count }: { count: number }) {
+/** The engine's own flags for the row. Warnings (backend#164) will replace this count. */
+function FlagCount({ flags }: { flags: PriceFlag[] }) {
+  const count = flags.length;
   if (count === 0) {
     return (
-      <span className="acct-prices-none" aria-label="No warnings">
+      <span className="acct-prices-none" aria-label="No flags">
         —
       </span>
     );
   }
-  const label = `${count} ${count === 1 ? 'warning' : 'warnings'}`;
+  const label = `${count} ${count === 1 ? 'flag' : 'flags'}: ${flags.map((f) => FLAG_LABELS[f] ?? f).join(', ')}`;
   return (
     <span className="acct-prices-warn" aria-label={label} title={label}>
       <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -67,14 +37,16 @@ function WarningCount({ count }: { count: number }) {
 }
 
 /**
- * Prices tab (minirue-dashboard#57): every house variant and set with its
- * mode, cost, market, both floors, price, margin, profit and warning count.
- * A row opens the pricing drawer.
+ * Prices tab (minirue-dashboard#57, #66): every house variant with its mode,
+ * cost, market, both floors, price, margin, profit and engine flags, read from
+ * the backend's `OverviewVariantRow`. Margin and profit are the backend's
+ * `current` figures, at the price customers pay now. A row opens the pricing
+ * drawer, whose saves refetch the overview.
  */
 export default function PricesTab() {
   const [overview, setOverview] = useState<AccountingOverview | null>(null);
   const [error, setError] = useState(false);
-  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -92,22 +64,15 @@ export default function PricesTab() {
 
   useEffect(() => load(), [load]);
 
-  const items = useMemo<PriceRow[]>(
-    () =>
-      overview
-        ? [
-            ...overview.variants.map((row): PriceRow => ({ kind: 'variant', row })),
-            ...overview.sets.map((row): PriceRow => ({ kind: 'set', row })),
-          ]
-        : [],
-    [overview],
-  );
-  const fulfillmentMinor = useMemo(
-    () => overview?.pricing.fulfillmentItems.reduce((sum, i) => sum + i.amountMinor, 0) ?? 0,
-    [overview],
-  );
-  const openItem = items.find((i) => keyOf(i) === openKey) ?? null;
-  const withWarnings = items.filter((i) => i.row.warnings.length > 0).length;
+  /** After a drawer save: a fresh GET, so the row shows what the backend stored. */
+  const refresh = useCallback(async () => {
+    setOverview(await apiAccountingOverview());
+  }, []);
+
+  const items = overview?.variants ?? [];
+  const fulfillmentMinor = overview?.fees.fulfillmentMinor ?? 0;
+  const openRow = items.find((r) => r.variantId === openId) ?? null;
+  const withFlags = items.filter((r) => r.system.flags.length > 0).length;
 
   if (error) {
     return (
@@ -143,10 +108,10 @@ export default function PricesTab() {
         </h2>
         <p className="acct-prices-summary">
           <span className="mr-num">{items.length}</span> {items.length === 1 ? 'item' : 'items'}
-          {withWarnings > 0 && (
+          {withFlags > 0 && (
             <>
               {' · '}
-              <span className="mr-num">{withWarnings}</span> with warnings
+              <span className="mr-num">{withFlags}</span> flagged
             </>
           )}
           {' · '}Profit is after <span className="mr-num">{formatEgpMinor(fulfillmentMinor)}</span> box &amp; trip
@@ -168,33 +133,33 @@ export default function PricesTab() {
                 <th scope="col" className="acct-num">Price</th>
                 <th scope="col" className="acct-num">Margin</th>
                 <th scope="col" className="acct-num">Profit</th>
-                <th scope="col" className="acct-num">Warnings</th>
+                <th scope="col" className="acct-num">Flags</th>
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => {
-                const { row } = item;
-                const key = keyOf(item);
-                const econ = economicsOf(item, fulfillmentMinor);
-                const floors = row.result?.floors ?? null;
-                const market = row.result?.marketMinor ?? null;
-                const belowNoLoss = floors !== null && row.livePriceMinor < floors.noLossShownMinor;
-                const belowLaw1 = floors !== null && row.livePriceMinor < floors.law1ShownMinor;
-                const name = item.kind === 'variant' ? item.row.productName : item.row.bundleName;
-                const detail = item.kind === 'variant' ? item.row.variantLabel : 'Set';
+              {items.map((row) => {
+                const floors = row.system.floors;
+                const market = row.system.marketMinor;
+                const price = row.currentPriceMinor;
+                const { marginBp, productProfitMinor } = row.current;
+                const belowNoLoss = floors !== null && price < floors.noLossShownMinor;
+                const belowLaw1 = floors !== null && price < floors.law1ShownMinor;
                 return (
-                  <tr key={key} className="acct-prices-row" onClick={() => setOpenKey(key)}>
+                  <tr key={row.variantId} className="acct-prices-row" onClick={() => setOpenId(row.variantId)}>
                     <td data-label="Item" className="acct-prices-item">
                       <button
                         type="button"
                         className="acct-prices-open"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setOpenKey(key);
+                          setOpenId(row.variantId);
                         }}
                       >
-                        <span className="acct-prices-name">{name}</span>{' '}
-                        <span className="acct-prices-detail">{detail}</span>
+                        <span className="acct-prices-name">{row.productName}</span>{' '}
+                        <span className="acct-prices-detail">
+                          {row.sku}
+                          {!row.isActive && ' · Inactive'}
+                        </span>
                       </button>
                     </td>
                     <td data-label="Mode">
@@ -203,10 +168,10 @@ export default function PricesTab() {
                       </span>
                     </td>
                     <td data-label="Cost" className="acct-num">
-                      {econ.costMinor === null ? (
+                      {row.costMinor === null ? (
                         <span className="acct-prices-missing">No cost</span>
                       ) : (
-                        <span className="mr-num">{formatEgpMinor(econ.costMinor)}</span>
+                        <span className="mr-num">{formatEgpMinor(row.costMinor)}</span>
                       )}
                     </td>
                     <td data-label="Market" className="acct-num">
@@ -231,7 +196,7 @@ export default function PricesTab() {
                         className="acct-prices-price mr-num"
                         data-tone={belowNoLoss ? 'danger' : belowLaw1 ? 'warn' : undefined}
                       >
-                        {formatEgpMinor(row.livePriceMinor)}
+                        {formatEgpMinor(price)}
                       </span>
                       {(belowNoLoss || belowLaw1) && (
                         <span className="acct-prices-sub" data-tone={belowNoLoss ? 'danger' : 'warn'}>
@@ -240,25 +205,25 @@ export default function PricesTab() {
                       )}
                     </td>
                     <td data-label="Margin" className="acct-num">
-                      {econ.marginBp === null ? (
+                      {marginBp === null ? (
                         <span className="acct-prices-none">—</span>
                       ) : (
-                        <span className="mr-num" data-tone={econ.marginBp < 0 ? 'danger' : undefined}>
-                          {formatMargin(econ.marginBp)}
+                        <span className="mr-num" data-tone={marginBp < 0 ? 'danger' : undefined}>
+                          {formatMargin(marginBp)}
                         </span>
                       )}
                     </td>
                     <td data-label="Profit" className="acct-num">
-                      {econ.profitMinor === null ? (
+                      {productProfitMinor === null ? (
                         <span className="acct-prices-none">Unknown</span>
                       ) : (
-                        <span className="mr-num" data-tone={econ.profitMinor < 0 ? 'danger' : undefined}>
-                          {formatSignedEgp(econ.profitMinor)}
+                        <span className="mr-num" data-tone={productProfitMinor < 0 ? 'danger' : undefined}>
+                          {formatSignedEgp(productProfitMinor)}
                         </span>
                       )}
                     </td>
-                    <td data-label="Warnings" className="acct-num">
-                      <WarningCount count={row.warnings.length} />
+                    <td data-label="Flags" className="acct-num">
+                      <FlagCount flags={row.system.flags} />
                     </td>
                   </tr>
                 );
@@ -268,12 +233,13 @@ export default function PricesTab() {
         </div>
       )}
 
-      {openItem && (
+      {openRow && (
         <PricingDrawer
-          key={openKey}
-          item={openItem}
+          key={openRow.variantId}
+          row={openRow}
           fulfillmentMinor={fulfillmentMinor}
-          onClose={() => setOpenKey(null)}
+          onClose={() => setOpenId(null)}
+          onSaved={refresh}
         />
       )}
     </section>

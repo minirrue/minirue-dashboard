@@ -137,115 +137,145 @@ export interface WarningSummary {
 
 // ── Rows ─────────────────────────────────────────────────────────────────────
 
+/** Matches backend `CompetitorPriceRow` without `variantId` (as the overview sends it). */
 export interface CompetitorPrice {
   id: string;
   source: string;
   url: string | null;
   priceMinor: number;
+  /** ISO timestamp. */
   checkedAt: string;
 }
 
+/** The cost as entered. USD amounts are cents. */
+export interface VariantCost {
+  amountMinor: number | null;
+  currency: CostCurrency | null;
+  followsUsd: boolean;
+  /** EGP per USD when a follows-the-dollar cost was entered, as a decimal string. */
+  rateAtEntry: string | null;
+}
+
+/** Margin and profits at the price the shop charges now; all null without a cost. */
+export interface CurrentEconomics {
+  marginBp: number | null;
+  markupBp: number | null;
+  /** Price − cost − box & trip. */
+  productProfitMinor: number | null;
+  /** Product profit + the delivery fee. */
+  orderProfitMinor: number | null;
+}
+
+/** Matches backend `OverviewVariantRow` (src/pricing/pricing.service.ts). */
 export interface VariantRow {
   variantId: string;
   productId: string;
   productName: string;
-  variantLabel: string;
-  sku: string | null;
+  productSlug: string;
+  sku: string;
+  isActive: boolean;
+  /** A variant with no pricing row reads as MANUAL with no cost. */
   mode: PricingMode;
-  costAmountMinor: number | null;
-  costCurrency: CostCurrency | null;
-  followsUsd: boolean;
-  knowledge: PriceKnowledge;
+  /** Null = not chosen yet; the engine reads it as KNOWN_BRAND. */
+  priceKnowledge: PriceKnowledge | null;
+  cost: VariantCost;
+  /** Today's cost in piastres (USD and follows-the-dollar applied); null when unknown. */
+  costMinor: number | null;
   competitorPrices: CompetitorPrice[];
-  livePriceMinor: number;
-  /** Null when the engine cannot price it (no cost). */
-  result: PriceResult | null;
-  warnings: Warning[];
+  /** What the shop charges now. */
+  currentPriceMinor: number;
+  /** The engine's answer (floors, band, System price, flags, trace), whatever the mode. */
+  system: PriceResult;
+  /** The backend's own "why", generated from `system.trace`. */
+  why: string;
+  current: CurrentEconomics;
 }
 
-export interface SetRow {
-  bundleId: string;
-  bundleName: string;
-  mode: PricingMode;
-  /** Saving off the members' prices, default 1000 (10%). */
-  savingBp: number;
-  livePriceMinor: number;
-  result: PriceResult | null;
-  warnings: Warning[];
-}
+export type RunCause = 'STRATEGY' | 'RATE' | 'SETTINGS' | 'ITEM' | 'UNDO';
 
 export interface PriceChangeSummary {
   variantId: string;
-  oldPriceMinor: number;
+  /** Null for a variant created on System price: it had no price before. */
+  oldPriceMinor: number | null;
   newPriceMinor: number;
 }
 
-/** Matches backend#159 `RunSummary`. */
+/** Matches backend `RunSummary`. */
 export interface RunSummary {
   id: string;
-  /** STRATEGY · RATE · SETTINGS · UNDO · ITEM */
-  cause: string;
+  cause: RunCause;
   changedCount: number;
   /** Mean of each change's (new − old) ÷ old; null when nothing changed. */
   averageChangeBp: number | null;
   createdAt: string;
   undoneAt: string | null;
-  /** Present on PATCH/Undo responses, omitted on `overview.lastRun`. */
+  /** Present on write responses, omitted on `overview.lastRun`. */
   changes?: PriceChangeSummary[];
 }
 
+/** Matches backend `PricingOverview`. */
 export interface AccountingOverview {
-  /** The `pricing` settings block (backend#159 names it `pricing`). */
   pricing: PricingSettings;
-  fees?: { fulfillmentMinor: number; deliveryFeeMinor: number };
+  fees: { fulfillmentMinor: number; deliveryFeeMinor: number };
   variants: VariantRow[];
-  sets: SetRow[];
+  /** Always empty until sets are priced (backend BE-10). */
+  sets: never[];
   lastRun: RunSummary | null;
   /** The run Undo would reverse right now, if any. */
-  undoableRunId?: string | null;
+  undoableRunId: string | null;
 }
 
 /** Every pricing write reprices live and answers with the run and a fresh overview. */
 export interface RepriceResponse {
   run: RunSummary;
-  /** Only on Undo responses. */
-  undoneRunId?: string;
   overview: AccountingOverview;
+}
+
+export interface UndoResponse extends RepriceResponse {
+  undoneRunId: string;
+}
+
+export interface CompetitorPriceResponse extends RepriceResponse {
+  competitorPrice: CompetitorPrice & { variantId: string };
 }
 
 // ── Inputs ───────────────────────────────────────────────────────────────────
 
 export type PricingSettingsPatch = Partial<PricingSettings>;
 
-export interface VariantPricingInput {
-  mode?: PricingMode;
-  costAmountMinor?: number | null;
-  costCurrency?: CostCurrency | null;
+/** Omitted keeps the stored value. A USD or follows-the-dollar cost needs the USD rate (400 otherwise). */
+interface CostFields {
+  costCurrency?: CostCurrency;
+  /** EGP costs only. */
   followsUsd?: boolean;
-  /** My price; only meaningful in MANUAL mode. */
-  priceMinor?: number;
 }
 
-export interface SetPricingInput {
-  mode?: PricingMode;
-  savingBp?: number;
-  priceMinor?: number;
-}
+/**
+ * Body of `PUT variants/:id` (strict). System price needs a cost; My price
+ * needs the price, and its cost is optional (omitted keeps it, null clears it).
+ */
+export type VariantPricingInput =
+  | ({ mode: 'SYSTEM'; costAmountMinor: number } & CostFields)
+  | ({ mode: 'MANUAL'; manualPriceMinor: number; costAmountMinor?: number | null } & CostFields);
 
 export interface CompetitorPriceInput {
+  /** 1–80 characters. */
   source: string;
   url?: string | null;
+  /** At least 1. */
   priceMinor: number;
   checkedAt?: string;
 }
 
-export interface SystemVariantInput {
-  label: string;
-  sku?: string | null;
+/** The catalog's variant fields (no price: the engine sets it) plus the cost. */
+export interface SystemVariantInput extends CostFields {
+  sku?: string;
+  /** Global variant id → free-typed value. */
+  values?: Record<string, string>;
+  /** Product-specific field name → value. */
+  custom_values?: Record<string, string>;
+  price_currency?: string;
   costAmountMinor: number;
-  costCurrency: CostCurrency;
-  followsUsd?: boolean;
-  [attribute: string]: unknown;
 }
 
 export interface OfferImpact {
@@ -256,56 +286,97 @@ export interface OfferImpact {
 
 // ── Growth ───────────────────────────────────────────────────────────────────
 
-export interface GrowthChannel {
+// Matches backend src/growth/growth.service.ts. Rates are fractions (0.1234),
+// not basis points; every figure carries its `n`, and `lowData` is n < 20.
+
+export type SpendChannel = 'META' | 'TIKTOK' | 'GOOGLE' | 'INFLUENCER' | 'OFFLINE' | 'OTHER';
+
+/** Backend `ChannelRow`. */
+export interface GrowthChannelRow {
+  /** A spend channel (META …) or an analytics channel (PAID, SOCIAL, REFERRAL, DIRECT …). */
   channel: string;
-  campaign: string | null;
   spendMinor: number;
   newCustomers: number;
-  /** Null when there are no new customers to divide by. */
+  /** Spend ÷ new customers; null with spend and nobody acquired. */
   cacMinor: number | null;
-  avgFirstOrderProfitMinor: number | null;
-  /** CAC ÷ average first-order profit, in orders. */
+  /** Average KNOWN first-order profit of this channel's new customers. */
+  firstOrderProfit: { avgMinor: number | null; n: number; unknownN: number };
+  /** CAC ÷ average known first-order profit; null when that is unknown or ≤ 0. */
   paybackOrders: number | null;
-  /** CAC exceeds first-order profit. */
-  leak: boolean;
+  /** CAC > first-order profit × settings.paybackOrders; null when profit is unknown. */
+  leak: boolean | null;
+  n: number;
   lowData: boolean;
 }
 
+export interface GrowthRate {
+  n: number;
+  /** count ÷ n, 4 decimals; null when n is 0. */
+  rate: number | null;
+  lowData: boolean;
+}
+
+/** Backend `GrowthReport`. */
 export interface GrowthReport {
-  from: string;
-  to: string;
-  orders: {
+  period: { from: string; to: string };
+  lowDataThreshold: number;
+  /** settings.pricing.paybackOrders, the leak multiplier. */
+  paybackOrders: number;
+  orderProfit: {
     n: number;
-    /** Null when any line's cost is unknown. */
-    profitMinor: number | null;
-    unknownProfitCount: number;
+    knownN: number;
+    unknownN: number;
+    totalMinor: number;
+    avgMinor: number | null;
+    negativeN: number;
     lowData: boolean;
   };
   delivery: {
-    feeMinor: number;
-    boxAndTripMinor: number;
-    surplusPerOrderMinor: number;
-    /** Orders would need to rise by this much for free delivery to break even. */
-    freeDeliveryBreakEvenBp: number | null;
+    deliveryFeeMinor: number;
+    fulfillmentMinor: number;
+    surplusMinor: number;
+    /** Percent (1 decimal) orders must rise for free delivery to break even. */
+    freeDeliveryBreakEvenLiftPct: number | null;
+    n: number;
+    lowData: boolean;
   };
-  channels: GrowthChannel[];
-  repeatRateBp: number | null;
-  refusedRateBp: number | null;
+  channels: GrowthChannelRow[];
+  newCustomers: { count: number; n: number; lowData: boolean };
+  repeat: GrowthRate & { orders: number };
+  refused: GrowthRate & { count: number };
+  cancelled: GrowthRate & { count: number };
 }
 
+/** Backend `SpendView`. */
 export interface SpendEntry {
   id: string;
-  channel: string;
+  channel: SpendChannel;
   campaign: string;
   utmCampaign: string | null;
   discountCode: string | null;
-  startsOn: string;
-  endsOn: string;
+  /** YYYY-MM-DD, inclusive. */
+  spentFrom: string;
+  spentTo: string;
   amountMinor: number;
+  note: string | null;
+  createdBy: string | null;
   createdAt: string;
 }
 
-export type SpendInput = Omit<SpendEntry, 'id' | 'createdAt'>;
+/** Body of `POST spend` (strict). Blank optional strings are stored as null. */
+export interface SpendInput {
+  channel: SpendChannel;
+  /** 1–80 characters. */
+  campaign: string;
+  utmCampaign?: string | null;
+  discountCode?: string | null;
+  spentFrom: string;
+  /** On or after `spentFrom`. */
+  spentTo: string;
+  /** Positive. */
+  amountMinor: number;
+  note?: string | null;
+}
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 
@@ -325,10 +396,11 @@ export function apiUpdatePricingSettings(patch: PricingSettingsPatch): Promise<R
 }
 
 /** 409 "prices were edited since" when a later change exists. */
-export function apiUndoPricingRun(runId: string): Promise<RepriceResponse> {
+export function apiUndoPricingRun(runId: string): Promise<UndoResponse> {
   return apiFetch(`${BASE}/runs/${encodeURIComponent(runId)}/undo`, { method: 'POST', auth: true });
 }
 
+/** System price (cost in) or My price (price in); reprices that variant live. */
 export function apiUpdateVariantPricing(
   variantId: string,
   input: VariantPricingInput,
@@ -340,9 +412,10 @@ export function apiUpdateVariantPricing(
   });
 }
 
+/** Null clears the choice (read as KNOWN_BRAND). Reprices the product's System-price variants. */
 export function apiUpdateProductKnowledge(
   productId: string,
-  knowledge: PriceKnowledge,
+  knowledge: PriceKnowledge | null,
 ): Promise<RepriceResponse> {
   return apiFetch(`${BASE}/products/${encodeURIComponent(productId)}/knowledge`, {
     method: 'PUT',
@@ -351,18 +424,10 @@ export function apiUpdateProductKnowledge(
   });
 }
 
-export function apiUpdateSetPricing(bundleId: string, input: SetPricingInput): Promise<RepriceResponse> {
-  return apiFetch(`${BASE}/sets/${encodeURIComponent(bundleId)}`, {
-    method: 'PUT',
-    auth: true,
-    body: json(input),
-  });
-}
-
 export function apiAddCompetitorPrice(
   variantId: string,
   input: CompetitorPriceInput,
-): Promise<RepriceResponse> {
+): Promise<CompetitorPriceResponse> {
   return apiFetch(`${BASE}/variants/${encodeURIComponent(variantId)}/competitor-prices`, {
     method: 'POST',
     auth: true,
@@ -381,7 +446,7 @@ export function apiDeleteCompetitorPrice(id: string): Promise<RepriceResponse> {
 export function apiCreateSystemVariant(
   productId: string,
   input: SystemVariantInput,
-): Promise<{ variant: VariantRow; run: RunSummary }> {
+): Promise<{ variant: Record<string, unknown>; run: RunSummary; overview: AccountingOverview }> {
   return apiFetch(`${BASE}/products/${encodeURIComponent(productId)}/variants`, {
     method: 'POST',
     auth: true,
@@ -400,9 +465,13 @@ export function apiOfferImpact(params: { percentBp: number; productId?: string }
   return apiFetch(`${BASE}/offers/impact?${qs.toString()}`, { auth: true });
 }
 
-export function apiGrowthReport(params: { from: string; to: string }): Promise<GrowthReport> {
-  const qs = new URLSearchParams({ from: params.from, to: params.to });
-  return apiFetch(`${BASE}/growth?${qs.toString()}`, { auth: true });
+/** `from`/`to` are local YYYY-MM-DD days, inclusive; omitted, the last 30 days ending today. */
+export function apiGrowthReport(params: { from?: string; to?: string } = {}): Promise<GrowthReport> {
+  const qs = new URLSearchParams();
+  if (params.from) qs.set('from', params.from);
+  if (params.to) qs.set('to', params.to);
+  const query = qs.toString();
+  return apiFetch(`${BASE}/growth${query ? `?${query}` : ''}`, { auth: true });
 }
 
 export function apiListSpend(): Promise<SpendEntry[]> {

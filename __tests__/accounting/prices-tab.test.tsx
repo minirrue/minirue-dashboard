@@ -1,21 +1,24 @@
-import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
-import type { AccountingOverview } from '@/lib/api/accounting';
+import { render, screen, fireEvent, cleanup, within, waitFor } from '@testing-library/react';
+import type { AccountingOverview, VariantRow } from '@/lib/api/accounting';
 
 /**
- * PG-DASHBOARD-ACCTG-005 (minirue-dashboard#57). The Prices tab lists every
- * house variant and set with its floors, price, margin, profit and warning
- * count; a row opens the pricing drawer whose "why" is built from the trace.
+ * PG-DASHBOARD-ACCTG-005 (minirue-dashboard#57, #66). The Prices tab lists every
+ * house variant with its floors, price, margin, profit and engine flags, in the
+ * row shape the live backend sends (`OverviewVariantRow`). A row opens the
+ * pricing drawer, whose inputs save through the item routes (backend#160) and
+ * refetch the overview. `apiFetch` is mocked, not the accounting client, so the
+ * wire bodies are asserted against the backend DTOs.
  */
 
-jest.mock('@/lib/api/accounting', () => ({ apiAccountingOverview: jest.fn() }));
+jest.mock('@/lib/api/client', () => ({ apiFetch: jest.fn() }));
 
-import { apiAccountingOverview } from '@/lib/api/accounting';
+import { apiFetch } from '@/lib/api/client';
 import PricesTab from '@/app/dashboard/accounting/PricesTab';
 import { whyFromTrace } from '@/app/dashboard/accounting/PricingDrawer';
 import { NAV_ITEMS } from '@/components/dashboard/DashboardSidebar';
 import { canAccessDashboardRoute } from '@/lib/auth/roles';
 
-const mockOverview = apiAccountingOverview as jest.Mock;
+const mockFetch = apiFetch as jest.Mock;
 
 /** The epic's worked example: REVOX PLEX Step 6 at a 30% slider. */
 const revoxTrace = [
@@ -32,7 +35,7 @@ const revoxTrace = [
   { step: 'PRICE', valueMinor: 80900, note: 'rounded to the nearest …9' },
 ];
 
-const settings = {
+const pricing: AccountingOverview['pricing'] = {
   fulfillmentItems: [
     { id: 'box', label: 'Box', amountMinor: 1500 },
     { id: 'bag', label: 'Bag', amountMinor: 250 },
@@ -49,196 +52,333 @@ const settings = {
   rounding: 'END_9',
   staleDays: 30,
   paybackOrders: 3,
-} as const;
-
-const overview: AccountingOverview = {
-  pricing: { ...settings, fulfillmentItems: [...settings.fulfillmentItems] },
-  lastRun: null,
-  sets: [],
-  variants: [
-    {
-      variantId: 'v-revox',
-      productId: 'p-revox',
-      productName: 'REVOX PLEX',
-      variantLabel: 'Step 6',
-      sku: 'RVX-6',
-      mode: 'SYSTEM',
-      costAmountMinor: 65000,
-      costCurrency: 'EGP',
-      followsUsd: false,
-      knowledge: 'KNOWN_PRICE',
-      competitorPrices: [
-        { id: 'c1', source: 'Noon', url: null, priceMinor: 85000, checkedAt: '2026-09-10T10:00:00Z' },
-        { id: 'c2', source: 'Amazon', url: null, priceMinor: 86000, checkedAt: '2026-09-10T10:00:00Z' },
-        { id: 'c3', source: 'Jumia', url: null, priceMinor: 89900, checkedAt: '2026-09-10T10:00:00Z' },
-      ],
-      livePriceMinor: 80900,
-      result: {
-        priceMinor: 80900,
-        floors: { law1Minor: 69750, noLossMinor: 65000, law1ShownMinor: 69900, noLossShownMinor: 65900 },
-        band: { loMinor: 79120, hiMinor: 86000 },
-        marketMinor: 86000,
-        marginBp: 1965,
-        markupBp: 2446,
-        productProfitMinor: 11150,
-        orderProfitMinor: 21150,
-        flags: [],
-        trace: revoxTrace,
-      },
-      warnings: [],
-    },
-    {
-      variantId: 'v-mist',
-      productId: 'p-mist',
-      productName: 'Lumen Mist',
-      variantLabel: '50 ml',
-      sku: null,
-      mode: 'MANUAL',
-      costAmountMinor: 42000,
-      costCurrency: 'EGP',
-      followsUsd: false,
-      knowledge: 'KNOWN_BRAND',
-      competitorPrices: [],
-      livePriceMinor: 41900,
-      result: {
-        priceMinor: 57900,
-        floors: { law1Minor: 46750, noLossMinor: 42000, law1ShownMinor: 46900, noLossShownMinor: 42900 },
-        band: { loMinor: 56000, hiMinor: 70000 },
-        marketMinor: null,
-        marginBp: 2746,
-        markupBp: 3785,
-        productProfitMinor: 11150,
-        orderProfitMinor: 21150,
-        flags: [],
-        trace: [],
-      },
-      warnings: [
-        {
-          key: 'LOSES_MONEY:v-mist',
-          kind: 'LOSES_MONEY',
-          title: 'Loses money',
-          detail: 'My price 419 is below the no-loss floor 429.',
-          variantId: 'v-mist',
-          link: '/accounting?tab=prices',
-        },
-        {
-          key: 'BELOW_LAW1:v-mist',
-          kind: 'BELOW_LAW1',
-          title: 'Below Law 1',
-          detail: 'My price 419 is below the Law 1 floor 469.',
-          variantId: 'v-mist',
-          link: '/accounting?tab=prices',
-        },
-      ],
-    },
-    {
-      variantId: 'v-tote',
-      productId: 'p-tote',
-      productName: 'Atelier Tote',
-      variantLabel: 'Sand',
-      sku: null,
-      mode: 'MANUAL',
-      costAmountMinor: null,
-      costCurrency: null,
-      followsUsd: false,
-      knowledge: 'UNCOMPARABLE',
-      competitorPrices: [],
-      livePriceMinor: 29900,
-      result: null,
-      warnings: [
-        {
-          key: 'NO_COST:v-tote',
-          kind: 'NO_COST',
-          title: 'No cost',
-          detail: 'Discounts on this item are unprotected.',
-          variantId: 'v-tote',
-          link: '/accounting?tab=prices',
-        },
-      ],
-    },
-  ],
 };
 
-afterEach(() => {
-  cleanup();
-  jest.clearAllMocks();
-});
+const revox: VariantRow = {
+  variantId: 'v-revox',
+  productId: 'p-revox',
+  productName: 'REVOX PLEX',
+  productSlug: 'revox-plex',
+  sku: 'SKN-RVX-PLEX-STEP6',
+  isActive: true,
+  mode: 'SYSTEM',
+  priceKnowledge: 'KNOWN_PRICE',
+  cost: { amountMinor: 65000, currency: 'EGP', followsUsd: false, rateAtEntry: null },
+  costMinor: 65000,
+  competitorPrices: [
+    { id: 'c1', source: 'Noon', url: null, priceMinor: 85000, checkedAt: '2026-09-10T10:00:00.000Z' },
+    { id: 'c2', source: 'Amazon', url: null, priceMinor: 86000, checkedAt: '2026-09-10T10:00:00.000Z' },
+    { id: 'c3', source: 'Jumia', url: null, priceMinor: 89900, checkedAt: '2026-09-10T10:00:00.000Z' },
+  ],
+  currentPriceMinor: 80900,
+  system: {
+    priceMinor: 80900,
+    floors: { law1Minor: 69750, noLossMinor: 65000, law1ShownMinor: 69900, noLossShownMinor: 65900 },
+    band: { loMinor: 79120, hiMinor: 86000 },
+    marketMinor: 86000,
+    marginBp: 1965,
+    markupBp: 2446,
+    productProfitMinor: 11150,
+    orderProfitMinor: 21150,
+    flags: [],
+    trace: revoxTrace,
+  },
+  why: 'Cost EGP 650.00 + box & trip EGP 47.50 = Law 1 floor EGP 697.50 (shown EGP 699.00).',
+  current: { marginBp: 1965, markupBp: 2446, productProfitMinor: 11150, orderProfitMinor: 21150 },
+};
+
+const mist: VariantRow = {
+  variantId: 'v-mist',
+  productId: 'p-mist',
+  productName: 'Lumen Mist',
+  productSlug: 'lumen-mist',
+  sku: 'FRG-LUM-MIST-50',
+  isActive: true,
+  mode: 'MANUAL',
+  priceKnowledge: 'KNOWN_BRAND',
+  cost: { amountMinor: 42000, currency: 'EGP', followsUsd: false, rateAtEntry: null },
+  costMinor: 42000,
+  competitorPrices: [],
+  currentPriceMinor: 41900,
+  system: {
+    priceMinor: 57900,
+    floors: { law1Minor: 46750, noLossMinor: 42000, law1ShownMinor: 46900, noLossShownMinor: 42900 },
+    band: { loMinor: 56000, hiMinor: 70000 },
+    marketMinor: null,
+    marginBp: 2746,
+    markupBp: 3785,
+    productProfitMinor: 11150,
+    orderProfitMinor: 21150,
+    flags: [],
+    trace: [],
+  },
+  why: '',
+  // What the backend's economicsAt() returns at 419 with a 420 cost and 47.50 box & trip.
+  current: { marginBp: -24, markupBp: -24, productProfitMinor: -4850, orderProfitMinor: 5150 },
+};
+
+const tote: VariantRow = {
+  variantId: 'v-tote',
+  productId: 'p-tote',
+  productName: 'Atelier Tote',
+  productSlug: 'atelier-tote',
+  sku: 'BAG-ATL-TOTE-SAND',
+  isActive: false,
+  mode: 'MANUAL',
+  priceKnowledge: null,
+  cost: { amountMinor: null, currency: null, followsUsd: false, rateAtEntry: null },
+  costMinor: null,
+  competitorPrices: [],
+  currentPriceMinor: 29900,
+  system: {
+    priceMinor: null,
+    floors: null,
+    band: null,
+    marketMinor: null,
+    marginBp: null,
+    markupBp: null,
+    productProfitMinor: null,
+    orderProfitMinor: null,
+    flags: ['NO_COST'],
+    trace: [{ step: 'FLAG', valueMinor: null, note: 'NO_COST' }],
+  },
+  why: 'No cost is entered, so there is no System price.',
+  current: { marginBp: null, markupBp: null, productProfitMinor: null, orderProfitMinor: null },
+};
+
+function overviewOf(variants: VariantRow[]): AccountingOverview {
+  return {
+    pricing,
+    fees: { fulfillmentMinor: 4750, deliveryFeeMinor: 10000 },
+    variants,
+    sets: [],
+    lastRun: null,
+    undoableRunId: null,
+  };
+}
+
+const run = { id: 'run-1', cause: 'ITEM', changedCount: 1, averageChangeBp: 150, createdAt: '2026-09-14T12:00:00.000Z', undoneAt: null, changes: [] };
+
+/** Serves the overview (the next queued one after each write) and records every write. */
+function serve(first: AccountingOverview, afterWrite: AccountingOverview = first, fail?: { status: number; message: string }) {
+  let current = first;
+  mockFetch.mockImplementation((path: string, init?: RequestInit) => {
+    const method = init?.method ?? 'GET';
+    if (path === '/accounting/overview' && method === 'GET') return Promise.resolve(current);
+    if (fail) return Promise.reject(fail);
+    current = afterWrite;
+    return Promise.resolve({ run, overview: afterWrite });
+  });
+}
+
+function writes() {
+  return mockFetch.mock.calls
+    .filter(([, init]) => (init?.method ?? 'GET') !== 'GET')
+    .map(([path, init]) => ({ method: init.method, path, body: init.body ? JSON.parse(init.body) : undefined }));
+}
+
+function overviewGets() {
+  return mockFetch.mock.calls.filter(([p, init]) => p === '/accounting/overview' && (init?.method ?? 'GET') === 'GET').length;
+}
+
+async function openDrawer(name: RegExp) {
+  fireEvent.click(await screen.findByRole('button', { name }));
+  return screen.getByRole('dialog', { name });
+}
+
+beforeEach(() => mockFetch.mockReset());
+afterEach(() => cleanup());
 
 describe('PricesTab', () => {
-  it('renders one row per variant with the pricing columns', async () => {
-    mockOverview.mockResolvedValue(overview);
+  it('renders one row per variant from the live row shape', async () => {
+    serve(overviewOf([revox, mist, tote]));
     render(<PricesTab />);
 
     const table = await screen.findByRole('table', { name: /prices/i });
     const headers = within(table).getAllByRole('columnheader').map((h) => h.textContent);
-    expect(headers).toEqual([
-      'Item',
-      'Mode',
-      'Cost',
-      'Market',
-      'Law 1 / no-loss floor',
-      'Price',
-      'Margin',
-      'Profit',
-      'Warnings',
-    ]);
+    expect(headers).toEqual(['Item', 'Mode', 'Cost', 'Market', 'Law 1 / no-loss floor', 'Price', 'Margin', 'Profit', 'Flags']);
 
     const rows = within(table).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(3);
 
-    const revox = rows[0];
-    expect(revox).toHaveTextContent('REVOX PLEX');
-    expect(revox).toHaveTextContent('System price');
-    expect(revox).toHaveTextContent('EGP 650.00');
-    expect(revox).toHaveTextContent('EGP 860.00');
-    expect(revox).toHaveTextContent('EGP 699.00');
-    expect(revox).toHaveTextContent('EGP 659.00');
-    expect(revox).toHaveTextContent('EGP 809.00');
-    expect(revox).toHaveTextContent('19.7%');
-    expect(revox).toHaveTextContent('EGP 111.50');
+    const [r, m, t] = rows;
+    expect(r).toHaveTextContent('REVOX PLEX');
+    expect(r).toHaveTextContent('SKN-RVX-PLEX-STEP6');
+    expect(r).toHaveTextContent('System price');
+    expect(r).toHaveTextContent('EGP 650.00');
+    expect(r).toHaveTextContent('EGP 860.00');
+    expect(r).toHaveTextContent('EGP 699.00');
+    expect(r).toHaveTextContent('EGP 659.00');
+    expect(r).toHaveTextContent('EGP 809.00');
+    expect(r).toHaveTextContent('19.7%');
+    expect(r).toHaveTextContent('EGP 111.50');
+    expect(within(r).getByLabelText('No flags')).toBeInTheDocument();
 
-    // My price below the no-loss floor: margin and profit follow the live price.
-    const mist = rows[1];
-    expect(mist).toHaveTextContent('My price');
-    expect(mist).toHaveTextContent('EGP 419.00');
-    expect(mist).toHaveTextContent('−0.2%');
-    expect(mist).toHaveTextContent('−EGP 48.50');
-    expect(within(mist).getByLabelText('2 warnings')).toBeInTheDocument();
+    // My price below the no-loss floor: margin and profit are the backend's `current`.
+    expect(m).toHaveTextContent('My price');
+    expect(m).toHaveTextContent('EGP 419.00');
+    expect(m).toHaveTextContent('Below no-loss');
+    expect(m).toHaveTextContent('−0.2%');
+    expect(m).toHaveTextContent('−EGP 48.50');
 
-    const tote = rows[2];
-    expect(tote).toHaveTextContent('No cost');
-    expect(within(tote).getByLabelText('1 warning')).toBeInTheDocument();
+    expect(t).toHaveTextContent('No cost');
+    expect(t).toHaveTextContent('Inactive');
+    expect(within(t).getByLabelText('1 flag: No cost')).toBeInTheDocument();
+
+    expect(screen.getByText(/Profit is after/)).toHaveTextContent('EGP 47.50');
   });
 
-  it('opens the drawer for a row with the five headings and the why', async () => {
-    mockOverview.mockResolvedValue(overview);
+  it('opens the drawer with the five headings, the why and live inputs', async () => {
+    serve(overviewOf([revox]));
     render(<PricesTab />);
+    const drawer = await openDrawer(/REVOX PLEX/);
 
-    fireEvent.click(await screen.findByRole('button', { name: /REVOX PLEX/ }));
-
-    const drawer = screen.getByRole('dialog', { name: /REVOX PLEX/ });
     const headings = within(drawer).getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
-    expect(headings).toEqual([
-      'What it cost you',
-      'What customers know',
-      'Competitor prices',
-      'How this price was set',
-      'Mode',
-    ]);
+    expect(headings).toEqual(['What it cost you', 'What customers know', 'Competitor prices', 'How this price was set', 'Mode']);
     expect(drawer).toHaveTextContent('the Law 1 floor is EGP 697.50');
-    expect(drawer).toHaveTextContent('EGP 809.00');
-
-    // Edits wait for the backend routes; nothing pretends to save.
-    expect(within(drawer).getAllByText('Available soon').length).toBeGreaterThan(0);
-    for (const input of within(drawer).getAllByRole('radio')) expect(input).toBeDisabled();
-    for (const input of within(drawer).getAllByRole('textbox')) expect(input).toBeDisabled();
+    expect(within(drawer).queryByText('Available soon')).not.toBeInTheDocument();
+    for (const input of within(drawer).getAllByRole('textbox')) expect(input).toBeEnabled();
+    expect(within(drawer).getByRole('radio', { name: /exact price/ })).toBeChecked();
 
     fireEvent.keyDown(drawer, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
+  it('saves a System-price cost with the PUT body the backend accepts, then refetches the row', async () => {
+    const saved: VariantRow = {
+      ...revox,
+      cost: { ...revox.cost, amountMinor: 66000 },
+      costMinor: 66000,
+      current: { ...revox.current, marginBp: 1841, productProfitMinor: 10150 },
+    };
+    serve(overviewOf([revox]), overviewOf([saved]));
+    render(<PricesTab />);
+    const drawer = await openDrawer(/REVOX PLEX/);
+
+    fireEvent.change(within(drawer).getByLabelText('Cost per unit'), { target: { value: '660' } });
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Save cost' }));
+
+    await waitFor(() => expect(within(drawer).getByRole('status')).toHaveTextContent('Saved. 1 price changed.'));
+    expect(writes()).toEqual([
+      {
+        method: 'PUT',
+        path: '/accounting/variants/v-revox',
+        body: { mode: 'SYSTEM', costAmountMinor: 66000, costCurrency: 'EGP', followsUsd: false },
+      },
+    ]);
+    expect(overviewGets()).toBe(2);
+    const row = screen.getAllByRole('row')[1];
+    expect(row).toHaveTextContent('EGP 660.00');
+    expect(row).toHaveTextContent('EGP 101.50');
+  });
+
+  it('keeps the My price when saving a cost on a My price row', async () => {
+    serve(overviewOf([mist]));
+    render(<PricesTab />);
+    const drawer = await openDrawer(/Lumen Mist/);
+
+    fireEvent.change(within(drawer).getByLabelText('Cost per unit'), { target: { value: '400' } });
+    fireEvent.click(within(drawer).getByRole('checkbox', { name: /follows the dollar/i }));
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Save cost' }));
+
+    await waitFor(() => expect(writes()).toHaveLength(1));
+    expect(writes()[0].body).toEqual({
+      mode: 'MANUAL',
+      manualPriceMinor: 41900,
+      costAmountMinor: 40000,
+      costCurrency: 'EGP',
+      followsUsd: true,
+    });
+  });
+
+  it('refuses a blank System-price cost without saving', async () => {
+    serve(overviewOf([revox]));
+    render(<PricesTab />);
+    const drawer = await openDrawer(/REVOX PLEX/);
+
+    fireEvent.change(within(drawer).getByLabelText('Cost per unit'), { target: { value: '' } });
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Save cost' }));
+
+    expect(within(drawer).getByRole('alert')).toHaveTextContent('Enter the cost. A System price needs one.');
+    expect(writes()).toEqual([]);
+  });
+
+  it('shows the backend message when a save fails', async () => {
+    serve(overviewOf([revox]), undefined, { status: 400, message: 'Set the USD rate in Accounting first' });
+    render(<PricesTab />);
+    const drawer = await openDrawer(/REVOX PLEX/);
+
+    fireEvent.change(within(drawer).getByLabelText('Currency'), { target: { value: 'USD' } });
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Save cost' }));
+
+    await waitFor(() =>
+      expect(within(drawer).getByRole('alert')).toHaveTextContent('Could not save: Set the USD rate in Accounting first'),
+    );
+    expect(writes()[0].body).toEqual({ mode: 'SYSTEM', costAmountMinor: 65000, costCurrency: 'USD', followsUsd: false });
+    expect(overviewGets()).toBe(1);
+  });
+
+  it('saves what customers know on choosing it', async () => {
+    serve(overviewOf([revox]), overviewOf([{ ...revox, priceKnowledge: 'KNOWN_BRAND' }]));
+    render(<PricesTab />);
+    const drawer = await openDrawer(/REVOX PLEX/);
+
+    fireEvent.click(within(drawer).getByRole('radio', { name: /know the brand/ }));
+
+    await waitFor(() => expect(overviewGets()).toBe(2));
+    expect(writes()).toEqual([
+      { method: 'PUT', path: '/accounting/products/p-revox/knowledge', body: { knowledge: 'KNOWN_BRAND' } },
+    ]);
+  });
+
+  it('adds and removes a competitor price', async () => {
+    serve(overviewOf([revox]));
+    render(<PricesTab />);
+    const drawer = await openDrawer(/REVOX PLEX/);
+
+    fireEvent.change(within(drawer).getByLabelText('Shop'), { target: { value: 'Faces' } });
+    fireEvent.change(within(drawer).getByLabelText('Their price (EGP)'), { target: { value: '875.50' } });
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Add price' }));
+    await waitFor(() => expect(overviewGets()).toBe(2));
+
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Remove the Noon price' }));
+    await waitFor(() => expect(overviewGets()).toBe(3));
+
+    expect(writes()).toEqual([
+      {
+        method: 'POST',
+        path: '/accounting/variants/v-revox/competitor-prices',
+        body: { source: 'Faces', priceMinor: 87550 },
+      },
+      { method: 'DELETE', path: '/accounting/competitor-prices/c1', body: undefined },
+    ]);
+  });
+
+  it('switches to My price with the price, and needs a cost for System price', async () => {
+    serve(overviewOf([revox, tote]));
+    render(<PricesTab />);
+    let drawer = await openDrawer(/REVOX PLEX/);
+
+    fireEvent.click(within(drawer).getByRole('radio', { name: /^My price/ }));
+    fireEvent.change(within(drawer).getByLabelText('My price (EGP)'), { target: { value: '799' } });
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Save mode' }));
+    await waitFor(() => expect(writes()).toHaveLength(1));
+    expect(writes()[0]).toEqual({
+      method: 'PUT',
+      path: '/accounting/variants/v-revox',
+      body: { mode: 'MANUAL', manualPriceMinor: 79900 },
+    });
+
+    fireEvent.keyDown(drawer, { key: 'Escape' });
+    drawer = await openDrawer(/Atelier Tote/);
+    fireEvent.click(within(drawer).getByRole('radio', { name: /^System price/ }));
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Save mode' }));
+    expect(within(drawer).getByRole('alert')).toHaveTextContent('Enter a cost first. A System price is worked out from it.');
+    expect(writes()).toHaveLength(1);
+  });
+
   it('shows the error when the overview cannot load', async () => {
-    mockOverview.mockRejectedValue({ status: 500, message: 'boom' });
+    mockFetch.mockRejectedValue({ status: 500, message: 'boom' });
     render(<PricesTab />);
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not load/i);
   });
