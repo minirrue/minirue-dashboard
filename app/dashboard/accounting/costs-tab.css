@@ -1,0 +1,378 @@
+/* Costs & rules tab (minirue-dashboard#59). dashboard.css is owned elsewhere. */
+
+.acct-costs {
+  display: flex;
+  flex-direction: column;
+}
+.acct-costs-card {
+  gap: 18px;
+}
+.acct-costs-card .dash-section-title {
+  margin: 0;
+}
+.acct-costs-lede {
+  margin: 4px 0 0;
+  max-width: 68ch;
+  font-size: var(--mr-text-sm);
+  line-height: 1.5;
+  color: var(--mr-fg-3);
+  text-wrap: pretty;
+}
+.acct-costs-muted {
+  color: var(--mr-fg-3);
+}
+.acct-costs-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── States ── */
+.acct-costs-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+}
+.acct-costs-state p {
+  margin: 0;
+  color: var(--mr-st-danger-fg);
+}
+.acct-costs-loading {
+  padding: 8px 0;
+}
+.acct-costs-skeleton {
+  display: block;
+  height: 56px;
+  margin: 12px 20px;
+}
+
+/* ── Box & trip ── */
+.acct-costs-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+.acct-costs-total {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--mr-text-sm);
+  color: var(--mr-fg-3);
+  white-space: nowrap;
+}
+.acct-costs-total .mr-num {
+  font-family: var(--mr-font-serif);
+  font-size: var(--mr-text-2xl);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--mr-fg);
+  font-variant-numeric: tabular-nums;
+}
+.acct-costs-total-note {
+  padding: 1px 8px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-st-warn-bg);
+  color: var(--mr-st-warn-fg);
+  font-size: var(--mr-text-xs);
+}
+
+.acct-costs-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--mr-dash-hair);
+}
+.acct-costs-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 180px) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--mr-dash-hair);
+}
+.acct-costs-remove {
+  margin-top: 21px;
+}
+.acct-costs-empty {
+  margin: 0;
+  padding: 16px;
+  border: 1px dashed var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+  color: var(--mr-fg-3);
+  font-size: var(--mr-text-sm);
+}
+
+/* An input with its unit drawn inside, on the right. */
+.acct-costs-unit {
+  position: relative;
+  display: block;
+}
+.acct-costs-unit .dash-input {
+  padding-right: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.acct-costs-unit[data-unit='%'] .dash-input {
+  padding-right: 28px;
+}
+.acct-costs-unit-text {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  font-family: var(--mr-font-label);
+  font-size: var(--mr-text-xs);
+  color: var(--mr-fg-4);
+  pointer-events: none;
+}
+
+.acct-costs-fee {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-dash-sub);
+  border: 1px solid var(--mr-dash-hair);
+}
+.acct-costs-fee-line {
+  margin: 0;
+  font-size: var(--mr-text-base);
+  color: var(--mr-fg-2);
+}
+.acct-costs-fee-line strong {
+  font-weight: 600;
+  color: var(--mr-fg);
+  font-variant-numeric: tabular-nums;
+}
+.acct-costs-fee-line strong[data-tone='ok'] {
+  color: var(--mr-st-ok-fg);
+}
+.acct-costs-fee-line strong[data-tone='danger'] {
+  color: var(--mr-st-danger-fg);
+}
+.acct-costs-fee-hint {
+  margin: 0;
+  font-size: var(--mr-text-xs);
+  line-height: 1.5;
+  color: var(--mr-fg-3);
+}
+
+/* ── Guardrails ── */
+.acct-costs-guards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px 24px;
+}
+.acct-costs-guards .acct-costs-unit {
+  max-width: 140px;
+}
+
+/* ── Class rules ── */
+.acct-costs-rules-wrap {
+  overflow-x: auto;
+}
+.acct-costs-rules {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--mr-text-sm);
+}
+.acct-costs-rules th,
+.acct-costs-rules td {
+  padding: 10px 8px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--mr-dash-hair);
+}
+.acct-costs-rules thead th {
+  font-family: var(--mr-font-label);
+  font-size: var(--mr-text-xs);
+  font-weight: 500;
+  color: var(--mr-fg-2);
+  vertical-align: bottom;
+}
+.acct-costs-rules thead th > span {
+  display: block;
+  font-family: var(--mr-font-ui);
+  font-weight: 400;
+  color: var(--mr-fg-4);
+}
+.acct-costs-rules tbody th {
+  font-weight: 500;
+  color: var(--mr-fg);
+  padding-top: 18px;
+  min-width: 180px;
+}
+.acct-costs-rules td {
+  width: 110px;
+}
+.acct-costs-default {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 7px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-gold-100);
+  color: var(--mr-gold-900);
+  font-family: var(--mr-font-label);
+  font-size: var(--mr-text-xs);
+  font-weight: 500;
+}
+
+/* ── Rounding ── */
+.acct-costs-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.acct-costs-choice {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+  cursor: pointer;
+  transition: border-color var(--mr-dur-fast) var(--mr-ease-snappy),
+    background-color var(--mr-dur-fast) var(--mr-ease-snappy);
+}
+.acct-costs-choice:hover {
+  border-color: var(--mr-gold-200);
+}
+.acct-costs-choice:has(input:checked) {
+  border-color: var(--mr-gold-300);
+  background: var(--mr-dash-sub);
+}
+.acct-costs-choice:has(input:focus-visible) {
+  outline: 2px solid var(--mr-gold-500);
+  outline-offset: 2px;
+}
+.acct-costs-choice input {
+  margin-top: 3px;
+  accent-color: var(--mr-gold-500);
+}
+.acct-costs-choice > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--mr-text-xs);
+  line-height: 1.45;
+  color: var(--mr-fg-3);
+}
+.acct-costs-choice strong {
+  font-size: var(--mr-text-sm);
+  font-weight: 500;
+  color: var(--mr-fg);
+}
+
+/* ── Save bar ── */
+/* Pinned to the viewport only while there is something to save. */
+.acct-costs-savebar {
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-dash-card-radius);
+  background: var(--mr-dash-surface);
+  transition: box-shadow var(--mr-dur-normal) var(--mr-ease-out),
+    border-color var(--mr-dur-normal) var(--mr-ease-out);
+}
+.acct-costs-savebar[data-dirty] {
+  position: sticky;
+  bottom: 12px;
+  border-color: var(--mr-gold-300);
+  box-shadow: var(--mr-shadow-md);
+}
+.acct-costs-status {
+  margin: 0;
+  flex: 1 1 240px;
+  font-size: var(--mr-text-sm);
+  color: var(--mr-fg-3);
+}
+.acct-costs-status[data-tone='ok'] {
+  color: var(--mr-st-ok-fg);
+}
+.acct-costs-status[data-tone='error'] {
+  color: var(--mr-st-danger-fg);
+}
+.acct-costs-actions {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .acct-costs-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .acct-costs-item-name {
+    grid-column: 1 / -1;
+  }
+  .acct-costs-total .mr-num {
+    font-size: var(--mr-text-xl);
+  }
+
+  /* Rules table becomes one block per kind of product. */
+  .acct-costs-rules thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .acct-costs-rules,
+  .acct-costs-rules tbody,
+  .acct-costs-rules tr {
+    display: block;
+  }
+  .acct-costs-rules tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--mr-dash-hair);
+  }
+  .acct-costs-rules tbody th {
+    grid-column: 1 / -1;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+  }
+  .acct-costs-rules td {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: auto;
+    padding: 0;
+    border: 0;
+  }
+  .acct-costs-rules td::before {
+    content: attr(data-label);
+    font-size: var(--mr-text-xs);
+    line-height: 1.35;
+    color: var(--mr-fg-3);
+  }
+  .acct-costs-actions {
+    width: 100%;
+  }
+  .acct-costs-actions .dash-btn-primary {
+    flex: 1;
+  }
+}
