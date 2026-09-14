@@ -17,8 +17,10 @@ export type PriceFlag = 'CANT_COMPETE' | 'THIN_MARGIN' | 'NO_MARKET' | 'NO_COST'
 
 /** One step of how a price was reached. The "why" sentence is built from these. */
 export interface PriceTraceStep {
+  /** COST · FULFILLMENT · LAW1 · LAW1_SHOWN · NO_LOSS · NO_LOSS_SHOWN · MARKET · BAND_LO · BAND_HI · MEMBERS · SAVING · TARGET · PRICE · FLAG */
   step: string;
-  valueMinor: number;
+  /** Null on FLAG steps, whose `note` is the flag name. TARGET may be fractional. */
+  valueMinor: number | null;
   note: string;
 }
 
@@ -40,18 +42,23 @@ export interface PriceBand {
   hiMinor: number;
 }
 
+/**
+ * Mirrors the backend engine's `PriceResult`: without a cost there are no
+ * floors, band, margin or profit (a set with a member missing its cost still
+ * has a price).
+ */
 export interface PriceResult {
-  priceMinor: number;
-  floors: PriceFloors;
-  band: PriceBand;
+  priceMinor: number | null;
+  floors: PriceFloors | null;
+  band: PriceBand | null;
   /** Median of the competitor prices entered; null when there are none. */
   marketMinor: number | null;
-  marginBp: number;
-  markupBp: number;
+  marginBp: number | null;
+  markupBp: number | null;
   /** Profit after box & trip. */
-  productProfitMinor: number;
+  productProfitMinor: number | null;
   /** Order profit including the delivery fee. */
-  orderProfitMinor: number;
+  orderProfitMinor: number | null;
   flags: PriceFlag[];
   trace: PriceTrace;
 }

@@ -168,6 +168,19 @@ function IconShield() {
   );
 }
 
+function IconLedger() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="2.5" width="16" height="19" rx="2" />
+      <line x1="8" y1="7" x2="16" y2="7" />
+      <line x1="8" y1="11" x2="11" y2="11" />
+      <line x1="14" y1="11" x2="16" y2="11" />
+      <line x1="8" y1="15" x2="11" y2="15" />
+      <line x1="14" y1="15" x2="16" y2="15" />
+    </svg>
+  );
+}
+
 function IconBell() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -232,6 +245,9 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
       { label: 'Orders', href: '/orders', icon: <IconShoppingBag /> },
       { label: 'Customers', href: '/customers', icon: <IconUsers /> },
       { label: 'Collaborators', href: '/collaborators', icon: <IconHandshake /> },
+      // Admin only: DASHBOARD_ROUTE_ACCESS['/accounting'] is ADMIN_ONLY, so the
+      // role filter below hides it from STAFF and partners (#57).
+      { label: 'Accounting', href: '/accounting', icon: <IconLedger /> },
       // Partners is no longer its own entry. Oversight — standing, access and
       // sales, and the super admin's "open the dashboard as them" — is the
       // "Business & performance" view of Collaborators, because managing a
