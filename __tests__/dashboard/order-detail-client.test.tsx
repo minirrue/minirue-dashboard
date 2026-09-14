@@ -150,3 +150,94 @@ describe('OrderDetailClient buyer and payments detail', () => {
     expect(await screen.findByRole('dialog', { name: 'Image preview' })).toBeInTheDocument();
   });
 });
+
+/*
+ * Order emails (backend#135). Guests have no order page, so the dashboard is
+ * where the shop follows their orders — and where an admin checks whether the
+ * guest was actually told.
+ */
+describe('OrderDetailClient order emails', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    window.matchMedia = jest.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    })) as unknown as typeof window.matchMedia;
+    mockedPayments.apiAdminListOrderPayments.mockResolvedValue([]);
+  });
+
+  it("shows a guest's checkout email and each order email as sent or failed", async () => {
+    mockedOrders.apiAdminGetOrder.mockResolvedValue(
+      makeOrder({
+        guestContact: { fullName: 'Guest Buyer', phone: '0111111111', email: 'guest@example.com' },
+      }),
+    );
+    mockedOrders.apiAdminGetOrderEmails.mockResolvedValue({
+      transport: 'SMTP',
+      recipient: 'GUEST',
+      emails: [
+        {
+          template: 'order.confirmed',
+          status: 'SENT',
+          toGuest: true,
+          errorText: null,
+          sentAt: '2026-09-14T10:00:00.000Z',
+          attemptedAt: '2026-09-14T10:00:00.000Z',
+          createdAt: '2026-09-14T10:00:00.000Z',
+        },
+        {
+          template: 'order.shipped',
+          status: 'FAILED',
+          toGuest: true,
+          errorText: 'Invalid login: 535-5.7.8 Username and Password not accepted',
+          sentAt: null,
+          attemptedAt: '2026-09-15T10:00:00.000Z',
+          createdAt: '2026-09-15T10:00:00.000Z',
+        },
+      ],
+    });
+
+    render(<OrderDetailClient id="ord_1" />);
+
+    expect(await screen.findByText('guest@example.com')).toBeInTheDocument();
+    const section = await screen.findByRole('region', { name: 'Customer emails' });
+    expect(section).toHaveTextContent('Order confirmed');
+    expect(section).toHaveTextContent('Sent');
+    expect(section).toHaveTextContent('Order shipped');
+    expect(section).toHaveTextContent('Failed');
+    expect(section).toHaveTextContent('Username and Password not accepted');
+    expect(section).toHaveTextContent("guest's checkout email");
+    expect(mockedOrders.apiAdminGetOrderEmails).toHaveBeenCalledWith('ord_1');
+  });
+
+  it('explains an empty list when the server has no mail transport', async () => {
+    mockedOrders.apiAdminGetOrder.mockResolvedValue(makeOrder({}));
+    mockedOrders.apiAdminGetOrderEmails.mockResolvedValue({
+      transport: 'NOT_CONFIGURED',
+      recipient: 'NONE',
+      emails: [],
+    });
+
+    render(<OrderDetailClient id="ord_1" />);
+
+    const section = await screen.findByRole('region', { name: 'Customer emails' });
+    expect(section).toHaveTextContent('Email is not configured on the server');
+    expect(section).toHaveTextContent('no email address');
+  });
+
+  it('still renders the order when the email log cannot be loaded', async () => {
+    mockedOrders.apiAdminGetOrder.mockResolvedValue(makeOrder({}));
+    mockedOrders.apiAdminGetOrderEmails.mockRejectedValue(new Error('boom'));
+
+    render(<OrderDetailClient id="ord_1" />);
+
+    expect(await screen.findByText('Fallback Name')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Customer emails' })).not.toBeInTheDocument();
+  });
+});

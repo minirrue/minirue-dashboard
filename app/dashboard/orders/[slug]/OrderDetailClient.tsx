@@ -2,8 +2,14 @@
 
 import React, {useState, useCallback } from 'react';
 import Link from 'next/link';
-import { apiAdminGetOrder, apiAdminTransitionStatus, apiAdminCancelOrder } from '@/lib/api/orders';
-import type { Order, OrderStatus, OrderItem } from '@/lib/api/orders';
+import {
+  apiAdminGetOrder,
+  apiAdminGetOrderEmails,
+  apiAdminTransitionStatus,
+  apiAdminCancelOrder,
+} from '@/lib/api/orders';
+import type { Order, OrderStatus, OrderItem, OrderEmailLog } from '@/lib/api/orders';
+import OrderEmailsSection from './OrderEmailsSection';
 import {
   apiAdminListOrderPayments,
   apiAdminVerifyInstapay,
@@ -189,6 +195,15 @@ export default function OrderDetailClient({ id }: { id: string }) {
   const [itemPreview, setItemPreview] = useState<string | null>(null);
   const [refunding, setRefunding] = useState(false);
   const [returningToStock, setReturningToStock] = useState(false);
+  const [emailLog, setEmailLog] = useState<OrderEmailLog | null>(null);
+
+  // Its own fetch, re-run after every action: a status change is what sends an
+  // email, so the log is only current if it is read again afterwards.
+  const loadEmails = useCallback(async () => {
+    try {
+      setEmailLog((await apiAdminGetOrderEmails(id)) ?? null);
+    } catch { /* non-critical — the order itself still renders */ }
+  }, [id]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -200,12 +215,13 @@ export default function OrderDetailClient({ id }: { id: string }) {
         const pa = await apiAdminListOrderPayments(id);
         setPayments(pa);
       } catch { /* non-critical */ }
+      await loadEmails();
     } catch (e) {
       setError((e as ApiError).message ?? 'Failed to load order');
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, loadEmails]);
 
   useMountedEffect(() => { load(); }, [load]);
 
@@ -215,6 +231,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
     try {
       const updated = await fn();
       setOrder(updated);
+      void loadEmails();
     } catch (e) {
       setActionError((e as ApiError).message ?? 'Action failed');
     } finally {
@@ -605,6 +622,8 @@ export default function OrderDetailClient({ id }: { id: string }) {
           </div>
         )}
       </div>
+
+      {emailLog && <OrderEmailsSection log={emailLog} />}
 
       {/* Status history */}
       {order.statusHistory && order.statusHistory.length > 0 && (

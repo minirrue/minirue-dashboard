@@ -128,6 +128,34 @@ export async function apiAdminGetOrder(id: string): Promise<Order> {
   return apiFetch<Order>(`/orders/admin/${id}`, { auth: true });
 }
 
+/** How the backend sends mail right now (backend#135). */
+export type MailTransport = 'SMTP' | 'RESEND' | 'DRY_RUN' | 'NOT_CONFIGURED';
+
+export interface OrderEmailLogEntry {
+  /** e.g. `order.confirmed`, `payment.confirmed`, `loyalty.points_earned`. */
+  template: string;
+  /** SENDING = claimed and not finished yet. SKIPPED = no address to send to. */
+  status: 'SENT' | 'FAILED' | 'SKIPPED' | 'SENDING';
+  /** Addressed to the order's guest contact rather than an account. */
+  toGuest: boolean;
+  errorText: string | null;
+  sentAt: string | null;
+  attemptedAt: string | null;
+  createdAt: string;
+}
+
+export interface OrderEmailLog {
+  transport: MailTransport;
+  /** Where this order's emails go: the account, the guest's checkout email, or nowhere. */
+  recipient: 'ACCOUNT' | 'GUEST' | 'NONE';
+  emails: OrderEmailLogEntry[];
+}
+
+/** Read-only: the emails recorded for one order (backend 0.117.0). */
+export async function apiAdminGetOrderEmails(id: string): Promise<OrderEmailLog> {
+  return apiFetch<OrderEmailLog>(`/orders/admin/${id}/emails`, { auth: true });
+}
+
 export async function apiAdminTransitionStatus(
   id: string,
   status: OrderStatus,
