@@ -51,6 +51,9 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   // for day-to-day admin use. SUPERADMIN keeps it so it can be worked on.
   // Restore ADMIN_ONLY when it comes back.
   '/inventory': [Role.SUPERADMIN],
+  // Accounting (epic minirue-backend#155): costs, floors, margins and the
+  // pricing slider. Mirrors @Roles(ADMIN) on /v1/accounting.
+  '/accounting': ADMIN_ONLY,
   '/analytics': ADMIN_ONLY,
   // Customer support inbox — staff/admin/superadmin handle it; collaborators
   // get their own inbox at /collab/support instead. One of the two things

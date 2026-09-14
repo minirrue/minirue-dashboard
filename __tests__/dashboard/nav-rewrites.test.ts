@@ -49,4 +49,12 @@ describe('nav rewrites', () => {
 
     expect(missing).toEqual([]);
   });
+
+  it('serves Accounting at its clean URL before it has a sidebar item', async () => {
+    // PG-DASHBOARD-ACCTG-001. The section ships ahead of its nav entry (DA-1
+    // before DA-2), so the sidebar-driven check above cannot cover it yet.
+    const config = nextConfig as { rewrites?: () => Promise<Rewrite[]> };
+    const rewrites = (await config.rewrites?.()) ?? [];
+    expect(rewrites).toContainEqual({ source: '/accounting', destination: '/dashboard/accounting' });
+  });
 });

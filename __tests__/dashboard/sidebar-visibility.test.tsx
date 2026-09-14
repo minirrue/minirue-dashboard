@@ -96,6 +96,19 @@ describe('sidebar visibility', () => {
     expect(visible).toContain('/catalogue');
   });
 
+  it('opens Accounting to admins and super admins only', () => {
+    // PG-DASHBOARD-ACCTG-002. Costs, margins and floors are shop-owner
+    // figures; STAFF gets the access-denied panel, as the backend
+    // @Roles(ADMIN) on /v1/accounting would refuse them anyway.
+    expect(DASHBOARD_ROUTE_ACCESS['/accounting']).toEqual([Role.SUPERADMIN, Role.ADMIN]);
+    expect(normalizeDashboardPath('/dashboard/accounting')).toBe('/accounting');
+    expect(canAccessDashboardRoute(Role.ADMIN, '/accounting')).toBe(true);
+    expect(canAccessDashboardRoute(Role.SUPERADMIN, '/accounting')).toBe(true);
+    for (const role of [Role.STAFF, Role.COLLAB, Role.CUSTOMER]) {
+      expect(canAccessDashboardRoute(role, '/accounting')).toBe(false);
+    }
+  });
+
   it('never shows a tab a role would be refused on', () => {
     for (const role of ROLE_VALUES) {
       for (const href of visibleTo(role)) {

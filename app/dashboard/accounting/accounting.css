@@ -1,0 +1,96 @@
+/* Accounting section shell (minirue-dashboard#56). Tab screens bring their own files. */
+
+.acct-header {
+  align-items: flex-end;
+}
+.acct-header .dash-page-subtitle {
+  margin-top: 6px;
+  text-wrap: pretty;
+}
+
+/* ── Strategy bar placeholder ── */
+.acct-strategy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 28px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+.acct-strategy-scale {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.acct-strategy-end {
+  font-family: var(--mr-font-label);
+  font-size: var(--mr-text-sm);
+  font-weight: 500;
+  color: var(--mr-fg-3);
+}
+.acct-strategy-track {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  border-radius: var(--mr-radius-pill);
+  background: linear-gradient(to right, var(--mr-gold-300) 25%, var(--mr-dash-hair) 25%);
+}
+.acct-strategy-thumb {
+  position: absolute;
+  top: 50%;
+  left: 25%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--mr-dash-surface);
+  border: 2px solid var(--mr-gold-300);
+}
+.acct-strategy-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 320px;
+  margin: 0;
+  font-size: var(--mr-text-sm);
+  color: var(--mr-fg-3);
+  line-height: 1.45;
+}
+
+.acct-tabs {
+  margin-bottom: 16px;
+}
+
+/* ── Being built card ── */
+.acct-building {
+  padding: 24px;
+}
+.acct-building-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.acct-building-body {
+  margin: 0;
+  max-width: 68ch;
+  font-size: var(--mr-text-base);
+  line-height: 1.55;
+  color: var(--mr-fg-2);
+}
+.acct-building-status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-gold-100);
+  color: var(--mr-gold-900);
+  font-family: var(--mr-font-label);
+  font-size: var(--mr-text-xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
