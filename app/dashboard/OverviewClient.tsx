@@ -9,9 +9,11 @@ import {
 } from '@/lib/api/analytics';
 import { apiAdminListOrders } from '@/lib/api/orders';
 import { canAccessDashboardRoute } from '@/lib/auth/roles';
+import { Role } from '@/lib/auth/role';
 import { useUser } from '@/lib/hooks/use-auth';
 import DashboardRoleWelcome from '@/components/dashboard/DashboardRoleWelcome';
 import DashboardCard from '@/components/dashboard/DashboardCard';
+import StaffOverview from '@/components/dashboard/StaffOverview';
 import type { AnalyticsOverview, RevenuePoint, TopProduct } from '@/lib/api/analytics';
 import type { Order } from '@/lib/api/orders';
 import type { ApiError } from '@/lib/api/client';
@@ -105,7 +107,11 @@ export default function OverviewClient() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    // STAFF renders StaffOverview instead (notifications + their own support
+    // conversations, #74) — skip the admin metrics/orders fetch entirely; the
+    // loading gate below is bypassed for STAFF directly, so there is nothing
+    // to synchronize here for that role.
+    if (!user || user.role === Role.STAFF) return;
 
     const canAnalytics = canAccessDashboardRoute(user.role, '/analytics');
 
@@ -125,7 +131,7 @@ export default function OverviewClient() {
       .finally(() => setLoading(false));
   }, [user]);
 
-  if (loading) {
+  if (loading && user?.role !== Role.STAFF) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <SkeletonMetrics />
@@ -138,6 +144,16 @@ export default function OverviewClient() {
     return (
       <div className="dash-card">
         <p className="dash-inline-error">{error ?? 'Unable to load your session.'}</p>
+      </div>
+    );
+  }
+
+  if (user.role === Role.STAFF) {
+    const displayNameStaff = user.name?.trim() || user.email.split('@')[0];
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <DashboardRoleWelcome userName={displayNameStaff} role={user.role} />
+        <StaffOverview />
       </div>
     );
   }

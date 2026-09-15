@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { NAV_ITEMS } from '@/components/dashboard/DashboardSidebar';
+import { NAV_ITEMS, isNavItemVisible } from '@/components/dashboard/DashboardSidebar';
 import { Role, ROLE_VALUES } from '@/lib/auth/role';
 import {
   canAccessDashboardRoute,
@@ -21,6 +21,17 @@ function visibleTo(role: string): string[] {
     .filter((item) => canAccessDashboardRoute(role, item.href))
     .map((item) => item.href)
     .sort();
+}
+
+/** Section + label, in NAV_ITEMS order, exactly as the real sidebar would
+ * render for this role (collab-module gating aside — that's covered by the
+ * collaborator tests below via href, not label/order). */
+function visibleMenu(role: string): { section: string; label: string }[] {
+  return NAV_ITEMS.flatMap((group) =>
+    group.items
+      .filter((item) => isNavItemVisible(role, item))
+      .map((item) => ({ section: group.section, label: item.label })),
+  );
 }
 
 describe('sidebar visibility', () => {
@@ -53,24 +64,64 @@ describe('sidebar visibility', () => {
     expect(visible).toContain('/collab/workspace');
   });
 
-  it('shows support staff only Orders, Support and Notifications', () => {
-    // 2026-07-30: owner asked for STAFF narrowed to exactly the two jobs they
-    // do (support + orders), notifications included since those are scoped to
-    // the same two categories server-side. Everything else — Overview,
-    // Analytics, Fulfillment, Reviews, Info, Gallery, all admin-only tabs — is
-    // hidden, not just unreachable.
-    const visible = visibleTo(Role.STAFF);
-    expect(visible.sort()).toEqual(['/notifications', '/orders', '/support'].sort());
+  it('shows support staff exactly Operations plus Notifications', () => {
+    // minirue-dashboard#74 (owner, 2026-09-15): Loyalty, Media gallery,
+    // Customers and Orders move into Operations, which is now the whole
+    // staff group. STAFF sees only Operations + Notifications — no Overview
+    // metrics, Settings, Info, Store group, Insights or Maintenance-only
+    // (Discounts/Reviews/Inventory) items.
+    expect(visibleMenu(Role.STAFF)).toEqual([
+      { section: 'Operations', label: 'Orders' },
+      { section: 'Operations', label: 'Customers' },
+      { section: 'Operations', label: 'Loyalty' },
+      { section: 'Operations', label: 'Gallery' },
+      { section: 'Operations', label: 'Support' },
+      { section: 'Operations', label: 'Fulfillment' },
+      { section: 'Operations', label: 'Refunds and payments' },
+      { section: 'System', label: 'Notifications' },
+    ]);
   });
 
-  it('hides overview, analytics, fulfillment, reviews, info and gallery from support staff', () => {
+  it('hides overview, analytics, seo, settings, discounts, reviews, inventory, info, catalogue and storefront from support staff', () => {
+    // '/overview' is checked via the real sidebar-visibility helper, not raw
+    // canAccessDashboardRoute — the route is deliberately reachable by STAFF
+    // (their landing), but the nav item stays admin-only. Every other href
+    // here is denied at the route level too, so plain visibleTo is fine.
+    const staffLabels = visibleMenu(Role.STAFF).map((m) => m.label);
+    expect(staffLabels).not.toContain('Overview');
     const visible = visibleTo(Role.STAFF);
     for (const forbidden of [
-      '/catalogue', '/settings', '/customers', '/admin', '/collaborators',
-      '/overview', '/analytics', '/fulfillment', '/reviews', '/info', '/gallery',
+      '/catalogue', '/settings', '/admin', '/collaborators', '/storefront-appearance',
+      '/analytics', '/seo', '/discounts', '/reviews', '/inventory', '/info',
+      '/accounting', '/partners',
     ]) {
       expect(visible).not.toContain(forbidden);
     }
+  });
+
+  it('shows the admin the exact Operations, Insights and Store groupings', () => {
+    // Pins the full regrouped layout (#74): Operations gathers every
+    // day-to-day fulfillment-adjacent job, Insights is Analytics + SEO only
+    // (Loyalty moved out), and Overview stays in Store, admin-only.
+    const menu = visibleMenu(Role.ADMIN);
+    const bySection = (section: string) =>
+      menu.filter((m) => m.section === section).map((m) => m.label);
+    expect(bySection('Store')).toEqual(['Overview', 'Catalogue', 'Collaborators', 'Accounting', 'Storefront']);
+    expect(bySection('Operations')).toEqual([
+      'Orders', 'Customers', 'Loyalty', 'Gallery', 'Discounts',
+      'Support', 'Reviews', 'Fulfillment', 'Refunds and payments',
+    ]);
+    expect(bySection('Insights')).toEqual(['Analytics', 'SEO']);
+    expect(bySection('System')).toEqual(['Notifications', 'Settings', 'Info']);
+    expect(menu.some((m) => m.section === 'Media')).toBe(false);
+  });
+
+  it('lets STAFF reach /overview directly (their landing) without showing an Overview tab', () => {
+    // The Overview nav item is admin-only in the sidebar, but the route
+    // itself is reachable by STAFF — that's how their landing page renders
+    // (notifications + their own support conversations) without a dead tab.
+    expect(canAccessDashboardRoute(Role.STAFF, '/overview')).toBe(true);
+    expect(visibleMenu(Role.STAFF).map((m) => m.label)).not.toContain('Overview');
   });
 
   it('still lets admins and super admins moderate reviews', () => {

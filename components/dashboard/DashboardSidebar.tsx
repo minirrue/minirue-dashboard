@@ -212,6 +212,28 @@ export interface NavItem {
    * module actually granted (collaborator_module_grants) — real RBAC gating
    * instead of always showing the tab and letting the click 404/error. */
   requiresCollabModule?: 'ORDERS' | 'PRODUCTS' | 'ANALYTICS';
+  /**
+   * Hides this nav item from every role except SUPERADMIN/ADMIN, even when
+   * the underlying route itself is reachable by other roles too. Used for
+   * '/overview' (#74): STAFF can land there directly after sign-in — it
+   * renders their notifications + own support conversations rather than the
+   * admin metrics view — but it is not a tab they click to, so it stays out
+   * of their sidebar.
+   */
+  adminOnly?: boolean;
+}
+
+/**
+ * Whether `item` belongs in `role`'s sidebar — the single source both the
+ * real component and the sidebar-visibility tests use, so a special case
+ * (like `adminOnly`) can never drift between what's asserted and what
+ * renders. Does NOT apply `requiresCollabModule` gating, which needs a
+ * fetched module list the component holds in state; callers that care about
+ * a COLLAB caller's granted modules apply that filter separately.
+ */
+export function isNavItemVisible(role: string, item: NavItem): boolean {
+  if (item.adminOnly && !isAdminRole(role)) return false;
+  return canAccessDashboardRoute(role, item.href);
 }
 
 export interface DashboardSidebarProps {
@@ -248,14 +270,15 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
   {
     section: 'Store',
     items: [
-      { label: 'Overview', href: '/overview', icon: <IconBarChart /> },
+      // adminOnly: STAFF can still land on /overview (their own notifications
+      // + support conversations render there instead of these admin
+      // metrics), but this tab itself is not part of their sidebar (#74).
+      { label: 'Overview', href: '/overview', icon: <IconBarChart />, adminOnly: true },
       // One Catalogue entry lands on the map at /catalogue; Products, Categories,
       // Brands and Global variants are its slash sub-tabs (the hallway), so they
       // are no longer separate sidebar items. normalizeDashboardPath folds every
       // /catalogue/* path to /catalogue, so this stays highlighted throughout.
       { label: 'Catalogue', href: '/catalogue', icon: <IconPackage /> },
-      { label: 'Orders', href: '/orders', icon: <IconShoppingBag /> },
-      { label: 'Customers', href: '/customers', icon: <IconUsers /> },
       { label: 'Collaborators', href: '/collaborators', icon: <IconHandshake /> },
       // Admin only: DASHBOARD_ROUTE_ACCESS['/accounting'] is ADMIN_ONLY, so the
       // role filter below hides it from STAFF and partners (#57).
@@ -270,35 +293,40 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
     ],
   },
   {
-    section: 'Media',
-    items: [
-      { label: 'Gallery', href: '/gallery', icon: <IconImage /> },
-    ],
-  },
-  {
+    // #74 (owner, 2026-09-15): Operations is the whole STAFF group — every
+    // day-to-day job a support-desk operator does. Orders, Customers, Loyalty
+    // and Gallery moved in from Store/Media/Insights; Discounts, Reviews and
+    // Inventory stay here too (their prior relative order kept) but remain
+    // admin-only/super-admin-only, hidden for STAFF pending the owner.
     section: 'Operations',
     items: [
+      { label: 'Orders', href: '/orders', icon: <IconShoppingBag /> },
+      { label: 'Customers', href: '/customers', icon: <IconUsers /> },
+      { label: 'Loyalty', href: '/loyalty', icon: <IconStar /> },
+      { label: 'Gallery', href: '/gallery', icon: <IconImage /> },
       // Merchandising, but it lives with Operations rather than the catalogue:
       // a code is something you run and watch, not something you shelve.
+      // Admin-only — discounts admin awaits the owner (#74).
       { label: 'Discounts', href: '/discounts', icon: <IconTag /> },
       { label: 'Support', href: '/support', icon: <IconUsers /> },
       // Moderation work, so it sits with support rather than with the
       // catalogue: nothing a shopper writes reaches a product page until
-      // somebody here says yes.
+      // somebody here says yes. Admin-only.
       { label: 'Reviews', href: '/reviews', icon: <IconStar /> },
       { label: 'Fulfillment', href: '/fulfillment', icon: <IconTruck /> },
       { label: 'Refunds and payments', href: '/refunds', icon: <IconRefreshCcw /> },
+      // Parked (maintenance) and super-admin only — inventory admin awaits
+      // the owner (#74).
       { label: 'Inventory', href: '/inventory', icon: <IconPackage />, maintenance: true },
     ],
   },
   {
     section: 'Insights',
     items: [
+      // Admin-only. Loyalty moved out (#74) into Operations, where STAFF can
+      // reach it.
       { label: 'Analytics', href: '/analytics', icon: <IconTrendingUp /> },
       { label: 'SEO', href: '/seo', icon: <IconSearchCheck /> },
-      // Marked maintenance alongside Inventory: the module is not in service, and
-      // the storefront's Loyalty tab is hidden to match.
-      { label: 'Loyalty', href: '/loyalty', icon: <IconStar />, maintenance: true },
     ],
   },
   {
@@ -363,7 +391,7 @@ export default function DashboardSidebar({
     ...group,
     items: userRole
       ? group.items.filter((item) => {
-          if (!canAccessDashboardRoute(userRole, item.href)) return false;
+          if (!isNavItemVisible(userRole, item)) return false;
           if (item.requiresCollabModule) {
             // Still resolving (collabModules === null) — hide rather than
             // flash the tab and yank it away once modules load.

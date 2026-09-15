@@ -61,16 +61,20 @@ describe('dashboard RBAC routes', () => {
     expect(canAccessDashboardRoute(Role.STAFF, '/catalogue')).toBe(false);
   });
 
-  it('gives support staff only Orders, Support and their own notifications', () => {
-    // 2026-07-30: narrowed from the whole customer-facing set (Overview,
-    // Fulfillment, Analytics, Reviews, Info, Gallery) down to exactly the two
-    // jobs STAFF does, per owner ask.
-    for (const allowed of ['/orders', '/support', '/notifications']) {
+  it('gives support staff exactly the Operations routes plus notifications (and their landing)', () => {
+    // #74 (owner, 2026-09-15): Operations — Orders, Customers, Loyalty,
+    // Gallery, Support, Fulfillment, Refunds and payments — is now the whole
+    // staff group, plus /notifications and their /overview landing.
+    for (const allowed of [
+      '/orders', '/customers', '/loyalty', '/gallery', '/support',
+      '/fulfillment', '/refunds', '/notifications', '/overview',
+    ]) {
       expect(canAccessDashboardRoute(Role.STAFF, allowed)).toBe(true);
     }
     for (const denied of [
-      '/catalogue', '/settings', '/customers', '/admin',
-      '/overview', '/fulfillment', '/analytics', '/reviews', '/info', '/gallery',
+      '/catalogue', '/settings', '/admin', '/seo', '/analytics',
+      '/discounts', '/reviews', '/info', '/inventory', '/accounting',
+      '/storefront-appearance', '/collaborators', '/partners',
     ]) {
       expect(canAccessDashboardRoute(Role.STAFF, denied)).toBe(false);
     }
@@ -119,10 +123,11 @@ describe('dashboard RBAC routes', () => {
     expect(DASHBOARD_ROUTE_ACCESS['/admin']).toEqual([Role.SUPERADMIN]);
   });
 
-  it('redirects staff to a route they can actually open, not /overview', () => {
-    // Since 2026-07-30 STAFF cannot open /overview at all — landing them
-    // there would bounce them straight back out.
-    expect(firstAccessibleDashboardRoute(Role.STAFF)).toBe('/orders');
+  it('lands staff on /overview — their notifications and own support conversations', () => {
+    // #74: /overview is now reachable for STAFF (a role-aware landing, not
+    // the admin metrics view), so they land there like everyone else instead
+    // of being bounced past it to /orders.
+    expect(firstAccessibleDashboardRoute(Role.STAFF)).toBe('/overview');
   });
 });
 
