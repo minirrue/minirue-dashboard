@@ -11,12 +11,9 @@ import { governorateLabel } from '@/lib/geo/governorates';
 /**
  * SAME_DAY orders needing a fee, plus recently-set ones — dashboard#84.
  *
- * `GET /orders/admin` (`lib/api/orders.ts` `apiAdminListOrders`) has no
- * `deliveryMethod` filter today, so this fetches a page of admin orders and
- * filters client-side. Noted on dashboard#84: a `deliveryMethod`/`status`
- * server-side filter on that endpoint would let this scale past one page —
- * filed as a follow-up (see the issue closing comment) rather than widening
- * this slice's backend surface.
+ * The server filters by method and fee state (backend#192), so every order
+ * still waiting for a fee is fetched, not only those on the first page of all
+ * orders. Status (CONFIRMED/PROCESSING) is narrowed here.
  */
 const PAGE_LIMIT = 100;
 
@@ -34,8 +31,11 @@ export default function SameDayQueuePanel() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const res = await apiAdminListOrders({ limit: PAGE_LIMIT, page: 1 });
-      setOrders(res.data.filter(isQueueCandidate));
+      const [pending, set] = await Promise.all([
+        apiAdminListOrders({ limit: PAGE_LIMIT, page: 1, deliveryMethod: 'SAME_DAY', sameDayFee: 'PENDING' }),
+        apiAdminListOrders({ limit: 20, page: 1, deliveryMethod: 'SAME_DAY', sameDayFee: 'SET' }),
+      ]);
+      setOrders([...pending.data, ...set.data].filter(isQueueCandidate));
     } catch (e) {
       setError((e as ApiError).message ?? 'Could not load the same-day queue');
     }

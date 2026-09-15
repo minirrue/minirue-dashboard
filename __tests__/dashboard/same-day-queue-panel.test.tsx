@@ -45,7 +45,35 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
+/** Behaves like GET /orders/admin with backend#192's filters. */
+function serverLike(res: OrdersListResponse) {
+  return (params: { deliveryMethod?: string; sameDayFee?: 'PENDING' | 'SET' } = {}) => {
+    const data = res.data.filter((o) => {
+      if (params.deliveryMethod && o.delivery?.method !== params.deliveryMethod) return false;
+      const set = o.delivery?.sameDayFee?.status === 'SET';
+      if (params.sameDayFee === 'SET' && !set) return false;
+      if (params.sameDayFee === 'PENDING' && set) return false;
+      return true;
+    });
+    return Promise.resolve({ ...res, data, total: data.length });
+  };
+}
+
 describe('SameDayQueuePanel filtering', () => {
+  it('asks the server for same-day orders by fee state (backend#192)', async () => {
+    (apiAdminListOrders as jest.Mock).mockImplementation(
+      serverLike({ data: [], total: 0, page: 1, limit: 100 } satisfies OrdersListResponse),
+    );
+    render(<SameDayQueuePanel />);
+    await screen.findByText(/same-day|No same-day/i).catch(() => null);
+    expect(apiAdminListOrders).toHaveBeenCalledWith(
+      expect.objectContaining({ deliveryMethod: 'SAME_DAY', sameDayFee: 'PENDING' }),
+    );
+    expect(apiAdminListOrders).toHaveBeenCalledWith(
+      expect.objectContaining({ deliveryMethod: 'SAME_DAY', sameDayFee: 'SET' }),
+    );
+  });
+
   it('shows only SAME_DAY orders that are CONFIRMED/PROCESSING and still need a fee', async () => {
     const sameDayPending = makeOrder({
       id: 'sd-pending',
@@ -75,12 +103,14 @@ describe('SameDayQueuePanel filtering', () => {
       delivery: { method: 'STANDARD', etaLabel: '2–5 working days', window: null, location: null, sameDayFee: null },
     });
 
-    (apiAdminListOrders as jest.Mock).mockResolvedValue({
+    (apiAdminListOrders as jest.Mock).mockImplementation(
+      serverLike({
       data: [sameDayPending, sameDayShipped, standardOrder],
       total: 3,
       page: 1,
       limit: 100,
-    } satisfies OrdersListResponse);
+    } satisfies OrdersListResponse),
+    );
 
     render(<SameDayQueuePanel />);
 
@@ -114,12 +144,14 @@ describe('SameDayQueuePanel filtering', () => {
       },
     });
 
-    (apiAdminListOrders as jest.Mock).mockResolvedValue({
+    (apiAdminListOrders as jest.Mock).mockImplementation(
+      serverLike({
       data: [pending, set],
       total: 2,
       page: 1,
       limit: 100,
-    } satisfies OrdersListResponse);
+    } satisfies OrdersListResponse),
+    );
 
     render(<SameDayQueuePanel />);
 
@@ -142,12 +174,14 @@ describe('SameDayQueuePanel filtering', () => {
       },
     });
 
-    (apiAdminListOrders as jest.Mock).mockResolvedValue({
+    (apiAdminListOrders as jest.Mock).mockImplementation(
+      serverLike({
       data: [withLatLng],
       total: 1,
       page: 1,
       limit: 100,
-    } satisfies OrdersListResponse);
+    } satisfies OrdersListResponse),
+    );
 
     render(<SameDayQueuePanel />);
 
@@ -159,12 +193,14 @@ describe('SameDayQueuePanel filtering', () => {
   });
 
   it('shows an empty state when nothing is waiting on a fee', async () => {
-    (apiAdminListOrders as jest.Mock).mockResolvedValue({
+    (apiAdminListOrders as jest.Mock).mockImplementation(
+      serverLike({
       data: [],
       total: 0,
       page: 1,
       limit: 100,
-    } satisfies OrdersListResponse);
+    } satisfies OrdersListResponse),
+    );
 
     render(<SameDayQueuePanel />);
 

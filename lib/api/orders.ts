@@ -148,6 +148,10 @@ export async function apiAdminListOrders(params?: {
   userId?: string;
   channel?: OrderChannel;
   q?: string;
+  /** backend#192 */
+  deliveryMethod?: 'STANDARD' | 'SAME_DAY';
+  /** backend#192: PENDING = no same-day fee yet, SET = fee entered. */
+  sameDayFee?: 'PENDING' | 'SET';
 }): Promise<OrdersListResponse> {
   const qs = new URLSearchParams();
   if (params?.page != null) qs.set('page', String(params.page));
@@ -156,6 +160,8 @@ export async function apiAdminListOrders(params?: {
   if (params?.userId) qs.set('userId', params.userId);
   if (params?.channel) qs.set('channel', params.channel);
   if (params?.q) qs.set('q', params.q);
+  if (params?.deliveryMethod) qs.set('deliveryMethod', params.deliveryMethod);
+  if (params?.sameDayFee) qs.set('sameDayFee', params.sameDayFee);
   const query = qs.toString() ? `?${qs.toString()}` : '';
   return apiFetch<OrdersListResponse>(`/orders/admin${query}`, { auth: true });
 }
