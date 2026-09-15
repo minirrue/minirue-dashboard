@@ -295,9 +295,10 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
   {
     // #74 (owner, 2026-09-15): Operations is the whole STAFF group — every
     // day-to-day job a support-desk operator does. Orders, Customers, Loyalty
-    // and Gallery moved in from Store/Media/Insights; Discounts, Reviews and
-    // Inventory stay here too (their prior relative order kept) but remain
-    // admin-only/super-admin-only, hidden for STAFF pending the owner.
+    // and Gallery moved in from Store/Media/Insights. Discounts, Bundles and
+    // Inventory followed on the owner's later answer on backend#182 (STAFF
+    // now manages them too); Reviews stays admin-only. Catalogue product
+    // editing itself (/catalogue) stays admin-only throughout.
     section: 'Operations',
     items: [
       { label: 'Orders', href: '/orders', icon: <IconShoppingBag /> },
@@ -306,8 +307,11 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
       { label: 'Gallery', href: '/gallery', icon: <IconImage /> },
       // Merchandising, but it lives with Operations rather than the catalogue:
       // a code is something you run and watch, not something you shelve.
-      // Admin-only — discounts admin awaits the owner (#74).
       { label: 'Discounts', href: '/discounts', icon: <IconTag /> },
+      // Catalogue sets, not catalogue product editing — has its own
+      // DASHBOARD_ROUTE_ACCESS entry (a longer, more specific prefix than
+      // '/catalogue') so STAFF can run bundles without /catalogue itself.
+      { label: 'Bundles', href: '/catalogue/bundles', icon: <IconPackage /> },
       { label: 'Support', href: '/support', icon: <IconUsers /> },
       // Moderation work, so it sits with support rather than with the
       // catalogue: nothing a shopper writes reaches a product page until
@@ -315,8 +319,8 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
       { label: 'Reviews', href: '/reviews', icon: <IconStar /> },
       { label: 'Fulfillment', href: '/fulfillment', icon: <IconTruck /> },
       { label: 'Refunds and payments', href: '/refunds', icon: <IconRefreshCcw /> },
-      // Parked (maintenance) and super-admin only — inventory admin awaits
-      // the owner (#74).
+      // Parked (maintenance) — still under repair, so ADMIN stays out of it,
+      // but STAFF gained access on the owner's later answer (#74/backend#182).
       { label: 'Inventory', href: '/inventory', icon: <IconPackage />, maintenance: true },
     ],
   },
@@ -505,7 +509,8 @@ export default function DashboardSidebar({
             <Sparkle size={9} />
           </span>
         </div>
-        <div className="dash-sidebar-subtitle">Atelier dashboard</div>
+        {/* MiniRue is not French (owner, 2026-09-15) — was "Atelier dashboard". */}
+        <div className="dash-sidebar-subtitle">Dashboard</div>
       </div>
       {showNotifButton && (
         <div className="dash-sidebar-brand-actions">

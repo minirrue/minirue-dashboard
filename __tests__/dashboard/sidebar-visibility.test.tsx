@@ -68,21 +68,26 @@ describe('sidebar visibility', () => {
     // minirue-dashboard#74 (owner, 2026-09-15): Loyalty, Media gallery,
     // Customers and Orders move into Operations, which is now the whole
     // staff group. STAFF sees only Operations + Notifications — no Overview
-    // metrics, Settings, Info, Store group, Insights or Maintenance-only
-    // (Discounts/Reviews/Inventory) items.
+    // metrics, Settings, Info, Store group, Insights or Reviews.
+    //
+    // Follow-up same day: the owner's answer on backend#182 opened Discounts,
+    // Bundles and Inventory to STAFF too (Reviews stays admin-only).
     expect(visibleMenu(Role.STAFF)).toEqual([
       { section: 'Operations', label: 'Orders' },
       { section: 'Operations', label: 'Customers' },
       { section: 'Operations', label: 'Loyalty' },
       { section: 'Operations', label: 'Gallery' },
+      { section: 'Operations', label: 'Discounts' },
+      { section: 'Operations', label: 'Bundles' },
       { section: 'Operations', label: 'Support' },
       { section: 'Operations', label: 'Fulfillment' },
       { section: 'Operations', label: 'Refunds and payments' },
+      { section: 'Operations', label: 'Inventory' },
       { section: 'System', label: 'Notifications' },
     ]);
   });
 
-  it('hides overview, analytics, seo, settings, discounts, reviews, inventory, info, catalogue and storefront from support staff', () => {
+  it('hides overview, analytics, seo, settings, reviews, info, catalogue product editing and storefront from support staff', () => {
     // '/overview' is checked via the real sidebar-visibility helper, not raw
     // canAccessDashboardRoute — the route is deliberately reachable by STAFF
     // (their landing), but the nav item stays admin-only. Every other href
@@ -92,23 +97,34 @@ describe('sidebar visibility', () => {
     const visible = visibleTo(Role.STAFF);
     for (const forbidden of [
       '/catalogue', '/settings', '/admin', '/collaborators', '/storefront-appearance',
-      '/analytics', '/seo', '/discounts', '/reviews', '/inventory', '/info',
-      '/accounting', '/partners',
+      '/analytics', '/seo', '/reviews', '/info', '/accounting', '/partners',
     ]) {
       expect(visible).not.toContain(forbidden);
     }
   });
 
+  it('still lets STAFF reach bundles without catalogue product editing', () => {
+    // '/catalogue/bundles' is a more specific DASHBOARD_ROUTE_ACCESS key than
+    // '/catalogue', so it does not inherit '/catalogue's ADMIN_ONLY rule.
+    expect(canAccessDashboardRoute(Role.STAFF, '/catalogue/bundles')).toBe(true);
+    expect(canAccessDashboardRoute(Role.STAFF, '/catalogue/bundles/new')).toBe(true);
+    expect(canAccessDashboardRoute(Role.STAFF, '/catalogue')).toBe(false);
+    expect(canAccessDashboardRoute(Role.STAFF, '/catalogue/products')).toBe(false);
+  });
+
   it('shows the admin the exact Operations, Insights and Store groupings', () => {
-    // Pins the full regrouped layout (#74): Operations gathers every
-    // day-to-day fulfillment-adjacent job, Insights is Analytics + SEO only
-    // (Loyalty moved out), and Overview stays in Store, admin-only.
+    // Pins the full regrouped layout (#74, plus the same-day backend#182
+    // follow-up): Operations gathers every day-to-day job including Bundles,
+    // Insights is Analytics + SEO only (Loyalty moved out), and Overview
+    // stays in Store, admin-only.
     const menu = visibleMenu(Role.ADMIN);
     const bySection = (section: string) =>
       menu.filter((m) => m.section === section).map((m) => m.label);
     expect(bySection('Store')).toEqual(['Overview', 'Catalogue', 'Collaborators', 'Accounting', 'Storefront']);
+    // Inventory stays out of ADMIN's list: it is parked for repair
+    // ([SUPERADMIN, STAFF] only) — ADMIN's exclusion is unchanged by #74.
     expect(bySection('Operations')).toEqual([
-      'Orders', 'Customers', 'Loyalty', 'Gallery', 'Discounts',
+      'Orders', 'Customers', 'Loyalty', 'Gallery', 'Discounts', 'Bundles',
       'Support', 'Reviews', 'Fulfillment', 'Refunds and payments',
     ]);
     expect(bySection('Insights')).toEqual(['Analytics', 'SEO']);

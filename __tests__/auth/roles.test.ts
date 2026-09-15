@@ -64,16 +64,20 @@ describe('dashboard RBAC routes', () => {
   it('gives support staff exactly the Operations routes plus notifications (and their landing)', () => {
     // #74 (owner, 2026-09-15): Operations — Orders, Customers, Loyalty,
     // Gallery, Support, Fulfillment, Refunds and payments — is now the whole
-    // staff group, plus /notifications and their /overview landing.
+    // staff group, plus /notifications and their /overview landing. Same-day
+    // follow-up (owner's answer on backend#182): Discounts, Bundles
+    // (/catalogue/bundles) and Inventory opened to STAFF too — catalogue
+    // product editing (/catalogue itself) stays admin-only.
     for (const allowed of [
       '/orders', '/customers', '/loyalty', '/gallery', '/support',
       '/fulfillment', '/refunds', '/notifications', '/overview',
+      '/discounts', '/catalogue/bundles', '/inventory',
     ]) {
       expect(canAccessDashboardRoute(Role.STAFF, allowed)).toBe(true);
     }
     for (const denied of [
       '/catalogue', '/settings', '/admin', '/seo', '/analytics',
-      '/discounts', '/reviews', '/info', '/inventory', '/accounting',
+      '/reviews', '/info', '/accounting',
       '/storefront-appearance', '/collaborators', '/partners',
     ]) {
       expect(canAccessDashboardRoute(Role.STAFF, denied)).toBe(false);

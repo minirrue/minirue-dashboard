@@ -44,21 +44,28 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   // /catalogue/brands, /catalogue/global-variants. One key covers them all by
   // prefix, so the sidebar's single "Catalogue" item highlights everywhere in
   // it. Old /products and /categories URLs redirect here (see next.config).
+  // Catalogue PRODUCT editing itself stays admin-only per the owner's #74
+  // follow-up — '/catalogue/bundles' below is a more specific (longer) key
+  // that wins the prefix match for STAFF before falling back to this one.
   '/catalogue': ADMIN_ONLY,
+  // Catalogue sets, not catalogue product editing. Owner's #74 follow-up
+  // (backend#182): STAFF now manages bundles too, even though /catalogue
+  // itself stays admin-only — this specific, longer prefix key is checked
+  // first by normalizeDashboardPath/DASHBOARD_NAV_PATHS (sorted longest
+  // first), so /catalogue/bundles* never falls back to '/catalogue' ABOVE.
+  '/catalogue/bundles': ADMIN_AND_SUPPORT,
   '/orders': ADMIN_AND_SUPPORT,
   '/customers': ADMIN_AND_SUPPORT,
   '/fulfillment': ADMIN_AND_SUPPORT,
   '/refunds': ADMIN_AND_SUPPORT,
-  // Codes and the sitewide markdown. ADMIN_ONLY, deliberately: discounts and
-  // bundles admin stay awaiting the owner (#74) — STAFF still issues
-  // compensation from inside a support conversation, which the backend
-  // allows them under a spending cap, and still sees what a customer has
-  // been given, on that customer's own page. Neither needs this tab.
-  '/discounts': ADMIN_ONLY,
+  // Codes and the sitewide markdown. Owner's #74 follow-up: STAFF now manages
+  // discounts too (previously ADMIN_ONLY while awaiting the owner).
+  '/discounts': ADMIN_AND_SUPPORT,
   // Parked 2026-07-23: inventory is under active repair and is not trustworthy
-  // for day-to-day admin use. SUPERADMIN keeps it so it can be worked on.
-  // Restore ADMIN_ONLY when it comes back.
-  '/inventory': [Role.SUPERADMIN],
+  // for day-to-day ADMIN use, so ADMIN stays out of it — but the owner's #74
+  // follow-up (backend#182) opened it to STAFF specifically, alongside
+  // SUPERADMIN (who keeps it so it can be worked on).
+  '/inventory': [Role.SUPERADMIN, Role.STAFF],
   // Accounting (epic minirue-backend#155): costs, floors, margins and the
   // pricing slider. Mirrors @Roles(ADMIN) on /v1/accounting.
   '/accounting': ADMIN_ONLY,
