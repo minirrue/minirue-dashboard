@@ -292,6 +292,10 @@ export default function GlobalVariantsPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!newName.trim()) return;
+    const existing = attributes.find(
+      (a) => a.name.trim().toLowerCase() === newName.trim().toLowerCase(),
+    );
+    if (existing) return; // the clash notice offers the right action instead
     setCreating(true);
     setCreateError(null);
     try {
@@ -304,6 +308,64 @@ export default function GlobalVariantsPage() {
       setNewCategoryIds([]);
     } catch (e) {
       setCreateError((e as ApiError).message ?? 'Could not add that field.');
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  // Field names are unique, case-insensitively and including deleted fields
+  // (backend attributeNameExists). So a clash is caught here, before the POST,
+  // and turned into "extend the existing field" instead of a dead error.
+  // minirue-dashboard#73
+  const clash = newName.trim()
+    ? attributes.find((a) => a.name.trim().toLowerCase() === newName.trim().toLowerCase())
+    : undefined;
+  const clashCategoryIds = clash?.categoryIds ?? [];
+  const missingCategoryIds = newCategoryIds.filter((id) => !clashCategoryIds.includes(id));
+  const clashAppliesEverywhere = clashCategoryIds.length === 0;
+  const clashNextCategoryIds =
+    !clash || clashAppliesEverywhere
+      ? []
+      : newCategoryIds.length === 0
+        ? []
+        : [...clashCategoryIds, ...missingCategoryIds];
+  const clashNeedsChange =
+    !!clash &&
+    (!clash.isActive ||
+      (!clashAppliesEverywhere &&
+        (newCategoryIds.length === 0 || missingCategoryIds.length > 0)));
+
+  function namesOf(ids: string[]): string {
+    return ids
+      .map((id) => categories.find((c) => c.id === id)?.name)
+      .filter((n): n is string => !!n)
+      .join(', ');
+  }
+
+  function extendLabel(): string {
+    if (!clash) return '';
+    if (clashAppliesEverywhere) return `Restore ${clash.name}`;
+    if (newCategoryIds.length === 0) return `Make ${clash.name} apply to every category`;
+    if (missingCategoryIds.length > 0) {
+      return `Add ${namesOf(missingCategoryIds)} to ${clash.name}`;
+    }
+    return `Restore ${clash.name}`;
+  }
+
+  async function handleExtendExisting() {
+    if (!clash) return;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const updated = await updateAttribute(clash.id, {
+        categoryIds: clashNextCategoryIds,
+        ...(clash.isActive ? {} : { isActive: true }),
+      });
+      setAttributes((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+      setNewName('');
+      setNewCategoryIds([]);
+    } catch (e) {
+      setCreateError((e as ApiError).message ?? 'Could not update that field.');
     } finally {
       setCreating(false);
     }
@@ -375,14 +437,46 @@ export default function GlobalVariantsPage() {
 
           {createError && <p className="dash-inline-error">{createError}</p>}
 
-          <button
-            type="submit"
-            className="dash-btn-primary"
-            disabled={creating || !newName.trim()}
-            data-trace-id={`${TRACE}::EL-BTN-create`}
-          >
-            {creating ? 'Adding…' : 'Add field'}
-          </button>
+          {clash ? (
+            <div
+              role="status"
+              style={{
+                maxWidth: 560,
+                padding: '12px 14px',
+                borderRadius: 'var(--mr-radius-sm)',
+                background: 'var(--mr-st-warn-bg)',
+                color: 'var(--mr-st-warn-fg)',
+              }}
+              data-trace-id={`${TRACE}::EL-REGION-name-clash`}
+            >
+              <p style={{ margin: '0 0 8px' }}>
+                <strong>{clash.name}</strong> already exists
+                {clash.isActive ? '' : ' (deleted)'} and applies to{' '}
+                {clashAppliesEverywhere ? 'every category' : namesOf(clashCategoryIds)}.
+                {!clashNeedsChange && ' Nothing to add.'}
+              </p>
+              {clashNeedsChange && (
+                <button
+                  type="button"
+                  className="dash-btn-primary"
+                  onClick={handleExtendExisting}
+                  disabled={creating}
+                  data-trace-id={`${TRACE}::EL-BTN-extend-existing`}
+                >
+                  {creating ? 'Saving…' : extendLabel()}
+                </button>
+              )}
+            </div>
+          ) : (
+            <button
+              type="submit"
+              className="dash-btn-primary"
+              disabled={creating || !newName.trim()}
+              data-trace-id={`${TRACE}::EL-BTN-create`}
+            >
+              {creating ? 'Adding…' : 'Add field'}
+            </button>
+          )}
         </form>
       </section>
 
