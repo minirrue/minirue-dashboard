@@ -76,9 +76,7 @@ describe('sidebar visibility', () => {
       { section: 'Operations', label: 'Orders' },
       { section: 'Operations', label: 'Customers' },
       { section: 'Operations', label: 'Loyalty' },
-      { section: 'Operations', label: 'Gallery' },
       { section: 'Operations', label: 'Discounts' },
-      { section: 'Operations', label: 'Bundles' },
       { section: 'Operations', label: 'Support' },
       { section: 'Operations', label: 'Fulfillment' },
       { section: 'Operations', label: 'Refunds and payments' },
@@ -103,11 +101,10 @@ describe('sidebar visibility', () => {
     }
   });
 
-  it('still lets STAFF reach bundles without catalogue product editing', () => {
-    // '/catalogue/bundles' is a more specific DASHBOARD_ROUTE_ACCESS key than
-    // '/catalogue', so it does not inherit '/catalogue's ADMIN_ONLY rule.
-    expect(canAccessDashboardRoute(Role.STAFF, '/catalogue/bundles')).toBe(true);
-    expect(canAccessDashboardRoute(Role.STAFF, '/catalogue/bundles/new')).toBe(true);
+  it('keeps STAFF out of bundles and catalogue product editing (owner, 2026-09-15)', () => {
+    expect(canAccessDashboardRoute(Role.STAFF, '/catalogue/bundles')).toBe(false);
+    expect(canAccessDashboardRoute(Role.STAFF, '/catalogue/bundles/new')).toBe(false);
+    expect(canAccessDashboardRoute(Role.ADMIN, '/catalogue/bundles')).toBe(true);
     expect(canAccessDashboardRoute(Role.STAFF, '/catalogue')).toBe(false);
     expect(canAccessDashboardRoute(Role.STAFF, '/catalogue/products')).toBe(false);
   });

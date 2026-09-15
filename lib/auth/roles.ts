@@ -53,7 +53,8 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   // itself stays admin-only — this specific, longer prefix key is checked
   // first by normalizeDashboardPath/DASHBOARD_NAV_PATHS (sorted longest
   // first), so /catalogue/bundles* never falls back to '/catalogue' ABOVE.
-  '/catalogue/bundles': ADMIN_AND_SUPPORT,
+  // Owner (2026-09-15, later the same day): "remove bundles tab from staff".
+  '/catalogue/bundles': ADMIN_ONLY,
   '/orders': ADMIN_AND_SUPPORT,
   '/customers': ADMIN_AND_SUPPORT,
   '/fulfillment': ADMIN_AND_SUPPORT,
@@ -108,8 +109,8 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   // Gallery is per-account (either an admin user or a collaborator, per
   // gallery-routes.md) — the same /dashboard/gallery screen and backend
   // routes serve both caller types, each auto-scoped to their own folders.
-  // STAFF regained access under Operations (#74).
-  '/gallery': [...ADMIN_AND_SUPPORT, ...COLLAB_ROLES],
+  // Owner (2026-09-15): "remove gallery from support staff visibility".
+  '/gallery': [...ADMIN_ONLY, ...COLLAB_ROLES],
 };
 
 export const DASHBOARD_NAV_PATHS = Object.keys(DASHBOARD_ROUTE_ACCESS).sort(

@@ -69,9 +69,9 @@ describe('dashboard RBAC routes', () => {
     // (/catalogue/bundles) and Inventory opened to STAFF too — catalogue
     // product editing (/catalogue itself) stays admin-only.
     for (const allowed of [
-      '/orders', '/customers', '/loyalty', '/gallery', '/support',
+      '/orders', '/customers', '/loyalty', '/support',
       '/fulfillment', '/refunds', '/notifications', '/overview',
-      '/discounts', '/catalogue/bundles', '/inventory',
+      '/discounts', '/inventory',
     ]) {
       expect(canAccessDashboardRoute(Role.STAFF, allowed)).toBe(true);
     }
@@ -79,6 +79,8 @@ describe('dashboard RBAC routes', () => {
       '/catalogue', '/settings', '/admin', '/seo', '/analytics',
       '/reviews', '/info', '/accounting',
       '/storefront-appearance', '/collaborators', '/partners',
+      // Owner, later the same day: no Gallery or Bundles for staff.
+      '/gallery', '/catalogue/bundles',
     ]) {
       expect(canAccessDashboardRoute(Role.STAFF, denied)).toBe(false);
     }
