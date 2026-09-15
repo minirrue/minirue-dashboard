@@ -1,0 +1,41 @@
+/* InstaPay payment guide on Settings (minirue-dashboard#68). dashboard.css is owned elsewhere. */
+
+.dash-instapay {
+  margin-block: 28px 20px;
+  padding-top: 24px;
+  border-top: 1px solid var(--mr-dash-hair);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.dash-instapay-head .dash-section-title {
+  margin: 0;
+}
+.dash-instapay-head .dash-help-text {
+  margin: 4px 0 0;
+  max-width: 68ch;
+}
+.dash-instapay .dash-field-row > .dash-field {
+  min-width: 0;
+  width: 100%;
+}
+/* Side by side only where the row is a row: below 641px dashboard.css stacks
+   it as a column, and a flex-basis there would become a fixed height. */
+@media (min-width: 641px) {
+  .dash-instapay .dash-field-row > .dash-field {
+    flex: 1 1 260px;
+  }
+}
+.dash-instapay-link {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.dash-instapay-link .dash-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.dash-instapay-link .dash-btn-secondary {
+  flex: none;
+  white-space: nowrap;
+}

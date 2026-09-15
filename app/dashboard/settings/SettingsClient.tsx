@@ -2,7 +2,9 @@
 
 import React, {useState, useCallback, useRef } from 'react';
 import { apiGetSettings, apiUpdateSettings, apiUploadBrandLogo } from '@/lib/api/settings';
-import type { StoreSettings } from '@/lib/api/settings';
+import type { InstapayGuide, StoreSettings } from '@/lib/api/settings';
+import ImageField from '@/components/dashboard/ImageField';
+import './instapay-settings.css';
 import type { ApiError } from '@/lib/api/client';
 import { useUser } from '@/lib/hooks/use-auth';
 import { apiUpdateMyProfile, apiUploadMyAvatar } from '@/lib/api/auth';
@@ -367,7 +369,49 @@ type SettingsForm = {
    * Blank means NO limit — COD allowed at any total — which is the default.
    */
   codLimit: string;
+  /**
+   * The InstaPay payment guide (minirue-backend#170), as strings so a blank
+   * field is simply `''` on screen. `instapayFromForm` turns blanks into `null`.
+   */
+  instapay: InstapayForm;
 };
+
+type InstapayForm = Record<keyof InstapayGuide, string>;
+
+const INSTAPAY_HANDLE_MAX = 64;
+
+function instapayToForm(guide: InstapayGuide | undefined): InstapayForm {
+  return {
+    payLink: guide?.payLink ?? '',
+    handle: guide?.handle ?? '',
+    qrMediaUrl: guide?.qrMediaUrl ?? '',
+    exampleMediaUrl: guide?.exampleMediaUrl ?? '',
+  };
+}
+
+/**
+ * The guide as the server wants it: all four keys, each trimmed, blank as
+ * `null`. Never `''` — an empty string is not a valid https link, and blank
+ * means "the storefront uses its defaults".
+ */
+export function instapayFromForm(form: InstapayForm): InstapayGuide {
+  const orNull = (v: string) => v.trim() || null;
+  return {
+    payLink: orNull(form.payLink),
+    handle: orNull(form.handle),
+    qrMediaUrl: orNull(form.qrMediaUrl),
+    exampleMediaUrl: orNull(form.exampleMediaUrl),
+  };
+}
+
+/** True for a well-formed https:// URL — the only kind the server accepts. */
+function isHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
 
 /** Minor units (what the API stores) to a major-unit string for an input. */
 function centsToInput(cents: number | undefined | null): string {
@@ -453,6 +497,7 @@ function settingsToForm(s: StoreSettings): SettingsForm {
     // label rename from re-keying orders already placed against the row.
     shippingRates: ratesToDrafts(s.shipping?.rates),
     codLimit: codLimitToInput(s.payments?.codMaxOrderMinor),
+    instapay: instapayToForm(s.payments?.instapay),
   };
 }
 
@@ -466,6 +511,7 @@ export default function SettingsClient() {
     shippingFreeOver: '',
     shippingRates: [],
     codLimit: '',
+    instapay: instapayToForm(undefined),
   });
   const [raw, setRaw] = useState<StoreSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -508,7 +554,12 @@ export default function SettingsClient() {
     setForm(settingsToForm(updated));
   }, []);
 
-  const setField = (field: keyof Omit<SettingsForm, 'brand' | 'shippingRates' | 'vatEnabled'>) => (
+  const setInstapay = (field: keyof InstapayForm, value: string) => {
+    setSaved(false);
+    setForm((p) => ({ ...p, instapay: { ...p.instapay, [field]: value } }));
+  };
+
+  const setField = (field: keyof Omit<SettingsForm, 'brand' | 'shippingRates' | 'vatEnabled' | 'instapay'>) => (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => { setSaved(false); setForm((p) => ({ ...p, [field]: e.target.value })); };
 
@@ -560,6 +611,15 @@ export default function SettingsClient() {
       return;
     }
 
+    // Checked before sending for the same reason as the governorate table: the
+    // server rejects the whole settings document over one bad field.
+    const instapay = instapayFromForm(form.instapay);
+    if (instapay.payLink !== null && !isHttpsUrl(instapay.payLink)) {
+      setSaveError('InstaPay pay link must start with https:// — or leave it blank to use the shop default.');
+      setSaved(false);
+      return;
+    }
+
     setSaving(true);
     setSaveError(null);
     setSaved(false);
@@ -602,7 +662,8 @@ export default function SettingsClient() {
           : {}),
         // Always sent: this page has loaded the stored value, so what is on
         // screen is the truth, and a cleared field means "no limit".
-        payments: { codMaxOrderMinor: codLimitFromInput(form.codLimit) },
+        // `instapay` goes with all four keys, blanks as null (backend#170).
+        payments: { codMaxOrderMinor: codLimitFromInput(form.codLimit), instapay },
         brand: {
           // Sent EXACTLY as typed — free casing, free internal spaces
           // ("MINI RUE" must survive as "MINI RUE", never collapsed or
@@ -863,6 +924,83 @@ export default function SettingsClient() {
             freeOverCents={effectiveFreeOver}
             currency={form.currency || 'EGP'}
           />
+
+          {/* InstaPay payment guide (dashboard#68, backend#170): what the
+              storefront's /checkout/instapay page shows. Every field is
+              optional; blank falls back to the storefront's own defaults. */}
+          <section className="dash-instapay" aria-labelledby="instapay-title">
+            <div className="dash-instapay-head">
+              <h2 id="instapay-title" className="dash-section-title">InstaPay</h2>
+              <p className="dash-help-text">
+                Shown to shoppers who pay by InstaPay at checkout. Blank uses the shop defaults.
+              </p>
+            </div>
+
+            <div className="dash-field-row">
+              <div className="dash-field">
+                <label className="dash-label" htmlFor="instapay-pay-link">Pay link</label>
+                <div className="dash-instapay-link">
+                  <input
+                    id="instapay-pay-link"
+                    aria-label="InstaPay pay link"
+                    type="url"
+                    inputMode="url"
+                    className="dash-input"
+                    value={form.instapay.payLink}
+                    onChange={(e) => setInstapay('payLink', e.target.value)}
+                    placeholder="https://ipn.eg/S/…"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <button
+                    type="button"
+                    className="dash-btn-secondary"
+                    disabled={!isHttpsUrl(form.instapay.payLink.trim())}
+                    onClick={() =>
+                      window.open(form.instapay.payLink.trim(), '_blank', 'noopener,noreferrer')
+                    }
+                  >
+                    Test link
+                  </button>
+                </div>
+                <p className="dash-help-text">
+                  The InstaPay payment link from your bank app. Must start with https://.
+                </p>
+              </div>
+              <div className="dash-field">
+                <label className="dash-label" htmlFor="instapay-handle">Handle</label>
+                <input
+                  id="instapay-handle"
+                  aria-label="InstaPay handle"
+                  type="text"
+                  className="dash-input"
+                  value={form.instapay.handle}
+                  onChange={(e) => setInstapay('handle', e.target.value)}
+                  maxLength={INSTAPAY_HANDLE_MAX}
+                  placeholder="yourshop@instapay"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <p className="dash-help-text">The address shoppers send the transfer to.</p>
+              </div>
+            </div>
+
+            <div className="dash-field-row">
+              <ImageField
+                label="QR code"
+                imageUrl={form.instapay.qrMediaUrl || null}
+                onChange={(_id, item) => setInstapay('qrMediaUrl', item?.url ?? '')}
+                helpText="Shoppers scan it from another phone."
+              />
+              <ImageField
+                label="Example receipt"
+                imageUrl={form.instapay.exampleMediaUrl || null}
+                onChange={(_id, item) => setInstapay('exampleMediaUrl', item?.url ?? '')}
+                aspectRatio={9 / 16}
+                helpText="A sample of the screenshot shoppers should upload."
+              />
+            </div>
+          </section>
 
           <div className="dash-field">
             {/*

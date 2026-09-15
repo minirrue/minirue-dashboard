@@ -41,6 +41,21 @@ export interface ShippingZone {
   rateCents: number;
 }
 
+/**
+ * What the storefront's /checkout/instapay page shows (minirue-backend#170).
+ * Every field is nullable, and `null` means "use the storefront's default" —
+ * never send `''`. The two images are plain URLs, the same convention as
+ * `storefront.faviconUrl`.
+ */
+export interface InstapayGuide {
+  /** An https:// InstaPay payment link. */
+  payLink: string | null;
+  /** The InstaPay address, e.g. `shop@instapay`. At most 64 characters. */
+  handle: string | null;
+  qrMediaUrl: string | null;
+  exampleMediaUrl: string | null;
+}
+
 export interface StoreSettings {
   currency: string;
   locale: string;
@@ -79,6 +94,12 @@ export interface StoreSettings {
    */
   payments?: {
     codMaxOrderMinor: number | null;
+    /**
+     * The storefront's InstaPay payment guide (minirue-backend#170). Optional
+     * on the wire: a PATCH of `payments` WITHOUT this key leaves the stored
+     * guide untouched. When it is sent, all four keys go with it.
+     */
+    instapay?: InstapayGuide;
   };
   brand: BrandConfig;
   maintenanceMode: boolean;
