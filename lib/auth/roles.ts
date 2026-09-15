@@ -65,7 +65,8 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   // for day-to-day ADMIN use, so ADMIN stays out of it — but the owner's #74
   // follow-up (backend#182) opened it to STAFF specifically, alongside
   // SUPERADMIN (who keeps it so it can be worked on).
-  '/inventory': [Role.SUPERADMIN, Role.STAFF],
+  // Open to ADMIN and STAFF (owner, 2026-09-15: 'inventory for admin also').
+  '/inventory': ADMIN_AND_SUPPORT,
   // Accounting (epic minirue-backend#155): costs, floors, margins and the
   // pricing slider. Mirrors @Roles(ADMIN) on /v1/accounting.
   '/accounting': ADMIN_ONLY,
@@ -120,7 +121,7 @@ export const DASHBOARD_NAV_PATHS = Object.keys(DASHBOARD_ROUTE_ACCESS).sort(
  * one of these gets "under maintenance" rather than "access denied" — the
  * difference matters, because the admin has not done anything wrong.
  */
-export const MAINTENANCE_ROUTES: readonly string[] = ['/inventory'];
+export const MAINTENANCE_ROUTES: readonly string[] = [];
 
 export function isMaintenanceRoute(path: string): boolean {
   return MAINTENANCE_ROUTES.includes(normalizeDashboardPath(path));

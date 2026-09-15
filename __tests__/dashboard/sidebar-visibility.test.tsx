@@ -121,11 +121,10 @@ describe('sidebar visibility', () => {
     const bySection = (section: string) =>
       menu.filter((m) => m.section === section).map((m) => m.label);
     expect(bySection('Store')).toEqual(['Overview', 'Catalogue', 'Collaborators', 'Accounting', 'Storefront']);
-    // Inventory stays out of ADMIN's list: it is parked for repair
-    // ([SUPERADMIN, STAFF] only) — ADMIN's exclusion is unchanged by #74.
+    // Inventory is open to ADMIN again (owner, 2026-09-15: "inventory for admin also").
     expect(bySection('Operations')).toEqual([
       'Orders', 'Customers', 'Loyalty', 'Gallery', 'Discounts', 'Bundles',
-      'Support', 'Reviews', 'Fulfillment', 'Refunds and payments',
+      'Support', 'Reviews', 'Fulfillment', 'Refunds and payments', 'Inventory',
     ]);
     expect(bySection('Insights')).toEqual(['Analytics', 'SEO']);
     expect(bySection('System')).toEqual(['Notifications', 'Settings', 'Info']);

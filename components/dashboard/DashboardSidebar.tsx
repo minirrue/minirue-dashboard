@@ -321,7 +321,7 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
       { label: 'Refunds and payments', href: '/refunds', icon: <IconRefreshCcw /> },
       // Parked (maintenance) — still under repair, so ADMIN stays out of it,
       // but STAFF gained access on the owner's later answer (#74/backend#182).
-      { label: 'Inventory', href: '/inventory', icon: <IconPackage />, maintenance: true },
+      { label: 'Inventory', href: '/inventory', icon: <IconPackage /> },
     ],
   },
   {
