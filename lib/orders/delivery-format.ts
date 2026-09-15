@@ -12,7 +12,12 @@ import type { DeliveryLocation, DeliveryWindow } from '@/lib/api/orders';
  */
 export function mapsLinkFor(location: DeliveryLocation | null | undefined): string | null {
   if (!location) return null;
-  if ('mapsUrl' in location && location.mapsUrl) return location.mapsUrl;
+  if ('mapsUrl' in location && location.mapsUrl) {
+    // http(s) only: this becomes a clickable href, and a pasted
+    // "javascript:" link must never run in a staff session. The backend
+    // refuses it too (minirue-backend 3c52d97); this covers older rows.
+    return /^https?:\/\//i.test(location.mapsUrl) ? location.mapsUrl : null;
+  }
   if ('lat' in location && 'lng' in location && Number.isFinite(location.lat) && Number.isFinite(location.lng)) {
     return `https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lng}`;
   }
@@ -29,14 +34,25 @@ export function mapsLinkFor(location: DeliveryLocation | null | undefined): stri
  */
 export function formatDeliveryWindow(window: DeliveryWindow | null | undefined): string {
   if (!window) return '—';
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
-  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-  const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+  // The CAIRO calendar date, not UTC: between 00:00 and 03:00 in Cairo the UTC
+  // date is still yesterday, which labelled tonight's order "Tomorrow".
+  const now = Date.now();
+  const todayStr = cairoDate(now);
+  const tomorrowStr = cairoDate(now + 24 * 60 * 60 * 1000);
 
   let dayLabel = window.date;
   if (window.date === todayStr) dayLabel = 'Today';
   else if (window.date === tomorrowStr) dayLabel = 'Tomorrow';
 
   return `${dayLabel}, ${window.start}–${window.end}`;
+}
+
+/** YYYY-MM-DD in Africa/Cairo. */
+export function cairoDate(ms: number): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Cairo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(ms));
 }
