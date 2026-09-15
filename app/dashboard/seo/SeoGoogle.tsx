@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   apiGetSeoGoogle,
   apiGetSeoGoogleHistory,
@@ -8,6 +8,7 @@ import {
   type SeoGoogleHistoryPoint,
   type SeoGooglePage,
   type SeoGoogleRefreshResponse,
+  type SeoGoogleRun,
   type SeoGoogleSitemap,
   type SeoGoogleStatus,
   type SeoPageAudit,
@@ -146,8 +147,27 @@ export interface RefreshNote {
   tone: 'ok' | 'warn';
 }
 
+/** How a finished background run went (backend#187). */
+export function describeRun(run: SeoGoogleRun): RefreshNote {
+  if (run.status === 'ERROR') {
+    return { text: `Google returned an error: ${run.error ?? 'no details'}`, tone: 'warn' };
+  }
+  if (run.total === 0) return { text: 'Every page was checked in the last hour.', tone: 'warn' };
+  return {
+    text: `Google re-checked ${run.inspected} of ${run.total} ${run.total === 1 ? 'page' : 'pages'}.`,
+    tone: run.inspected < run.total ? 'warn' : 'ok',
+  };
+}
+
+/** The button's label while a run is going. */
+export function runLabel(run: SeoGoogleRun | undefined): string {
+  if (run?.status === 'RUNNING' && run.total > 0) return `Checking ${run.inspected} of ${run.total}…`;
+  return 'Asking Google…';
+}
+
 export function describeRefresh(res: SeoGoogleRefreshResponse, single: boolean): RefreshNote {
   const r = res.refresh;
+  if (!r) return res.run ? describeRun(res.run) : { text: 'Google was not asked this time.', tone: 'warn' };
   if (r.ran) {
     const parts = [`Google re-checked ${r.inspected} ${r.inspected === 1 ? 'page' : 'pages'}.`];
     if (r.skippedRecent > 0) {
@@ -336,7 +356,7 @@ function GoogleCard({
                 disabled={busy}
                 aria-busy={busy}
               >
-                {busy ? 'Asking Google…' : 'Check all pages with Google'}
+                {busy ? runLabel(data.run) : 'Check all pages with Google'}
               </button>
             </div>
           )}
@@ -713,6 +733,9 @@ function GoogleDetail({
 
 const ALL = '__all__';
 
+/** Poll every 3 s while a full run is going; the POST that starts it returns at once. */
+const POLL_MS = 3000;
+
 function stripRefresh(res: SeoGoogleRefreshResponse): SeoGoogleStatus {
   const { refresh: _refresh, ...status } = res;
   void _refresh;
@@ -748,6 +771,21 @@ export default function SeoWithGoogle() {
 
   const byKey = useMemo(() => new Map((data?.pages ?? []).map((p) => [pageKey(p.url), p])), [data]);
 
+  /** Follows a background run to its end, updating the card as pages come in. */
+  const pollRun = useCallback(async (): Promise<SeoGoogleRun | null> => {
+    for (let failures = 0; failures < 5; ) {
+      await new Promise((r) => setTimeout(r, POLL_MS));
+      try {
+        const status = await apiGetSeoGoogle();
+        setLoad({ kind: 'ready', data: status });
+        if (status.run?.status !== 'RUNNING') return status.run ?? null;
+      } catch {
+        failures += 1;
+      }
+    }
+    return null;
+  }, []);
+
   const refresh = useCallback(
     async (url?: string) => {
       const key = url ?? ALL;
@@ -761,8 +799,13 @@ export default function SeoWithGoogle() {
       try {
         const res = await apiRefreshSeoGoogle(url);
         setLoad({ kind: 'ready', data: stripRefresh(res) });
+        if (!res.refresh && res.run?.status === 'RUNNING') {
+          const run = await pollRun();
+          note = run ? describeRun(run) : { text: 'Lost track of the Google check. Reload to see its result.', tone: 'warn' };
+        } else {
+          note = describeRefresh(res, Boolean(url));
+        }
         setHistoryTick((t) => t + 1);
-        note = describeRefresh(res, Boolean(url));
       } catch (e) {
         note =
           (e as { status?: number } | null)?.status === 409
@@ -773,8 +816,21 @@ export default function SeoWithGoogle() {
       }
       setNotes((n) => ({ ...n, [key]: note }));
     },
-    [],
+    [pollRun],
   );
+
+  // A run started elsewhere (another tab, before a reload) is followed too.
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (resumed.current || busy || data?.run?.status !== 'RUNNING') return;
+    resumed.current = true;
+    setBusy(ALL);
+    void pollRun().then((run) => {
+      setBusy(null);
+      if (run) setNotes((n) => ({ ...n, [ALL]: describeRun(run) }));
+      setHistoryTick((t) => t + 1);
+    });
+  }, [busy, data, pollRun]);
 
   const hasPages = (data?.pages.length ?? 0) > 0;
   const connected = data?.connection === 'connected' || data?.connection === 'error';

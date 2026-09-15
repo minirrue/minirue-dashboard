@@ -123,7 +123,21 @@ export interface SeoGooglePage {
   checkedAt: string;
 }
 
+/**
+ * The background "check all pages" run (backend#187). Optional so an older API
+ * without it still reads as idle.
+ */
+export interface SeoGoogleRun {
+  status: 'IDLE' | 'RUNNING' | 'DONE' | 'ERROR';
+  startedAt: string | null;
+  finishedAt: string | null;
+  inspected: number;
+  total: number;
+  error: string | null;
+}
+
 export interface SeoGoogleStatus {
+  run?: SeoGoogleRun;
   connection: SeoGoogleConnection;
   property: string;
   lastRunAt: string | null;
@@ -166,7 +180,8 @@ export interface SeoGoogleRefreshResult {
 }
 
 export interface SeoGoogleRefreshResponse extends SeoGoogleStatus {
-  refresh: SeoGoogleRefreshResult;
+  /** Present for a one-page (synchronous) check; absent on the 202 that starts a full run. */
+  refresh?: SeoGoogleRefreshResult;
 }
 
 export async function apiGetSeoGoogle(): Promise<SeoGoogleStatus> {
@@ -178,8 +193,10 @@ export async function apiGetSeoGoogleHistory(url: string): Promise<SeoGoogleHist
 }
 
 /**
- * Asks Google again, for one page when `url` is given, otherwise for every page.
- * Rejects with `{ status: 409 }` while another replica is mid-run.
+ * Asks Google again, for one page when `url` is given (answers with the result),
+ * otherwise for every page: that answers 202 at once with `run.status` RUNNING,
+ * and the caller polls `apiGetSeoGoogle` (backend#187). Rejects with
+ * `{ status: 409 }` while a run is already going.
  */
 export async function apiRefreshSeoGoogle(url?: string): Promise<SeoGoogleRefreshResponse> {
   return apiFetch<SeoGoogleRefreshResponse>('/seo/google/refresh', {

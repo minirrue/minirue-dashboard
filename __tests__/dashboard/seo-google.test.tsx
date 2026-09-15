@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react';
+import { act, render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react';
 import type {
   SeoAuditReport,
   SeoGoogleHistory,
@@ -337,5 +337,40 @@ describe('SEO tab, Google index status', () => {
     fireEvent.click(within(card).getByRole('button', { name: 'Check all pages with Google' }));
     expect(refreshGoogle).toHaveBeenCalledWith(undefined);
     expect(await within(card).findByRole('status')).toHaveTextContent('Google re-checked 2 pages');
+  });
+
+  it('Check all pages: a 202 RUNNING is polled, showing progress, until DONE (backend#187)', async () => {
+    jest.useFakeTimers();
+    try {
+      const run = (status: string, inspected: number) => ({
+        status,
+        startedAt: iso(0),
+        finishedAt: status === 'RUNNING' ? null : iso(0),
+        inspected,
+        total: 25,
+        error: null,
+      });
+      getGoogle
+        .mockResolvedValueOnce(connected)
+        .mockResolvedValueOnce({ ...connected, run: run('RUNNING', 7) })
+        .mockResolvedValue({ ...connected, run: run('DONE', 25) });
+      refreshGoogle.mockResolvedValue({ ...connected, run: run('RUNNING', 0) });
+      render(<SeoWithGoogle />);
+      const card = await screen.findByRole('region', { name: 'Google index' });
+      fireEvent.click(within(card).getByRole('button', { name: 'Check all pages with Google' }));
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(3000);
+      });
+      expect(within(card).getByRole('button', { name: 'Checking 7 of 25…' })).toBeDisabled();
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(3000);
+      });
+      expect(await within(card).findByRole('status')).toHaveTextContent('Google re-checked 25 of 25 pages');
+      expect(within(card).getByRole('button', { name: 'Check all pages with Google' })).toBeEnabled();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
