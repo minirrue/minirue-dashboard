@@ -149,6 +149,11 @@ export interface RefreshNote {
 
 /** How a finished background run went (backend#187). */
 export function describeRun(run: SeoGoogleRun): RefreshNote {
+  // IDLE after RUNNING: the server restarted mid-check (a deploy), so the run
+  // was lost. Saying "every page was checked" here was false (backend#187).
+  if (run.status === 'IDLE' || run.status === 'RUNNING') {
+    return { text: 'The check was interrupted because the server restarted. Press it again.', tone: 'warn' };
+  }
   if (run.status === 'ERROR') {
     return { text: `Google returned an error: ${run.error ?? 'no details'}`, tone: 'warn' };
   }

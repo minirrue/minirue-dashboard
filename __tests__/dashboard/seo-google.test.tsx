@@ -339,6 +339,25 @@ describe('SEO tab, Google index status', () => {
     expect(await within(card).findByRole('status')).toHaveTextContent('Google re-checked 2 pages');
   });
 
+  it('a check lost to a server restart says so, not "every page was checked" (backend#187)', async () => {
+    jest.useFakeTimers();
+    try {
+      const idle = { status: 'IDLE', startedAt: null, finishedAt: null, inspected: 0, total: 0, error: null };
+      getGoogle.mockResolvedValueOnce(connected).mockResolvedValue({ ...connected, run: idle });
+      refreshGoogle.mockResolvedValue({ ...connected, run: { ...idle, status: 'RUNNING', startedAt: iso(0) } });
+      render(<SeoWithGoogle />);
+      const card = await screen.findByRole('region', { name: 'Google index' });
+      fireEvent.click(within(card).getByRole('button', { name: 'Check all pages with Google' }));
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(3000);
+      });
+      expect(await within(card).findByRole('status')).toHaveTextContent('interrupted because the server restarted');
+      expect(within(card).getByRole('status')).not.toHaveTextContent('Every page was checked');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('Check all pages: a 202 RUNNING is polled, showing progress, until DONE (backend#187)', async () => {
     jest.useFakeTimers();
     try {
