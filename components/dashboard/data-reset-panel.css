@@ -1,0 +1,172 @@
+/* Erase shop data (DataResetPanel, minirue-dashboard#71). dashboard.css is owned elsewhere. */
+
+.dash-reset {
+  margin-top: 32px;
+  border-color: var(--mr-st-danger-fg);
+}
+.dash-reset-title {
+  margin: 0 0 8px;
+}
+.dash-reset-lede {
+  margin: 0 0 6px;
+  max-width: 70ch;
+}
+
+.dash-reset-modes {
+  border: 0;
+  padding: 0;
+  margin: 20px 0 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dash-reset-modes > legend {
+  padding: 0;
+  margin-bottom: 8px;
+}
+
+.dash-reset-mode {
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+  padding: 12px 14px;
+  transition: border-color var(--mr-dur-fast) var(--mr-ease-out),
+    background-color var(--mr-dur-fast) var(--mr-ease-out);
+}
+.dash-reset-mode.is-on {
+  border-color: var(--mr-fg-3);
+}
+.dash-reset-mode-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--mr-fg);
+  cursor: pointer;
+}
+.dash-reset-mode-head input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--mr-st-danger-fg);
+  cursor: pointer;
+}
+.dash-reset-mode-desc {
+  margin: 4px 0 0 26px;
+  max-width: 70ch;
+}
+
+.dash-reset-picker {
+  margin: 12px 0 0 26px;
+}
+.dash-reset-picker-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.dash-reset-groups {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--mr-dash-hair);
+}
+.dash-reset-group {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--mr-dash-hair);
+}
+.dash-reset-group:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.dash-reset-group-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  column-gap: 10px;
+  cursor: pointer;
+}
+.dash-reset-group-head .dash-checkbox {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  align-self: center;
+  accent-color: var(--mr-st-danger-fg);
+}
+.dash-reset-group-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--mr-fg);
+  min-width: 0;
+}
+.dash-reset-group-count {
+  font-size: 13px;
+  color: var(--mr-fg-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.dash-reset-group.is-empty .dash-reset-group-head {
+  cursor: default;
+}
+.dash-reset-group.is-empty .dash-reset-group-name,
+.dash-reset-group.is-empty .dash-reset-group-count {
+  color: var(--mr-fg-4);
+}
+.dash-reset-group-body {
+  margin: 2px 0 0 26px;
+  max-width: 70ch;
+}
+.dash-reset-note {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--mr-fg-2);
+}
+.dash-reset-note.is-strong {
+  color: var(--mr-st-danger-fg);
+}
+
+.dash-reset-gate {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--mr-dash-hair);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dash-reset-selection {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mr-fg);
+  font-variant-numeric: tabular-nums;
+}
+.dash-reset-confirm {
+  max-width: 380px;
+}
+.dash-reset-ok {
+  margin: 0;
+}
+.dash-reset-reason {
+  margin-top: 8px;
+}
+
+@media (max-width: 480px) {
+  .dash-reset-picker,
+  .dash-reset-group-body,
+  .dash-reset-mode-desc {
+    margin-left: 0;
+  }
+  .dash-reset-group-head {
+    grid-template-columns: auto 1fr;
+  }
+  .dash-reset-group-count {
+    grid-column: 2;
+    white-space: normal;
+  }
+  .dash-reset-gate .dash-btn-danger {
+    white-space: normal;
+    text-align: left;
+  }
+}
