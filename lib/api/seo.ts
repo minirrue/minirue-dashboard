@@ -55,3 +55,136 @@ export async function apiGetSeoAudit(): Promise<SeoAuditReport | null> {
 export async function apiRunSeoAudit(): Promise<SeoAuditReport> {
   return apiFetch<SeoAuditReport>('/seo/audit', { method: 'POST', auth: true });
 }
+
+/*
+ * Google Search Console index status (minirue-dashboard#70). Shapes pinned in
+ * minirrue/minirue-backend#172 (`src/seo/google/seo-google.types.ts`). Every
+ * nullable number means "Google did not return it", never zero.
+ */
+
+export type SeoGoogleConnection = 'connected' | 'not_connected' | 'error';
+export type SeoGoogleErrorCode = 'forbidden' | 'quota' | 'auth' | 'config' | 'http';
+
+export interface SeoGoogleSitemap {
+  path: string;
+  type: string | null;
+  isPending: boolean;
+  isSitemapsIndex: boolean;
+  lastSubmitted: string | null;
+  lastDownloaded: string | null;
+  errors: number;
+  warnings: number;
+  contents: { type: string; submitted: number; indexed: number | null }[];
+}
+
+export interface SeoGoogleRichIssue {
+  message: string;
+  severity: string;
+}
+
+export interface SeoGoogleRichResults {
+  verdict: string | null;
+  detected: { type: string; items: { name: string; issues: SeoGoogleRichIssue[] }[] }[];
+}
+
+export interface SeoGoogleQuery {
+  query: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+export interface SeoGooglePage {
+  url: string;
+  /** PASS | PARTIAL | FAIL | NEUTRAL | VERDICT_UNSPECIFIED */
+  verdict: string | null;
+  coverageState: string | null;
+  indexingState: string | null;
+  robotsTxtState: string | null;
+  pageFetchState: string | null;
+  lastCrawlTime: string | null;
+  googleCanonical: string | null;
+  userCanonical: string | null;
+  canonicalMismatch: boolean;
+  crawledAs: string | null;
+  sitemaps: string[];
+  richResults: SeoGoogleRichResults | null;
+  mobile: { verdict: string | null; issues: { type: string; severity: string; message: string }[] } | null;
+  /** Last 28 days; null = unknown. */
+  clicks: number | null;
+  impressions: number | null;
+  ctr: number | null;
+  position: number | null;
+  /** Top 5. */
+  topQueries: SeoGoogleQuery[];
+  inspectionLink: string | null;
+  error: string | null;
+  checkedAt: string;
+}
+
+export interface SeoGoogleStatus {
+  connection: SeoGoogleConnection;
+  property: string;
+  lastRunAt: string | null;
+  error: { code: SeoGoogleErrorCode; message: string } | null;
+  sitemaps: SeoGoogleSitemap[];
+  pages: SeoGooglePage[];
+  totals: { indexed: number; notIndexed: number; errors: number };
+}
+
+export interface SeoGoogleHistoryPoint {
+  checkedAt: string;
+  verdict: string | null;
+  coverageState: string | null;
+  indexingState: string | null;
+  lastCrawlTime: string | null;
+  canonicalMismatch: boolean;
+  richResultTypes: string[];
+  clicks: number | null;
+  impressions: number | null;
+  ctr: number | null;
+  position: number | null;
+  error: string | null;
+}
+
+export interface SeoGoogleHistory {
+  url: string;
+  /** Oldest first, up to 400. */
+  points: SeoGoogleHistoryPoint[];
+}
+
+export type SeoGoogleRefreshReason = 'not_connected' | 'all_recent' | 'error' | 'quota' | null;
+
+export interface SeoGoogleRefreshResult {
+  ran: boolean;
+  reason: SeoGoogleRefreshReason;
+  inspected: number;
+  skippedRecent: number;
+  quotaExhausted: boolean;
+  nextAllowedAt: string | null;
+}
+
+export interface SeoGoogleRefreshResponse extends SeoGoogleStatus {
+  refresh: SeoGoogleRefreshResult;
+}
+
+export async function apiGetSeoGoogle(): Promise<SeoGoogleStatus> {
+  return apiFetch<SeoGoogleStatus>('/seo/google', { auth: true });
+}
+
+export async function apiGetSeoGoogleHistory(url: string): Promise<SeoGoogleHistory> {
+  return apiFetch<SeoGoogleHistory>(`/seo/google/history?url=${encodeURIComponent(url)}`, { auth: true });
+}
+
+/**
+ * Asks Google again, for one page when `url` is given, otherwise for every page.
+ * Rejects with `{ status: 409 }` while another replica is mid-run.
+ */
+export async function apiRefreshSeoGoogle(url?: string): Promise<SeoGoogleRefreshResponse> {
+  return apiFetch<SeoGoogleRefreshResponse>('/seo/google/refresh', {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify(url ? { url } : {}),
+  });
+}

@@ -91,7 +91,7 @@ function errorText(e: unknown): string {
   return typeof m === 'string' && m.trim() !== '' ? m.replace(/\.$/, '') : 'the server did not answer';
 }
 
-function StatusIcon({ status, size = 16 }: { status: SeoCheckStatus; size?: number }) {
+export function StatusIcon({ status, size = 16 }: { status: SeoCheckStatus; size?: number }) {
   const common = {
     width: size,
     height: size,
@@ -130,7 +130,7 @@ function StatusIcon({ status, size = 16 }: { status: SeoCheckStatus; size?: numb
   );
 }
 
-function ExternalIcon() {
+export function ExternalIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="seo-ext">
       <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
