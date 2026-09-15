@@ -1,6 +1,7 @@
 import { apiFetch } from './client';
 import type { StorefrontLayout } from './storefront';
 import type { GovernorateRate } from '@/lib/shipping/governorate-rates';
+import type { GovernorateKey } from '@/lib/geo/governorates';
 
 export type { StorefrontLayout };
 export type { GovernorateRate };
@@ -54,6 +55,44 @@ export interface InstapayGuide {
   handle: string | null;
   qrMediaUrl: string | null;
   exampleMediaUrl: string | null;
+}
+
+/**
+ * Delivery methods (dashboard#84 / backend#186's pinned contract). Stored on
+ * the authenticated settings payload under `fulfillment.delivery` — the
+ * dashboard always sends the whole block on save, and the backend replaces it
+ * wholesale (the `pricing` pattern, not the per-field-optional `instapay`
+ * one), so every field here is required on write.
+ */
+export interface StandardDeliveryConfig {
+  enabled: boolean;
+  /** e.g. "2–5 working days". 1..80 chars. */
+  etaLabel: string;
+}
+
+export interface SameDayDeliveryConfig {
+  enabled: boolean;
+  /** At least one governorate; closed list, dashboard#84's `lib/geo/governorates`. */
+  governorates: GovernorateKey[];
+  /** 'HH:mm', 24h. */
+  windowStart: string;
+  /** 'HH:mm', or the literal '24:00' for midnight/end-of-day. */
+  windowEnd: string;
+  /** 'HH:mm'. Must be at least 60 minutes before windowEnd. */
+  cutoff: string;
+  feeRangeMinor: { min: number; max: number };
+  /** 1..1000 chars. */
+  disclaimer: string;
+}
+
+export interface DeliveryConfig {
+  standard: StandardDeliveryConfig;
+  sameDay: SameDayDeliveryConfig;
+}
+
+export interface FulfillmentConfig {
+  /** Optional: absent on any store that has never saved this block. */
+  delivery?: DeliveryConfig;
 }
 
 export interface StoreSettings {
@@ -126,6 +165,8 @@ export interface StoreSettings {
     allProductsImageUrl: string | null;
     bundlesImageUrl: string | null;
   };
+  /** Optional: absent on any row written before dashboard#84 / backend#186. */
+  fulfillment?: FulfillmentConfig;
 }
 
 export async function apiGetSettings(): Promise<StoreSettings> {
@@ -150,6 +191,14 @@ export interface PublicSettings {
   displayName: string;
   currency: string;
   logoUrl: string | null;
+  /**
+   * Optional: absent on any store that has never saved delivery settings
+   * (dashboard#84 / backend#186). Published so the storefront's checkout can
+   * build its method cards without an authenticated call. `sameDay.timezone`
+   * is computed server-side, never stored — 'Africa/Cairo' at the time of
+   * writing.
+   */
+  delivery?: DeliveryConfig & { sameDay: SameDayDeliveryConfig & { timezone: string } };
 }
 
 export async function apiGetPublicSettings(): Promise<PublicSettings> {

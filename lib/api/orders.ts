@@ -60,6 +60,36 @@ export interface ShippingAddressSnapshot {
   phone: string;
 }
 
+/** dashboard#84 / backend#186. */
+export type DeliveryMethod = 'STANDARD' | 'SAME_DAY';
+
+export type DeliveryLocation = { lat: number; lng: number } | { mapsUrl: string };
+
+export interface DeliveryWindow {
+  /** 'YYYY-MM-DD', Africa/Cairo calendar date. */
+  date: string;
+  /** 'HH:mm'. */
+  start: string;
+  /** 'HH:mm' — may be '24:00'. */
+  end: string;
+}
+
+export interface SameDayFeeStatus {
+  status: 'PENDING' | 'SET';
+  amountMinor: number | null;
+}
+
+/** `OrderDeliveryDto` (backend#186's pinned contract), on every admin order read. */
+export interface OrderDelivery {
+  method: DeliveryMethod;
+  /** STANDARD only — the live etaLabel setting at read time. */
+  etaLabel: string | null;
+  /** SAME_DAY only. */
+  window: DeliveryWindow | null;
+  location: DeliveryLocation | null;
+  sameDayFee: SameDayFeeStatus | null;
+}
+
 export interface Order {
   id: string;
   orderNumber: string;
@@ -94,6 +124,12 @@ export interface Order {
   paymentMethod?: 'COD' | 'INSTAPAY' | 'GATEWAY' | 'MANUAL' | null;
   items: OrderItem[];
   statusHistory?: OrderStatusHistoryEntry[];
+  /**
+   * dashboard#84 / backend#186. Optional on the client type only because
+   * older mocked/fixture orders in tests predate it — every real admin read
+   * (list + detail) now includes it.
+   */
+  delivery?: OrderDelivery;
   createdAt: string;
   updatedAt: string;
 }

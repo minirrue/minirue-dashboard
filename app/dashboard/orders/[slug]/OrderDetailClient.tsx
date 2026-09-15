@@ -22,10 +22,12 @@ import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { ImagePreviewModal, EnlargeableImage } from '@/components/dashboard/ImagePreviewModal';
 import FulfillmentControl from '@/components/dashboard/FulfillmentControl';
+import SameDayFeeEntry from '@/components/dashboard/SameDayFeeEntry';
 import RefundOrderModal from '@/components/dashboard/RefundOrderModal';
 import type { RefundTicketDto } from '@/lib/api/refunds';
 import { formatOrderRef } from '@/lib/orders/order-format';
 import ReturnToStockModal from '@/components/dashboard/ReturnToStockModal';
+import { formatDeliveryWindow, mapsLinkFor } from '@/lib/orders/delivery-format';
 
 /* ── Helpers ── */
 function formatAmount(amount: string, currency: string): string {
@@ -387,13 +389,52 @@ export default function OrderDetailClient({ id }: { id: string }) {
         </div>
         <div className="dash-form-section" style={{ margin: 0 }}>
           <p className="dash-label" style={{ marginBottom: 6 }}>Fulfillment</p>
-          <FulfillmentControl
-            order={order}
-            variant="full"
-            onUpdated={setOrder}
-            onError={setActionError}
-          />
+          {order.delivery?.method === 'SAME_DAY' ? (
+            <SameDayFeeEntry order={order} onUpdated={setOrder} variant="full" />
+          ) : (
+            <FulfillmentControl
+              order={order}
+              variant="full"
+              onUpdated={setOrder}
+              onError={setActionError}
+            />
+          )}
         </div>
+        {order.delivery && (
+          <div className="dash-form-section" style={{ margin: 0 }}>
+            <p className="dash-label" style={{ marginBottom: 6 }}>Delivery</p>
+            <p style={{ margin: '4px 0', fontSize: 14, color: 'var(--mr-fg-2)' }}>
+              <strong>Method:</strong> {order.delivery.method === 'SAME_DAY' ? 'Same-day' : 'Standard'}
+            </p>
+            {order.delivery.method === 'SAME_DAY' ? (
+              <p style={{ margin: '4px 0', fontSize: 14, color: 'var(--mr-fg-2)' }}>
+                <strong>Window:</strong> {formatDeliveryWindow(order.delivery.window)}
+              </p>
+            ) : (
+              order.delivery.etaLabel && (
+                <p style={{ margin: '4px 0', fontSize: 14, color: 'var(--mr-fg-2)' }}>
+                  <strong>ETA:</strong> {order.delivery.etaLabel}
+                </p>
+              )
+            )}
+            {order.delivery.method === 'SAME_DAY' && (
+              <p style={{ margin: '4px 0', fontSize: 14 }}>
+                {mapsLinkFor(order.delivery.location) ? (
+                  <a
+                    href={mapsLinkFor(order.delivery.location) as string}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="dash-link"
+                  >
+                    Open in Google Maps
+                  </a>
+                ) : (
+                  <span style={{ color: 'var(--mr-fg-4)' }}>No location on file</span>
+                )}
+              </p>
+            )}
+          </div>
+        )}
         <div className="dash-form-section" style={{ margin: 0 }}>
           <p className="dash-label" style={{ marginBottom: 6 }}>Buyer</p>
           <p style={{ margin: '4px 0', fontSize: 14, color: 'var(--mr-fg-2)' }}>

@@ -9,6 +9,9 @@ import type { AdminPaymentAttempt } from '@/lib/api/payments';
 
 jest.mock('@/lib/api/orders');
 jest.mock('@/lib/api/payments');
+jest.mock('@/lib/api/fulfillment', () => ({
+  apiSetSameDayFee: jest.fn(),
+}));
 
 const mockedOrders = ordersApi as jest.Mocked<typeof ordersApi>;
 const mockedPayments = paymentsApi as jest.Mocked<typeof paymentsApi>;
@@ -239,5 +242,65 @@ describe('OrderDetailClient order emails', () => {
 
     expect(await screen.findByText('Fallback Name')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Customer emails' })).not.toBeInTheDocument();
+  });
+});
+
+/*
+ * Same-day delivery block (dashboard#84 / backend#186): the "Choose
+ * method…" fulfilment select is replaced by fee entry for a SAME_DAY order,
+ * and a Delivery card shows the method/window/location link.
+ */
+describe('OrderDetailClient same-day delivery', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    window.matchMedia = jest.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    })) as unknown as typeof window.matchMedia;
+    mockedPayments.apiAdminListOrderPayments.mockResolvedValue([]);
+  });
+
+  it('replaces the fulfilment "Choose method…" select with same-day fee entry', async () => {
+    mockedOrders.apiAdminGetOrder.mockResolvedValue(
+      makeOrder({
+        status: 'CONFIRMED',
+        delivery: {
+          method: 'SAME_DAY',
+          etaLabel: null,
+          window: { date: '2026-09-15', start: '19:00', end: '24:00' },
+          location: { lat: 30.0444, lng: 31.2357 },
+          sameDayFee: { status: 'PENDING', amountMinor: null },
+        },
+      }),
+    );
+
+    render(<OrderDetailClient id="ord_1" />);
+
+    expect(await screen.findByLabelText(/same-day fee/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/fulfillment method/i)).not.toBeInTheDocument();
+    const link = screen.getByRole('link', { name: /open in google maps/i });
+    expect(link).toHaveAttribute(
+      'href',
+      'https://www.google.com/maps/search/?api=1&query=30.0444,31.2357',
+    );
+  });
+
+  it('keeps the ordinary fulfilment select for a STANDARD order', async () => {
+    mockedOrders.apiAdminGetOrder.mockResolvedValue(
+      makeOrder({
+        delivery: { method: 'STANDARD', etaLabel: '2–5 working days', window: null, location: null, sameDayFee: null },
+      }),
+    );
+
+    render(<OrderDetailClient id="ord_1" />);
+
+    expect(await screen.findByLabelText(/fulfillment method/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/same-day fee/i)).not.toBeInTheDocument();
   });
 });

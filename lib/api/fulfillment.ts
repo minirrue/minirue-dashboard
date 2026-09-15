@@ -1,4 +1,5 @@
 import { apiFetch } from './client';
+import type { Order } from './orders';
 
 export type ShipmentStatus =
   | 'CREATED'
@@ -110,6 +111,22 @@ export async function getReturnableLines(orderId: string): Promise<ReturnableLin
  * for; the server caps each line at shipped-minus-already-returned, so a second
  * confirmation credits nothing.
  */
+/**
+ * The admin's real Uber fee for a SAME_DAY order (dashboard#84 /
+ * backend#186's pinned contract) — `PATCH /v1/fulfillment/orders/:id/same-day-fee`,
+ * ADMIN and STAFF. The order must be SAME_DAY and CONFIRMED or PROCESSING;
+ * `feeMinor` must be between 0 and `feeRangeMinor.max * 2` (checked server-side
+ * against the live setting, not a constant). Returns the updated order —
+ * `shipping_amount`/`total_amount` already reflect the fee.
+ */
+export async function apiSetSameDayFee(orderId: string, feeMinor: number): Promise<Order> {
+  return apiFetch<Order>(`/fulfillment/orders/${orderId}/same-day-fee`, {
+    method: 'PATCH',
+    auth: true,
+    body: JSON.stringify({ feeMinor }),
+  });
+}
+
 export async function confirmReturnedToStock(
   orderId: string,
   lines: Array<{ variantId: string; qty: number }>,
