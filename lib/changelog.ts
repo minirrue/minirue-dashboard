@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 228,
+    date: '2026-09-15',
+    area: 'SEO',
+    summary:
+      'There is a new SEO tab under Insights. Press Run check and it reads every page of the live shop the way Google does, then gives the shop a score out of 100 with how many checks passed, need a look, or failed. Site health covers the things that apply to the whole shop, such as the sitemap, robots.txt, Search Console verification and whether AI search tools can reach your pages. The pages list puts the worst pages first; tick Only problems to hide the healthy ones, and open any page to see each check, what is wrong and how to fix it, with links to the page on the shop and to its editor here. The Search Console box walks you through checking a product with Google and links straight to URL Inspection and the Rich Results Test for it.',
+  },
+  {
     id: 227,
     date: '2026-09-14',
     area: 'Accounting',

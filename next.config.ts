@@ -120,6 +120,7 @@ const nextConfig: NextConfig = {
       { source: "/fulfillment", destination: "/dashboard/fulfillment" },
       { source: "/refunds", destination: "/dashboard/refunds" },
       { source: "/accounting", destination: "/dashboard/accounting" },
+      { source: "/seo", destination: "/dashboard/seo" },
       { source: "/inventory", destination: "/dashboard/inventory" },
       { source: "/inventory/movements", destination: "/dashboard/inventory/movements" },
       { source: "/inventory/receive", destination: "/dashboard/inventory/receive" },

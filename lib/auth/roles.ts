@@ -55,6 +55,9 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   // pricing slider. Mirrors @Roles(ADMIN) on /v1/accounting.
   '/accounting': ADMIN_ONLY,
   '/analytics': ADMIN_ONLY,
+  // SEO audit of the live shop (minirue-dashboard#69). Mirrors @Roles(ADMIN)
+  // on /v1/seo/audit (minirue-backend#171).
+  '/seo': ADMIN_ONLY,
   // Customer support inbox — staff/admin/superadmin handle it; collaborators
   // get their own inbox at /collab/support instead. One of the two things
   // STAFF is scoped down to (2026-07-30).

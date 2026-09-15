@@ -50,6 +50,13 @@ describe('nav rewrites', () => {
     expect(missing).toEqual([]);
   });
 
+  it('serves SEO at /seo', async () => {
+    // PG-DASHBOARD-SEO-003 (minirue-dashboard#69).
+    const config = nextConfig as { rewrites?: () => Promise<Rewrite[]> };
+    const rewrites = (await config.rewrites?.()) ?? [];
+    expect(rewrites).toContainEqual({ source: '/seo', destination: '/dashboard/seo' });
+  });
+
   it('serves Accounting at its clean URL before it has a sidebar item', async () => {
     // PG-DASHBOARD-ACCTG-001. The section ships ahead of its nav entry (DA-1
     // before DA-2), so the sidebar-driven check above cannot cover it yet.

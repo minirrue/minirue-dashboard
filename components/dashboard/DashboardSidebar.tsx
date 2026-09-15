@@ -183,6 +183,16 @@ function IconLedger() {
   );
 }
 
+function IconSearchCheck() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="10.5" cy="10.5" r="7" />
+      <line x1="15.6" y1="15.6" x2="21" y2="21" />
+      <path d="m7.6 10.7 2 2 3.6-3.9" />
+    </svg>
+  );
+}
+
 function IconBell() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -285,6 +295,7 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
     section: 'Insights',
     items: [
       { label: 'Analytics', href: '/analytics', icon: <IconTrendingUp /> },
+      { label: 'SEO', href: '/seo', icon: <IconSearchCheck /> },
       // Marked maintenance alongside Inventory: the module is not in service, and
       // the storefront's Loyalty tab is hidden to match.
       { label: 'Loyalty', href: '/loyalty', icon: <IconStar />, maintenance: true },

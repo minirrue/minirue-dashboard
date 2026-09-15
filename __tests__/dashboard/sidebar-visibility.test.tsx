@@ -109,6 +109,17 @@ describe('sidebar visibility', () => {
     }
   });
 
+  it('shows SEO in Insights next to Analytics, to admins and super admins only', () => {
+    // PG-DASHBOARD-SEO-002 (minirue-dashboard#69). Mirrors @Roles(ADMIN) on /v1/seo/audit.
+    const insights = NAV_ITEMS.find((g) => g.section === 'Insights')?.items.map((i) => i.href) ?? [];
+    expect(insights.indexOf('/seo')).toBe(insights.indexOf('/analytics') + 1);
+    expect(DASHBOARD_ROUTE_ACCESS['/seo']).toEqual([Role.SUPERADMIN, Role.ADMIN]);
+    expect(normalizeDashboardPath('/dashboard/seo')).toBe('/seo');
+    for (const role of ROLE_VALUES) {
+      expect(visibleTo(role).includes('/seo')).toBe(role === Role.ADMIN || role === Role.SUPERADMIN);
+    }
+  });
+
   it('never shows a tab a role would be refused on', () => {
     for (const role of ROLE_VALUES) {
       for (const href of visibleTo(role)) {
