@@ -1709,6 +1709,131 @@
   margin: 0;
 }
 
+/* ── Order fulfillment pipeline ── */
+.order-detail-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.order-fulfillment-section {
+  grid-column: span 2;
+}
+.fulfillment-pipeline {
+  min-width: 0;
+}
+.fulfillment-pipeline-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.fulfillment-pipeline-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  text-align: center;
+}
+.fulfillment-pipeline-step:not(:last-child)::after {
+  position: absolute;
+  z-index: 0;
+  top: 14px;
+  left: calc(50% + 18px);
+  width: calc(100% - 36px);
+  height: 2px;
+  content: '';
+  background: var(--mr-dash-hair);
+}
+.fulfillment-pipeline-step[data-state="complete"]:not(:last-child)::after {
+  background: var(--mr-st-ok-fg);
+}
+.fulfillment-pipeline-marker {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: 50%;
+  background: var(--mr-dash-surface);
+  color: var(--mr-fg-4);
+  font: 600 12px/1 var(--mr-font-label);
+}
+.fulfillment-pipeline-step[data-state="complete"] .fulfillment-pipeline-marker {
+  border-color: var(--mr-st-ok-fg);
+  background: var(--mr-st-ok-bg);
+  color: var(--mr-st-ok-fg);
+}
+.fulfillment-pipeline-step[data-state="current"] .fulfillment-pipeline-marker {
+  border-color: var(--mr-ink-900);
+  background: var(--mr-ink-900);
+  color: var(--mr-dash-surface);
+  box-shadow: 0 0 0 3px var(--mr-gold-100);
+}
+.fulfillment-pipeline-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.fulfillment-pipeline-label {
+  color: var(--mr-fg-2);
+  font: 600 12px/1.35 var(--mr-font-label);
+}
+.fulfillment-pipeline-step[data-state="current"] .fulfillment-pipeline-label {
+  color: var(--mr-fg-1);
+}
+.fulfillment-pipeline-state {
+  color: var(--mr-fg-4);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.fulfillment-pipeline-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+.fulfillment-pipeline-note {
+  margin: 16px 0 0;
+}
+
+@media (max-width: 640px) {
+  .order-fulfillment-section {
+    grid-column: span 1;
+  }
+  .fulfillment-pipeline-list {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .fulfillment-pipeline-step {
+    min-height: 48px;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 12px;
+    text-align: left;
+  }
+  .fulfillment-pipeline-step:not(:last-child)::after {
+    top: 32px;
+    left: 14px;
+    width: 2px;
+    height: calc(100% - 4px);
+  }
+  .fulfillment-pipeline-copy {
+    padding-top: 2px;
+  }
+  .fulfillment-pipeline-action {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 /* ── Info / changelog entries ── */
 .dash-info-entry {
   padding: 14px 16px;

@@ -89,6 +89,6 @@ describe('OrderDetailClient refund display', () => {
 
     render(<OrderDetailClient id="ord_1" />);
 
-    expect(await screen.findByText('Delivered')).toBeInTheDocument();
+    expect(await screen.findByText('Delivered', { selector: '.dash-status' })).toBeInTheDocument();
   });
 });

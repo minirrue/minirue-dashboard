@@ -22,7 +22,7 @@ import type { AdminPaymentAttempt } from '@/lib/api/payments';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { ImagePreviewModal, EnlargeableImage } from '@/components/dashboard/ImagePreviewModal';
-import FulfillmentControl from '@/components/dashboard/FulfillmentControl';
+import OrderFulfillmentPipeline from '@/components/dashboard/OrderFulfillmentPipeline';
 import SameDayFeeEntry from '@/components/dashboard/SameDayFeeEntry';
 import RefundOrderModal from '@/components/dashboard/RefundOrderModal';
 import type { RefundTicketDto } from '@/lib/api/refunds';
@@ -77,19 +77,13 @@ const SHIPPED_STATUSES: string[] = ['SHIPPED', 'DELIVERED', 'REFUNDED'];
 
 function OrderActions({
   order,
-  onConfirm,
   onCancel,
-  onShip,
-  onDeliver,
   onRefund,
   onReturnToStock,
   busy,
 }: {
   order: Order;
-  onConfirm: () => void;
   onCancel: () => void;
-  onShip: () => void;
-  onDeliver: () => void;
   onRefund: () => void;
   onReturnToStock: () => void;
   busy: boolean;
@@ -98,45 +92,13 @@ function OrderActions({
   return (
     <div className="dash-row-actions">
       {status === 'PENDING' && (
-        <>
-          <button className="dash-btn-ok" disabled={busy} onClick={onConfirm}>
-            Confirm
-          </button>
-          <button className="dash-btn-danger" disabled={busy} onClick={onCancel}>
-            Cancel
-          </button>
-        </>
-      )}
-      {status === 'CONFIRMED' && (
-        <>
-          <button className="dash-btn-primary" disabled={busy} onClick={onShip}>
-            Start processing
-          </button>
-          <button className="dash-btn-danger" disabled={busy} onClick={onCancel}>
-            Cancel
-          </button>
-        </>
-      )}
-      {status === 'PROCESSING' && (
-        <button className="dash-btn-primary" disabled={busy} onClick={onShip}>
-          Mark shipped
+        <button className="dash-btn-danger" disabled={busy} onClick={onCancel}>
+          Cancel
         </button>
       )}
-      {/* The step after "Mark shipped", and the last one an order has.
-          SHIPPED used to render no action at all, so an order that had gone
-          out could only be closed off from the orders LIST — the detail page
-          for it was a dead end (owner, 2026-08-23). SHIPPED -> DELIVERED is
-          already the only forward transition the API allows from here
-          (ORDER_TRANSITIONS), so this exposes an existing rule rather than
-          adding one. */}
-      {status === 'SHIPPED' && (
-        <button
-          className="dash-btn-primary"
-          disabled={busy}
-          onClick={onDeliver}
-          data-trace-id="PG-DASHBOARD-FUL-004::EL-BTN-mark-delivered"
-        >
-          Mark delivered
+      {status === 'CONFIRMED' && (
+        <button className="dash-btn-danger" disabled={busy} onClick={onCancel}>
+          Cancel
         </button>
       )}
       {/* Same eligibility as the Refunds tab: not already refunded, and a
@@ -360,17 +322,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
         <OrderActions
           order={order}
           busy={busy}
-          onConfirm={() => runAction(() => apiAdminTransitionStatus(id, 'CONFIRMED'))}
           onCancel={() => runAction(() => apiAdminCancelOrder(id))}
-          onShip={() =>
-            runAction(() =>
-              apiAdminTransitionStatus(
-                id,
-                order.status === 'CONFIRMED' ? 'PROCESSING' : 'SHIPPED',
-              ),
-            )
-          }
-          onDeliver={() => runAction(() => apiAdminTransitionStatus(id, 'DELIVERED'))}
           onRefund={() => setRefunding(true)}
           onReturnToStock={() => setReturningToStock(true)}
         />
@@ -393,7 +345,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
       )}
 
       {/* Meta */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 20 }}>
+      <div className="order-detail-meta">
         <div className="dash-form-section" style={{ margin: 0 }}>
           <p className="dash-label" style={{ marginBottom: 6 }}>Order info</p>
           <p style={{ margin: '4px 0', fontSize: 14, color: 'var(--mr-fg-2)' }}>
@@ -403,17 +355,17 @@ export default function OrderDetailClient({ id }: { id: string }) {
             <strong>Total:</strong> {formatAmount(order.totalAmount, order.totalCurrency)}
           </p>
         </div>
-        <div className="dash-form-section" style={{ margin: 0 }}>
+        <div className="dash-form-section order-fulfillment-section" style={{ margin: 0 }}>
           <p className="dash-label" style={{ marginBottom: 6 }}>Fulfillment</p>
-          {order.delivery?.method === 'SAME_DAY' ? (
-            <SameDayFeeEntry order={order} onUpdated={setOrder} variant="full" />
-          ) : (
-            <FulfillmentControl
-              order={order}
-              variant="full"
-              onUpdated={setOrder}
-              onError={setActionError}
-            />
+          <OrderFulfillmentPipeline
+            status={order.status}
+            busy={busy}
+            onAdvance={(target) => runAction(() => apiAdminTransitionStatus(id, target))}
+          />
+          {order.delivery?.method === 'SAME_DAY' && (
+            <div style={{ marginTop: 18 }}>
+              <SameDayFeeEntry order={order} onUpdated={setOrder} variant="full" />
+            </div>
           )}
         </div>
         {order.delivery && (

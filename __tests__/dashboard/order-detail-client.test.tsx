@@ -347,7 +347,7 @@ describe('OrderDetailClient same-day delivery', () => {
     mockedPayments.apiAdminListOrderPayments.mockResolvedValue([]);
   });
 
-  it('replaces the fulfilment "Choose method…" select with same-day fee entry', async () => {
+  it('shows the fulfillment pipeline alongside same-day fee entry', async () => {
     mockedOrders.apiAdminGetOrder.mockResolvedValue(
       makeOrder({
         status: 'CONFIRMED',
@@ -365,6 +365,11 @@ describe('OrderDetailClient same-day delivery', () => {
 
     expect(await screen.findByLabelText(/same-day fee/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/fulfillment method/i)).not.toBeInTheDocument();
+    const pipeline = screen.getByRole('list', { name: 'Fulfillment progress' });
+    expect(pipeline).toHaveTextContent('Confirmed');
+    expect(pipeline).toHaveTextContent('Ready to ship');
+    expect(pipeline).toHaveTextContent('Out for delivery');
+    expect(pipeline).toHaveTextContent('Delivered');
     const link = screen.getByRole('link', { name: /open in google maps/i });
     expect(link).toHaveAttribute(
       'href',
@@ -372,7 +377,7 @@ describe('OrderDetailClient same-day delivery', () => {
     );
   });
 
-  it('keeps the ordinary fulfilment select for a STANDARD order', async () => {
+  it('replaces the ordinary fulfilment select with the status pipeline', async () => {
     mockedOrders.apiAdminGetOrder.mockResolvedValue(
       makeOrder({
         delivery: { method: 'STANDARD', etaLabel: '2–5 working days', window: null, location: null, sameDayFee: null },
@@ -381,7 +386,35 @@ describe('OrderDetailClient same-day delivery', () => {
 
     render(<OrderDetailClient id="ord_1" />);
 
-    expect(await screen.findByLabelText(/fulfillment method/i)).toBeInTheDocument();
+    expect(await screen.findByRole('list', { name: 'Fulfillment progress' })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/fulfillment method/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/same-day fee/i)).not.toBeInTheDocument();
+  });
+
+  it('advances one stage at a time through the pipeline action', async () => {
+    const confirmed = makeOrder({
+      status: 'CONFIRMED',
+      delivery: { method: 'STANDARD', etaLabel: '2–5 working days', window: null, location: null, sameDayFee: null },
+    });
+    const processing = makeOrder({ ...confirmed, status: 'PROCESSING' });
+    mockedOrders.apiAdminGetOrder.mockResolvedValue(confirmed);
+    mockedOrders.apiAdminTransitionStatus.mockResolvedValue(processing);
+
+    render(<OrderDetailClient id="ord_1" />);
+
+    expect(await screen.findByText('Current')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Mark ready to ship' }));
+
+    expect(mockedOrders.apiAdminTransitionStatus).toHaveBeenCalledWith('ord_1', 'PROCESSING');
+    expect(await screen.findByRole('button', { name: 'Mark out for delivery' })).toBeInTheDocument();
+  });
+
+  it('does not offer a fulfillment transition for cancelled orders', async () => {
+    mockedOrders.apiAdminGetOrder.mockResolvedValue(makeOrder({ status: 'CANCELLED' }));
+
+    render(<OrderDetailClient id="ord_1" />);
+
+    expect(await screen.findByText('Fulfillment stopped because this order is cancelled.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /mark|confirm order/i })).not.toBeInTheDocument();
   });
 });
