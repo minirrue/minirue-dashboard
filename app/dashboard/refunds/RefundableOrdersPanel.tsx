@@ -204,15 +204,10 @@ export default function RefundableOrdersPanel({
                           </button>
                         ) : (
                           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                            <button
-                              type="button"
-                              className="dash-btn-ghost"
-                              disabled
-                              aria-disabled="true"
-                              title="No payment has been received for this order"
-                            >
+                            <span className="dash-status" data-status="pending">
+                              <span className="dash-status-dot" />
                               Not paid yet
-                            </button>
+                            </span>
                             {o.paymentMethod === 'COD' && o.status === 'DELIVERED' && (
                               <button
                                 type="button"

@@ -551,18 +551,26 @@ export default function OrderDetailClient({ id }: { id: string }) {
           <h2 className="dash-section-title">Payments</h2>
         </div>
         {!order.refundedAt && !order.paid && (
-          <div className="dash-card" style={{ marginBottom: 12 }}>
-            <p className="dash-help-text" style={{ margin: 0 }}>
-              No captured payment exists to refund yet.
-              {order.paymentMethod === 'COD' && order.status !== 'DELIVERED'
-                ? ' Cash can be marked collected after delivery.'
-                : ''}
-            </p>
+          <div
+            role="status"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}
+          >
+            <div>
+              <span className="dash-status" data-status="pending">
+                <span className="dash-status-dot" />
+                Payment pending
+              </span>
+              <p className="dash-help-text" style={{ marginTop: 8 }}>
+                No captured payment exists to refund yet.
+                {order.paymentMethod === 'COD' && order.status !== 'DELIVERED'
+                  ? ' Cash can be marked collected after delivery.'
+                  : ''}
+              </p>
+            </div>
             {order.paymentMethod === 'COD' && order.status === 'DELIVERED' && (
               <button
                 type="button"
                 className="dash-btn-primary"
-                style={{ marginTop: 12 }}
                 disabled={busy}
                 onClick={() => void markCashCollected()}
               >
@@ -572,14 +580,16 @@ export default function OrderDetailClient({ id }: { id: string }) {
           </div>
         )}
         {order.paymentMethod === 'COD' && order.paid && (
-          <p className="dash-help-text" style={{ margin: '0 0 12px', color: 'var(--mr-st-ok-fg)' }}>
+          <p className="dash-inline-ok" role="status">
             Cash collected. This order can now be refunded.
           </p>
         )}
         {payments.length === 0 ? (
-          <p style={{ color: 'var(--mr-fg-4)', fontSize: 14 }}>
-            No payment recorded against this order.
-          </p>
+          order.paid ? (
+            <p style={{ color: 'var(--mr-fg-4)', fontSize: 14 }}>
+              Payment details are not available for this order.
+            </p>
+          ) : null
         ) : (
           <div className="dash-table-wrap">
             <table className="dash-table">

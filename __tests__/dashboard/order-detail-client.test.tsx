@@ -114,7 +114,7 @@ describe('OrderDetailClient buyer and payments detail', () => {
     expect(screen.getByText('Placed on the storefront')).toBeInTheDocument();
   });
 
-  it('renders the empty-state message when there are no payment attempts', async () => {
+  it('renders one clear empty-payment message when there are no payment attempts', async () => {
     mockedOrders.apiAdminGetOrder.mockResolvedValue(makeOrder({}));
     mockedPayments.apiAdminListOrderPayments.mockResolvedValue([]);
 
@@ -122,8 +122,9 @@ describe('OrderDetailClient buyer and payments detail', () => {
 
     expect(await screen.findByText('Payments')).toBeInTheDocument();
     expect(
-      await screen.findByText('No payment recorded against this order.'),
+      await screen.findByText('No captured payment exists to refund yet.'),
     ).toBeInTheDocument();
+    expect(screen.queryByText('No payment recorded against this order.')).not.toBeInTheDocument();
   });
 
   it('renders a receipt thumbnail for an attempt with a receiptUrl, and none for one without', async () => {
