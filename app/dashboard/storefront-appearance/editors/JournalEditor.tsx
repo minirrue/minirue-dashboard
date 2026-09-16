@@ -16,6 +16,10 @@ import {
   NotReadyVideoStill,
   galleryItemFailureMessage,
 } from '@/components/dashboard/GalleryItemStatus';
+import DashboardVideoViewer, {
+  VideoLightbox,
+  VideoStill,
+} from '@/components/dashboard/DashboardVideoViewer';
 
 /** True when the admin has typed editorial copy or attached an image that
  * would be silently thrown away by switching into product mode (product
@@ -65,6 +69,7 @@ export default function JournalEditor({
     Pick<GalleryItem, 'status' | 'processingError'>
   >({ status: 'ready', processingError: null });
   const previewForId = useRef<string | null>(null);
+  const [viewingVideo, setViewingVideo] = useState(false);
 
   /** Everything the tile needs from a gallery item, in one place. */
   function showItem(item: GalleryItem) {
@@ -255,17 +260,26 @@ export default function JournalEditor({
                       style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
                     />
                   ) : previewUrl && previewKind === 'video' && !previewFile ? (
-                    // Muted and without controls: this is a thumbnail that
-                    // answers "which clip did I attach", not a player.
-                    <video
-                      src={previewUrl}
-                      poster={previewPoster ?? undefined}
-                      muted
-                      playsInline
-                      preload="metadata"
-                      aria-label="Chosen video"
-                      style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-                    />
+                    // A thumbnail that answers "which clip did I attach"; a
+                    // click plays it in the house viewer (dashboard#55).
+                    <button
+                      type="button"
+                      className="dash-vv-thumb-btn"
+                      aria-label="Play chosen video"
+                      onClick={() => setViewingVideo(true)}
+                    >
+                      <VideoStill
+                        src={previewUrl}
+                        poster={previewPoster}
+                        label="Chosen video"
+                        style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                      />
+                      <span className="dash-media-thumb-play" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="14" height="14" focusable="false">
+                          <path d="M8 5v14l11-7z" fill="currentColor" />
+                        </svg>
+                      </span>
+                    </button>
                   ) : previewUrl || previewFile ? (
                     <UploadPreviewImage
                       src={previewUrl ?? ''}
@@ -334,6 +348,22 @@ export default function JournalEditor({
                 storefront until one is picked. Videos are added from the Gallery; <strong>Upload
                 from this device</strong> takes photos.
               </p>
+            )}
+            {viewingVideo && previewUrl && previewKind === 'video' && (
+              <VideoLightbox title="Chosen video" onClose={() => setViewingVideo(false)}>
+                <DashboardVideoViewer
+                  video={{
+                    id: imageId ?? undefined,
+                    url: previewUrl,
+                    posterUrl: previewPoster,
+                    status: previewStatus.status,
+                    processingError: previewStatus.processingError,
+                  }}
+                  label="Chosen video"
+                  poll={false}
+                  autoPlay
+                />
+              </VideoLightbox>
             )}
           </div>
           <div className="dash-form-grid">

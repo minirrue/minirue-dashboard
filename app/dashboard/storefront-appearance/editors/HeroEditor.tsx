@@ -10,11 +10,8 @@ import { getItem } from '@/lib/gallery/api';
 import type { GalleryItem, GalleryItemStatus } from '@/lib/gallery/types';
 import { galleryItemStatus } from '@/lib/gallery/status';
 import { useProcessingItemsPoll } from '@/lib/gallery/use-processing-poll';
-import {
-  GalleryItemStatusBadge,
-  NotReadyVideoStill,
-  galleryItemFailureMessage,
-} from '@/components/dashboard/GalleryItemStatus';
+import { galleryItemFailureMessage } from '@/components/dashboard/GalleryItemStatus';
+import DashboardVideoViewer, { VideoStill } from '@/components/dashboard/DashboardVideoViewer';
 import {
   heroImageWarning,
   type HeroSlot as GuidanceSlot,
@@ -62,29 +59,25 @@ function HeroImageFrame({
         marginBottom: 8,
       }}
     >
-      {url && video && status !== 'ready' ? (
-        // Still converting, or failed (dashboard#45): the original upload may
-        // not play in a browser. The storefront shows this same poster until
-        // the MP4 exists, so the frame shows it too.
-        <>
-          <NotReadyVideoStill
-            item={{ posterUrl: video.poster, status }}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          />
-          <GalleryItemStatusBadge item={{ status }} />
-        </>
-      ) : url && video ? (
-        // A muted, controls-free thumbnail that answers "which clip is this".
-        // A video URL in an image tag is a broken frame that reads as a failed
-        // upload — which is what the gallery picker's videos used to produce here.
-        <video
+      {url && video && muted && status === 'ready' ? (
+        // The mobile frame only falling back to the desktop clip: a still
+        // that answers "which clip is this", not a second player.
+        <VideoStill
           src={url}
-          poster={video.poster ?? undefined}
-          muted
-          playsInline
-          preload="metadata"
-          aria-label="Chosen video"
+          poster={video.poster}
+          label="Chosen video"
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
+      ) : url && video ? (
+        // dashboard#55 — the house viewer, compact, muted like the storefront
+        // hero. While converting or failed (dashboard#45) it shows the poster
+        // and the badge, never the original upload; the editor polls.
+        <DashboardVideoViewer
+          video={{ url, posterUrl: video.poster, status, processingError: video.processingError }}
+          label="Chosen video"
+          size="compact"
+          muted
+          poll={false}
         />
       ) : url && (
         <UploadPreviewImage

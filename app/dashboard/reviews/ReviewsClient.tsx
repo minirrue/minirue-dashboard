@@ -7,6 +7,10 @@ import {
   CollabTableCard,
 } from '@/components/collab/collab-ui';
 import StarRating from '@/components/dashboard/StarRating';
+import DashboardVideoViewer, {
+  VideoLightbox,
+  VideoStill,
+} from '@/components/dashboard/DashboardVideoViewer';
 import {
   apiApproveReview,
   apiListReviews,
@@ -76,6 +80,9 @@ export default function ReviewsClient() {
   // something visible on this page instead of only discoverable by clicking
   // play and getting nothing.
   const [failedMedia, setFailedMedia] = useState<Record<string, boolean>>({});
+  const [viewingVideo, setViewingVideo] = useState<{ url: string; posterUrl: string | null } | null>(
+    null,
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -264,24 +271,44 @@ export default function ReviewsClient() {
                                   This video could not be loaded.
                                 </span>
                               ) : (
-                                <video
+                                // dashboard#55 — a thumbnail; a click plays it
+                                // in the house viewer.
+                                <button
                                   key={m.id}
-                                  src={m.url}
-                                  poster={m.posterUrl ?? undefined}
-                                  controls
-                                  playsInline
-                                  preload={m.posterUrl ? 'none' : 'metadata'}
-                                  width={128}
-                                  onError={() =>
-                                    setFailedMedia((f) => ({ ...f, [m.id]: true }))
+                                  type="button"
+                                  className="dash-vv-thumb-btn"
+                                  aria-label="Play review video"
+                                  onClick={() =>
+                                    setViewingVideo({ url: m.url!, posterUrl: m.posterUrl ?? null })
                                   }
                                   style={{
+                                    width: 128,
                                     height: 72,
                                     borderRadius: 'var(--mr-radius-sm)',
                                     border: '1px solid var(--mr-dash-hair)',
                                     background: 'var(--mr-ink-900)',
+                                    overflow: 'hidden',
                                   }}
-                                />
+                                >
+                                  <VideoStill
+                                    src={m.url}
+                                    poster={m.posterUrl}
+                                    onError={() =>
+                                      setFailedMedia((f) => ({ ...f, [m.id]: true }))
+                                    }
+                                    style={{
+                                      width: '100%',
+                                      height: '100%',
+                                      objectFit: 'cover',
+                                      display: 'block',
+                                    }}
+                                  />
+                                  <span className="dash-media-thumb-play" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" focusable="false">
+                                      <path d="M8 5v14l11-7z" fill="currentColor" />
+                                    </svg>
+                                  </span>
+                                </button>
                               )
                             ) : (
                               <span
@@ -378,6 +405,11 @@ export default function ReviewsClient() {
           </div>
         </form>
       ) : null}
+      {viewingVideo && (
+        <VideoLightbox title="Review video" onClose={() => setViewingVideo(null)}>
+          <DashboardVideoViewer video={viewingVideo} label="Review video" autoPlay />
+        </VideoLightbox>
+      )}
     </>
   );
 }

@@ -20,6 +20,7 @@ import {
   galleryItemFailureMessage,
 } from '@/components/dashboard/GalleryItemStatus';
 import MediaThumb from '@/components/dashboard/MediaThumb';
+import { VideoStill } from '@/components/dashboard/DashboardVideoViewer';
 import { galleryItemStatus } from '@/lib/gallery/status';
 import { useProcessingItemsPoll } from '@/lib/gallery/use-processing-poll';
 
@@ -171,13 +172,7 @@ function PickerItemTile({
           <GalleryItemStatusBadge item={item} />
         </>
       ) : item.kind === 'video' ? (
-        <video
-          src={item.url}
-          poster={item.posterUrl ?? undefined}
-          muted
-          preload={item.posterUrl ? 'none' : 'metadata'}
-          style={TILE_MEDIA_STYLE}
-        />
+        <VideoStill src={item.url} poster={item.posterUrl} style={TILE_MEDIA_STYLE} />
       ) : (
         <RetryingImage src={item.url} alt="" style={TILE_MEDIA_STYLE} />
       )}

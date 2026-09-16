@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import HeroEditor from '@/app/dashboard/storefront-appearance/editors/HeroEditor';
 import type { HeroSection, HeroSlide } from '@/lib/api/storefront';
 
@@ -64,12 +64,20 @@ describe('HeroEditor with a video', () => {
   it('previews a desktop video as a video, and gives the colour preview its poster', async () => {
     render(<HeroEditor section={section(slide({ imageGalleryItemId: 'clip' }))} onChange={() => {}} />);
 
-    // Desktop frame, and the mobile frame falling back to the same clip.
-    const videos = await screen.findAllByLabelText('Chosen video');
-    expect(videos).toHaveLength(2);
-    expect(videos[0]).toHaveAttribute('src', 'https://s3.test/clip.mp4');
-    expect(videos[0]).toHaveAttribute('poster', 'https://img.test/poster.webp');
-    expect((videos[0] as HTMLVideoElement).muted).toBe(true);
+    // Desktop frame (the house viewer, dashboard#55), and the mobile frame
+    // falling back to the same clip as a still.
+    const labelled = await screen.findAllByLabelText('Chosen video');
+    expect(labelled).toHaveLength(2);
+    const player = screen.getByRole('group', { name: 'Chosen video' });
+    const videos = [player.querySelector('video'), labelled[1]] as HTMLVideoElement[];
+    for (const v of videos) {
+      expect(v.tagName).toBe('VIDEO');
+      expect(v).toHaveAttribute('src', 'https://s3.test/clip.mp4');
+      expect(v).toHaveAttribute('poster', 'https://img.test/poster.webp');
+      expect(v.muted).toBe(true);
+      expect(v).not.toHaveAttribute('controls');
+    }
+    expect(within(player).getByRole('button', { name: 'Unmute' })).toBeInTheDocument();
 
     await waitFor(() =>
       expect(screen.getByTestId('colors-preview')).toHaveTextContent('https://img.test/poster.webp'),
@@ -104,7 +112,6 @@ describe('HeroEditor with a video', () => {
 
     // Desktop and the mobile fallback both say so.
     expect(await screen.findAllByText(/converting/i)).toHaveLength(2);
-    expect(screen.queryByLabelText('Chosen video')).not.toBeInTheDocument();
     expect(container.querySelector('video')).toBeNull();
     const posters = Array.from(container.querySelectorAll('img')).filter(
       (img) => img.getAttribute('src') === 'https://img.test/raw-poster.webp',

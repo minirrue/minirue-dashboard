@@ -4,6 +4,7 @@ import React from 'react';
 import RetryingImage from './RetryingImage';
 import UploadPreviewImage from './UploadPreviewImage';
 import { GalleryItemStatusBadge, NotReadyVideoStill } from './GalleryItemStatus';
+import { VideoStill } from './DashboardVideoViewer';
 import { galleryItemStatus } from '@/lib/gallery/status';
 import type { GalleryItemKind, GalleryItemStatus } from '@/lib/gallery/types';
 
@@ -70,7 +71,7 @@ export default function MediaThumb({
       ) : media.posterUrl ? (
         <RetryingImage src={media.posterUrl} alt={alt} style={still} />
       ) : media.url ? (
-        <video src={media.url} muted playsInline preload="metadata" style={still} />
+        <VideoStill src={media.url} style={still} />
       ) : (
         <NotReadyVideoStill item={{ posterUrl: null, status }} style={still} />
       )}

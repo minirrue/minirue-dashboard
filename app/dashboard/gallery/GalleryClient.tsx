@@ -17,6 +17,10 @@ import type { ApiError } from '@/lib/api/client';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
 import MediaThumb from '@/components/dashboard/MediaThumb';
+import DashboardVideoViewer, {
+  VideoLightbox,
+  VideoStill,
+} from '@/components/dashboard/DashboardVideoViewer';
 import { useUser } from '@/lib/hooks/use-auth';
 import { Role } from '@/lib/auth/role';
 import {
@@ -280,11 +284,99 @@ function ItemPreviewModal({
   item,
   localFile,
   onClose,
+  onExchange,
+  onDelete,
 }: {
   item: GalleryItem;
   /** Bytes for an item exchanged/uploaded in THIS session — enlarging a photo
    *  seconds after replacing it is the likeliest cold miss in the whole
    *  screen, and this used to be a bare image tag with no onError at all. */
+  localFile?: File | null;
+  onClose: () => void;
+  onExchange: (id: string, file: File) => void;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  if (item.kind === 'video') {
+    return (
+      <VideoItemPreview
+        item={item}
+        localFile={localFile}
+        onClose={onClose}
+        onExchange={onExchange}
+        onDelete={onDelete}
+      />
+    );
+  }
+  return <ImageItemPreview item={item} localFile={localFile} onClose={onClose} />;
+}
+
+/**
+ * dashboard#55 — a video opens in the house viewer. A converting one shows its
+ * poster and swaps to the MP4 when the page's poll sees it ready (the page
+ * already polls the open item, so the viewer does not poll a second time); a
+ * failed one offers Exchange and Delete right there.
+ */
+function VideoItemPreview({
+  item,
+  localFile,
+  onClose,
+  onExchange,
+  onDelete,
+}: {
+  item: GalleryItem;
+  localFile?: File | null;
+  onClose: () => void;
+  onExchange: (id: string, file: File) => void;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  return (
+    <VideoLightbox
+      title={item.altText || 'Video preview'}
+      onClose={onClose}
+      traceId={`${TRACE}::EL-MODAL-gallery-item-preview@${item.id}`}
+    >
+      <input
+        ref={fileRef}
+        type="file"
+        accept={GALLERY_UPLOAD_ACCEPT}
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (!file) return;
+          onExchange(item.id, file);
+          onClose();
+        }}
+      />
+      <DashboardVideoViewer
+        video={{ ...item, sizeBytes: localFile?.size ?? null }}
+        label={item.altText || 'Video preview'}
+        poll={false}
+        autoPlay
+        onExchange={() => fileRef.current?.click()}
+        onDelete={async () => {
+          setActionError(null);
+          try {
+            await onDelete(item.id);
+            onClose();
+          } catch (e) {
+            setActionError((e as ApiError).message ?? 'Could not delete this video.');
+          }
+        }}
+      />
+      {actionError && <p className="dash-field-error">{actionError}</p>}
+    </VideoLightbox>
+  );
+}
+
+function ImageItemPreview({
+  item,
+  localFile,
+  onClose,
+}: {
+  item: GalleryItem;
   localFile?: File | null;
   onClose: () => void;
 }) {
@@ -315,33 +407,12 @@ function ItemPreviewModal({
         ✕
       </button>
       <div className="dash-gallery-preview-frame" onClick={(e) => e.stopPropagation()}>
-        {item.kind === 'video' && !isPlayableGalleryItem(item) ? (
-          // The original upload may not play here (dashboard#45) — show the
-          // still and say what is happening instead of a dead player.
-          <div className="dash-gallery-preview-pending">
-            <NotReadyVideoStill item={item} className="dash-gallery-preview-media" />
-            <p className="dash-gallery-preview-pending-text">
-              {galleryItemStatus(item) === 'processing'
-                ? 'Converting… this video will play here once it has been converted to MP4.'
-                : galleryItemFailureMessage(item)}
-            </p>
-          </div>
-        ) : item.kind === 'video' ? (
-          <video
-            src={item.url}
-            poster={item.posterUrl ?? undefined}
-            className="dash-gallery-preview-media"
-            controls
-            autoPlay
-          />
-        ) : (
-          <UploadPreviewImage
-            src={item.url}
-            localFile={localFile ?? null}
-            alt=""
-            className="dash-gallery-preview-media"
-          />
-        )}
+        <UploadPreviewImage
+          src={item.url}
+          localFile={localFile ?? null}
+          alt=""
+          className="dash-gallery-preview-media"
+        />
       </div>
     </div>
   );
@@ -450,18 +521,7 @@ function GalleryTileMedia({ item, localFile }: { item: GalleryItem; localFile: F
       </span>
     );
   }
-  return (
-    <video
-      src={item.url}
-      poster={item.posterUrl ?? undefined}
-      className="dash-gallery-item-media"
-      muted
-      /* A poster means the grid never needs the video bytes to draw
-         a tile — without this every clip in the folder starts
-         downloading just to paint one frame. */
-      preload={item.posterUrl ? 'none' : 'metadata'}
-    />
-  );
+  return <VideoStill src={item.url} poster={item.posterUrl} className="dash-gallery-item-media" />;
 }
 
 /* ── Item grid ── */
@@ -1317,6 +1377,8 @@ export default function GalleryClient() {
           item={previewItem}
           localFile={pendingLocalFiles[previewItem.id] ?? null}
           onClose={() => setPreviewItem(null)}
+          onExchange={handleExchangeItem}
+          onDelete={handleDeleteItem}
         />
       )}
     </>

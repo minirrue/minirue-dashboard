@@ -25,10 +25,7 @@ import {
 import { useProcessingItemsPoll } from '@/lib/gallery/use-processing-poll';
 import { ImagePreviewModal } from '@/components/dashboard/ImagePreviewModal';
 import MediaThumb from '@/components/dashboard/MediaThumb';
-import {
-  NotReadyVideoStill,
-  galleryItemFailureMessage,
-} from '@/components/dashboard/GalleryItemStatus';
+import DashboardVideoViewer, { VideoLightbox } from '@/components/dashboard/DashboardVideoViewer';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 
 interface Props {
@@ -69,53 +66,39 @@ function withItemFacts(asset: ProductMedia, item: GalleryItem): ProductMedia {
 }
 
 /**
- * The full-size view for a video row. A ready one plays; one still converting
- * (or failed) shows its still and says why — its `url` is not a playable movie
- * (see MediaThumb).
+ * The full-size view for a video row, in the house viewer (dashboard#55). A
+ * ready one plays; one still converting shows its still (its `url` is not a
+ * playable movie, see MediaThumb) and the section's poll swaps it in; a failed
+ * one offers Exchange (gallery-linked rows) and Delete.
  */
-function VideoPreviewModal({ media, onClose }: { media: ProductMedia; onClose: () => void }) {
-  const status = galleryItemStatus(media);
+function VideoPreviewModal({
+  media,
+  onClose,
+  onExchange,
+  onDelete,
+}: {
+  media: ProductMedia;
+  onClose: () => void;
+  onExchange?: () => void;
+  onDelete: () => void;
+}) {
   return (
-    <div
-      className="dash-gallery-preview-overlay"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Video preview"
-    >
-      <button
-        type="button"
-        className="dash-gallery-preview-close"
-        onClick={onClose}
-        aria-label="Close preview"
-      >
-        ✕
-      </button>
-      <div className="dash-gallery-preview-frame" onClick={(e) => e.stopPropagation()}>
-        {status === 'ready' && media.url ? (
-          <video
-            src={media.url}
-            poster={media.posterUrl ?? undefined}
-            className="dash-gallery-preview-media"
-            controls
-            autoPlay
-            playsInline
-          />
-        ) : (
-          <div className="dash-gallery-preview-pending">
-            <NotReadyVideoStill
-              item={{ posterUrl: media.posterUrl ?? null, status }}
-              className="dash-gallery-preview-media"
-            />
-            <p className="dash-gallery-preview-pending-text">
-              {status === 'processing'
-                ? 'Converting… this video will play here once it has been converted to MP4. The shop shows its still until then.'
-                : `${galleryItemFailureMessage({ processingError: null })} Exchange it, or delete it and add another.`}
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
+    <VideoLightbox title={media.altText || 'Video preview'} onClose={onClose}>
+      <DashboardVideoViewer
+        video={{
+          url: media.url,
+          posterUrl: media.posterUrl,
+          status: galleryItemStatus(media),
+          width: media.width,
+          height: media.height,
+        }}
+        label={media.altText || 'Video preview'}
+        poll={false}
+        autoPlay
+        onExchange={onExchange}
+        onDelete={onDelete}
+      />
+    </VideoLightbox>
   );
 }
 
@@ -734,7 +717,23 @@ export default function MediaSection({
       {error && <p className="dash-inline-error">{error}</p>}
 
       {previewMedia?.kind === 'video' && (
-        <VideoPreviewModal media={previewMedia} onClose={() => setPreviewMedia(null)} />
+        <VideoPreviewModal
+          media={previewMedia}
+          onClose={() => setPreviewMedia(null)}
+          onExchange={
+            previewMedia.galleryItemId
+              ? () => {
+                  setExchangeTargetId(previewMedia.id);
+                  exchangeInputRef.current?.click();
+                  setPreviewMedia(null);
+                }
+              : undefined
+          }
+          onDelete={() => {
+            setPreviewMedia(null);
+            void handleDelete(previewMedia);
+          }}
+        />
       )}
       {previewMedia && previewMedia.kind !== 'video' && (
         <ImagePreviewModal

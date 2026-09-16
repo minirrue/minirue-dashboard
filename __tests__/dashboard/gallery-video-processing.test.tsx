@@ -216,7 +216,7 @@ describe('Gallery tile for a video that is converting or failed', () => {
     await user.click(within(card('proc')).getByRole('button', { name: /view full size/i }));
     const dialog = await screen.findByRole('dialog');
     expect(dialog.querySelector('video')).toBeNull();
-    expect(within(dialog).getByText(/converting/i)).toBeInTheDocument();
+    expect(within(dialog).getByText('Converting…')).toBeInTheDocument();
   });
 
   it('labels a converting video in search results too', async () => {
