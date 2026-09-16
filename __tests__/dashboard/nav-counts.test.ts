@@ -9,6 +9,12 @@ describe('navUnreadCount', () => {
     expect(navUnreadCount('/customers', counts)).toBe(5);
   });
 
+  it('keeps Email unread separate from Chat unread', () => {
+    const counts = { SUPPORT: 3, SUPPORT_EMAIL: 7 };
+    expect(navUnreadCount('/support', counts)).toBe(3);
+    expect(navUnreadCount('/emails', counts)).toBe(7);
+  });
+
   it('sums every category a single screen owns', () => {
     // Orders and their payments are both read on the Orders screen.
     expect(navUnreadCount('/orders', { ORDER: 2, PAYMENT: 4 })).toBe(6);

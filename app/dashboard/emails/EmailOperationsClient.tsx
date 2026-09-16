@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ApiError } from '@/lib/api/client';
@@ -8,16 +8,27 @@ import { isAdminRole } from '@/lib/auth/roles';
 import { useUser } from '@/lib/hooks/use-auth';
 import {
   apiCreateEmailCampaign,
+  apiCreateEmailTemplate,
+  apiDuplicateEmailTemplate,
+  apiEmailBranding,
   apiEmailCampaigns,
   apiEmailEvents,
   apiEmailThread,
   apiEmailThreads,
+  apiEmailTemplates,
   apiReplyToEmailThread,
   apiSendEmailCampaign,
+  apiUpdateEmailBranding,
+  apiUpdateEmailTemplate,
   collectionItems,
   type EmailCampaign,
   type EmailDeliveryStatus,
+  type EmailLogoShape,
+  type EmailTemplate,
 } from '@/lib/api/email-operations';
+import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
+import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
+import { apiUploadBrandLogo } from '@/lib/api/settings';
 import styles from './email-operations.module.css';
 
 const DELIVERY_FILTERS: Array<{ value: EmailDeliveryStatus | ''; label: string }> = [
@@ -70,7 +81,7 @@ function InboxView() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [unread, setUnread] = useState(false);
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(() => typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('thread'));
   const [body, setBody] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -81,23 +92,20 @@ function InboxView() {
   });
   const allThreads = collectionItems(threadsQuery.data ?? []);
   const threads = unread ? allThreads.filter((thread) => thread.unread) : allThreads;
-  useEffect(() => {
-    if (!activeId && threads.length) setActiveId(threads[0].id);
-    if (activeId && !threads.some((thread) => thread.id === activeId)) setActiveId(threads[0]?.id ?? null);
-  }, [activeId, threads]);
+  const selectedId = activeId && (threadsQuery.isLoading || threads.some((thread) => thread.id === activeId)) ? activeId : threads[0]?.id ?? null;
 
   const threadQuery = useQuery({
-    queryKey: ['admin-emails', 'thread', activeId],
-    queryFn: () => apiEmailThread(activeId as string),
-    enabled: !!activeId,
+    queryKey: ['admin-emails', 'thread', selectedId],
+    queryFn: () => apiEmailThread(selectedId as string),
+    enabled: !!selectedId,
   });
   const timelineEventsQuery = useQuery({
     queryKey: ['admin-emails', 'events', 'timeline'],
     queryFn: () => apiEmailEvents(500),
-    enabled: !!activeId,
+    enabled: !!selectedId,
   });
   const reply = useMutation({
-    mutationFn: () => apiReplyToEmailThread(activeId as string, { text: body.trim() }),
+    mutationFn: () => apiReplyToEmailThread(selectedId as string, { text: body.trim() }),
     onSuccess: () => {
       setBody('');
       setNotice('Reply sent and added to this timeline.');
@@ -116,8 +124,9 @@ function InboxView() {
       </div>
       <div className={styles.railMeta}>{threadsQuery.isFetching ? 'Checking for new email…' : `${threads.length} conversation${threads.length === 1 ? '' : 's'}`}</div>
       <div className={styles.threadList}>
-        {threadsQuery.isLoading ? <LoadingRows /> : threadsQuery.isError ? <div className={styles.inlineError}><strong>Email inbox unavailable</strong><span>{errorText(threadsQuery.error, 'Try again in a moment.')}</span><button className="dash-btn-secondary" onClick={() => void threadsQuery.refetch()}>Try again</button></div> : threads.length === 0 ? <Empty title="No matching email" body="New customer replies and sent messages will appear here." /> : threads.map((thread) => <button key={thread.id} className={styles.thread} data-active={thread.id === activeId} onClick={() => setActiveId(thread.id)}>
-          <span className={styles.threadTop}><strong>{thread.participantEmail}</strong><time>{fmt(thread.lastMessageAt)}</time></span>
+        {threadsQuery.isLoading ? <LoadingRows /> : threadsQuery.isError ? <div className={styles.inlineError}><strong>Email inbox unavailable</strong><span>{errorText(threadsQuery.error, 'Try again in a moment.')}</span><button className="dash-btn-secondary" onClick={() => void threadsQuery.refetch()}>Try again</button></div> : threads.length === 0 ? <Empty title="No matching email" body="New customer replies and sent messages will appear here." /> : threads.map((thread) => <button key={thread.id} className={styles.thread} data-active={thread.id === selectedId} onClick={() => setActiveId(thread.id)}>
+          <span className={styles.threadTop}><strong>{thread.customerName || thread.participantEmail}</strong><time>{fmt(thread.lastMessageAt)}</time></span>
+          {thread.customerName && <span className={styles.preview}>{thread.participantEmail}</span>}
           <span className={styles.subject}>{thread.subject}</span>
           <span className={styles.preview}>{thread.status === 'OPEN' ? 'Active conversation' : 'Conversation closed'}</span>
           <span className={styles.threadFoot}><Status value={thread.status} />{thread.customerId && <span>Customer linked</span>}{thread.unread && <span className={styles.unread}>1</span>}</span>
@@ -126,10 +135,10 @@ function InboxView() {
     </section>
 
     <section className={styles.reader} aria-label="Email conversation">
-      {!activeId ? <Empty title="Choose a conversation" body="Select an email on the left to see every message and delivery event." /> : threadQuery.isLoading ? <div className={styles.readerLoading}><LoadingRows count={6} /></div> : threadQuery.isError ? <div className={styles.inlineError}><strong>Conversation unavailable</strong><span>{errorText(threadQuery.error, 'Try loading it again.')}</span><button className="dash-btn-secondary" onClick={() => void threadQuery.refetch()}>Try again</button></div> : threadQuery.data && <>
+      {!selectedId ? <Empty title="Choose a conversation" body="Select an email on the left to see every message and delivery event." /> : threadQuery.isLoading ? <div className={styles.readerLoading}><LoadingRows count={6} /></div> : threadQuery.isError ? <div className={styles.inlineError}><strong>Conversation unavailable</strong><span>{errorText(threadQuery.error, 'Try loading it again.')}</span><button className="dash-btn-secondary" onClick={() => void threadQuery.refetch()}>Try again</button></div> : threadQuery.data && <>
         <header className={styles.readerHeader}>
-          <div><h2>{threadQuery.data.thread.subject}</h2><p>{threadQuery.data.thread.participantEmail}</p></div>
-          <div className={styles.contextLinks}>{threadQuery.data.thread.customerId && <Link href={`/customers/${threadQuery.data.thread.customerId}`}>Customer profile</Link>}</div>
+          <div><h2>{threadQuery.data.thread.subject}</h2><p>{threadQuery.data.thread.customerName || threadQuery.data.thread.participantEmail}{threadQuery.data.thread.customerName ? ` · ${threadQuery.data.thread.participantEmail}` : ''}</p></div>
+          <div className={styles.contextLinks}>{threadQuery.data.thread.customerId && <Link href={`/customers/${threadQuery.data.thread.customerId}`}>Customer profile</Link>}{threadQuery.data.thread.orders?.map((order) => <Link href={`/orders/${order.id}`} key={order.id}>{order.orderNumber} · {order.status.toLowerCase()}</Link>)}</div>
         </header>
         <div className={styles.timeline}>
           {[
@@ -154,6 +163,81 @@ function InboxView() {
       </>}
     </section>
   </div>;
+}
+
+const EMPTY_TEMPLATE = { key: '', name: '', subject: '', textBody: '' };
+
+function TemplatesView() {
+  const qc = useQueryClient();
+  const [active, setActive] = useState<EmailTemplate | null>(null);
+  const [draft, setDraft] = useState(EMPTY_TEMPLATE);
+  const templatesQuery = useQuery({ queryKey: ['admin-emails', 'templates'], queryFn: apiEmailTemplates });
+  const templates = collectionItems(templatesQuery.data ?? []);
+  const save = useMutation({
+    mutationFn: () => active
+      ? apiUpdateEmailTemplate(active.id, { name: draft.name.trim(), subject: draft.subject.trim(), textBody: draft.textBody.trim() })
+      : apiCreateEmailTemplate({ key: draft.key.trim(), name: draft.name.trim(), subject: draft.subject.trim(), textBody: draft.textBody.trim() }),
+    onSuccess: (template) => { setActive(template); setDraft({ key: template.key, name: template.name, subject: template.subject, textBody: template.textBody }); void qc.invalidateQueries({ queryKey: ['admin-emails', 'templates'] }); },
+  });
+  const duplicate = useMutation({ mutationFn: (id: string) => apiDuplicateEmailTemplate(id), onSuccess: (template) => { setActive(template); setDraft({ key: template.key, name: template.name, subject: template.subject, textBody: template.textBody }); void qc.invalidateQueries({ queryKey: ['admin-emails', 'templates'] }); } });
+  const valid = draft.key.trim() && draft.name.trim() && draft.subject.trim() && draft.textBody.trim();
+  const select = (template: EmailTemplate) => { setActive(template); setDraft({ key: template.key, name: template.name, subject: template.subject, textBody: template.textBody }); save.reset(); duplicate.reset(); };
+  return <div className={styles.campaignLayout}>
+    <section className={styles.campaignList}>
+      <div className={styles.sectionHeading}><div><h2>Templates</h2><p>Reusable transactional and care messages.</p></div><button className="dash-btn-secondary" onClick={() => { setActive(null); setDraft(EMPTY_TEMPLATE); }}>New</button></div>
+      {templatesQuery.isLoading ? <LoadingRows /> : templatesQuery.isError ? <div className={styles.inlineError}><strong>Templates unavailable</strong><span>{errorText(templatesQuery.error, 'The templates API is not available yet.')}</span><button className="dash-btn-secondary" onClick={() => void templatesQuery.refetch()}>Try again</button></div> : templates.length === 0 ? <Empty title="No templates yet" body="Create the first reusable email template." /> : <div className={styles.campaignRows}>{templates.map((template) => <button className={styles.campaignRow} data-active={active?.id === template.id} key={template.id} onClick={() => select(template)}><span><strong>{template.name}</strong><small>{template.key}</small></span></button>)}</div>}
+    </section>
+    <section className={styles.campaignWork}>
+      <form className={styles.campaignForm} onSubmit={(event) => { event.preventDefault(); if (valid && !save.isPending) save.mutate(); }}>
+        <div className={styles.sectionHeading}><div><h2>{active ? 'Edit template' : 'New template'}</h2><p>Variables such as {'{{customerName}}'} stay visible until send time.</p></div>{active && <button type="button" className="dash-btn-secondary" onClick={() => duplicate.mutate(active.id)} disabled={duplicate.isPending}>{duplicate.isPending ? 'Duplicating…' : 'Duplicate'}</button>}</div>
+        <div className={styles.formGrid}><label><span>Template key</span><input className="dash-input" value={draft.key} onChange={(event) => setDraft({ ...draft, key: event.target.value })} readOnly={!!active} required /></label><label><span>Name</span><input className="dash-input" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} maxLength={120} required /></label></div>
+        <label><span>Subject</span><input className="dash-input" value={draft.subject} onChange={(event) => setDraft({ ...draft, subject: event.target.value })} maxLength={180} required /></label>
+        <label><span>Message</span><textarea className="dash-textarea" value={draft.textBody} onChange={(event) => setDraft({ ...draft, textBody: event.target.value })} rows={12} maxLength={20000} required /></label>
+        {(save.isError || duplicate.isError) && <p className={styles.formError} role="alert">{errorText(save.error || duplicate.error, 'The template could not be saved.')}</p>}
+        <div className={styles.emailPreview}><div className={styles.previewBar}><span>MiniRueShop</span><small>Template preview</small></div><div className={styles.previewBody}><h3>{draft.subject || 'Subject preview'}</h3><p>{draft.textBody || 'Message preview'}</p></div></div>
+        <div className={styles.composerActions}><span>Saving never sends an email.</span><button className="dash-btn-primary" disabled={!valid || save.isPending}>{save.isPending ? 'Saving…' : active ? 'Save changes' : 'Create template'}</button></div>
+      </form>
+    </section>
+  </div>;
+}
+
+function BrandingView() {
+  const [formDraft, setFormDraft] = useState<{ logoUrl: string; logoShape: EmailLogoShape } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const brandingQuery = useQuery({ queryKey: ['admin-emails', 'branding'], queryFn: apiEmailBranding });
+  const draft = formDraft ?? { logoUrl: brandingQuery.data?.logoUrl || '', logoShape: brandingQuery.data?.logoShape || 'ROUNDED' as EmailLogoShape };
+  const setDraft = setFormDraft;
+  const save = useMutation({ mutationFn: () => apiUpdateEmailBranding({ logoUrl: draft.logoUrl.trim() || null, logoShape: draft.logoShape }), onSuccess: (value) => setFormDraft({ logoUrl: value.logoUrl || '', logoShape: value.logoShape }) });
+  const upload = async (file?: File) => {
+    if (!file || uploading) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const settings = await apiUploadBrandLogo(file);
+      setFormDraft({ ...draft, logoUrl: settings.brand?.logoUrl || '' });
+    } catch (error) {
+      setUploadError(errorText(error, 'The logo could not be uploaded.'));
+    } finally {
+      setUploading(false);
+    }
+  };
+  if (brandingQuery.isLoading) return <div className={styles.pad}><LoadingRows /></div>;
+  if (brandingQuery.isError) return <div className={styles.inlineError}><strong>Branding unavailable</strong><span>{errorText(brandingQuery.error, 'The email branding API is not available yet.')}</span><button className="dash-btn-secondary" onClick={() => void brandingQuery.refetch()}>Try again</button></div>;
+  return <section className={`dash-card ${styles.branding}`}>
+    <div><h2>Email branding</h2><p>Choose the mark customers see inside every MiniRueShop email.</p></div>
+    <div className={styles.brandingLayout}>
+      <form onSubmit={(event) => { event.preventDefault(); if (!save.isPending) save.mutate(); }}>
+        <label><span>Logo URL</span><input className="dash-input" type="url" value={draft.logoUrl} onChange={(event) => setDraft({ ...draft, logoUrl: event.target.value })} placeholder="https://…" /></label>
+        <div className={styles.inlineActions}><label className="dash-btn-secondary"><span>{uploading ? 'Uploading…' : 'Choose image'}</span><input className="dash-sr-only" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; void upload(file); }} /></label><button type="button" className="dash-btn-secondary" onClick={() => setDraft({ ...draft, logoUrl: '' })} disabled={!draft.logoUrl}>Remove logo</button><span className="dash-help-text">Upload an image or paste a URL.</span></div>
+        <label><span>Logo shape</span><select className="dash-select" aria-label="Logo shape" value={draft.logoShape} onChange={(event) => setDraft({ ...draft, logoShape: event.target.value as EmailLogoShape })}><option value="RECTANGLE">Rectangle</option><option value="ROUNDED">Rounded</option><option value="CIRCLE">Circle</option></select></label>
+        {(save.isError || uploadError) && <p className={styles.formError} role="alert">{uploadError || errorText(save.error, 'Branding was not saved.')}</p>}
+        {save.isSuccess && <p className={styles.formNotice} role="status">Branding saved.</p>}
+        <button className="dash-btn-primary" disabled={save.isPending}>{save.isPending ? 'Saving…' : 'Save branding'}</button>
+      </form>
+      <div className={styles.emailPreview}><div className={styles.previewBar}>{draft.logoUrl ? <span className={styles.logoPreview} role="img" aria-label="Email logo preview" data-shape={draft.logoShape} style={{ backgroundImage: `url(${JSON.stringify(draft.logoUrl)})` }} /> : <span>MiniRueShop</span>}<small>Email preview</small></div><div className={styles.previewBody}><h3>Your MiniRueShop update</h3><p>Branding is applied consistently to transactional, support and campaign email.</p></div></div>
+    </div>
+  </section>;
 }
 
 function EventsView() {
@@ -223,15 +307,16 @@ function CampaignsView() {
 }
 
 export default function EmailOperationsClient() {
-  const [view, setView] = useState<'inbox' | 'events' | 'campaigns'>('inbox');
+  const [view, setView] = useState<'inbox' | 'events' | 'campaigns' | 'templates' | 'branding'>('inbox');
   const { data: user } = useUser();
   const canManageCampaigns = isAdminRole(user?.role);
-  const title = useMemo(() => view === 'inbox' ? 'Customer email' : view === 'events' ? 'Email events' : 'Campaigns', [view]);
+  useClearNavBadge(HREF_CATEGORIES['/emails']);
+  const title = useMemo(() => view === 'inbox' ? 'Customer email' : view === 'events' ? 'Email events' : view === 'campaigns' ? 'Campaigns' : view === 'templates' ? 'Email templates' : 'Email branding', [view]);
   return <div className={styles.page}>
     <div className="dash-page-header"><div><h1 className="dash-page-title">{title}</h1><p className="dash-page-subtitle">One history for every customer message, delivery signal and campaign.</p></div></div>
     <nav className={styles.tabs} aria-label="Email workspace">
-      {(['inbox', 'events', ...(canManageCampaigns ? ['campaigns' as const] : [])] as const).map((tab) => <button key={tab} type="button" data-active={view === tab} aria-current={view === tab ? 'page' : undefined} onClick={() => setView(tab)}>{tab === 'inbox' ? 'Inbox' : tab === 'events' ? 'Event log' : 'Campaigns'}</button>)}
+      {(['inbox', 'events', ...(canManageCampaigns ? ['campaigns' as const, 'templates' as const, 'branding' as const] : [])] as const).map((tab) => <button key={tab} type="button" data-active={view === tab} aria-current={view === tab ? 'page' : undefined} onClick={() => setView(tab)}>{tab === 'inbox' ? 'Inbox' : tab === 'events' ? 'Event log' : tab === 'campaigns' ? 'Campaigns' : tab === 'templates' ? 'Templates' : 'Branding'}</button>)}
     </nav>
-    {view === 'inbox' ? <InboxView /> : view === 'events' ? <EventsView /> : <CampaignsView />}
+    {view === 'inbox' ? <InboxView /> : view === 'events' ? <EventsView /> : view === 'campaigns' ? <CampaignsView /> : view === 'templates' ? <TemplatesView /> : <BrandingView />}
   </div>;
 }

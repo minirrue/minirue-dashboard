@@ -77,7 +77,7 @@ describe('sidebar visibility', () => {
       { section: 'Operations', label: 'Customers' },
       { section: 'Operations', label: 'Loyalty' },
       { section: 'Operations', label: 'Discounts' },
-      { section: 'Operations', label: 'Support' },
+      { section: 'Operations', label: 'Chat' },
       { section: 'Operations', label: 'Email' },
       { section: 'Operations', label: 'Fulfillment' },
       { section: 'Operations', label: 'Refunds and payments' },
@@ -122,7 +122,7 @@ describe('sidebar visibility', () => {
     // Inventory is open to ADMIN again (owner, 2026-09-15: "inventory for admin also").
     expect(bySection('Operations')).toEqual([
       'Orders', 'Customers', 'Loyalty', 'Gallery', 'Discounts', 'Bundles',
-      'Support', 'Email', 'Reviews', 'Fulfillment', 'Refunds and payments', 'Inventory',
+      'Chat', 'Email', 'Reviews', 'Fulfillment', 'Refunds and payments', 'Inventory',
     ]);
     expect(bySection('Insights')).toEqual(['Analytics', 'SEO']);
     expect(bySection('System')).toEqual(['Notifications', 'Settings', 'Info']);

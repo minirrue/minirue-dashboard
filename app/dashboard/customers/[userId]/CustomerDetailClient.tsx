@@ -38,6 +38,7 @@ import { formatOrderRef } from '@/lib/orders/order-format';
 import { EnlargeableImage } from '@/components/dashboard/ImagePreviewModal';
 import { GenericAvatarIcon } from '@/components/GenericAvatarIcon';
 import CopyButton from '@/components/dashboard/CopyButton';
+import CustomerEmailActivity from '@/components/dashboard/email/CustomerEmailActivity';
 
 const TIER_OPTIONS: TierLevel[] = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM'];
 const ADDRESS_LABELS: CustomerAddressInput['label'][] = ['HOME', 'WORK', 'OTHER'];
@@ -979,6 +980,8 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
               customer was given, so it reads next to what they spent, not next
               to where they live. Fetches its own data — a discounts outage
               must not blank the whole customer page. */}
+          <CustomerEmailActivity customerId={customer.customerId} customerName={displayName(customer)} email={customer.email} />
+
           <CustomerDiscountUsage customerId={userId} />
 
           <section className="dash-form-section">

@@ -21,6 +21,7 @@ export const HREF_CATEGORIES: Record<string, readonly NotificationCategory[]> = 
   '/orders': ['ORDER', 'PAYMENT'],
   '/customers': ['CUSTOMER'],
   '/support': ['SUPPORT'],
+  '/emails': ['SUPPORT_EMAIL'],
   '/fulfillment': ['FULFILLMENT'],
   '/refunds': ['REFUND'],
   '/inventory': ['INVENTORY'],

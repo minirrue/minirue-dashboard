@@ -105,7 +105,7 @@ describe('pricing warnings in the sidebar', () => {
       expect(link.querySelector('.dash-sidebar-link-count')).toBeNull();
     }
     // The red pill still exists elsewhere, so the two are distinguishable.
-    expect(screen.getAllByLabelText('2 unread in Support').length).toBeGreaterThan(0);
+    expect(screen.getAllByLabelText('2 unread in Chat').length).toBeGreaterThan(0);
   });
 
   it('puts the triangle beside the desktop bell too', () => {

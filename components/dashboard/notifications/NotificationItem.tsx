@@ -15,7 +15,8 @@ const SEVERITY_STATUS: Record<AdminNotification['severity'], string> = {
 /** Human label + the tab it belongs to, resolved from entityType then category. */
 function typeMeta(n: AdminNotification): { label: string; tab: string } {
   const et = (n.entityType ?? '').toLowerCase();
-  if (et === 'support') return { label: 'Support', tab: 'Support' };
+  if (et === 'support') return { label: 'Chat', tab: 'Chat' };
+  if (n.category === 'SUPPORT_EMAIL') return { label: 'Email', tab: 'Email' };
   if (et === 'order' || n.category === 'ORDER') return { label: 'Order', tab: 'Orders' };
   if (et === 'customer' || n.category === 'CUSTOMER') return { label: 'Customer', tab: 'Customers' };
   switch (n.category) {
@@ -76,6 +77,8 @@ function categoryHref(category: AdminNotification['category']): string {
     case 'REFUND': return '/refunds';
     case 'INVENTORY': return '/inventory';
     case 'COLLAB': return '/collab';
+    case 'SUPPORT': return '/support';
+    case 'SUPPORT_EMAIL': return '/emails';
     // Never null: a notification with nowhere to go renders as an inert row
     // with no View button, which reads as broken rather than as informational.
     // The notification centre is always a truthful destination.

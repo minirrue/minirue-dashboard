@@ -7,6 +7,7 @@ export type EmailDeliveryStatus =
 export interface EmailThreadSummary {
   id: string;
   customerId?: string | null;
+  customerName?: string | null;
   participantEmail: string;
   subject: string;
   status: 'OPEN' | 'CLOSED';
@@ -40,8 +41,39 @@ export interface EmailEvent {
 }
 
 export interface EmailThreadDetail {
-  thread: EmailThreadSummary;
+  thread: EmailThreadSummary & {
+    orders?: Array<{ id: string; orderNumber: string; status: string; createdAt: string }>;
+  };
   messages: EmailMessage[];
+}
+
+export interface EmailTemplate {
+  id: string;
+  key: string;
+  name: string;
+  subject: string;
+  textBody: string;
+  htmlBody?: string | null;
+  variables?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type EmailLogoShape = 'RECTANGLE' | 'ROUNDED' | 'CIRCLE';
+
+export interface EmailBranding {
+  logoUrl: string | null;
+  logoShape: EmailLogoShape;
+}
+
+export interface DirectEmailInput {
+  to: string;
+  customerId?: string;
+  orderId?: string;
+  templateKey?: string;
+  subject: string;
+  text: string;
+  variables: Record<string, string>;
 }
 
 export interface EmailCampaign {
@@ -65,10 +97,11 @@ export function collectionItems<T>(value: Collection<T>): T[] {
   return value.items ?? value.data ?? value.results ?? [];
 }
 
-export function apiEmailThreads(params: { search?: string; status?: string } = {}) {
+export function apiEmailThreads(params: { search?: string; status?: string; limit?: number } = {}) {
   const query = new URLSearchParams();
   if (params.search) query.set('q', params.search);
   if (params.status) query.set('status', params.status);
+  if (params.limit) query.set('limit', String(params.limit));
   const suffix = query.size ? `?${query.toString()}` : '';
   return apiFetch<Collection<EmailThreadSummary>>(`/admin/emails/threads${suffix}`, { auth: true });
 }
@@ -107,3 +140,80 @@ export const apiSendEmailCampaign = (id: string) =>
     auth: true,
     method: 'POST',
   });
+
+/**
+ * The direct-send, template and branding endpoints are the smallest remaining
+ * backend contract for dashboard#81. Keeping them here makes unsupported
+ * servers fail explicitly through apiFetch instead of simulating success.
+ */
+export const apiSendDirectEmail = (payload: DirectEmailInput) =>
+  apiFetch<{ id: string; status: 'SENT' | 'FAILED' }>('/admin/emails/send', {
+    auth: true,
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
+export const apiEmailTemplates = () =>
+  apiFetch<Collection<EmailTemplate>>('/admin/email-templates', { auth: true });
+
+export const apiCreateEmailTemplate = (payload: Pick<EmailTemplate, 'key' | 'name' | 'subject' | 'textBody'> & { htmlBody?: string | null }) =>
+  apiFetch<EmailTemplate>('/admin/email-templates', {
+    auth: true,
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
+export const apiUpdateEmailTemplate = (id: string, payload: Pick<EmailTemplate, 'name' | 'subject' | 'textBody'> & { htmlBody?: string | null }) =>
+  apiFetch<EmailTemplate>(`/admin/email-templates/${encodeURIComponent(id)}`, {
+    auth: true,
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+
+export const apiDuplicateEmailTemplate = (id: string) =>
+  apiFetch<EmailTemplate>(`/admin/email-templates/${encodeURIComponent(id)}/duplicate`, {
+    auth: true,
+    method: 'POST',
+  });
+
+export const apiEmailBranding = () =>
+  apiFetch<EmailBranding>('/admin/email-branding', { auth: true });
+
+export const apiUpdateEmailBranding = (payload: EmailBranding) =>
+  apiFetch<EmailBranding>('/admin/email-branding', {
+    auth: true,
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+
+export interface CustomerEmailActivityItem {
+  thread: EmailThreadSummary;
+  message: EmailMessage;
+  events: EmailEvent[];
+  status: EmailDeliveryStatus;
+  failureReason: string | null;
+}
+
+/** Composes customer history from the shipped thread/detail/event APIs. */
+export async function apiCustomerEmailActivity(input: { customerId: string; email?: string | null }): Promise<CustomerEmailActivityItem[]> {
+  const [threadEnvelope, eventEnvelope] = await Promise.all([apiEmailThreads({ limit: 100 }), apiEmailEvents(500)]);
+  const normalizedEmail = input.email?.trim().toLowerCase();
+  const threads = collectionItems(threadEnvelope).filter((thread) =>
+    thread.customerId === input.customerId || (!!normalizedEmail && thread.participantEmail.toLowerCase() === normalizedEmail),
+  );
+  const details = await Promise.all(threads.map((thread) => apiEmailThread(thread.id)));
+  const events = collectionItems(eventEnvelope);
+  return details.flatMap((detail) => detail.messages.map((message) => {
+    const messageEvents = events.filter((event) => event.messageId === message.id).sort((a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime());
+    const latest = messageEvents.at(-1);
+    const metadata = latest?.metadata ?? {};
+    const reason = [metadata['reason'], metadata['error'], metadata['message']].find((value) => typeof value === 'string') as string | undefined;
+    return {
+      thread: detail.thread,
+      message,
+      events: messageEvents,
+      status: message.direction === 'INBOUND' ? 'RECEIVED' : latest?.eventType ?? 'SENT',
+      failureReason: reason ?? null,
+    };
+  })).sort((a, b) => new Date(b.message.createdAt).getTime() - new Date(a.message.createdAt).getTime());
+}

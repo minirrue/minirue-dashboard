@@ -1,5 +1,6 @@
 import React from 'react';
 import type { OrderEmailLog, OrderEmailLogEntry } from '@/lib/api/orders';
+import DirectEmailComposer from '@/components/dashboard/email/DirectEmailComposer';
 
 /**
  * The emails the customer was sent about this order, read-only (backend#135).
@@ -60,7 +61,7 @@ function recipientNote(log: OrderEmailLog): string {
   }
 }
 
-export default function OrderEmailsSection({ log }: { log: OrderEmailLog }) {
+export default function OrderEmailsSection({ log, orderId, orderNumber, customerName, recipientEmail }: { log: OrderEmailLog; orderId: string; orderNumber: string; customerName: string; recipientEmail?: string | null }) {
   const note = transportNote(log);
   return (
     <section className="dash-form-section" aria-labelledby="order-emails-title">
@@ -68,6 +69,7 @@ export default function OrderEmailsSection({ log }: { log: OrderEmailLog }) {
         <h2 className="dash-section-title" id="order-emails-title">
           Customer emails
         </h2>
+        <DirectEmailComposer recipient={recipientEmail} orderId={orderId} variables={{ orderNumber, customerName }} />
       </div>
       <p className="dash-help-text" style={{ margin: '0 0 8px' }}>
         {recipientNote(log)}

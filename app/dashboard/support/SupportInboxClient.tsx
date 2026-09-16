@@ -803,11 +803,11 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
     ? `${presence.status.charAt(0)}${presence.status.slice(1).toLowerCase()}${
         presence.replyTimeText ? ` · ${presence.replyTimeText}` : ''
       }`
-    : 'Support status'
+    : 'Chat status'
 
   const presenceBar = showPresence ? (
     <div className="mrc-presence-bar" data-expanded={presenceExpanded ? 'true' : 'false'}>
-      <span className="mrc-presence-bar-label">Support status</span>
+      <span className="mrc-presence-bar-label">Chat status</span>
       <button
         type="button"
         className="mrc-presence-summary"

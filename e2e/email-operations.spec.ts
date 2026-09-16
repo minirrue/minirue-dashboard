@@ -11,10 +11,12 @@ async function authenticateAndStub(page: Page) {
     let json: unknown = {};
     if (path.endsWith('/auth/get-session')) json = { user: { id: 'qa-admin', name: 'MiniRueShop', email: 'contact@minirueshop.com', role: 'SUPERADMIN' } };
     else if (path.endsWith('/auth/me')) json = { userId: 'qa-admin', name: 'MiniRueShop', email: 'contact@minirueshop.com', role: 'SUPERADMIN' };
-    else if (path.endsWith('/admin/emails/threads')) json = [{ id: 'thread-1', customerId: '03ba1ba5-d417-4f28-85f3-3c404eeda96b', participantEmail: 'mariam@example.test', subject: 'Where is my order?', status: 'OPEN', unread: true, lastMessageAt: now, createdAt: now, updatedAt: now }];
-    else if (path.endsWith('/admin/emails/threads/thread-1')) json = { thread: { id: 'thread-1', customerId: '03ba1ba5-d417-4f28-85f3-3c404eeda96b', participantEmail: 'mariam@example.test', subject: 'Where is my order?', status: 'OPEN', unread: true, lastMessageAt: now, createdAt: now, updatedAt: now }, messages: [{ id: 'message-1', threadId: 'thread-1', direction: 'INBOUND', sender: 'mariam@example.test', recipient: 'contact@minirueshop.com', subject: 'Where is my order?', textBody: 'Can you confirm the delivery time for my order?', htmlBody: null, createdAt: now }] };
+    else if (path.endsWith('/admin/emails/threads')) json = [{ id: 'thread-1', customerId: '03ba1ba5-d417-4f28-85f3-3c404eeda96b', customerName: 'Mariam Adel', participantEmail: 'mariam@example.test', subject: 'Where is my order?', status: 'OPEN', unread: true, lastMessageAt: now, createdAt: now, updatedAt: now }];
+    else if (path.endsWith('/admin/emails/threads/thread-1')) json = { thread: { id: 'thread-1', customerId: '03ba1ba5-d417-4f28-85f3-3c404eeda96b', customerName: 'Mariam Adel', participantEmail: 'mariam@example.test', subject: 'Where is my order?', status: 'OPEN', unread: true, lastMessageAt: now, createdAt: now, updatedAt: now, orders: [{ id: 'order-1', orderNumber: 'MR-42', status: 'SHIPPED', createdAt: now }] }, messages: [{ id: 'message-1', threadId: 'thread-1', direction: 'INBOUND', sender: 'mariam@example.test', recipient: 'contact@minirueshop.com', subject: 'Where is my order?', textBody: 'Can you confirm the delivery time for my order?', htmlBody: null, createdAt: now }] };
     else if (path.endsWith('/admin/emails/events')) json = [{ id: 'event-1', messageId: 'message-1', eventType: 'DELIVERED', severity: 'INFO', occurredAt: now, provider: 'RESEND', metadata: { detail: 'Accepted by the recipient server.' } }];
     else if (path.endsWith('/admin/email-campaigns')) json = [];
+    else if (path.endsWith('/admin/email-templates')) json = [{ id: 'template-1', key: 'order.follow_up', name: 'Order follow-up', subject: 'An update about {{orderNumber}}', textBody: 'Hello {{customerName}}', variables: ['customerName', 'orderNumber'], createdAt: now, updatedAt: now }];
+    else if (path.endsWith('/admin/email-branding')) json = { logoUrl: null, logoShape: 'ROUNDED' };
     else if (path.includes('/notifications/counts')) json = {};
     else if (path.includes('/notifications')) json = { items: [], total: 0, unreadCount: 0, categoryCounts: {} };
     else if (path.includes('/pricing')) json = [];
@@ -30,6 +32,8 @@ test('email workspace works at desktop and mobile widths', async ({ page }) => {
   await page.goto('/emails');
   await expect(page.getByRole('heading', { name: 'Customer email' })).toBeVisible();
   await expect(page.getByText('Where is my order?', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Mariam Adel').first()).toBeVisible();
+  await expect(page.getByRole('link', { name: /MR-42/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Reply from contact@minirueshop.com' })).toBeVisible();
   await page.screenshot({ path: '.impeccable/review/desktop.png', fullPage: true });
 
@@ -42,6 +46,12 @@ test('email workspace works at desktop and mobile widths', async ({ page }) => {
   await page.getByPlaceholder('A little something for you').fill('A gift from MiniRueShop');
   await page.getByPlaceholder('Write the campaign in MiniRueShop’s voice…').fill('Thank you for being part of MiniRueShop.');
   await expect(page.getByRole('button', { name: 'Save and preview' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Templates' }).click();
+  await page.getByRole('button', { name: /Order follow-up/ }).click();
+  await expect(page.getByRole('heading', { name: 'Edit template' })).toBeVisible();
+  await page.getByRole('button', { name: 'Branding' }).click();
+  await expect(page.getByLabel('Logo shape')).toHaveValue('ROUNDED');
+  await page.screenshot({ path: '.impeccable/review/branding-desktop.png', fullPage: true });
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Inbox' }).click();

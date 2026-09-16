@@ -11,7 +11,7 @@ import { apiFetch } from './client';
 // count from usePricingWarnings instead, never a second unread number.
 export const NOTIFICATION_CATEGORIES = [
   'ORDER', 'PAYMENT', 'FULFILLMENT', 'REFUND',
-  'INVENTORY', 'CUSTOMER', 'SUPPORT', 'COLLAB', 'SYSTEM', 'PRICING',
+  'INVENTORY', 'CUSTOMER', 'SUPPORT', 'SUPPORT_EMAIL', 'COLLAB', 'SYSTEM', 'PRICING',
 ] as const;
 export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
 

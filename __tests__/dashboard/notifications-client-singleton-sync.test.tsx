@@ -7,7 +7,7 @@ import { useNotificationCounts } from '@/lib/hooks/use-notification-counts';
 import type { AdminNotification } from '@/lib/api/notifications';
 
 jest.mock('@/lib/api/notifications', () => ({
-  NOTIFICATION_CATEGORIES: ['ORDER', 'PAYMENT', 'FULFILLMENT', 'REFUND', 'INVENTORY', 'CUSTOMER', 'SUPPORT', 'COLLAB', 'SYSTEM'],
+  NOTIFICATION_CATEGORIES: ['ORDER', 'PAYMENT', 'FULFILLMENT', 'REFUND', 'INVENTORY', 'CUSTOMER', 'SUPPORT', 'SUPPORT_EMAIL', 'COLLAB', 'SYSTEM'],
   NOTIFICATION_SEVERITIES: ['INFO', 'SUCCESS', 'WARNING', 'CRITICAL'],
   apiAdminListNotifications: jest.fn(),
   apiAdminMarkNotificationRead: jest.fn(),
