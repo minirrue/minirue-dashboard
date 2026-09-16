@@ -79,6 +79,10 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   // get their own inbox at /collab/support instead. One of the two things
   // STAFF is scoped down to (2026-07-30).
   '/support': ADMIN_AND_SUPPORT,
+  // Customer email is an operational channel alongside live support. Staff
+  // can read delivery history and reply; backend permissions still protect
+  // campaign sends and other admin-only actions.
+  '/emails': ADMIN_AND_SUPPORT,
   '/reviews': ADMIN_ONLY,
   // Reactivated for STAFF (#74): loyalty accounts + adjust are on the backend
   // STAFF allow-list, and Loyalty moved out of Insights into Operations.
