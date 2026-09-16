@@ -213,7 +213,7 @@ export default function RefundableOrdersPanel({
                             >
                               Not paid yet
                             </button>
-                            {o.paymentMethod === 'COD' && (
+                            {o.paymentMethod === 'COD' && o.status === 'DELIVERED' && (
                               <button
                                 type="button"
                                 className="dash-btn-secondary"
@@ -222,6 +222,9 @@ export default function RefundableOrdersPanel({
                               >
                                 {collectingCash === o.id ? 'Recording…' : 'Mark cash collected'}
                               </button>
+                            )}
+                            {o.paymentMethod === 'COD' && o.status !== 'DELIVERED' && (
+                              <span className="dash-help-text">Available after delivery</span>
                             )}
                           </div>
                         )}

@@ -7,6 +7,7 @@ import {
   apiAdminGetOrderEmails,
   apiAdminTransitionStatus,
   apiAdminCancelOrder,
+  apiAdminMarkCashCollected,
 } from '@/lib/api/orders';
 import type { Order, OrderStatus, OrderItem, OrderEmailLog } from '@/lib/api/orders';
 import OrderEmailsSection from './OrderEmailsSection';
@@ -276,6 +277,21 @@ export default function OrderDetailClient({ id }: { id: string }) {
     }
   };
 
+  const markCashCollected = async () => {
+    setBusy(true);
+    setActionError(null);
+    try {
+      const updated = await apiAdminMarkCashCollected(id);
+      setOrder(updated);
+      setPayments(await apiAdminListOrderPayments(id));
+      void loadEmails();
+    } catch (e) {
+      setActionError((e as ApiError).message ?? 'Could not record cash collected');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   /**
    * Save one reference field on one payment.
    *
@@ -534,6 +550,32 @@ export default function OrderDetailClient({ id }: { id: string }) {
         <div className="dash-section-header">
           <h2 className="dash-section-title">Payments</h2>
         </div>
+        {!order.refundedAt && !order.paid && (
+          <div className="dash-card" style={{ marginBottom: 12 }}>
+            <p className="dash-help-text" style={{ margin: 0 }}>
+              No captured payment exists to refund yet.
+              {order.paymentMethod === 'COD' && order.status !== 'DELIVERED'
+                ? ' Cash can be marked collected after delivery.'
+                : ''}
+            </p>
+            {order.paymentMethod === 'COD' && order.status === 'DELIVERED' && (
+              <button
+                type="button"
+                className="dash-btn-primary"
+                style={{ marginTop: 12 }}
+                disabled={busy}
+                onClick={() => void markCashCollected()}
+              >
+                {busy ? 'Recording…' : 'Mark cash collected'}
+              </button>
+            )}
+          </div>
+        )}
+        {order.paymentMethod === 'COD' && order.paid && (
+          <p className="dash-help-text" style={{ margin: '0 0 12px', color: 'var(--mr-st-ok-fg)' }}>
+            Cash collected. This order can now be refunded.
+          </p>
+        )}
         {payments.length === 0 ? (
           <p style={{ color: 'var(--mr-fg-4)', fontSize: 14 }}>
             No payment recorded against this order.

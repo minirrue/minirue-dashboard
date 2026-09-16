@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import OrderDetailClient from '@/app/dashboard/orders/[slug]/OrderDetailClient';
+import RefundableOrdersPanel from '@/app/dashboard/refunds/RefundableOrdersPanel';
 import * as ordersApi from '@/lib/api/orders';
 import * as paymentsApi from '@/lib/api/payments';
 import type { Order } from '@/lib/api/orders';
@@ -151,6 +152,85 @@ describe('OrderDetailClient buyer and payments detail', () => {
 
     await userEvent.click(receiptButton);
     expect(await screen.findByRole('dialog', { name: 'Image preview' })).toBeInTheDocument();
+  });
+
+  it('marks delivered COD cash collected and exposes the refund without a reload', async () => {
+    const uncollected = makeOrder({
+      status: 'DELIVERED',
+      paid: false,
+      paymentMethod: 'COD',
+    });
+    const collected = makeOrder({
+      status: 'DELIVERED',
+      paid: true,
+      paymentMethod: 'COD',
+      statusHistory: [{
+        id: 'history_cash',
+        fromStatus: 'DELIVERED',
+        toStatus: 'DELIVERED',
+        actorUserId: 'staff_1',
+        reason: 'Cash collected on delivery (COD)',
+        createdAt: '2026-09-16T12:00:00.000Z',
+      }],
+    });
+    mockedOrders.apiAdminGetOrder.mockResolvedValue(uncollected);
+    mockedOrders.apiAdminMarkCashCollected.mockResolvedValue(collected);
+    mockedPayments.apiAdminListOrderPayments
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        makePayment({ method: 'COD', status: 'SUCCEEDED', createdAt: '2026-09-16T12:00:00.000Z' }),
+      ]);
+
+    render(<OrderDetailClient id="ord_1" />);
+
+    const collect = await screen.findByRole('button', { name: 'Mark cash collected' });
+    expect(screen.queryByRole('button', { name: 'Refund' })).not.toBeInTheDocument();
+    expect(screen.getByText('No captured payment exists to refund yet.')).toBeInTheDocument();
+
+    await userEvent.click(collect);
+
+    expect(mockedOrders.apiAdminMarkCashCollected).toHaveBeenCalledWith('ord_1');
+    expect(await screen.findByText('Cash collected. This order can now be refunded.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Refund' })).toBeInTheDocument();
+    expect(screen.getByText('Cash collected on delivery (COD)')).toBeInTheDocument();
+    expect(screen.getByText('Succeeded')).toBeInTheDocument();
+  });
+
+  it('does not offer cash collection before a COD order is delivered', async () => {
+    mockedOrders.apiAdminGetOrder.mockResolvedValue(
+      makeOrder({ status: 'SHIPPED', paid: false, paymentMethod: 'COD' }),
+    );
+    mockedPayments.apiAdminListOrderPayments.mockResolvedValue([]);
+
+    render(<OrderDetailClient id="ord_1" />);
+
+    expect(await screen.findByText(/Cash can be marked collected after delivery/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Mark cash collected' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Refund' })).not.toBeInTheDocument();
+  });
+});
+
+describe('RefundableOrdersPanel COD collection eligibility', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('offers cash collection only for delivered COD orders', async () => {
+    mockedOrders.apiAdminListOrders.mockResolvedValue({
+      data: [
+        makeOrder({ id: 'ord_shipped', orderNumber: 'MR-SHIPPED', status: 'SHIPPED', paid: false, paymentMethod: 'COD' }),
+        makeOrder({ id: 'ord_delivered', orderNumber: 'MR-DELIVERED', status: 'DELIVERED', paid: false, paymentMethod: 'COD' }),
+      ],
+      total: 2,
+      page: 1,
+      limit: 100,
+    });
+
+    render(<RefundableOrdersPanel onRefunded={jest.fn()} />);
+
+    expect(await screen.findAllByText('Not paid yet')).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Mark cash collected' })).toHaveLength(1);
+    expect(screen.getByText('Available after delivery')).toBeInTheDocument();
   });
 });
 
