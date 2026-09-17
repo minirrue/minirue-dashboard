@@ -25,11 +25,8 @@ import {
 import { useProcessingItemsPoll } from '@/lib/gallery/use-processing-poll';
 import { ImagePreviewModal } from '@/components/dashboard/ImagePreviewModal';
 import MediaThumb from '@/components/dashboard/MediaThumb';
-import {
-  NotReadyVideoStill,
-  galleryItemFailureMessage,
-} from '@/components/dashboard/GalleryItemStatus';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
+import DashboardVideoViewer from '@/components/dashboard/DashboardVideoViewer';
 
 interface Props {
   productId: string;
@@ -73,8 +70,7 @@ function withItemFacts(asset: ProductMedia, item: GalleryItem): ProductMedia {
  * (or failed) shows its still and says why — its `url` is not a playable movie
  * (see MediaThumb).
  */
-function VideoPreviewModal({ media, onClose }: { media: ProductMedia; onClose: () => void }) {
-  const status = galleryItemStatus(media);
+function VideoPreviewModal({ media, onClose, onExchange, onDelete }: { media: ProductMedia; onClose: () => void; onExchange?: () => void; onDelete?: () => void }) {
   return (
     <div
       className="dash-gallery-preview-overlay"
@@ -92,28 +88,7 @@ function VideoPreviewModal({ media, onClose }: { media: ProductMedia; onClose: (
         ✕
       </button>
       <div className="dash-gallery-preview-frame" onClick={(e) => e.stopPropagation()}>
-        {status === 'ready' && media.url ? (
-          <video
-            src={media.url}
-            poster={media.posterUrl ?? undefined}
-            className="dash-gallery-preview-media"
-            controls
-            autoPlay
-            playsInline
-          />
-        ) : (
-          <div className="dash-gallery-preview-pending">
-            <NotReadyVideoStill
-              item={{ posterUrl: media.posterUrl ?? null, status }}
-              className="dash-gallery-preview-media"
-            />
-            <p className="dash-gallery-preview-pending-text">
-              {status === 'processing'
-                ? 'Converting… this video will play here once it has been converted to MP4. The shop shows its still until then.'
-                : `${galleryItemFailureMessage({ processingError: null })} Exchange it, or delete it and add another.`}
-            </p>
-          </div>
-        )}
+        <DashboardVideoViewer media={media} autoPlay className="dash-gallery-preview-media" onExchange={onExchange} onDelete={onDelete} />
       </div>
     </div>
   );
@@ -734,7 +709,12 @@ export default function MediaSection({
       {error && <p className="dash-inline-error">{error}</p>}
 
       {previewMedia?.kind === 'video' && (
-        <VideoPreviewModal media={previewMedia} onClose={() => setPreviewMedia(null)} />
+        <VideoPreviewModal
+          media={previewMedia}
+          onClose={() => setPreviewMedia(null)}
+          onExchange={previewMedia.galleryItemId ? () => { setExchangeTargetId(previewMedia.id); exchangeInputRef.current?.click(); } : undefined}
+          onDelete={() => { void handleDelete(previewMedia); setPreviewMedia(null); }}
+        />
       )}
       {previewMedia && previewMedia.kind !== 'video' && (
         <ImagePreviewModal

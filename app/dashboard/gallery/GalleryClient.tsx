@@ -17,6 +17,7 @@ import type { ApiError } from '@/lib/api/client';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
 import MediaThumb from '@/components/dashboard/MediaThumb';
+import DashboardVideoViewer from '@/components/dashboard/DashboardVideoViewer';
 import { useUser } from '@/lib/hooks/use-auth';
 import { Role } from '@/lib/auth/role';
 import {
@@ -25,16 +26,11 @@ import {
   type DeletedMediaItem,
 } from '@/lib/catalog/api';
 import FolderTree from './FolderTree';
-import {
-  GalleryItemStatusBadge,
-  NotReadyVideoStill,
-  galleryItemFailureMessage,
-} from '@/components/dashboard/GalleryItemStatus';
+import { galleryItemFailureMessage } from '@/components/dashboard/GalleryItemStatus';
 import {
   GALLERY_UPLOAD_ACCEPT,
   GALLERY_VIDEO_UPLOAD_HINT,
   galleryItemStatus,
-  isPlayableGalleryItem,
 } from '@/lib/gallery/status';
 import { useProcessingItemsPoll } from '@/lib/gallery/use-processing-poll';
 
@@ -280,6 +276,8 @@ function ItemPreviewModal({
   item,
   localFile,
   onClose,
+  onExchange,
+  onDelete,
 }: {
   item: GalleryItem;
   /** Bytes for an item exchanged/uploaded in THIS session — enlarging a photo
@@ -287,7 +285,10 @@ function ItemPreviewModal({
    *  screen, and this used to be a bare image tag with no onError at all. */
   localFile?: File | null;
   onClose: () => void;
+  onExchange: (file: File) => void;
+  onDelete: () => void;
 }) {
+  const exchangeInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
@@ -314,25 +315,25 @@ function ItemPreviewModal({
       >
         ✕
       </button>
+      <input
+        ref={exchangeInputRef}
+        type="file"
+        accept={GALLERY_UPLOAD_ACCEPT}
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) onExchange(file);
+          event.target.value = '';
+        }}
+      />
       <div className="dash-gallery-preview-frame" onClick={(e) => e.stopPropagation()}>
-        {item.kind === 'video' && !isPlayableGalleryItem(item) ? (
-          // The original upload may not play here (dashboard#45) — show the
-          // still and say what is happening instead of a dead player.
-          <div className="dash-gallery-preview-pending">
-            <NotReadyVideoStill item={item} className="dash-gallery-preview-media" />
-            <p className="dash-gallery-preview-pending-text">
-              {galleryItemStatus(item) === 'processing'
-                ? 'Converting… this video will play here once it has been converted to MP4.'
-                : galleryItemFailureMessage(item)}
-            </p>
-          </div>
-        ) : item.kind === 'video' ? (
-          <video
-            src={item.url}
-            poster={item.posterUrl ?? undefined}
-            className="dash-gallery-preview-media"
-            controls
+        {item.kind === 'video' ? (
+          <DashboardVideoViewer
+            media={item}
             autoPlay
+            className="dash-gallery-preview-media"
+            onExchange={() => exchangeInputRef.current?.click()}
+            onDelete={onDelete}
           />
         ) : (
           <UploadPreviewImage
@@ -442,24 +443,13 @@ function GalleryTileMedia({ item, localFile }: { item: GalleryItem; localFile: F
       />
     );
   }
-  if (!isPlayableGalleryItem(item)) {
-    return (
-      <span className="dash-gallery-item-media-frame">
-        <NotReadyVideoStill item={item} className="dash-gallery-item-media" />
-        <GalleryItemStatusBadge item={item} />
-      </span>
-    );
-  }
   return (
-    <video
-      src={item.url}
-      poster={item.posterUrl ?? undefined}
+    <DashboardVideoViewer
+      media={item}
+      variant="thumbnail"
+      label={item.altText ?? 'Video thumbnail'}
       className="dash-gallery-item-media"
-      muted
-      /* A poster means the grid never needs the video bytes to draw
-         a tile — without this every clip in the folder starts
-         downloading just to paint one frame. */
-      preload={item.posterUrl ? 'none' : 'metadata'}
+      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
     />
   );
 }
@@ -1317,6 +1307,14 @@ export default function GalleryClient() {
           item={previewItem}
           localFile={pendingLocalFiles[previewItem.id] ?? null}
           onClose={() => setPreviewItem(null)}
+          onExchange={(file) => {
+            void handleExchangeItem(previewItem.id, file);
+            setPreviewItem(null);
+          }}
+          onDelete={() => {
+            void handleDeleteItem(previewItem.id);
+            setPreviewItem(null);
+          }}
         />
       )}
     </>

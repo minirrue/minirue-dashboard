@@ -18,6 +18,7 @@ import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
 import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
+import DashboardVideoViewer from '@/components/dashboard/DashboardVideoViewer';
 
 type Filter = ReviewStatus | 'ALL';
 
@@ -75,7 +76,6 @@ export default function ReviewsClient() {
   // Tracking failures per media id turns "presigned URL broken" into
   // something visible on this page instead of only discoverable by clicking
   // play and getting nothing.
-  const [failedMedia, setFailedMedia] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -246,40 +246,15 @@ export default function ReviewsClient() {
                                     }}
                                   />
                                 </a>
-                              ) : failedMedia[m.id] ? (
-                                <span
-                                  key={m.id}
-                                  className="dash-muted"
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    width: 128,
-                                    height: 72,
-                                    borderRadius: 'var(--mr-radius-sm)',
-                                    border: '1px solid var(--mr-dash-hair)',
-                                    padding: '0 8px',
-                                    fontSize: 'var(--mr-text-xs)',
-                                  }}
-                                >
-                                  This video could not be loaded.
-                                </span>
                               ) : (
-                                <video
+                                <DashboardVideoViewer
                                   key={m.id}
-                                  src={m.url}
-                                  poster={m.posterUrl ?? undefined}
-                                  controls
-                                  playsInline
-                                  preload={m.posterUrl ? 'none' : 'metadata'}
-                                  width={128}
-                                  onError={() =>
-                                    setFailedMedia((f) => ({ ...f, [m.id]: true }))
-                                  }
+                                  media={{ url: m.url, posterUrl: m.posterUrl, mimeType: m.contentType }}
+                                  label="Customer review video"
                                   style={{
+                                    width: 160,
                                     height: 72,
                                     borderRadius: 'var(--mr-radius-sm)',
-                                    border: '1px solid var(--mr-dash-hair)',
-                                    background: 'var(--mr-ink-900)',
                                   }}
                                 />
                               )

@@ -1,10 +1,8 @@
 'use client';
 
 import React from 'react';
-import RetryingImage from './RetryingImage';
 import UploadPreviewImage from './UploadPreviewImage';
-import { GalleryItemStatusBadge, NotReadyVideoStill } from './GalleryItemStatus';
-import { galleryItemStatus } from '@/lib/gallery/status';
+import DashboardVideoViewer from './DashboardVideoViewer';
 import type { GalleryItemKind, GalleryItemStatus } from '@/lib/gallery/types';
 
 /**
@@ -58,31 +56,14 @@ export default function MediaThumb({
     );
   }
 
-  const status = galleryItemStatus(media);
-  const still: React.CSSProperties = { ...style, display: 'block' };
-  // With nothing to paint, the placeholder's own text ("Preview soon") sits
-  // where the glyph would; the status pill already says what is going on.
-  const placeholder = !media.posterUrl && (status !== 'ready' || !media.url);
   return (
-    <span className="dash-media-thumb" data-media-kind="video" data-trace-id={traceId}>
-      {status !== 'ready' ? (
-        <NotReadyVideoStill item={{ posterUrl: media.posterUrl ?? null, status }} style={still} />
-      ) : media.posterUrl ? (
-        <RetryingImage src={media.posterUrl} alt={alt} style={still} />
-      ) : media.url ? (
-        <video src={media.url} muted playsInline preload="metadata" style={still} />
-      ) : (
-        <NotReadyVideoStill item={{ posterUrl: null, status }} style={still} />
-      )}
-      {!placeholder && (
-        <span className="dash-media-thumb-play" data-media-play aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="14" height="14" focusable="false">
-            <path d="M8 5v14l11-7z" fill="currentColor" />
-          </svg>
-        </span>
-      )}
-      <span className="dash-sr-only">Video</span>
-      <GalleryItemStatusBadge item={{ status }} />
-    </span>
+    <DashboardVideoViewer
+      media={media}
+      variant="thumbnail"
+      label={alt || 'Video thumbnail'}
+      preferPoster
+      style={style}
+      className="dash-media-thumb"
+    />
   );
 }

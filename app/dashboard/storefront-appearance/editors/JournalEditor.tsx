@@ -13,9 +13,9 @@ import { galleryItemStatus } from '@/lib/gallery/status';
 import { useProcessingItemsPoll } from '@/lib/gallery/use-processing-poll';
 import {
   GalleryItemStatusBadge,
-  NotReadyVideoStill,
   galleryItemFailureMessage,
 } from '@/components/dashboard/GalleryItemStatus';
+import DashboardVideoViewer from '@/components/dashboard/DashboardVideoViewer';
 
 /** True when the admin has typed editorial copy or attached an image that
  * would be silently thrown away by switching into product mode (product
@@ -247,24 +247,13 @@ export default function JournalEditor({
                     padding: 4,
                   }}
                 >
-                  {previewUrl && notReadyVideo && !previewFile ? (
-                    // Converting or failed (dashboard#45): the original upload
-                    // may not play here — show the still the storefront shows.
-                    <NotReadyVideoStill
-                      item={{ posterUrl: previewPoster, status: previewStatus.status }}
-                      style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-                    />
-                  ) : previewUrl && previewKind === 'video' && !previewFile ? (
-                    // Muted and without controls: this is a thumbnail that
-                    // answers "which clip did I attach", not a player.
-                    <video
-                      src={previewUrl}
-                      poster={previewPoster ?? undefined}
-                      muted
-                      playsInline
-                      preload="metadata"
-                      aria-label="Chosen video"
-                      style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                  {previewUrl && previewKind === 'video' && !previewFile ? (
+                    <DashboardVideoViewer
+                      media={{ url: previewUrl, posterUrl: previewPoster, status: previewStatus.status }}
+                      variant="thumbnail"
+                      showStatusBadge={false}
+                      label="Chosen video"
+                      style={{ width: '100%', height: '100%' }}
                     />
                   ) : previewUrl || previewFile ? (
                     <UploadPreviewImage

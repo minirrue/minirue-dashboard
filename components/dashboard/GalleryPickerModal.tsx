@@ -15,11 +15,10 @@ import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import RetryingImage from '@/components/dashboard/RetryingImage';
 import { useImageCrop } from '@/components/dashboard/ImageCropProvider';
 import {
-  GalleryItemStatusBadge,
-  NotReadyVideoStill,
   galleryItemFailureMessage,
 } from '@/components/dashboard/GalleryItemStatus';
 import MediaThumb from '@/components/dashboard/MediaThumb';
+import DashboardVideoViewer from '@/components/dashboard/DashboardVideoViewer';
 import { galleryItemStatus } from '@/lib/gallery/status';
 import { useProcessingItemsPoll } from '@/lib/gallery/use-processing-poll';
 
@@ -162,22 +161,8 @@ function PickerItemTile({
         <span style={{ display: 'block', opacity: 0.45 }}>
           <MediaThumb media={item} alt="" style={TILE_MEDIA_STYLE} />
         </span>
-      ) : item.kind === 'video' && status !== 'ready' ? (
-        <>
-          <NotReadyVideoStill
-            item={item}
-            style={{ ...TILE_MEDIA_STYLE, opacity: failed ? 0.45 : 1 }}
-          />
-          <GalleryItemStatusBadge item={item} />
-        </>
       ) : item.kind === 'video' ? (
-        <video
-          src={item.url}
-          poster={item.posterUrl ?? undefined}
-          muted
-          preload={item.posterUrl ? 'none' : 'metadata'}
-          style={TILE_MEDIA_STYLE}
-        />
+        <DashboardVideoViewer media={item} variant="thumbnail" style={{ ...TILE_MEDIA_STYLE, opacity: failed ? 0.45 : 1 }} />
       ) : (
         <RetryingImage src={item.url} alt="" style={TILE_MEDIA_STYLE} />
       )}
