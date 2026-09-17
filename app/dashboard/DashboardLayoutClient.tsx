@@ -135,6 +135,7 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
     <DashboardShell
       activePath={activePath}
       userName={userName}
+      userId={user?.userId}
       userRole={user?.role}
       shellEyebrow={shellEyebrow}
       shellTitle={shellTitle}

@@ -252,10 +252,34 @@ export interface DashboardSidebarProps {
   userRole?: string;
   /** User display name for the footer identity menu */
   userName?: string;
+  /** Stable account id used to scope persisted group preferences. */
+  userId?: string;
   /** Mobile drawer open state */
   mobileDrawerOpen?: boolean;
   /** Mobile drawer close callback */
   onMobileDrawerClose?: () => void;
+  /** Desktop icon rail state. Mobile always uses the full-width drawer. */
+  collapsed?: boolean;
+  /** Toggle the desktop rail. Also available through Ctrl/Cmd+B. */
+  onCollapsedChange?: () => void;
+}
+
+function IconPanelLeft({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M9 3v18" />
+      <path d={collapsed ? 'm14 9 3 3-3 3' : 'm17 9-3 3 3 3'} />
+    </svg>
+  );
+}
+
+function IconChevron({ open }: { open: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={open ? 'm6 9 6 6 6-6' : 'm9 18 6-6-6-6'} />
+    </svg>
+  );
 }
 
 // Exported so __tests__/dashboard/sidebar-visibility.test.tsx can assert
@@ -361,12 +385,77 @@ export default function DashboardSidebar({
   activePath = '/overview',
   userRole,
   userName,
+  userId,
   mobileDrawerOpen,
   onMobileDrawerClose,
+  collapsed = false,
+  onCollapsedChange,
 }: DashboardSidebarProps) {
   // The ONE shop name (2026-07-31 owner ask) — replaces the hardcoded
   // "MiniRue" wordmark below so a rename in Settings reaches the sidebar too.
   const shopName = useShopName();
+  const drawerRef = React.useRef<HTMLElement>(null);
+  const groupStorageKey = `minirue:dashboard-groups:${userId ?? `${userRole ?? 'loading'}:${userName ?? 'user'}`}`;
+  const [closedGroups, setClosedGroups] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      try {
+        const stored = window.localStorage.getItem(groupStorageKey);
+        setClosedGroups(stored ? (JSON.parse(stored) as string[]) : []);
+      } catch {
+        setClosedGroups([]);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [groupStorageKey]);
+
+  React.useEffect(() => {
+    if (!mobileDrawerOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const focusableSelector = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const focusables = Array.from(
+      drawerRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [],
+    );
+    focusables[0]?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onMobileDrawerClose?.();
+        return;
+      }
+      if (event.key !== 'Tab' || focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+      document.querySelector<HTMLElement>('[aria-label="Toggle navigation menu"]')?.focus();
+    };
+  }, [mobileDrawerOpen, onMobileDrawerClose]);
+
+  const toggleGroup = (section: string) => {
+    setClosedGroups((current) => {
+      const next = current.includes(section)
+        ? current.filter((group) => group !== section)
+        : [...current, section];
+      window.localStorage.setItem(groupStorageKey, JSON.stringify(next));
+      return next;
+    });
+  };
   // While userRole hasn't resolved yet (every page refresh briefly has it
   // undefined before useUser() loads), fall back to NO items rather than
   // every item unfiltered — the previous fallback showed the full nav
@@ -450,12 +539,31 @@ export default function DashboardSidebar({
   const { byCategory } = useNotificationCounts();
   const { total: pricingWarnings } = usePricingWarnings();
 
-  const renderNav = () => (
+  const renderNav = (rail = false, mobile = false) => (
     <nav className="dash-sidebar-nav" onClick={onMobileDrawerClose}>
-      {visibleGroups.map((group) => (
+      {visibleGroups.map((group) => {
+        const groupOpen = rail || !closedGroups.includes(group.section);
+        const groupId = `dash-${mobile ? 'mobile' : 'desktop'}-nav-${group.section.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+        return (
         <section className="dash-sidebar-group" key={group.section} aria-label={group.section}>
-          <div className="dash-sidebar-section">{group.section}</div>
-          <div className="dash-sidebar-group-items">
+          {rail ? (
+            <div className="dash-sidebar-rail-separator" aria-hidden="true" />
+          ) : (
+            <button
+              type="button"
+              className="dash-sidebar-section"
+              onClick={(event) => {
+                event.stopPropagation();
+                toggleGroup(group.section);
+              }}
+              aria-expanded={groupOpen}
+              aria-controls={groupId}
+            >
+              <span>{group.section}</span>
+              <span className="dash-sidebar-section-chevron"><IconChevron open={groupOpen} /></span>
+            </button>
+          )}
+          <div className="dash-sidebar-group-items" id={groupId} hidden={!groupOpen}>
             {group.items.map((item) => {
               const unread = navUnreadCount(item.href, byCategory);
               return (
@@ -463,6 +571,9 @@ export default function DashboardSidebar({
                   key={item.href}
                   href={item.href}
                   className="dash-sidebar-link"
+                  aria-label={rail ? item.label : undefined}
+                  title={rail ? item.label : undefined}
+                  data-tooltip={rail ? item.label : undefined}
                   data-active={
                     activePath === item.href ||
                     (!hasNestedSibling(item.href) && activePath.startsWith(`${item.href}/`))
@@ -506,15 +617,16 @@ export default function DashboardSidebar({
             })}
           </div>
         </section>
-      ))}
+      )})}
     </nav>
   );
 
-  const renderBrand = (showNotifButton = false) => (
+  const renderBrand = (showNotifButton = false, rail = false, mobile = false) => (
     <div className="dash-sidebar-brand">
-      <div>
+      <div className="dash-sidebar-brand-copy">
         <div className="dash-sidebar-logo">
-          {shopName}
+          <span className="dash-sidebar-logo-full">{shopName}</span>
+          <span className="dash-sidebar-logo-compact" aria-hidden="true">M</span>
           <span className="dash-sidebar-logo-mark" aria-hidden="true">
             <Sparkle size={9} />
           </span>
@@ -522,8 +634,9 @@ export default function DashboardSidebar({
         {/* MiniRue is not French (owner, 2026-09-15) — was "Atelier dashboard". */}
         <div className="dash-sidebar-subtitle">Dashboard</div>
       </div>
-      {showNotifButton && (
-        <div className="dash-sidebar-brand-actions">
+      <div className="dash-sidebar-brand-actions">
+      {showNotifButton && !rail && (
+        <>
         <button
           type="button"
           className="dash-notif-btn"
@@ -544,12 +657,30 @@ export default function DashboardSidebar({
         {/* The topbar is hidden on desktop, so the yellow triangle joins the
             bell here, as it does in the mobile topbar. */}
         <PricingWarningsLink />
-        </div>
+        </>
       )}
+      {mobile && (
+        <button type="button" className="dash-sidebar-icon-btn" onClick={onMobileDrawerClose} aria-label="Close navigation menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+        </button>
+      )}
+      {!mobile && (
+        <button
+          type="button"
+          className="dash-sidebar-icon-btn dash-sidebar-collapse"
+          onClick={onCollapsedChange}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-pressed={collapsed}
+          title={`${collapsed ? 'Expand' : 'Collapse'} sidebar (Ctrl+B)`}
+        >
+          <IconPanelLeft collapsed={collapsed} />
+        </button>
+      )}
+      </div>
     </div>
   );
 
-  const renderFooter = () => (
+  const renderFooter = (rail = false) => (
     <div className="dash-sidebar-footer">
       {/* Is the API up. It lives here rather than only in the topbar because
           .dash-topbar--minimal is display:none above the mobile breakpoint —
@@ -559,7 +690,7 @@ export default function DashboardSidebar({
         {/* Latency is admin-only: STAFF and partners have no action to take on
             it and no sense of whether a number is bad, so for them it is noise
             that reads like a warning. Everyone still sees up/down. */}
-        <ServerStatus variant="full" showLatency={isAdminRole(userRole)} />
+        <ServerStatus variant={rail ? 'dot' : 'full'} showLatency={!rail && isAdminRole(userRole)} />
       </div>
       <UserMenu userName={userName} userRole={userRole} />
     </div>
@@ -568,10 +699,10 @@ export default function DashboardSidebar({
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="dash-sidebar">
-        {renderBrand(true)}
-        {renderNav()}
-        {renderFooter()}
+      <aside className="dash-sidebar" data-collapsed={collapsed ? 'true' : undefined} aria-label="Dashboard navigation">
+        {renderBrand(true, collapsed)}
+        {renderNav(collapsed)}
+        {renderFooter(collapsed)}
       </aside>
       <NotificationDrawer
         open={notifOpen}
@@ -583,9 +714,14 @@ export default function DashboardSidebar({
       <aside
         className="dash-mobile-drawer"
         data-open={mobileDrawerOpen ? 'true' : undefined}
+        ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Dashboard navigation"
+        aria-hidden={!mobileDrawerOpen}
       >
-        {renderBrand()}
-        {renderNav()}
+        {renderBrand(false, false, true)}
+        {renderNav(false, true)}
         {renderFooter()}
       </aside>
 

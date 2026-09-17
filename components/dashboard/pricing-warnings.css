@@ -64,16 +64,13 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The bell and the triangle in the sidebar brand. Stacked, bell on top where
-   it always was: the 232px sidebar has no width for the wordmark plus two
-   36px buttons in a row (the bell clipped and the subtitle wrapped), but the
-   brand block is tall enough for both. The gap leaves room for the count
-   hanging off the triangle's corner. */
+/* Header controls share one scan line. Their compact size is defined by the
+   shell so bell, warning and rail toggle fit beside the wordmark at 240px. */
 .dash-sidebar-brand-actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
