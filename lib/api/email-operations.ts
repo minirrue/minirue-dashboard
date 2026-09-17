@@ -146,10 +146,11 @@ export const apiSendEmailCampaign = (id: string) =>
  * backend contract for dashboard#81. Keeping them here makes unsupported
  * servers fail explicitly through apiFetch instead of simulating success.
  */
-export const apiSendDirectEmail = (payload: DirectEmailInput) =>
-  apiFetch<{ id: string; status: 'SENT' | 'FAILED' }>('/admin/emails/send', {
+export const apiSendDirectEmail = (payload: DirectEmailInput, idempotencyKey?: string) =>
+  apiFetch<{ id: string; status: 'SENT' | 'FAILED' | 'PENDING' }>('/admin/emails/send', {
     auth: true,
     method: 'POST',
+    headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
     body: JSON.stringify(payload),
   });
 

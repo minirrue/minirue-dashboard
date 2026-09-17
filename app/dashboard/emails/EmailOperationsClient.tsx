@@ -29,6 +29,7 @@ import {
 import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
 import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
 import { apiUploadBrandLogo } from '@/lib/api/settings';
+import DirectEmailComposer from '@/components/dashboard/email/DirectEmailComposer';
 import styles from './email-operations.module.css';
 
 const DELIVERY_FILTERS: Array<{ value: EmailDeliveryStatus | ''; label: string }> = [
@@ -74,6 +75,15 @@ function LoadingRows({ count = 4 }: { count?: number }) {
 
 function Empty({ title, body }: { title: string; body: string }) {
   return <div className={styles.empty}><div className={styles.emptyMark} aria-hidden="true">@</div><strong>{title}</strong><p>{body}</p></div>;
+}
+
+function ComposeView() {
+  return <section className={styles.composeCard} aria-label="Compose customer email">
+    <div className={styles.sectionHeading}>
+      <div><h2>New customer email</h2><p>Send a one-to-one message from contact@minirueshop.com.</p></div>
+    </div>
+    <DirectEmailComposer editableRecipient embedded variables={{}} />
+  </section>;
 }
 
 function InboxView() {
@@ -307,16 +317,16 @@ function CampaignsView() {
 }
 
 export default function EmailOperationsClient() {
-  const [view, setView] = useState<'inbox' | 'events' | 'campaigns' | 'templates' | 'branding'>('inbox');
+  const [view, setView] = useState<'compose' | 'inbox' | 'events' | 'campaigns' | 'templates' | 'branding'>('inbox');
   const { data: user } = useUser();
   const canManageCampaigns = isAdminRole(user?.role);
   useClearNavBadge(HREF_CATEGORIES['/emails']);
-  const title = useMemo(() => view === 'inbox' ? 'Customer email' : view === 'events' ? 'Email events' : view === 'campaigns' ? 'Campaigns' : view === 'templates' ? 'Email templates' : 'Email branding', [view]);
+  const title = useMemo(() => view === 'compose' ? 'Compose email' : view === 'inbox' ? 'Customer email' : view === 'events' ? 'Email events' : view === 'campaigns' ? 'Campaigns' : view === 'templates' ? 'Email templates' : 'Email branding', [view]);
   return <div className={styles.page}>
     <div className="dash-page-header"><div><h1 className="dash-page-title">{title}</h1><p className="dash-page-subtitle">One history for every customer message, delivery signal and campaign.</p></div></div>
     <nav className={styles.tabs} aria-label="Email workspace">
-      {(['inbox', 'events', ...(canManageCampaigns ? ['campaigns' as const, 'templates' as const, 'branding' as const] : [])] as const).map((tab) => <button key={tab} type="button" data-active={view === tab} aria-current={view === tab ? 'page' : undefined} onClick={() => setView(tab)}>{tab === 'inbox' ? 'Inbox' : tab === 'events' ? 'Event log' : tab === 'campaigns' ? 'Campaigns' : tab === 'templates' ? 'Templates' : 'Branding'}</button>)}
+      {(['compose', 'inbox', 'events', ...(canManageCampaigns ? ['campaigns' as const, 'templates' as const, 'branding' as const] : [])] as const).map((tab) => <button key={tab} type="button" data-active={view === tab} aria-current={view === tab ? 'page' : undefined} onClick={() => setView(tab)}>{tab === 'compose' ? 'Compose' : tab === 'inbox' ? 'Inbox' : tab === 'events' ? 'Event log' : tab === 'campaigns' ? 'Campaigns' : tab === 'templates' ? 'Templates' : 'Branding'}</button>)}
     </nav>
-    {view === 'inbox' ? <InboxView /> : view === 'events' ? <EventsView /> : view === 'campaigns' ? <CampaignsView /> : view === 'templates' ? <TemplatesView /> : <BrandingView />}
+    {view === 'compose' ? <ComposeView /> : view === 'inbox' ? <InboxView /> : view === 'events' ? <EventsView /> : view === 'campaigns' ? <CampaignsView /> : view === 'templates' ? <TemplatesView /> : <BrandingView />}
   </div>;
 }

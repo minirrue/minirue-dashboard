@@ -13,6 +13,7 @@
 .check { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; color: var(--mr-fg-3); font-size: 13px; }
 .check input { accent-color: var(--mr-ink-900); width: 16px; height: 16px; }
 .railMeta { padding: 8px 14px; color: var(--mr-fg-4); font-size: 11px; border-bottom: 1px solid var(--mr-dash-hair); }
+.composeCard { width: min(820px, calc(100% - 48px)); margin: 28px auto; padding: 24px; border: 1px solid var(--mr-dash-hair); border-radius: var(--mr-radius-lg); background: var(--mr-dash-surface); box-shadow: var(--mr-shadow-sm); }
 .threadList { min-height: 0; overflow-y: auto; scrollbar-color: var(--mr-dash-hair) transparent; }
 .thread { display: flex; width: 100%; flex-direction: column; gap: 5px; padding: 14px; border: 0; border-bottom: 1px solid var(--mr-dash-hair); background: transparent; color: var(--mr-fg-2); text-align: left; cursor: pointer; transition: background 150ms ease; }
 .thread:hover { background: var(--mr-dash-sub); }

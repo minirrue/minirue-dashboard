@@ -22,7 +22,26 @@ it('previews resolved variables and sends the exact customer/order context', asy
   expect(send).toHaveBeenCalledWith(expect.objectContaining({
     to: 'mariam@example.test', customerId: 'customer-1', orderId: 'order-1',
     variables: { customerName: 'Mariam', orderNumber: 'MR-42' },
-  }));
+  }), expect.any(String));
+});
+
+it('sends a custom message to an address entered in the Email workspace', async () => {
+  send.mockResolvedValue({ id: 'message-2', status: 'SENT' });
+  const user = userEvent.setup();
+  render(<DirectEmailComposer editableRecipient embedded variables={{}} />);
+
+  expect(screen.queryByRole('button', { name: 'Compose email' })).not.toBeInTheDocument();
+  await user.type(screen.getByLabelText('To'), 'customer@example.com');
+  await user.type(screen.getByLabelText('Subject'), 'A personal update');
+  await user.type(screen.getByLabelText('Message'), 'Hello from MiniRueShop');
+  await user.click(screen.getByRole('button', { name: 'Send now' }));
+
+  expect(send).toHaveBeenCalledWith(expect.objectContaining({
+    to: 'customer@example.com',
+    subject: 'A personal update',
+    text: 'Hello from MiniRueShop',
+  }), expect.any(String));
+  expect(await screen.findByText('Email sent to customer@example.com.')).toBeInTheDocument();
 });
 
 it('does not pretend to send when the endpoint rejects the request', async () => {

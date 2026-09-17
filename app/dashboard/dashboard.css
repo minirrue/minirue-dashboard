@@ -484,6 +484,18 @@
     flex-direction: column;
   }
 
+  /* A collapsed rail must always provide an obvious way back. The bell and
+     warning controls previously consumed the small brand stack and pushed the
+     expand button below its clipped area. They remain available after expand. */
+  .dash-sidebar[data-collapsed="true"] .dash-notif-btn,
+  .dash-sidebar[data-collapsed="true"] .dash-warn-btn {
+    display: none;
+  }
+
+  .dash-sidebar[data-collapsed="true"] .dash-sidebar-collapse {
+    order: -1;
+  }
+
   .dash-sidebar[data-collapsed="true"] .dash-sidebar-nav {
     padding: 10px 8px;
     gap: 8px;
