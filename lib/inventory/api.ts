@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/api/client';
+import type { InventoryAdjustmentReason } from '@/lib/reasons/operational';
 
 export type StockStatus = 'OK' | 'LOW' | 'OUT';
 export type MovementType = 'RECEIVE' | 'RESERVE' | 'RELEASE' | 'ADJUST' | 'SHIP' | 'RETURN';
@@ -96,6 +97,32 @@ export async function adjustStock(data: {
   return apiFetch('/inventory/stock/adjust', {
     method: 'POST',
     auth: true,
+    body: JSON.stringify(data),
+  });
+}
+
+export interface BulkStockResult {
+  batchId: string;
+  idempotencyKey: string;
+  operation: 'SET' | 'ADD' | 'REMOVE' | 'OUT_OF_STOCK';
+  quantity: number | null;
+  updatedCount: number;
+  data: Array<StockAdminRow & { before: number; after: number; changed: boolean }>;
+  replayed: boolean;
+}
+
+/** One atomic, auditable operator action for the selected inventory rows. */
+export async function bulkAdjustStock(data: {
+  operation: BulkStockResult['operation'];
+  items: Array<{ variantId: string; warehouseId?: string }>;
+  quantity?: number;
+  reason: InventoryAdjustmentReason;
+  reasonNote?: string;
+}): Promise<BulkStockResult> {
+  return apiFetch('/inventory/stock/bulk', {
+    method: 'POST',
+    auth: true,
+    headers: { 'Idempotency-Key': crypto.randomUUID() },
     body: JSON.stringify(data),
   });
 }

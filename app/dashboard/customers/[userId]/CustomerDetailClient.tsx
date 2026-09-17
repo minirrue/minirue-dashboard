@@ -39,6 +39,12 @@ import { EnlargeableImage } from '@/components/dashboard/ImagePreviewModal';
 import { GenericAvatarIcon } from '@/components/GenericAvatarIcon';
 import CopyButton from '@/components/dashboard/CopyButton';
 import CustomerEmailActivity from '@/components/dashboard/email/CustomerEmailActivity';
+import { ReasonPicker } from '@/components/dashboard/ReasonPicker';
+import {
+  CUSTOMER_TIER_REASONS,
+  legacyReasonText,
+  type CustomerTierReason,
+} from '@/lib/reasons/operational';
 
 const TIER_OPTIONS: TierLevel[] = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM'];
 const ADDRESS_LABELS: CustomerAddressInput['label'][] = ['HOME', 'WORK', 'OTHER'];
@@ -114,7 +120,9 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tier, setTier] = useState<TierLevel>('BRONZE');
-  const [reason, setReason] = useState('');
+  const [tierReason, setTierReason] = useState<CustomerTierReason>('MANUAL_REVIEW');
+  const [tierReasonNote, setTierReasonNote] = useState('');
+  const [tierReasonError, setTierReasonError] = useState<string | undefined>();
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -231,15 +239,22 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
 
   const handleAdjustTier = async () => {
     if (!customer) return;
+    if (tierReason === 'OTHER' && !tierReasonNote.trim()) {
+      setTierReasonError('Explain the tier change when the reason is Other.');
+      return;
+    }
     setSaving(true);
     setSaveMsg(null);
+    setTierReasonError(undefined);
     try {
       const updated = await apiAdminAdjustTier(userId, {
         tier,
-        reason: reason.trim() || undefined,
+        reason: legacyReasonText(CUSTOMER_TIER_REASONS, tierReason, tierReasonNote),
       });
       setCustomer(updated);
       setSaveMsg('Tier updated.');
+      setTierReason('MANUAL_REVIEW');
+      setTierReasonNote('');
     } catch (e) {
       setSaveMsg((e as ApiError).message ?? 'Failed to update tier');
     } finally {
@@ -627,16 +642,18 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                   ))}
                 </select>
               </div>
-              <div className="dash-field" style={{ marginBottom: 12 }}>
-                <label className="dash-label" htmlFor="tier-reason">
-                  Reason (optional)
-                </label>
-                <input
-                  id="tier-reason"
-                  className="dash-input"
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="Why is this tier changing?"
+              <div style={{ marginBottom: 12 }}>
+                <ReasonPicker
+                  label="Reason"
+                  options={CUSTOMER_TIER_REASONS}
+                  value={tierReason}
+                  onChange={(next) => { setTierReason(next); setTierReasonError(undefined); }}
+                  note={tierReasonNote}
+                  onNoteChange={(next) => { setTierReasonNote(next); setTierReasonError(undefined); }}
+                  otherValue="OTHER"
+                  noteLabel="Explain the tier change"
+                  notePlaceholder="Why is this tier changing?"
+                  error={tierReasonError}
                 />
               </div>
               {saveMsg && (

@@ -18,6 +18,12 @@ import {
 } from '@/lib/dates/end-of-shop-day';
 import { codeNameProblem, formatCodeName } from '@/lib/discounts/code-name';
 import { apiOfferImpact } from '@/lib/api/accounting';
+import { ReasonPicker } from '@/components/dashboard/ReasonPicker';
+import {
+  DISCOUNT_REASONS,
+  legacyReasonText,
+  type DiscountReason,
+} from '@/lib/reasons/operational';
 
 type Mode = 'AUTOMATIC' | 'MANUAL';
 
@@ -140,6 +146,8 @@ export default function SitewidePanel({
   const [percent, setPercent] = React.useState('10');
   const [expiresAt, setExpiresAt] = React.useState('');
   const [note, setNote] = React.useState('');
+  const [reason, setReason] = React.useState<DiscountReason>('CAMPAIGN');
+  const [reasonError, setReasonError] = React.useState<string | undefined>();
   // Manual only.
   const [code, setCode] = React.useState('');
   const [startsAt, setStartsAt] = React.useState('');
@@ -171,8 +179,13 @@ export default function SitewidePanel({
 
   async function startAutomatic(e: React.FormEvent) {
     e.preventDefault();
+    if (reason === 'OTHER' && !note.trim()) {
+      setReasonError('Explain the discount when the reason is Other.');
+      return;
+    }
     setSaving(true);
     setError(null);
+    setReasonError(undefined);
     try {
       await setAutomatic({
         percent: Number(percent),
@@ -180,9 +193,10 @@ export default function SitewidePanel({
         // offer off in the small hours of the day it was meant to run through,
         // and made an offer ending today already expired (frontend#83).
         expiresAt: expiresAt ? endOfShopDayIso(expiresAt) : null,
-        note: note.trim() || null,
+        note: legacyReasonText(DISCOUNT_REASONS, reason, note),
       });
       setNote('');
+      setReason('CAMPAIGN');
       onChanged();
       await load();
     } catch (e) {
@@ -219,8 +233,13 @@ export default function SitewidePanel({
   async function createManual(e: React.FormEvent) {
     e.preventDefault();
     if (!canCreate) return;
+    if (reason === 'OTHER' && !note.trim()) {
+      setReasonError('Explain the discount when the reason is Other.');
+      return;
+    }
     setSaving(true);
     setError(null);
+    setReasonError(undefined);
     setJustCreated(null);
     try {
       const created = await createDiscount({
@@ -238,11 +257,12 @@ export default function SitewidePanel({
         expiresAt: expiresAt ? endOfShopDayIso(expiresAt) : null,
         maxRedemptions: maxRedemptions.trim() ? Number(maxRedemptions) : null,
         maxPerCustomer: Number(maxPerCustomer) || 1,
-        note: note.trim() || null,
+        note: legacyReasonText(DISCOUNT_REASONS, reason, note),
       });
       setJustCreated(created.code);
       setCode('');
       setNote('');
+      setReason('CAMPAIGN');
       onChanged();
       await load();
     } catch (e) {
@@ -366,14 +386,18 @@ export default function SitewidePanel({
                     onChange={(e) => setExpiresAt(e.target.value)}
                   />
                 </div>
-                <div className="dash-field">
-                  <label className="dash-label" htmlFor="auto-note">Note to yourself</label>
-                  <input
-                    id="auto-note"
-                    className="dash-input"
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder="Eid week"
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <ReasonPicker
+                    label="Reason"
+                    options={DISCOUNT_REASONS}
+                    value={reason}
+                    onChange={(next) => { setReason(next); setReasonError(undefined); }}
+                    note={note}
+                    onNoteChange={(next) => { setNote(next); setReasonError(undefined); }}
+                    otherValue="OTHER"
+                    noteLabel="Explain the discount"
+                    notePlaceholder="Campaign name or customer case"
+                    error={reasonError}
                   />
                 </div>
               </div>
@@ -561,14 +585,18 @@ export default function SitewidePanel({
                     onChange={(e) => setMaxPerCustomer(e.target.value)}
                   />
                 </div>
-                <div className="dash-field">
-                  <label className="dash-label" htmlFor="manual-note">Note to yourself</label>
-                  <input
-                    id="manual-note"
-                    className="dash-input"
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder="Summer campaign"
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <ReasonPicker
+                    label="Reason"
+                    options={DISCOUNT_REASONS}
+                    value={reason}
+                    onChange={(next) => { setReason(next); setReasonError(undefined); }}
+                    note={note}
+                    onNoteChange={(next) => { setNote(next); setReasonError(undefined); }}
+                    otherValue="OTHER"
+                    noteLabel="Explain the discount"
+                    notePlaceholder="Campaign name or customer case"
+                    error={reasonError}
                   />
                 </div>
               </div>

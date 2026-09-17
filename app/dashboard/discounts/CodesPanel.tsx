@@ -15,6 +15,12 @@ import {
 } from '@/lib/dates/end-of-shop-day';
 import { codeNameProblem, formatCodeName } from '@/lib/discounts/code-name';
 import { OfferImpactLine } from './SitewidePanel';
+import { ReasonPicker } from '@/components/dashboard/ReasonPicker';
+import {
+  DISCOUNT_REASONS,
+  legacyReasonText,
+  type DiscountReason,
+} from '@/lib/reasons/operational';
 
 function money(minor: number): string {
   return (minor / 100).toFixed(2);
@@ -68,6 +74,8 @@ export default function CodesPanel({
       ? 'It ends before it starts — pick an end date on or after the start.'
       : null;
   const [note, setNote] = React.useState('');
+  const [reason, setReason] = React.useState<DiscountReason>('CAMPAIGN');
+  const [reasonError, setReasonError] = React.useState<string | undefined>();
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -87,8 +95,13 @@ export default function CodesPanel({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (reason === 'OTHER' && !note.trim()) {
+      setReasonError('Explain the discount when the reason is Other.');
+      return;
+    }
     setCreating(true);
     setError(null);
+    setReasonError(undefined);
     try {
       const created = await createDiscount({
         kind,
@@ -106,13 +119,14 @@ export default function CodesPanel({
         startsAt: startsAt ? startOfShopDayIso(startsAt) : null,
         // Blank = generated. Named = exactly what the preview showed.
         ...(codeName.trim() ? { code: formatCodeName(codeName) } : {}),
-        note: note.trim() || null,
+        note: legacyReasonText(DISCOUNT_REASONS, reason, note),
       });
       // Shown on its own rather than left to be found in the list: this is the
       // moment the code has to be copied, and hunting for it among similar
       // codes is how the wrong one gets sent to a customer.
       setJustCreated(created.code);
       setNote('');
+      setReason('CAMPAIGN');
       setOwnerCustomerId('');
       setCodeName('');
       onChanged();
@@ -319,14 +333,18 @@ export default function CodesPanel({
               />
             </div>
 
-            <div className="dash-field">
-              <label className="dash-label" htmlFor="disc-note">Note to yourself</label>
-              <input
-                id="disc-note"
-                className="dash-input"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Ramadan campaign, complaint 412…"
+            <div style={{ gridColumn: '1 / -1' }}>
+              <ReasonPicker
+                label="Reason"
+                options={DISCOUNT_REASONS}
+                value={reason}
+                onChange={(next) => { setReason(next); setReasonError(undefined); }}
+                note={note}
+                onNoteChange={(next) => { setNote(next); setReasonError(undefined); }}
+                otherValue="OTHER"
+                noteLabel="Explain the discount"
+                notePlaceholder="Campaign name or customer case"
+                error={reasonError}
               />
             </div>
           </div>

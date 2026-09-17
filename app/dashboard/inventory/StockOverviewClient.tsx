@@ -3,14 +3,20 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
+import { ReasonPicker } from '@/components/dashboard/ReasonPicker';
 import {
   adjustStock,
+  bulkAdjustStock,
   listAllStockAdmin,
   listInventoryCatalog,
   listMovements,
   setVariantStock,
   stockStatus,
 } from '@/lib/inventory/api';
+import {
+  INVENTORY_ADJUSTMENT_REASONS,
+  type InventoryAdjustmentReason,
+} from '@/lib/reasons/operational';
 import type {
   InventoryCatalogProduct,
   MovementRow,
@@ -24,7 +30,6 @@ import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
 
 type SortKey = 'available-asc' | 'available-desc' | 'updated-desc' | 'updated-asc';
 type BulkMode = 'set' | 'add' | 'remove';
-type Reason = 'Stock count' | 'Damaged' | 'Transfer' | 'Correction' | 'Other';
 
 interface InventoryRow extends StockAdminRow {
   key: string;
@@ -41,8 +46,6 @@ interface InventoryRow extends StockAdminRow {
   _status: StockStatus;
   _updatedAt: string | null;
 }
-
-const REASONS: Reason[] = ['Stock count', 'Damaged', 'Transfer', 'Correction', 'Other'];
 
 function SkeletonRows() {
   return (
@@ -167,8 +170,9 @@ export default function StockOverviewClient() {
   const [saving, setSaving] = useState<Set<string>>(new Set());
   const [bulkMode, setBulkMode] = useState<BulkMode>('set');
   const [bulkValue, setBulkValue] = useState('');
-  const [reason, setReason] = useState<Reason>('Stock count');
+  const [reason, setReason] = useState<InventoryAdjustmentReason>('STOCK_COUNT');
   const [otherReason, setOtherReason] = useState('');
+  const [reasonError, setReasonError] = useState<string | undefined>();
   const [openHistory, setOpenHistory] = useState<string | null>(null);
 
   const load = useCallback(async (showLoading = true) => {
@@ -220,10 +224,6 @@ export default function StockOverviewClient() {
   const outCount = rows.filter((row) => row._status === 'OUT').length;
   const lowCount = rows.filter((row) => row._status === 'LOW').length;
 
-  function resolvedReason(): string {
-    return reason === 'Other' ? otherReason.trim() : reason;
-  }
-
   async function persist(row: InventoryRow, target: number, why: string): Promise<void> {
     if (!Number.isInteger(target) || target < 0 || target > 1_000_000) throw new Error('Quantity must be a whole number from 0 to 1,000,000.');
     const delta = target - row.qtyAvailable;
@@ -250,27 +250,47 @@ export default function StockOverviewClient() {
     }
   }
 
-  async function applyBulk(mode = bulkMode, explicitValue?: number) {
-    const amount = explicitValue ?? Number(bulkValue);
-    const why = resolvedReason();
+  async function applyBulk(mode: BulkMode | 'out' = bulkMode) {
+    const amount = Number(bulkValue);
     if (!selectedRows.length) return;
-    if (!why) { setError('Add a reason for this adjustment.'); return; }
-    if (!Number.isInteger(amount) || amount < 0) { setError('Enter a whole number of units.'); return; }
+    if (reason === 'OTHER' && !otherReason.trim()) {
+      setReasonError('Explain the adjustment when the reason is Other.');
+      return;
+    }
+    if (mode !== 'out' && (!Number.isInteger(amount) || amount < 0)) {
+      setError('Enter a whole number of units.');
+      return;
+    }
+    if ((mode === 'add' || mode === 'remove') && amount === 0) {
+      setError('Enter at least one unit to add or remove.');
+      return;
+    }
+    setReasonError(undefined);
     setError(null);
     setNotice(null);
     setSaving(new Set(selectedRows.map((row) => row.key)));
-    const failures: string[] = [];
-    for (const row of selectedRows) {
-      const target = mode === 'set' ? amount : mode === 'add' ? row.qtyAvailable + amount : Math.max(0, row.qtyAvailable - amount);
-      try { await persist(row, target, why); } catch { failures.push(row.sku || row.variantName); }
-    }
-    await load(false);
-    setSaving(new Set());
-    if (failures.length) setError(`${selectedRows.length - failures.length} saved; ${failures.length} failed: ${failures.join(', ')}`);
-    else {
-      setNotice(`${selectedRows.length} ${selectedRows.length === 1 ? 'variant' : 'variants'} updated.`);
+    try {
+      const operation = mode === 'out' ? 'OUT_OF_STOCK' : mode.toUpperCase() as 'SET' | 'ADD' | 'REMOVE';
+      const result = await bulkAdjustStock({
+        operation,
+        items: selectedRows.map((row) => ({
+          variantId: row.variantId,
+          ...(row.warehouseId ? { warehouseId: row.warehouseId } : {}),
+        })),
+        ...(mode === 'out' ? {} : { quantity: amount }),
+        reason,
+        ...(reason === 'OTHER' ? { reasonNote: otherReason.trim() } : {}),
+      });
+      await load(false);
+      setNotice(`${result.updatedCount} ${result.updatedCount === 1 ? 'variant' : 'variants'} updated.`);
       setSelected(new Set());
       setBulkValue('');
+      setReason('STOCK_COUNT');
+      setOtherReason('');
+    } catch (caught) {
+      setError((caught as ApiError).message ?? 'Stock could not be updated.');
+    } finally {
+      setSaving(new Set());
     }
   }
 
@@ -365,12 +385,20 @@ export default function StockOverviewClient() {
             <option value="set">Set to</option><option value="add">Add</option><option value="remove">Remove</option>
           </select>
           <input aria-label="Bulk quantity" className="dash-input inventory-qty-input" type="number" min="0" step="1" value={bulkValue} onChange={(event) => setBulkValue(event.target.value)} />
-          <select aria-label="Adjustment reason" className="dash-select" value={reason} onChange={(event) => setReason(event.target.value as Reason)}>
-            {REASONS.map((item) => <option key={item}>{item}</option>)}
-          </select>
-          {reason === 'Other' && <input aria-label="Other adjustment reason" className="dash-input" maxLength={128} placeholder="Reason" value={otherReason} onChange={(event) => setOtherReason(event.target.value)} />}
+          <ReasonPicker
+            label="Adjustment reason"
+            options={INVENTORY_ADJUSTMENT_REASONS}
+            value={reason}
+            onChange={(next) => { setReason(next); setReasonError(undefined); }}
+            note={otherReason}
+            onNoteChange={(next) => { setOtherReason(next); setReasonError(undefined); }}
+            otherValue="OTHER"
+            noteLabel="Explain the adjustment"
+            notePlaceholder="What happened to this stock?"
+            error={reasonError}
+          />
           <button className="dash-btn-primary" disabled={saving.size > 0} onClick={() => void applyBulk()}>Apply to {selected.size}</button>
-          <button className="dash-btn-secondary" disabled={saving.size > 0} onClick={() => { setBulkMode('set'); void applyBulk('set', 0); }}>Mark out of stock</button>
+          <button className="dash-btn-secondary" disabled={saving.size > 0} onClick={() => void applyBulk('out')}>Mark out of stock</button>
           <button className="dash-btn-ghost" onClick={() => setSelected(new Set())}>Clear</button>
         </div>
       )}
@@ -440,6 +468,8 @@ export default function StockOverviewClient() {
         .inventory-bulk { position: sticky; top: 8px; z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border-radius: var(--mr-radius-md); background: var(--mr-ink-900); color: var(--mr-cream-100); box-shadow: 0 10px 30px rgba(20, 15, 9, .16); }
         .inventory-bulk strong { margin-right: 4px; }
         .inventory-bulk :global(.dash-select), .inventory-bulk :global(.dash-input) { width: auto; min-width: 112px; }
+        .inventory-bulk :global(.reason-picker) { flex: 1 1 100%; padding: 10px; border-radius: var(--mr-radius-sm); background: var(--mr-cream-100); color: var(--mr-fg); }
+        .inventory-bulk :global(.reason-picker__choices) { grid-template-columns: repeat(5, minmax(118px, 1fr)); }
         .inventory-qty-input { max-width: 112px; font-variant-numeric: tabular-nums; }
         .inventory-notice { margin: 0 0 12px; padding: 10px 12px; border-radius: var(--mr-radius-sm); background: var(--mr-st-ok-bg); color: var(--mr-st-ok-fg); font-size: 13px; }
         .inventory-error { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
@@ -476,6 +506,8 @@ export default function StockOverviewClient() {
           .inventory-filters > :global(*) { width: 100% !important; }
           .inventory-bulk { position: static; align-items: stretch; }
           .inventory-bulk > :global(*) { flex: 1 1 calc(50% - 8px); }
+          .inventory-bulk :global(.reason-picker) { flex-basis: 100%; }
+          .inventory-bulk :global(.reason-picker__choices) { grid-template-columns: 1fr; }
           .inventory-table-wrap { display: none; }
           .inventory-mobile-list { display: grid; gap: 10px; padding: 10px; }
           .inventory-mobile-card { padding: 14px; border: 1px solid var(--mr-dash-hair); border-radius: var(--mr-radius-md); background: var(--mr-dash-surface); }

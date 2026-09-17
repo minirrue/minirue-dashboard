@@ -153,7 +153,7 @@ describe('SitewidePanel — Automatic / Manual code', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Start' }));
     });
 
-    expect(mockSetAutomatic).toHaveBeenCalledWith({ percent: 12, expiresAt: null, note: null });
+    expect(mockSetAutomatic).toHaveBeenCalledWith({ percent: 12, expiresAt: null, note: 'Campaign' });
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
@@ -188,7 +188,7 @@ describe('SitewidePanel — Automatic / Manual code', () => {
       expiresAt: '2026-10-07T20:59:59.999Z',
       maxRedemptions: 100,
       maxPerCustomer: 2,
-      note: null,
+      note: 'Campaign',
     });
     expect(mockSetAutomatic).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.getByText(/Created/)).toHaveTextContent('SUMMER SALE'));
@@ -216,6 +216,28 @@ describe('SitewidePanel — Automatic / Manual code', () => {
 
     expect(screen.getByRole('button', { name: 'Create code' })).toBeDisabled();
     expect(screen.getByText(/ends before it starts/i)).toBeInTheDocument();
+  });
+
+  it('requires a note for Other and stores the explanation in the legacy note field', async () => {
+    render(<SitewidePanel onChanged={jest.fn()} refreshToken={0} />);
+    await waitFor(() => expect(mockList).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Other' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }));
+    expect(await screen.findByText(/explain the discount/i)).toBeInTheDocument();
+    expect(mockSetAutomatic).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Explain the discount'), {
+      target: { value: 'VIP apology week' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Start' }));
+    });
+    expect(mockSetAutomatic).toHaveBeenCalledWith({
+      percent: 10,
+      expiresAt: null,
+      note: 'VIP apology week',
+    });
   });
 
   it('lists live manual sitewide codes only — not per-item or personal codes — and can stop one', async () => {
@@ -327,7 +349,7 @@ describe('offer impact line (dashboard#63, backend#164)', () => {
     await act(async () => {
       fireEvent.click(start);
     });
-    expect(mockSetAutomatic).toHaveBeenCalledWith({ percent: 25, expiresAt: null, note: null });
+    expect(mockSetAutomatic).toHaveBeenCalledWith({ percent: 25, expiresAt: null, note: 'Campaign' });
     expect(screen.queryByText(/offline/)).not.toBeInTheDocument();
   });
 

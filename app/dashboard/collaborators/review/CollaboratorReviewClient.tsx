@@ -32,6 +32,12 @@ import {
 
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import { ReasonPicker } from '@/components/dashboard/ReasonPicker';
+import {
+  COLLABORATOR_REJECTION_REASONS,
+  legacyReasonText,
+  type CollaboratorRejectionReason,
+} from '@/lib/reasons/operational';
 
 
 
@@ -45,7 +51,11 @@ export default function CollaboratorReviewClient() {
 
   const [rejectId, setRejectId] = useState<string | null>(null);
 
-  const [rejectReason, setRejectReason] = useState('');
+  const [rejectReason, setRejectReason] = useState<CollaboratorRejectionReason>('IMAGE_QUALITY');
+
+  const [rejectReasonNote, setRejectReasonNote] = useState('');
+
+  const [rejectReasonError, setRejectReasonError] = useState<string | undefined>();
 
   const [acting, setActing] = useState<string | null>(null);
 
@@ -122,7 +132,15 @@ export default function CollaboratorReviewClient() {
 
     e.preventDefault();
 
-    if (!rejectId || !rejectReason.trim()) return;
+    if (!rejectId) return;
+
+    if (rejectReason === 'OTHER' && !rejectReasonNote.trim()) {
+
+      setRejectReasonError('Explain the rejection when the reason is Other.');
+
+      return;
+
+    }
 
     setActing(rejectId);
 
@@ -130,11 +148,21 @@ export default function CollaboratorReviewClient() {
 
     try {
 
-      await apiRejectCollaboratorProduct(rejectId, rejectReason.trim());
+      await apiRejectCollaboratorProduct(
+
+        rejectId,
+
+        legacyReasonText(COLLABORATOR_REJECTION_REASONS, rejectReason, rejectReasonNote),
+
+      );
 
       setRejectId(null);
 
-      setRejectReason('');
+      setRejectReason('IMAGE_QUALITY');
+
+      setRejectReasonNote('');
+
+      setRejectReasonError(undefined);
 
       await load();
 
@@ -274,7 +302,11 @@ export default function CollaboratorReviewClient() {
 
                         setRejectId(row.id);
 
-                        setRejectReason('');
+                        setRejectReason('IMAGE_QUALITY');
+
+                        setRejectReasonNote('');
+
+                        setRejectReasonError(undefined);
 
                       }}
 
@@ -308,31 +340,29 @@ export default function CollaboratorReviewClient() {
 
           <h2 className="dash-card-title">Reject product</h2>
 
-          <div className="dash-field">
+          <ReasonPicker
 
-            <label className="dash-label" htmlFor="reject-reason">
+            label="Reason shown to partner"
 
-              Reason (shown to partner)
+            options={COLLABORATOR_REJECTION_REASONS}
 
-            </label>
+            value={rejectReason}
 
-            <textarea
+            onChange={(next) => { setRejectReason(next); setRejectReasonError(undefined); }}
 
-              id="reject-reason"
+            note={rejectReasonNote}
 
-              className="dash-input"
+            onNoteChange={(next) => { setRejectReasonNote(next); setRejectReasonError(undefined); }}
 
-              rows={3}
+            otherValue="OTHER"
 
-              value={rejectReason}
+            noteLabel="Explain the rejection"
 
-              onChange={(e) => setRejectReason(e.target.value)}
+            notePlaceholder="Tell the partner what must change"
 
-              required
+            error={rejectReasonError}
 
-            />
-
-          </div>
+          />
 
           <div className="dash-form-actions">
 

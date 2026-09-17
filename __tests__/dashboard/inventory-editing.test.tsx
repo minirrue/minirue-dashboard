@@ -6,6 +6,7 @@ import * as inventoryApi from '@/lib/inventory/api';
 
 jest.mock('@/lib/inventory/api', () => ({
   adjustStock: jest.fn(),
+  bulkAdjustStock: jest.fn(),
   listAllStockAdmin: jest.fn(),
   listInventoryCatalog: jest.fn(),
   listMovements: jest.fn(),
@@ -50,6 +51,15 @@ describe('inventory editing', () => {
     api.listInventoryCatalog.mockResolvedValue(catalog);
     api.listMovements.mockResolvedValue({ data: [], total: 0 });
     api.adjustStock.mockImplementation(async ({ variantId }) => stock.find((row) => row.variantId === variantId)!);
+    api.bulkAdjustStock.mockResolvedValue({
+      batchId: 'batch-1',
+      idempotencyKey: 'idem-1',
+      operation: 'SET',
+      quantity: 20,
+      updatedCount: 3,
+      data: [],
+      replayed: false,
+    });
     api.setVariantStock.mockResolvedValue({ variantId: 'v1', available: 1 });
   });
 
@@ -70,7 +80,7 @@ describe('inventory editing', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Black Opium · 50 ml saved.');
   });
 
-  it('bulk-sets three selected variants with one auditable adjustment per item', async () => {
+  it('bulk-sets selected variants atomically with a structured reason', async () => {
     const user = userEvent.setup();
     render(<StockOverviewClient />);
     await screen.findAllByText('Black Opium');
@@ -83,10 +93,54 @@ describe('inventory editing', () => {
     await user.type(within(toolbar).getByLabelText('Bulk quantity'), '20');
     await user.click(within(toolbar).getByRole('button', { name: 'Apply to 3' }));
 
-    await waitFor(() => expect(api.adjustStock).toHaveBeenCalledTimes(3));
-    expect(api.adjustStock).toHaveBeenNthCalledWith(1, expect.objectContaining({ variantId: 'v1', qty: 10, reason: 'Stock count' }));
-    expect(api.adjustStock).toHaveBeenNthCalledWith(2, expect.objectContaining({ variantId: 'v2', qty: 15, reason: 'Stock count' }));
-    expect(api.adjustStock).toHaveBeenNthCalledWith(3, expect.objectContaining({ variantId: 'v3', qty: 19, reason: 'Stock count' }));
+    await waitFor(() => expect(api.bulkAdjustStock).toHaveBeenCalledTimes(1));
+    expect(api.bulkAdjustStock).toHaveBeenCalledWith({
+      operation: 'SET',
+      quantity: 20,
+      reason: 'STOCK_COUNT',
+      items: [
+        { variantId: 'v1', warehouseId: 'w1' },
+        { variantId: 'v2', warehouseId: 'w1' },
+        { variantId: 'v3', warehouseId: 'w1' },
+      ],
+    });
     expect(await screen.findByRole('status')).toHaveTextContent('3 variants updated.');
+  });
+
+  it('requires an explanation for Other and sends it as reasonNote', async () => {
+    const user = userEvent.setup();
+    render(<StockOverviewClient />);
+    await screen.findAllByText('Black Opium');
+    await user.click(screen.getAllByLabelText('Select Black Opium 50 ml')[0]);
+
+    const toolbar = screen.getByRole('region', { name: 'Bulk stock actions' });
+    await user.type(within(toolbar).getByLabelText('Bulk quantity'), '2');
+    await user.click(within(toolbar).getByRole('radio', { name: 'Other' }));
+    await user.click(within(toolbar).getByRole('button', { name: 'Apply to 1' }));
+    expect(await within(toolbar).findByRole('alert')).toHaveTextContent(/explain the adjustment/i);
+    expect(api.bulkAdjustStock).not.toHaveBeenCalled();
+
+    await user.type(within(toolbar).getByLabelText('Explain the adjustment'), 'Cycle count discrepancy');
+    await user.click(within(toolbar).getByRole('button', { name: 'Apply to 1' }));
+    await waitFor(() => expect(api.bulkAdjustStock).toHaveBeenCalledWith(expect.objectContaining({
+      reason: 'OTHER',
+      reasonNote: 'Cycle count discrepancy',
+    })));
+  });
+
+  it('marks selected variants out of stock without requiring a quantity', async () => {
+    const user = userEvent.setup();
+    render(<StockOverviewClient />);
+    await screen.findAllByText('Black Opium');
+    await user.click(screen.getAllByLabelText('Select Black Opium 50 ml')[0]);
+
+    const toolbar = screen.getByRole('region', { name: 'Bulk stock actions' });
+    await user.click(within(toolbar).getByRole('button', { name: 'Mark out of stock' }));
+
+    await waitFor(() => expect(api.bulkAdjustStock).toHaveBeenCalledWith({
+      operation: 'OUT_OF_STOCK',
+      reason: 'STOCK_COUNT',
+      items: [{ variantId: 'v1', warehouseId: 'w1' }],
+    }));
   });
 });

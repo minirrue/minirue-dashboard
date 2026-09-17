@@ -107,4 +107,28 @@ describe('CustomerDetailClient avatar', () => {
     await user.click(screen.getByRole('button', { name: /view full size/i }));
     expect(screen.getByRole('dialog', { name: /image preview/i })).toBeInTheDocument();
   });
+
+  it('requires an explanation for Other before saving a tier override', async () => {
+    const customer = makeCustomer();
+    mockedCustomers.apiAdminGetCustomer.mockResolvedValue(customer);
+    mockedCustomers.apiAdminAdjustTier.mockResolvedValue({ ...customer, tier: 'GOLD' });
+    render(<CustomerDetailClient userId="cus_1" />);
+    const user = userEvent.setup();
+
+    await screen.findAllByText('Jane Doe');
+    await user.selectOptions(screen.getByLabelText('Tier'), 'GOLD');
+    await user.click(screen.getByRole('radio', { name: 'Other' }));
+    await user.click(screen.getByRole('button', { name: 'Save tier' }));
+    expect(
+      await screen.findByText(/explain the tier change/i, { selector: '.dash-field-error' }),
+    ).toBeInTheDocument();
+    expect(mockedCustomers.apiAdminAdjustTier).not.toHaveBeenCalled();
+
+    await user.type(screen.getByLabelText('Explain the tier change'), 'Founder exception');
+    await user.click(screen.getByRole('button', { name: 'Save tier' }));
+    await waitFor(() => expect(mockedCustomers.apiAdminAdjustTier).toHaveBeenCalledWith('cus_1', {
+      tier: 'GOLD',
+      reason: 'Founder exception',
+    }));
+  });
 });
