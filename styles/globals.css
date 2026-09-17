@@ -15,6 +15,22 @@
   }
 }
 
+/* Operational choices stay compact and scannable. */
+.reason-picker { display: grid; gap: 12px; }
+.reason-picker__fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.reason-picker__choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 7px; }
+.reason-picker__choice { display: flex; gap: 10px; align-items: flex-start; min-height: 48px; padding: 11px 12px; border: 1px solid var(--mr-hairline); border-radius: 10px; background: var(--mr-dash-surface); cursor: pointer; transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease; }
+.reason-picker__choice:hover { border-color: var(--mr-border); }
+.reason-picker__choice[data-selected='true'] { border-color: var(--mr-accent); background: var(--mr-gold-100); box-shadow: inset 0 0 0 1px var(--mr-accent); }
+.reason-picker__choice input { margin-top: 3px; accent-color: var(--mr-accent); }
+.reason-picker__choice span { display: grid; gap: 2px; min-width: 0; }
+.reason-picker__choice strong { color: var(--mr-fg); font-size: 13px; font-weight: 650; }
+.reason-picker__choice small { color: var(--mr-fg-3); font-size: 12px; line-height: 1.35; }
+.reason-picker__optional { color: var(--mr-fg-3); font-weight: 400; }
+.reason-picker__note { margin: 0; }
+@media (max-width: 560px) { .reason-picker__choices { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .reason-picker__choice { transition: none; } }
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }

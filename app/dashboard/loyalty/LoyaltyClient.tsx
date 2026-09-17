@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import CopyButton from '@/components/dashboard/CopyButton';
+import { ReasonPicker } from '@/components/dashboard/ReasonPicker';
 import RetryingImage from '@/components/dashboard/RetryingImage';
 import {
   apiAdminGetLoyaltyCustomer,
@@ -119,9 +120,20 @@ function CustomerDrawer({ account, onClose, onChanged }: { account: LoyaltyAccou
           <form className="loyalty-adjust" onSubmit={submit}>
             <div className="loyalty-segmented" aria-label="Adjustment direction"><button type="button" aria-pressed={mode === 'add'} onClick={() => setMode('add')}>Add</button><button type="button" aria-pressed={mode === 'remove'} onClick={() => setMode('remove')}>Remove</button></div>
             <label>Points<input className="dash-input" type="number" min="1" step="1" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
-            <label>Reason<select className="dash-input" value={reason} onChange={(e) => selectReason(e.target.value as LoyaltyAdjustmentReason)}>{REASONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
-            {reason === 'OTHER' && <label className="loyalty-full">Required note<textarea className="dash-input" rows={3} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Explain why this adjustment is needed" /></label>}
-            {reason !== 'OTHER' && <label className="loyalty-full">Internal note <span>(optional)</span><textarea className="dash-input" rows={2} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} /></label>}
+            <div className="loyalty-full">
+              <ReasonPicker
+                label="Reason"
+                options={REASONS}
+                value={reason}
+                onChange={selectReason}
+                note={note}
+                onNoteChange={setNote}
+                otherValue="OTHER"
+                noteLabel="Required note"
+                notePlaceholder="Explain why this adjustment is needed"
+                showOptionalNote
+              />
+            </div>
             {error && <p className="dash-inline-error loyalty-full" role="alert">{error}</p>}
             {success && <p className="loyalty-success loyalty-full" role="status">{success}</p>}
             <button className="dash-btn-primary loyalty-adjust-submit" disabled={saving}>{saving ? 'Applying…' : `${mode === 'add' ? 'Add' : 'Remove'} ${Number(amount || 0).toLocaleString()} points`}</button>
