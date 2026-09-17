@@ -175,6 +175,8 @@ export interface StoreSettings {
   };
   /** Optional: absent on any row written before dashboard#84 / backend#186. */
   fulfillment?: FulfillmentConfig;
+  /** Loyalty earning rate. Redemption and milestones are not active yet. */
+  loyalty?: { pointsPerEgp: number };
 }
 
 export async function apiGetSettings(): Promise<StoreSettings> {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 // The Lane 12 rewrite (2026-07-31) replaced `AnalyticsClient` with the
 // widget-registry Overview screen and moved the order-derived figures this
 // suite actually exercises (revenue/refunds/orders/top-products/funnel via
@@ -123,6 +123,8 @@ describe('Loyalty on an empty shop', () => {
     mockedLoyalty.apiAdminListLoyaltyAccounts.mockResolvedValue({
       data: [],
       total: 0,
+      page: 1,
+      limit: 20,
     });
   });
 
@@ -130,14 +132,14 @@ describe('Loyalty on an empty shop', () => {
     render(<LoyaltyClient />);
 
     expect(await screen.findByText('Loyalty')).toBeInTheDocument();
-    expect(await screen.findByText(/total outstanding/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no matching customers/i)).toBeInTheDocument();
   });
 
   it('survives a response with no data key', async () => {
     // The reduce() over accounts is unguarded, so an absent data key turned the
     // whole page into a blank screen.
     mockedLoyalty.apiAdminListLoyaltyAccounts.mockResolvedValue(
-      {} as unknown as { data: []; total: number },
+      {} as unknown as { data: []; total: number; page: number; limit: number },
     );
 
     render(<LoyaltyClient />);
@@ -145,10 +147,8 @@ describe('Loyalty on an empty shop', () => {
     // Waiting for the loaded state, not just the header: the header renders on
     // the first pass with an empty list, so asserting on it alone would pass
     // even if the update that follows blows up.
-    expect(await screen.findByText(/total outstanding/i)).toBeInTheDocument();
-    // "Lifetime Earned" appears both as a stat card and a table column, so
-    // assert on the stat value instead of the ambiguous label.
-    expect(await screen.findAllByText('0')).not.toHaveLength(0);
+    expect(await screen.findByText(/no matching customers/i)).toBeInTheDocument();
+    expect(await screen.findByText(/0 customers/i)).toBeInTheDocument();
   });
 
   it('shows the error when the API fails', async () => {
@@ -160,5 +160,45 @@ describe('Loyalty on an empty shop', () => {
     render(<LoyaltyClient />);
 
     expect(await screen.findByText(/loyalty is unavailable/i)).toBeInTheDocument();
+  });
+
+  it('searches and filters customers using the support contract', async () => {
+    render(<LoyaltyClient />);
+    await screen.findByText(/no matching customers/i);
+
+    fireEvent.change(screen.getByPlaceholderText(/search name, id, phone or email/i), { target: { value: 'Mona' } });
+    fireEvent.change(screen.getByLabelText('Tier'), { target: { value: 'GOLD' } });
+    fireEvent.click(screen.getByLabelText('Has balance'));
+
+    await waitFor(() => expect(mockedLoyalty.apiAdminListLoyaltyAccounts).toHaveBeenLastCalledWith(expect.objectContaining({
+      q: 'Mona', tier: 'GOLD', hasBalance: true, page: 1, limit: 20,
+    })), { timeout: 1500 });
+  });
+
+  it('requires a note for Other and refreshes the ledger after a compensation', async () => {
+    const account: loyaltyApi.LoyaltyAccountDto = {
+      id: 'account-1', customerId: 'customer-123456', name: 'Mona Ali', email: 'mona@example.test',
+      tier: 'GOLD', avatarUrl: null, balance: 120, lifetimeEarned: 150, lifetimeRedeemed: 0,
+      lifetimeReversed: 30, lifetimeAdjusted: 0, earnedLast30Days: 20, adjustedLast30Days: 0,
+      lastActivity: '2026-09-16T10:00:00.000Z',
+    };
+    mockedLoyalty.apiAdminListLoyaltyAccounts.mockResolvedValue({ data: [account], total: 1, page: 1, limit: 20 });
+    mockedLoyalty.apiAdminGetLoyaltyCustomer.mockResolvedValue({ ...account, history: [], total: 0, page: 1, limit: 50 });
+    mockedLoyalty.apiAdminManualAdjust.mockResolvedValue({ ...account, balance: 170 });
+    render(<LoyaltyClient />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /mona ali/i }));
+    await screen.findByRole('heading', { name: /points ledger/i });
+    fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'OTHER' } });
+    fireEvent.click(screen.getByRole('button', { name: /add 50 points/i }));
+    expect(await screen.findByText(/add a note when the reason is other/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'COMPENSATION_LATE_DELIVERY' } });
+    fireEvent.click(screen.getByRole('button', { name: /add 50 points/i }));
+    await waitFor(() => expect(mockedLoyalty.apiAdminManualAdjust).toHaveBeenCalledWith({
+      customerId: 'customer-123456', delta: 50, reason: 'COMPENSATION_LATE_DELIVERY', note: undefined,
+    }));
+    await waitFor(() => expect(mockedLoyalty.apiAdminGetLoyaltyCustomer).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText(/\+50 points applied/i)).toBeInTheDocument();
   });
 });
