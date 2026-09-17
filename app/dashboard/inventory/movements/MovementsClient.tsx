@@ -43,6 +43,8 @@ const TYPE_BADGE_STATUS: Record<MovementType, string> = {
   RESERVE:  'draft',
   RELEASE:  'confirmed',
   ADJUST:   'archived',
+  SHIP:     'confirmed',
+  RETURN:   'published',
 };
 
 const TYPE_LABELS: Record<MovementType, string> = {
@@ -50,6 +52,8 @@ const TYPE_LABELS: Record<MovementType, string> = {
   RESERVE:  'Reserve',
   RELEASE:  'Release',
   ADJUST:   'Adjust',
+  SHIP:     'Sale',
+  RETURN:   'Return',
 };
 
 function MovementTypeBadge({ type }: { type: MovementType }) {
@@ -87,6 +91,8 @@ const TYPE_OPTIONS: Array<{ value: '' | MovementType; label: string }> = [
   { value: 'RESERVE', label: 'Reserve' },
   { value: 'RELEASE', label: 'Release' },
   { value: 'ADJUST',  label: 'Adjust' },
+  { value: 'SHIP',    label: 'Sale' },
+  { value: 'RETURN',  label: 'Return' },
 ];
 
 const COLUMNS: Column<MovementRow>[] = [
