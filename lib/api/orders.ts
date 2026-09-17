@@ -1,4 +1,5 @@
 import { apiFetch } from './client';
+import type { InstapayRejectionReason } from './payments';
 
 export type OrderStatus =
   | 'PENDING'
@@ -124,6 +125,11 @@ export interface Order {
   paymentMethod?: 'COD' | 'INSTAPAY' | 'GATEWAY' | 'MANUAL' | null;
   items: OrderItem[];
   statusHistory?: OrderStatusHistoryEntry[];
+  /** Latest failed InstaPay review, returned on the order-detail response. */
+  paymentRejection?: {
+    reason: InstapayRejectionReason;
+    note: string | null;
+  } | null;
   /**
    * dashboard#84 / backend#186. Optional on the client type only because
    * older mocked/fixture orders in tests predate it — every real admin read

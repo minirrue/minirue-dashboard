@@ -2,6 +2,13 @@ import { apiFetch } from './client';
 
 export type PaymentMethod = 'COD' | 'INSTAPAY' | 'GATEWAY' | 'MANUAL';
 export type PaymentAttemptStatus = 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+export type InstapayRejectionReason =
+  | 'RECEIPT_UNREADABLE'
+  | 'AMOUNT_MISMATCH'
+  | 'REFERENCE_NOT_FOUND'
+  | 'DUPLICATE_RECEIPT'
+  | 'SENDER_NAME_MISMATCH'
+  | 'OTHER';
 
 export interface PaymentAttempt {
   id: string;
@@ -20,6 +27,8 @@ export interface AdminPaymentAttempt extends PaymentAttempt {
   instapayReference: string | null;
   payerName: string | null;
   transferredAt: string | null;
+  rejectionReason: InstapayRejectionReason | null;
+  rejectionNote: string | null;
 }
 
 /**
@@ -65,21 +74,25 @@ export async function apiAdminListPayments(params: {
   );
 }
 
-export async function apiAdminVerifyInstapay(attemptId: string): Promise<AdminPaymentAttempt> {
+export async function apiAdminVerifyInstapay(
+  attemptId: string,
+  input: { instapayReference: string; payerName: string },
+): Promise<AdminPaymentAttempt> {
   return apiFetch<AdminPaymentAttempt>(`/admin/payments/attempts/${attemptId}/verify`, {
     method: 'POST',
     auth: true,
+    body: JSON.stringify(input),
   });
 }
 
 export async function apiAdminRejectInstapay(
   attemptId: string,
-  reason?: string,
+  input: { reason: InstapayRejectionReason; note?: string },
 ): Promise<AdminPaymentAttempt> {
   return apiFetch<AdminPaymentAttempt>(`/admin/payments/attempts/${attemptId}/reject`, {
     method: 'POST',
     auth: true,
-    body: JSON.stringify({ reason }),
+    body: JSON.stringify(input),
   });
 }
 

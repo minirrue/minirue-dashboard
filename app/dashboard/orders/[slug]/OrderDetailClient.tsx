@@ -18,7 +18,7 @@ import {
   apiAdminUpdatePaymentReference,
 } from '@/lib/api/payments';
 import EditableCell from '@/components/dashboard/EditableCell';
-import type { AdminPaymentAttempt } from '@/lib/api/payments';
+import type { AdminPaymentAttempt, InstapayRejectionReason } from '@/lib/api/payments';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { ImagePreviewModal, EnlargeableImage } from '@/components/dashboard/ImagePreviewModal';
@@ -44,6 +44,184 @@ function formatDate(iso: string): string {
 // is already minor units, unlike totalAmount which is a major-unit string.
 function egpFromCents(cents: number): string {
   return `EGP ${(cents / 100).toLocaleString('en-EG', { minimumFractionDigits: 2 })}`;
+}
+
+const INSTAPAY_REJECTION_OPTIONS: ReadonlyArray<{
+  value: InstapayRejectionReason;
+  label: string;
+}> = [
+  { value: 'RECEIPT_UNREADABLE', label: 'Receipt is unreadable' },
+  { value: 'AMOUNT_MISMATCH', label: 'Amount does not match' },
+  { value: 'REFERENCE_NOT_FOUND', label: 'Reference was not found' },
+  { value: 'DUPLICATE_RECEIPT', label: 'Receipt was already used' },
+  { value: 'SENDER_NAME_MISMATCH', label: 'Sender name does not match' },
+  { value: 'OTHER', label: 'Other reason' },
+];
+
+function rejectionLabel(reason: InstapayRejectionReason): string {
+  return INSTAPAY_REJECTION_OPTIONS.find((option) => option.value === reason)?.label ?? reason;
+}
+
+type ReviewFieldErrors = Partial<
+  Record<'instapayReference' | 'payerName' | 'reason' | 'note' | 'form', string>
+>;
+
+function reviewErrorsFromApi(error: ApiError): ReviewFieldErrors {
+  const fieldErrors: ReviewFieldErrors = {};
+  for (const part of (error.message ?? '').split(';')) {
+    const match = part.trim().match(/^(instapayReference|payerName|reason|note):\s*(.+)$/);
+    if (match) fieldErrors[match[1] as keyof ReviewFieldErrors] = match[2];
+  }
+  return Object.keys(fieldErrors).length > 0
+    ? fieldErrors
+    : { form: error.message || 'The payment review could not be saved.' };
+}
+
+function InstapayReviewControls({
+  payment,
+  busy,
+  onApprove,
+  onReject,
+}: {
+  payment: AdminPaymentAttempt;
+  busy: boolean;
+  onApprove: (input: { instapayReference: string; payerName: string }) => Promise<void>;
+  onReject: (input: { reason: InstapayRejectionReason; note?: string }) => Promise<void>;
+}) {
+  const [instapayReference, setInstapayReference] = useState(payment.instapayReference ?? '');
+  const [payerName, setPayerName] = useState(payment.payerName ?? '');
+  const [reason, setReason] = useState<InstapayRejectionReason>('RECEIPT_UNREADABLE');
+  const [note, setNote] = useState('');
+  const [errors, setErrors] = useState<ReviewFieldErrors>({});
+
+  const approve = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const nextErrors: ReviewFieldErrors = {};
+    if (!instapayReference.trim()) nextErrors.instapayReference = 'Enter the transfer reference.';
+    if (!payerName.trim()) nextErrors.payerName = 'Enter the sender name.';
+    if (Object.keys(nextErrors).length) {
+      setErrors(nextErrors);
+      return;
+    }
+    setErrors({});
+    try {
+      await onApprove({
+        instapayReference: instapayReference.trim(),
+        payerName: payerName.trim(),
+      });
+    } catch (error) {
+      setErrors(reviewErrorsFromApi(error as ApiError));
+    }
+  };
+
+  const reject = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (reason === 'OTHER' && !note.trim()) {
+      setErrors({ note: 'Explain why this receipt cannot be accepted.' });
+      return;
+    }
+    setErrors({});
+    try {
+      await onReject({ reason, ...(note.trim() ? { note: note.trim() } : {}) });
+    } catch (error) {
+      setErrors(reviewErrorsFromApi(error as ApiError));
+    }
+  };
+
+  return (
+    <div
+      role="group"
+      aria-label="Review InstaPay transfer"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
+        gap: 20,
+        padding: 16,
+        background: 'var(--mr-bg-2)',
+        borderRadius: 12,
+      }}
+    >
+      <form onSubmit={approve} noValidate>
+        <p className="dash-label" style={{ marginBottom: 10 }}>Approve transfer</p>
+        <div className="dash-field" style={{ marginBottom: 10 }}>
+          <label className="dash-label" htmlFor={`instapay-reference-${payment.id}`}>Transfer reference</label>
+          <input
+            id={`instapay-reference-${payment.id}`}
+            className={`dash-input${errors.instapayReference ? ' dash-input-error' : ''}`}
+            value={instapayReference}
+            maxLength={120}
+            aria-invalid={Boolean(errors.instapayReference)}
+            aria-describedby={errors.instapayReference ? `instapay-reference-error-${payment.id}` : undefined}
+            onChange={(event) => setInstapayReference(event.target.value)}
+          />
+          {errors.instapayReference && (
+            <p id={`instapay-reference-error-${payment.id}`} className="dash-field-error">{errors.instapayReference}</p>
+          )}
+        </div>
+        <div className="dash-field" style={{ marginBottom: 12 }}>
+          <label className="dash-label" htmlFor={`instapay-payer-${payment.id}`}>Sender name</label>
+          <input
+            id={`instapay-payer-${payment.id}`}
+            className={`dash-input${errors.payerName ? ' dash-input-error' : ''}`}
+            value={payerName}
+            maxLength={160}
+            aria-invalid={Boolean(errors.payerName)}
+            aria-describedby={errors.payerName ? `instapay-payer-error-${payment.id}` : undefined}
+            onChange={(event) => setPayerName(event.target.value)}
+          />
+          {errors.payerName && (
+            <p id={`instapay-payer-error-${payment.id}`} className="dash-field-error">{errors.payerName}</p>
+          )}
+        </div>
+        <button type="submit" className="dash-btn-ok" disabled={busy}>
+          {busy ? 'Saving review…' : 'Approve payment'}
+        </button>
+      </form>
+
+      <form onSubmit={reject} noValidate>
+        <p className="dash-label" style={{ marginBottom: 10 }}>Reject transfer</p>
+        <div className="dash-field" style={{ marginBottom: 10 }}>
+          <label className="dash-label" htmlFor={`instapay-reason-${payment.id}`}>Reason</label>
+          <select
+            id={`instapay-reason-${payment.id}`}
+            className={`dash-select${errors.reason ? ' dash-input-error' : ''}`}
+            value={reason}
+            aria-invalid={Boolean(errors.reason)}
+            onChange={(event) => setReason(event.target.value as InstapayRejectionReason)}
+          >
+            {INSTAPAY_REJECTION_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="dash-field" style={{ marginBottom: 12 }}>
+          <label className="dash-label" htmlFor={`instapay-note-${payment.id}`}>
+            Note {reason === 'OTHER' ? '(required)' : '(optional)'}
+          </label>
+          <input
+            id={`instapay-note-${payment.id}`}
+            className={`dash-input${errors.note ? ' dash-input-error' : ''}`}
+            value={note}
+            maxLength={500}
+            aria-invalid={Boolean(errors.note)}
+            aria-describedby={errors.note ? `instapay-note-error-${payment.id}` : undefined}
+            onChange={(event) => setNote(event.target.value)}
+          />
+          {errors.note && (
+            <p id={`instapay-note-error-${payment.id}`} className="dash-field-error">{errors.note}</p>
+          )}
+        </div>
+        <button type="submit" className="dash-btn-danger" disabled={busy}>
+          {busy ? 'Saving review…' : 'Reject payment'}
+        </button>
+      </form>
+      {errors.form && (
+        <p className="dash-inline-error" role="alert" style={{ gridColumn: '1 / -1', margin: 0 }}>
+          {errors.form}
+        </p>
+      )}
+    </div>
+  );
 }
 
 const STATUS_DATA_ATTR: Record<OrderStatus, string> = {
@@ -222,18 +400,25 @@ export default function OrderDetailClient({ id }: { id: string }) {
   const runPaymentAction = async (
     attemptId: string,
     action: 'verify' | 'reject',
+    input:
+      | { instapayReference: string; payerName: string }
+      | { reason: InstapayRejectionReason; note?: string },
   ) => {
     setPaymentBusy(attemptId);
     setActionError(null);
     try {
       const updated =
         action === 'verify'
-          ? await apiAdminVerifyInstapay(attemptId)
-          : await apiAdminRejectInstapay(attemptId, 'Receipt could not be verified');
+          ? await apiAdminVerifyInstapay(
+              attemptId,
+              input as { instapayReference: string; payerName: string },
+            )
+          : await apiAdminRejectInstapay(
+              attemptId,
+              input as { reason: InstapayRejectionReason; note?: string },
+            );
       setPayments((prev) => prev.map((p) => (p.id === attemptId ? updated : p)));
       if (action === 'verify') await load();
-    } catch (e) {
-      setActionError((e as ApiError).message ?? 'Payment action failed');
     } finally {
       setPaymentBusy(null);
     }
@@ -536,6 +721,13 @@ export default function OrderDetailClient({ id }: { id: string }) {
             Cash collected. This order can now be refunded.
           </p>
         )}
+        {order.paymentRejection && (
+          <div className="dash-inline-error" role="status" style={{ marginBottom: 16 }}>
+            <strong>Latest InstaPay rejection:</strong>{' '}
+            {rejectionLabel(order.paymentRejection.reason)}
+            {order.paymentRejection.note ? ` — ${order.paymentRejection.note}` : ''}
+          </div>
+        )}
         {payments.length === 0 ? (
           order.paid ? (
             <p style={{ color: 'var(--mr-fg-4)', fontSize: 14 }}>
@@ -618,7 +810,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
                         onSave={(next) => savePaymentField(p.id, { gatewayReference: next })}
                       />
                     </td>
-                    <td>
+                    <td style={{ minWidth: awaiting ? 320 : undefined }}>
                       {receiptUrl && (
                         <button
                           type="button"
@@ -635,29 +827,19 @@ export default function OrderDetailClient({ id }: { id: string }) {
                         </button>
                       )}
                       {awaiting && (
-                        <div className="dash-row-actions">
-                          <button
-                            type="button"
-                            className="dash-btn-ok"
-                            disabled={paymentBusy === p.id}
-                            onClick={() => void runPaymentAction(p.id, 'verify')}
-                          >
-                            Approve
-                          </button>
-                          <button
-                            type="button"
-                            className="dash-btn-danger"
-                            disabled={paymentBusy === p.id}
-                            onClick={() => void runPaymentAction(p.id, 'reject')}
-                          >
-                            Reject
-                          </button>
-                        </div>
+                        <InstapayReviewControls
+                          payment={p}
+                          busy={paymentBusy === p.id}
+                          onApprove={(input) => runPaymentAction(p.id, 'verify', input)}
+                          onReject={(input) => runPaymentAction(p.id, 'reject', input)}
+                        />
                       )}
-                      {p.failureReason && (
-                        <span style={{ fontSize: 12, color: 'var(--mr-st-danger-fg)' }}>
-                          {p.failureReason}
-                        </span>
+                      {(p.rejectionReason || p.failureReason) && (
+                        <div style={{ fontSize: 12, color: 'var(--mr-st-danger-fg)', overflowWrap: 'anywhere' }}>
+                          {p.rejectionReason && <strong>{rejectionLabel(p.rejectionReason)}</strong>}
+                          {p.rejectionNote && <div>{p.rejectionNote}</div>}
+                          {!p.rejectionReason && p.failureReason && <span>{p.failureReason}</span>}
+                        </div>
                       )}
                     </td>
                   </tr>

@@ -66,6 +66,8 @@ function makePayment(overrides: Partial<AdminPaymentAttempt>): AdminPaymentAttem
     instapayReference: null,
     payerName: null,
     transferredAt: null,
+    rejectionReason: null,
+    rejectionNote: null,
     ...overrides,
   };
 }
@@ -153,6 +155,101 @@ describe('OrderDetailClient buyer and payments detail', () => {
 
     await userEvent.click(receiptButton);
     expect(await screen.findByRole('dialog', { name: 'Image preview' })).toBeInTheDocument();
+  });
+
+  it('requires and submits the InstaPay reference and sender name before approval', async () => {
+    const pending = makePayment({ status: 'PROCESSING' });
+    mockedOrders.apiAdminGetOrder.mockResolvedValue(makeOrder({ paymentMethod: 'INSTAPAY' }));
+    mockedPayments.apiAdminListOrderPayments.mockResolvedValue([pending]);
+    mockedPayments.apiAdminVerifyInstapay.mockResolvedValue(
+      makePayment({
+        status: 'SUCCEEDED',
+        instapayReference: 'IP-2026-0917',
+        payerName: 'Nour Ahmed',
+      }),
+    );
+
+    render(<OrderDetailClient id="ord_1" />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve payment' }));
+    expect(screen.getByText('Enter the transfer reference.')).toBeInTheDocument();
+    expect(screen.getByText('Enter the sender name.')).toBeInTheDocument();
+    expect(mockedPayments.apiAdminVerifyInstapay).not.toHaveBeenCalled();
+
+    await userEvent.type(screen.getByLabelText('Transfer reference'), 'IP-2026-0917');
+    await userEvent.type(screen.getByLabelText('Sender name'), 'Nour Ahmed');
+    await userEvent.click(screen.getByRole('button', { name: 'Approve payment' }));
+
+    expect(mockedPayments.apiAdminVerifyInstapay).toHaveBeenCalledWith('pay_1', {
+      instapayReference: 'IP-2026-0917',
+      payerName: 'Nour Ahmed',
+    });
+  });
+
+  it('requires a note for OTHER and sends the structured rejection reason', async () => {
+    const pending = makePayment({ status: 'PROCESSING' });
+    mockedOrders.apiAdminGetOrder.mockResolvedValue(makeOrder({ paymentMethod: 'INSTAPAY' }));
+    mockedPayments.apiAdminListOrderPayments.mockResolvedValue([pending]);
+    mockedPayments.apiAdminRejectInstapay.mockResolvedValue(
+      makePayment({ status: 'FAILED', rejectionReason: 'OTHER', rejectionNote: 'Bank timestamp is missing.' }),
+    );
+
+    render(<OrderDetailClient id="ord_1" />);
+
+    await userEvent.selectOptions(await screen.findByLabelText('Reason'), 'OTHER');
+    await userEvent.click(screen.getByRole('button', { name: 'Reject payment' }));
+    expect(screen.getByText('Explain why this receipt cannot be accepted.')).toBeInTheDocument();
+    expect(mockedPayments.apiAdminRejectInstapay).not.toHaveBeenCalled();
+
+    await userEvent.type(screen.getByLabelText(/Note \(required\)/), 'Bank timestamp is missing.');
+    await userEvent.click(screen.getByRole('button', { name: 'Reject payment' }));
+
+    expect(mockedPayments.apiAdminRejectInstapay).toHaveBeenCalledWith('pay_1', {
+      reason: 'OTHER',
+      note: 'Bank timestamp is missing.',
+    });
+  });
+
+  it('places a backend 422 validation issue beside the matching review field', async () => {
+    mockedOrders.apiAdminGetOrder.mockResolvedValue(makeOrder({ paymentMethod: 'INSTAPAY' }));
+    mockedPayments.apiAdminListOrderPayments.mockResolvedValue([
+      makePayment({ status: 'PROCESSING' }),
+    ]);
+    mockedPayments.apiAdminVerifyInstapay.mockRejectedValue({
+      status: 422,
+      message: 'payerName: Control characters are not allowed',
+    });
+
+    render(<OrderDetailClient id="ord_1" />);
+    await userEvent.type(await screen.findByLabelText('Transfer reference'), 'IP-2026-0917');
+    await userEvent.type(screen.getByLabelText('Sender name'), 'Nour Ahmed');
+    await userEvent.click(screen.getByRole('button', { name: 'Approve payment' }));
+
+    expect(await screen.findByText('Control characters are not allowed')).toBeInTheDocument();
+    expect(screen.getByLabelText('Sender name')).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('renders the persisted rejection reason and note after reload', async () => {
+    mockedOrders.apiAdminGetOrder.mockResolvedValue(
+      makeOrder({
+        paymentMethod: 'INSTAPAY',
+        paymentRejection: { reason: 'AMOUNT_MISMATCH', note: 'Received EGP 900 instead of EGP 1,000.' },
+      }),
+    );
+    mockedPayments.apiAdminListOrderPayments.mockResolvedValue([
+      makePayment({
+        status: 'FAILED',
+        failureReason: 'The transferred amount does not match the order total.',
+        rejectionReason: 'AMOUNT_MISMATCH',
+        rejectionNote: 'Received EGP 900 instead of EGP 1,000.',
+      }),
+    ]);
+
+    render(<OrderDetailClient id="ord_1" />);
+
+    expect(await screen.findByText('Amount does not match')).toBeInTheDocument();
+    expect(screen.getByText(/Latest InstaPay rejection:/)).toBeInTheDocument();
+    expect(screen.getByText('Received EGP 900 instead of EGP 1,000.')).toBeInTheDocument();
   });
 
   it('marks delivered COD cash collected and exposes the refund without a reload', async () => {
