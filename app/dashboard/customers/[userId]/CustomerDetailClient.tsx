@@ -38,6 +38,7 @@ import { formatOrderRef } from '@/lib/orders/order-format';
 import { EnlargeableImage } from '@/components/dashboard/ImagePreviewModal';
 import { GenericAvatarIcon } from '@/components/GenericAvatarIcon';
 import CopyButton from '@/components/dashboard/CopyButton';
+import { GOVERNORATE_KEYS, GOVERNORATE_LABELS } from '@/lib/geo/governorates';
 import CustomerEmailActivity from '@/components/dashboard/email/CustomerEmailActivity';
 import { ReasonPicker } from '@/components/dashboard/ReasonPicker';
 import {
@@ -1199,16 +1200,22 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                     </div>
                     <div className="dash-field">
                       <label className="dash-label">Governorate</label>
-                      <input
+                      <select
                         className="dash-input"
                         value={addrForm.data.governorate}
+                        required
                         onChange={(e) =>
                           setAddrForm({
                             ...addrForm,
                             data: { ...addrForm.data, governorate: e.target.value },
                           })
                         }
-                      />
+                      >
+                        <option value="" disabled>Select a governorate</option>
+                        {GOVERNORATE_KEYS.map((key) => (
+                          <option key={key} value={key}>{GOVERNORATE_LABELS[key]}</option>
+                        ))}
+                      </select>
                     </div>
                     <div className="dash-field">
                       <label className="dash-label">Postal code</label>

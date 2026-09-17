@@ -189,11 +189,11 @@ describe('Loyalty on an empty shop', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /mona ali/i }));
     await screen.findByRole('heading', { name: /points ledger/i });
-    fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'OTHER' } });
-    fireEvent.click(screen.getByRole('button', { name: /add 50 points/i }));
-    expect(await screen.findByText(/add a note when the reason is other/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('radio', { name: 'Other' }));
+    expect(screen.getByLabelText('Required note')).toBeRequired();
+    expect(mockedLoyalty.apiAdminManualAdjust).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'COMPENSATION_LATE_DELIVERY' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Compensation · late delivery' }));
     fireEvent.click(screen.getByRole('button', { name: /add 50 points/i }));
     await waitFor(() => expect(mockedLoyalty.apiAdminManualAdjust).toHaveBeenCalledWith({
       customerId: 'customer-123456', delta: 50, reason: 'COMPENSATION_LATE_DELIVERY', note: undefined,
