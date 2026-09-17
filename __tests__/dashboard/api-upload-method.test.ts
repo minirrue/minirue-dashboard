@@ -6,6 +6,7 @@
  * caller (gallery item creation, brand logo, avatar) needs no change.
  */
 import { apiUpload } from '@/lib/api/client';
+import { getAccessToken, setTokens } from '@/lib/auth/tokens';
 
 const originalFetch = global.fetch;
 
@@ -22,6 +23,7 @@ function jsonResponse(status: number, body: unknown): Response {
 describe('apiUpload method parameter', () => {
   afterEach(() => {
     global.fetch = originalFetch;
+    localStorage.clear();
   });
 
   it('defaults to POST when no method is given', async () => {
@@ -61,5 +63,27 @@ describe('apiUpload method parameter', () => {
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     const headers = init.headers as Headers;
     expect(headers.has('Content-Type')).toBe(false);
+  });
+
+  it('refreshes an expired session and retries the same multipart upload', async () => {
+    setTokens('stale', 'refresh-1');
+    const formData = new FormData();
+    formData.append('file', new File(['video'], 'clip.mov', { type: 'video/quicktime' }));
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(401, {}))
+      .mockResolvedValueOnce(
+        jsonResponse(200, { accessToken: 'fresh', refreshToken: 'refresh-2' }),
+      )
+      .mockResolvedValueOnce(jsonResponse(201, { id: 'item-1' }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(apiUpload('/gallery/items', formData)).resolves.toEqual({ id: 'item-1' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(getAccessToken()).toBe('fresh');
+    const [, retry] = fetchMock.mock.calls[2] as [string, RequestInit];
+    expect(retry.body).toBe(formData);
+    expect((retry.headers as Headers).get('Authorization')).toBe('Bearer fresh');
   });
 });

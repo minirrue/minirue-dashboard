@@ -197,6 +197,7 @@ export async function apiUpload<T>(
   path: string,
   formData: FormData,
   method: 'POST' | 'PATCH' = 'POST',
+  _isRetry = false,
 ): Promise<T> {
   const headers = new Headers();
   headers.set(CLIENT_HEADER, CLIENT_AUDIENCE);
@@ -209,6 +210,31 @@ export async function apiUpload<T>(
     headers,
     credentials: 'include',
   });
+
+  // File uploads are authenticated calls too. Keep them on the same session
+  // recovery path as apiFetch: an access token can expire while an admin is
+  // choosing or previewing a large video, and rejecting the multipart request
+  // at that point makes a valid file look like a broken upload. FormData is
+  // replayable in the browser, so the exact selected bytes can be retried once
+  // after refresh without asking the user to pick the file again.
+  if (res.status === 401 && !_isRetry) {
+    const { isActing, stopActingAs } = await import('@/lib/auth/acting-session');
+    if (isActing()) {
+      const restored = await stopActingAs();
+      throw {
+        status: 401,
+        message: restored
+          ? 'That borrowed session expired. You are back on your own account.'
+          : 'That borrowed session expired. Please sign in again.',
+      } as ApiError;
+    }
+
+    if (await refreshSession()) {
+      return apiUpload<T>(path, formData, method, true);
+    }
+    clearTokens();
+    throw { status: 401, message: 'Session expired' } as ApiError;
+  }
 
   if (!res.ok) {
     let body: Record<string, unknown> = {};
