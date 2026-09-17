@@ -86,7 +86,10 @@ describe('pricing warnings in the topbar', () => {
 
 describe('pricing warnings in the sidebar', () => {
   function accountingLinks() {
-    return screen.getAllByRole('link', { name: /^Accounting/ });
+    // Include the closed mobile drawer's inert/aria-hidden copy. Normal role
+    // queries correctly expose only the desktop link now that the drawer is
+    // removed from the accessibility tree while closed (#78).
+    return Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href="/accounting"]'));
   }
 
   it('badges the Accounting item with the same count, styled apart from the unread pill', () => {
