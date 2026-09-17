@@ -1,17 +1,63 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { floorBreach } from '@/app/dashboard/bundles/bundle-economics';
 import { formatEgpMinor } from '@/components/dashboard/charts';
+import RetryingImage from '@/components/dashboard/RetryingImage';
 import { apiAccountingOverview, type AccountingOverview, type PriceFlag } from '@/lib/api/accounting';
+import { listProducts } from '@/lib/catalog/api';
 import PricingDrawer, { FLAG_LABELS, MODE, formatSignedEgp } from './PricingDrawer';
 import './prices-tab.css';
 
 function formatMargin(bp: number): string {
   const pct = Math.round(bp / 10) / 10;
   return pct < 0 ? `−${Math.abs(pct).toFixed(1)}%` : `${pct.toFixed(1)}%`;
+}
+
+const PAGE_SIZES = [20, 50, 100] as const;
+type PageSize = (typeof PAGE_SIZES)[number];
+type ModeFilter = 'ALL' | 'SYSTEM' | 'MANUAL';
+type FlagFilter = 'ALL' | 'FLAGGED' | 'CLEAR';
+type SortValue =
+  | 'DEFAULT'
+  | 'MARGIN_DESC'
+  | 'MARGIN_ASC'
+  | 'PRICE_DESC'
+  | 'PRICE_ASC'
+  | 'PROFIT_DESC'
+  | 'PROFIT_ASC';
+
+function pageSizeFrom(raw: string | null): PageSize {
+  const size = Number(raw);
+  return PAGE_SIZES.includes(size as PageSize) ? (size as PageSize) : 20;
+}
+
+function positivePage(raw: string | null): number {
+  const page = Number(raw);
+  return Number.isInteger(page) && page > 0 ? page : 1;
+}
+
+function enumFrom<T extends string>(raw: string | null, values: readonly T[], fallback: T): T {
+  return raw && values.includes(raw as T) ? (raw as T) : fallback;
+}
+
+function ProductThumb({ src }: { src?: string | null }) {
+  const fallback = (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="4" y="3" width="16" height="18" rx="3" />
+      <path d="m7 16 3.4-3.4a2 2 0 0 1 2.8 0L17 16" />
+      <circle cx="15.5" cy="8.5" r="1.5" />
+    </svg>
+  );
+  return src ? (
+    <RetryingImage src={src} alt="" className="acct-prices-thumb" fallback={fallback} />
+  ) : (
+    <span className="acct-prices-thumb acct-prices-thumb-empty" aria-hidden="true">
+      {fallback}
+    </span>
+  );
 }
 
 /** The engine's own flags for the row. Warnings (backend#164) will replace this count. */
@@ -57,20 +103,48 @@ export default function PricesTab() {
   const pathname = usePathname();
   const params = useSearchParams();
   const [overview, setOverview] = useState<AccountingOverview | null>(null);
+  const [coverByProduct, setCoverByProduct] = useState<Record<string, string | null>>({});
   const [error, setError] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [highlightSetId, setHighlightSetId] = useState<string | null>(null);
   const [linkParamsApplied, setLinkParamsApplied] = useState(false);
+  const [page, setPage] = useState(() => positivePage(params.get('page')));
+  const [pageSize, setPageSize] = useState<PageSize>(() => pageSizeFrom(params.get('size')));
+  const [modeFilter, setModeFilter] = useState<ModeFilter>(() =>
+    enumFrom(params.get('mode'), ['ALL', 'SYSTEM', 'MANUAL'] as const, 'ALL'),
+  );
+  const [flagFilter, setFlagFilter] = useState<FlagFilter>(() =>
+    enumFrom(params.get('flags'), ['ALL', 'FLAGGED', 'CLEAR'] as const, 'ALL'),
+  );
+  const [sort, setSort] = useState<SortValue>(() =>
+    enumFrom(
+      params.get('sort'),
+      ['DEFAULT', 'MARGIN_DESC', 'MARGIN_ASC', 'PRICE_DESC', 'PRICE_ASC', 'PROFIT_DESC', 'PROFIT_ASC'] as const,
+      'DEFAULT',
+    ),
+  );
   const setRowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
+  const queryRef = useRef(params.toString());
+
+  useEffect(() => {
+    queryRef.current = params.toString();
+  }, [params]);
 
   const load = useCallback(() => {
     let cancelled = false;
-    apiAccountingOverview()
-      .then((data) => {
-        if (!cancelled) setOverview(data);
-      })
-      .catch(() => {
-        if (!cancelled) setError(true);
+    Promise.allSettled([apiAccountingOverview(), listProducts({ page: 1, limit: 100, space: 'house' })])
+      .then(([overviewResult, catalogueResult]) => {
+        if (cancelled) return;
+        if (overviewResult.status === 'rejected') {
+          setError(true);
+          return;
+        }
+        setOverview(overviewResult.value);
+        if (catalogueResult.status === 'fulfilled') {
+          setCoverByProduct(
+            Object.fromEntries(catalogueResult.value.items.map((product) => [product.id, product.coverUrl])),
+          );
+        }
       });
     return () => {
       cancelled = true;
@@ -84,12 +158,81 @@ export default function PricesTab() {
     setOverview(await apiAccountingOverview());
   }, []);
 
-  const items = overview?.variants ?? [];
+  const items = useMemo(() => overview?.variants ?? [], [overview]);
   /** Sets (backend#166) list below the variants and open in the bundle editor. */
-  const sets = overview?.sets ?? [];
+  const sets = useMemo(() => overview?.sets ?? [], [overview]);
   const fulfillmentMinor = overview?.fees.fulfillmentMinor ?? 0;
   const openRow = items.find((r) => r.variantId === openId) ?? null;
   const withFlags = items.filter((r) => r.system.flags.length > 0).length;
+
+  const updateUrl = useCallback(
+    (changes: Record<string, string | null>) => {
+      const qs = new URLSearchParams(queryRef.current);
+      for (const [key, value] of Object.entries(changes)) {
+        if (value === null) qs.delete(key);
+        else qs.set(key, value);
+      }
+      const query = qs.toString();
+      queryRef.current = query;
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [pathname, router],
+  );
+
+  const allRows = useMemo(
+    () => [
+      ...items.map((row) => ({
+        kind: 'variant' as const,
+        row,
+        mode: row.mode,
+        flagged: row.system.flags.length > 0,
+        margin: row.current.marginBp,
+        price: row.currentPriceMinor,
+        profit: row.current.productProfitMinor,
+      })),
+      ...sets.map((row) => ({
+        kind: 'set' as const,
+        row,
+        mode: row.mode,
+        flagged: row.warnings.length > 0,
+        margin: row.current.marginBp,
+        price: row.currentPriceMinor,
+        profit: row.current.productProfitMinor,
+      })),
+    ],
+    [items, sets],
+  );
+
+  const filteredRows = useMemo(() => {
+    const next = allRows.filter(
+      (item) =>
+        (modeFilter === 'ALL' || item.mode === modeFilter) &&
+        (flagFilter === 'ALL' || (flagFilter === 'FLAGGED' ? item.flagged : !item.flagged)),
+    );
+    if (sort === 'DEFAULT') return next;
+    const [field, direction] = sort.split('_') as ['MARGIN' | 'PRICE' | 'PROFIT', 'ASC' | 'DESC'];
+    const value = (item: (typeof next)[number]) =>
+      field === 'MARGIN' ? item.margin : field === 'PRICE' ? item.price : item.profit;
+    return next.sort((a, b) => {
+      const av = value(a);
+      const bv = value(b);
+      if (av === null) return bv === null ? 0 : 1;
+      if (bv === null) return -1;
+      return direction === 'ASC' ? av - bv : bv - av;
+    });
+  }, [allRows, flagFilter, modeFilter, sort]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const pagedRows = filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const changePage = useCallback(
+    (next: number) => {
+      setPage(next);
+      updateUrl({ page: next === 1 ? null : String(next) });
+    },
+    [updateUrl],
+  );
 
   /**
    * A Warnings-tab link (minirue-dashboard#61, #67) lands here with
@@ -105,6 +248,10 @@ export default function PricesTab() {
       setOpenId(openParam);
     } else if (openSetParam && sets.some((s) => s.bundleId === openSetParam)) {
       setHighlightSetId(openSetParam);
+      const setIndex = filteredRows.findIndex(
+        (item) => item.kind === 'set' && item.row.bundleId === openSetParam,
+      );
+      if (setIndex >= 0) setPage(Math.floor(setIndex / pageSize) + 1);
     }
     setLinkParamsApplied(true);
   }
@@ -174,6 +321,80 @@ export default function PricesTab() {
         </p>
       </header>
 
+      <div className="acct-prices-tools" aria-label="Price table controls">
+        <label>
+          <span>Mode</span>
+          <select
+            value={modeFilter}
+            onChange={(event) => {
+              const value = event.target.value as ModeFilter;
+              setModeFilter(value);
+              setPage(1);
+              updateUrl({ mode: value === 'ALL' ? null : value, page: null });
+            }}
+          >
+            <option value="ALL">All modes</option>
+            <option value="SYSTEM">System price</option>
+            <option value="MANUAL">My price</option>
+          </select>
+        </label>
+        <label>
+          <span>Flags</span>
+          <select
+            value={flagFilter}
+            onChange={(event) => {
+              const value = event.target.value as FlagFilter;
+              setFlagFilter(value);
+              setPage(1);
+              updateUrl({ flags: value === 'ALL' ? null : value, page: null });
+            }}
+          >
+            <option value="ALL">All items</option>
+            <option value="FLAGGED">Needs attention</option>
+            <option value="CLEAR">No flags</option>
+          </select>
+        </label>
+        <label className="acct-prices-sort">
+          <span>Sort</span>
+          <select
+            value={sort}
+            onChange={(event) => {
+              const value = event.target.value as SortValue;
+              setSort(value);
+              setPage(1);
+              updateUrl({ sort: value === 'DEFAULT' ? null : value, page: null });
+            }}
+          >
+            <option value="DEFAULT">Catalogue order</option>
+            <option value="MARGIN_DESC">Margin: highest first</option>
+            <option value="MARGIN_ASC">Margin: lowest first</option>
+            <option value="PRICE_DESC">Price: highest first</option>
+            <option value="PRICE_ASC">Price: lowest first</option>
+            <option value="PROFIT_DESC">Profit: highest first</option>
+            <option value="PROFIT_ASC">Profit: lowest first</option>
+          </select>
+        </label>
+        <label>
+          <span>Rows</span>
+          <select
+            aria-label="Rows per page"
+            value={pageSize}
+            onChange={(event) => {
+              const value = pageSizeFrom(event.target.value);
+              setPageSize(value);
+              setPage(1);
+              updateUrl({ size: value === 20 ? null : String(value), page: null });
+            }}
+          >
+            {PAGE_SIZES.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       {items.length === 0 && sets.length === 0 ? (
         <p className="acct-prices-empty">No house products yet. Items you add to the catalogue appear here.</p>
       ) : (
@@ -193,7 +414,9 @@ export default function PricesTab() {
               </tr>
             </thead>
             <tbody>
-              {items.map((row) => {
+              {pagedRows.map((item) => {
+                if (item.kind === 'variant') {
+                const row = item.row;
                 const floors = row.system.floors;
                 const market = row.system.marketMinor;
                 const price = row.currentPriceMinor;
@@ -203,20 +426,23 @@ export default function PricesTab() {
                 return (
                   <tr key={row.variantId} className="acct-prices-row" onClick={() => setOpenId(row.variantId)}>
                     <td data-label="Item" className="acct-prices-item">
-                      <button
-                        type="button"
-                        className="acct-prices-open"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenId(row.variantId);
-                        }}
-                      >
-                        <span className="acct-prices-name">{row.productName}</span>{' '}
-                        <span className="acct-prices-detail">
-                          {row.sku}
-                          {!row.isActive && ' · Inactive'}
-                        </span>
-                      </button>
+                      <div className="acct-prices-item-layout">
+                        <ProductThumb src={coverByProduct[row.productId]} />
+                        <button
+                          type="button"
+                          className="acct-prices-open"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenId(row.variantId);
+                          }}
+                        >
+                          <span className="acct-prices-name">{row.productName}</span>{' '}
+                          <span className="acct-prices-detail">
+                            {row.sku}
+                            {!row.isActive && ' · Inactive'}
+                          </span>
+                        </button>
+                      </div>
                     </td>
                     <td data-label="Mode">
                       <span className="acct-prices-mode" data-mode={row.mode}>
@@ -283,8 +509,8 @@ export default function PricesTab() {
                     </td>
                   </tr>
                 );
-              })}
-              {sets.map((set) => {
+                }
+                const set = item.row;
                 const floors = set.system?.floors ?? null;
                 const price = set.currentPriceMinor;
                 const { marginBp, productProfitMinor } = set.current;
@@ -301,12 +527,15 @@ export default function PricesTab() {
                     data-highlight={set.bundleId === highlightSetId ? 'true' : undefined}
                   >
                     <td data-label="Item" className="acct-prices-item">
-                      <Link href={`/catalogue/bundles/${set.bundleId}/edit`} className="acct-prices-open">
-                        <span className="acct-prices-name">{set.name}</span>{' '}
-                        <span className="acct-prices-detail">
-                          Set · {set.members.length} {set.members.length === 1 ? 'piece' : 'pieces'}
-                          {set.mode === 'SYSTEM' && ` · ${formatMargin(set.effectiveSavingBp)} off`}
-                          {!set.isActive && ' · Inactive'}
+                      <Link href={`/catalogue/bundles/${set.bundleId}/edit`} className="acct-prices-item-layout">
+                        <span className="acct-prices-thumb acct-prices-thumb-set" aria-hidden="true">Set</span>
+                        <span className="acct-prices-item-copy">
+                          <span className="acct-prices-name">{set.name}</span>{' '}
+                          <span className="acct-prices-detail">
+                            Set · {set.members.length} {set.members.length === 1 ? 'piece' : 'pieces'}
+                            {set.mode === 'SYSTEM' && ` · ${formatMargin(set.effectiveSavingBp)} off`}
+                            {!set.isActive && ' · Inactive'}
+                          </span>
                         </span>
                       </Link>
                     </td>
@@ -389,6 +618,38 @@ export default function PricesTab() {
               })}
             </tbody>
           </table>
+          {filteredRows.length === 0 ? (
+            <p className="acct-prices-empty">No prices match these filters.</p>
+          ) : (
+            <nav className="acct-prices-pagination" aria-label="Prices pagination">
+              <p>
+                <span className="mr-num">{(currentPage - 1) * pageSize + 1}</span>–
+                <span className="mr-num">{Math.min(currentPage * pageSize, filteredRows.length)}</span> of{' '}
+                <span className="mr-num">{filteredRows.length}</span>
+              </p>
+              <div>
+                <button
+                  type="button"
+                  className="dash-btn-secondary"
+                  disabled={currentPage === 1}
+                  onClick={() => changePage(currentPage - 1)}
+                >
+                  Previous
+                </button>
+                <span aria-current="page">
+                  Page <span className="mr-num">{currentPage}</span> of <span className="mr-num">{pageCount}</span>
+                </span>
+                <button
+                  type="button"
+                  className="dash-btn-secondary"
+                  disabled={currentPage === pageCount}
+                  onClick={() => changePage(currentPage + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            </nav>
+          )}
         </div>
       )}
 

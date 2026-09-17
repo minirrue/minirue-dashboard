@@ -170,11 +170,22 @@ function overviewOf(variants: VariantRow[]): AccountingOverview {
 const run = { id: 'run-1', cause: 'ITEM', changedCount: 1, averageChangeBp: 150, createdAt: '2026-09-14T12:00:00.000Z', undoneAt: null, changes: [] };
 
 /** Serves the overview (the next queued one after each write) and records every write. */
-function serve(first: AccountingOverview, afterWrite: AccountingOverview = first, fail?: { status: number; message: string }) {
+function serve(
+  first: AccountingOverview,
+  afterWrite: AccountingOverview = first,
+  fail?: { status: number; message: string },
+  catalogue: Array<Record<string, unknown>> = [],
+  catalogueFails = false,
+) {
   let current = first;
   mockFetch.mockImplementation((path: string, init?: RequestInit) => {
     const method = init?.method ?? 'GET';
     if (path === '/accounting/overview' && method === 'GET') return Promise.resolve(current);
+    if (path.startsWith('/catalog/admin/products') && method === 'GET') {
+      return catalogueFails
+        ? Promise.reject({ status: 503, message: 'Catalogue unavailable' })
+        : Promise.resolve({ data: catalogue, meta: { total: catalogue.length } });
+    }
     if (fail) return Promise.reject(fail);
     current = afterWrite;
     return Promise.resolve({ run, overview: afterWrite });
@@ -205,6 +216,100 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe('PricesTab', () => {
+  it('joins product covers from the bounded catalogue read and keeps prices usable when thumbnails fail', async () => {
+    const product = {
+      id: revox.productId,
+      slug: revox.productSlug,
+      name: revox.productName,
+      brandId: 'brand-1',
+      brandName: 'REVOX',
+      categoryId: 'category-1',
+      categoryName: 'Skincare',
+      publishedState: 'PUBLISHED',
+      variants: [],
+      media: [
+        {
+          id: 'media-1',
+          productId: revox.productId,
+          cloudinaryPublicId: 'cover',
+          role: 'COVER',
+          url: 'https://img.test/revox.webp',
+          width: 800,
+          height: 800,
+          altText: null,
+          sortOrder: 0,
+        },
+      ],
+      createdAt: '2026-09-01T00:00:00.000Z',
+    };
+    serve(overviewOf([revox]), overviewOf([revox]), undefined, [product]);
+    const loaded = render(<PricesTab />);
+    const row = (await screen.findByText('REVOX PLEX')).closest('tr')!;
+    expect(row.querySelector('img')).toHaveAttribute('src', 'https://img.test/revox.webp');
+    expect(mockFetch).toHaveBeenCalledWith('/catalog/admin/products?page=1&limit=100&space=house', { auth: true });
+    loaded.unmount();
+
+    serve(overviewOf([revox]), overviewOf([revox]), undefined, [], true);
+    render(<PricesTab />);
+    expect(await screen.findByText('REVOX PLEX')).toBeInTheDocument();
+    expect(document.querySelector('.acct-prices-thumb-empty')).toBeInTheDocument();
+  });
+
+  it('pages at 20 rows by default and keeps page size in the URL', async () => {
+    const variants = Array.from({ length: 21 }, (_, index) => ({
+      ...revox,
+      variantId: `variant-${index + 1}`,
+      productId: `product-${index + 1}`,
+      productName: `Product ${String(index + 1).padStart(2, '0')}`,
+      sku: `SKU-${index + 1}`,
+    }));
+    serve(overviewOf(variants));
+    render(<PricesTab />);
+
+    const table = await screen.findByRole('table', { name: /prices/i });
+    expect(within(table).getAllByRole('row')).toHaveLength(21);
+    expect(screen.getByRole('navigation', { name: 'Prices pagination' })).toHaveTextContent('1–20 of 21');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(within(table).getAllByRole('row')).toHaveLength(2);
+    expect(within(table).getByText('Product 21')).toBeInTheDocument();
+    expect(replace).toHaveBeenLastCalledWith('/accounting?page=2', { scroll: false });
+
+    fireEvent.change(screen.getByLabelText('Rows per page'), { target: { value: '50' } });
+    expect(within(table).getAllByRole('row')).toHaveLength(22);
+    expect(screen.getByRole('navigation', { name: 'Prices pagination' })).toHaveTextContent('1–21 of 21');
+    expect(replace).toHaveBeenLastCalledWith('/accounting?size=50', { scroll: false });
+  });
+
+  it('filters mode and flags, and sorts by margin, price, and profit', async () => {
+    serve(overviewOf([revox, mist, tote]));
+    render(<PricesTab />);
+    const table = await screen.findByRole('table', { name: /prices/i });
+
+    fireEvent.change(screen.getByLabelText('Mode'), { target: { value: 'MANUAL' } });
+    expect(within(table).queryByText('REVOX PLEX')).not.toBeInTheDocument();
+    expect(within(table).getByText('Lumen Mist')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Flags'), { target: { value: 'FLAGGED' } });
+    expect(within(table).queryByText('Lumen Mist')).not.toBeInTheDocument();
+    expect(within(table).getByText('Atelier Tote')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Flags'), { target: { value: 'ALL' } });
+    fireEvent.change(screen.getByLabelText('Mode'), { target: { value: 'ALL' } });
+    const itemNames = () =>
+      within(table)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => within(row).getByRole('button').textContent?.match(/REVOX PLEX|Lumen Mist|Atelier Tote/)?.[0]);
+
+    fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'MARGIN_DESC' } });
+    expect(itemNames()).toEqual(['REVOX PLEX', 'Lumen Mist', 'Atelier Tote']);
+    fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'PRICE_ASC' } });
+    expect(itemNames()).toEqual(['Atelier Tote', 'Lumen Mist', 'REVOX PLEX']);
+    fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'PROFIT_DESC' } });
+    expect(itemNames()).toEqual(['REVOX PLEX', 'Lumen Mist', 'Atelier Tote']);
+  });
+
   it('renders one row per variant from the live row shape', async () => {
     serve(overviewOf([revox, mist, tote]));
     render(<PricesTab />);
@@ -486,12 +591,18 @@ describe('PricesTab', () => {
 
     it('scrolls the set row into view and highlights it for ?openSet=<bundleId>', async () => {
       search = new URLSearchParams('openSet=b-evening');
-      serve({ ...overviewOf([revox]), sets: [set] });
+      const variants = Array.from({ length: 20 }, (_, index) => ({
+        ...revox,
+        variantId: `variant-${index + 1}`,
+        productId: `product-${index + 1}`,
+      }));
+      serve({ ...overviewOf(variants), sets: [set] });
       render(<PricesTab />);
 
       const table = await screen.findByRole('table', { name: /prices/i });
       const setRow = within(table).getByText('Evening Set').closest('tr')!;
       await waitFor(() => expect(setRow).toHaveAttribute('data-highlight', 'true'));
+      expect(screen.getByRole('navigation', { name: 'Prices pagination' })).toHaveTextContent('Page 2 of 2');
       expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
