@@ -30,6 +30,15 @@ export const GOOGLE_SETUP_ISSUE = 'https://github.com/minirrue/minirue-backend/i
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 
+/**
+ * The public headline and description stopped using the old perfume-only and
+ * worldwide-shipping copy in frontend commit 5119d58. Keep this timestamp next
+ * to the metadata change so Search Console can explain a stale Google snippet
+ * instead of making the owner hunt for text that is no longer on the site.
+ */
+export const STOREFRONT_METADATA_CHANGED_AT = '2026-09-15T07:15:37.000Z';
+const METADATA_LANDING_PATHS = new Set(['/', '/shop', '/collab']);
+
 /* ── Pure helpers ── */
 
 /** Audit and Google URLs differ in www and trailing slashes; this is the join key. */
@@ -61,6 +70,20 @@ export function relTime(iso: string | null, now: number | null): string | null {
   // "exactly 2 days" must not read as "1 day ago".
   const d = Math.round(ms / DAY);
   return `${d} day${d === 1 ? '' : 's'} ago`;
+}
+
+export function hasStaleGoogleCopy(pages: SeoGooglePage[]): boolean {
+  const changedAt = new Date(STOREFRONT_METADATA_CHANGED_AT).getTime();
+  return pages.some((page) => {
+    if (!page.lastCrawlTime) return false;
+    try {
+      const path = new URL(page.url).pathname.replace(/\/+$/, '') || '/';
+      const crawledAt = new Date(page.lastCrawlTime).getTime();
+      return METADATA_LANDING_PATHS.has(path) && Number.isFinite(crawledAt) && crawledAt < changedAt;
+    } catch {
+      return false;
+    }
+  });
 }
 
 function dateTime(iso: string): string {
@@ -263,6 +286,7 @@ function GoogleCard({
           ? { text: 'Not connected', tone: 'muted' as const }
           : null;
   const lastRun = relTime(data?.lastRunAt ?? null, now);
+  const staleCopy = data ? hasStaleGoogleCopy(data.pages) : false;
 
   return (
     <section className="dash-card seo-g-card" aria-labelledby="seo-g-title" aria-busy={load.kind === 'loading'}>
@@ -310,6 +334,13 @@ function GoogleCard({
             <p className="seo-g-error" role="alert">
               <StatusIcon status="fail" size={14} />
               <span>{data.error.message}</span>
+            </p>
+          )}
+
+          {staleCopy && (
+            <p className="seo-g-note" data-tone="warn" role="status">
+              Google&apos;s copy is older than your last metadata change. Request indexing for Home, Shop, and Collab
+              in Search Console to replace the old title and shipping offer.
             </p>
           )}
 

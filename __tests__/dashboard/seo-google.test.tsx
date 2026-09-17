@@ -213,6 +213,26 @@ describe('SEO tab, Google index status', () => {
     expect(within(homeRow).getByText('Not checked')).toBeInTheDocument();
   });
 
+  it("warns when Google's landing-page copy predates the storefront metadata change", async () => {
+    getGoogle.mockResolvedValue({
+      ...connected,
+      pages: [
+        ...connected.pages,
+        gPage({
+          url: 'https://minirueshop.com/',
+          lastCrawlTime: '2026-09-14T07:15:37.000Z',
+        }),
+      ],
+    });
+    render(<SeoWithGoogle />);
+
+    const card = await screen.findByRole('region', { name: 'Google index' });
+    expect(within(card).getByRole('status')).toHaveTextContent(
+      "Google's copy is older than your last metadata change",
+    );
+    expect(within(card).getByRole('status')).toHaveTextContent('Home, Shop, and Collab');
+  });
+
   it('not connected: shows the setup link and keeps the live-site checks, with no Google columns or filter', async () => {
     getGoogle.mockResolvedValue(notConnected);
     render(<SeoWithGoogle />);
