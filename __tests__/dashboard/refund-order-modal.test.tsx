@@ -1,29 +1,36 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import RefundOrderModal from '@/components/dashboard/RefundOrderModal';
-import type { Order } from '@/lib/api/orders';
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import RefundOrderModal from "@/components/dashboard/RefundOrderModal";
+import type { Order } from "@/lib/api/orders";
 
-jest.mock('@/lib/api/refunds', () => ({ apiAdminRefundOrder: jest.fn() }));
-import { apiAdminRefundOrder } from '@/lib/api/refunds';
+jest.mock("@/lib/api/refunds", () => ({ apiAdminRefundOrder: jest.fn() }));
+import { apiAdminRefundOrder } from "@/lib/api/refunds";
 
 function makeOrder(): Order {
   return {
-    id: 'order-1',
-    orderNumber: 'MR-20260723-00001',
+    id: "order-1",
+    orderNumber: "MR-20260723-00001",
     orderSeq: 7,
-    userId: 'user-1',
-    channel: 'ONLINE',
+    userId: "user-1",
+    channel: "ONLINE",
     guestContact: null,
-    status: 'CONFIRMED',
-    subtotalAmount: '100.00',
-    subtotalCurrency: 'EGP',
-    shippingAmount: '50.00',
-    totalAmount: '150.00',
-    totalCurrency: 'EGP',
-    shippingAddressSnapshot: { fullName: 'A', line1: 'B', city: 'C', governorate: 'D', phone: 'E' },
+    status: "CONFIRMED",
+    paymentMethod: "COD",
+    subtotalAmount: "100.00",
+    subtotalCurrency: "EGP",
+    shippingAmount: "50.00",
+    totalAmount: "150.00",
+    totalCurrency: "EGP",
+    shippingAddressSnapshot: {
+      fullName: "A",
+      line1: "B",
+      city: "C",
+      governorate: "D",
+      phone: "E",
+    },
     notes: null,
     fulfillmentMethod: null,
-    fulfillmentStatus: 'UNFULFILLED',
+    fulfillmentStatus: "UNFULFILLED",
     fulfilledAt: null,
     refundedAt: null,
     refundedAmountCents: 0,
@@ -35,34 +42,56 @@ function makeOrder(): Order {
 
 beforeEach(() => jest.clearAllMocks());
 
-describe('RefundOrderModal', () => {
+describe("RefundOrderModal", () => {
   // 150.00 total = 100.00 goods + 50.00 shipping. Shipping is never refunded
   // (owner, 2026-08-23), so every refund on this order is exactly 100.00.
-  it('shows the order total MINUS shipping, not the full total', () => {
-    render(<RefundOrderModal order={makeOrder()} onClose={jest.fn()} onRefunded={jest.fn()} />);
-    expect(screen.getByLabelText(/refund amount/i)).toHaveValue('100.00');
+  it("shows the order total MINUS shipping, not the full total", () => {
+    render(
+      <RefundOrderModal
+        order={makeOrder()}
+        onClose={jest.fn()}
+        onRefunded={jest.fn()}
+      />,
+    );
+    expect(screen.getByLabelText(/refund amount/i)).toHaveValue("100.00");
   });
 
-  it('does not let the operator edit the amount', () => {
-    render(<RefundOrderModal order={makeOrder()} onClose={jest.fn()} onRefunded={jest.fn()} />);
+  it("does not let the operator edit the amount", () => {
+    render(
+      <RefundOrderModal
+        order={makeOrder()}
+        onClose={jest.fn()}
+        onRefunded={jest.fn()}
+      />,
+    );
     expect(screen.getByLabelText(/refund amount/i)).toBeDisabled();
   });
 
-  it('submits without an image, because proof is optional', async () => {
-    (apiAdminRefundOrder as jest.Mock).mockResolvedValue({ id: 't1' });
+  it("submits without an image, because proof is optional", async () => {
+    (apiAdminRefundOrder as jest.Mock).mockResolvedValue({ id: "t1" });
     const onRefunded = jest.fn();
-    render(<RefundOrderModal order={makeOrder()} onClose={jest.fn()} onRefunded={onRefunded} />);
+    render(
+      <RefundOrderModal
+        order={makeOrder()}
+        onClose={jest.fn()}
+        onRefunded={onRefunded}
+      />,
+    );
 
-    await userEvent.type(screen.getByLabelText(/reason/i), 'Damaged bottle');
-    await userEvent.click(screen.getByRole('button', { name: /^refund/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^refund/i }));
 
     await waitFor(() =>
       expect(apiAdminRefundOrder).toHaveBeenCalledWith(
-        'order-1',
-        expect.objectContaining({ amountCents: 10000, reason: 'Damaged bottle' }),
+        "order-1",
+        expect.objectContaining({
+          amountCents: 10000,
+          reasonCode: "DAMAGED_ITEM",
+        }),
       ),
     );
-    expect((apiAdminRefundOrder as jest.Mock).mock.calls[0][1]).not.toHaveProperty('proofDataUrl');
+    expect(
+      (apiAdminRefundOrder as jest.Mock).mock.calls[0][1],
+    ).not.toHaveProperty("proofDataUrl");
     await waitFor(() => expect(onRefunded).toHaveBeenCalled());
   });
 
@@ -70,12 +99,17 @@ describe('RefundOrderModal', () => {
   // guarded: an operator can no longer enter any amount, so there is no
   // over-total value to reject. The guarantee it protected — never refund more
   // than was taken — is now structural rather than validated.
-  it('never sends an amount above the goods total, whatever the shipping', async () => {
-    (apiAdminRefundOrder as jest.Mock).mockResolvedValue({ id: 't1' });
-    render(<RefundOrderModal order={makeOrder()} onClose={jest.fn()} onRefunded={jest.fn()} />);
+  it("never sends an amount above the goods total, whatever the shipping", async () => {
+    (apiAdminRefundOrder as jest.Mock).mockResolvedValue({ id: "t1" });
+    render(
+      <RefundOrderModal
+        order={makeOrder()}
+        onClose={jest.fn()}
+        onRefunded={jest.fn()}
+      />,
+    );
 
-    await userEvent.type(screen.getByLabelText(/reason/i), 'x');
-    await userEvent.click(screen.getByRole('button', { name: /^refund/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^refund/i }));
 
     await waitFor(() => expect(apiAdminRefundOrder).toHaveBeenCalled());
     const sent = (apiAdminRefundOrder as jest.Mock).mock.calls[0][1];
@@ -83,20 +117,50 @@ describe('RefundOrderModal', () => {
     expect(sent.amountCents).toBeLessThan(15000);
   });
 
-  it('requires a reason', async () => {
-    render(<RefundOrderModal order={makeOrder()} onClose={jest.fn()} onRefunded={jest.fn()} />);
-    await userEvent.click(screen.getByRole('button', { name: /^refund/i }));
-    expect(await screen.findByText(/reason is required/i)).toBeInTheDocument();
+  it("requires details when Other is selected", async () => {
+    render(
+      <RefundOrderModal
+        order={makeOrder()}
+        onClose={jest.fn()}
+        onRefunded={jest.fn()}
+      />,
+    );
+    await userEvent.selectOptions(screen.getByLabelText(/reason/i), "OTHER");
+    await userEvent.click(screen.getByRole("button", { name: /^refund/i }));
+    expect(await screen.findByText(/short explanation/i)).toBeInTheDocument();
     expect(apiAdminRefundOrder).not.toHaveBeenCalled();
   });
 
-  it('surfaces an API failure instead of closing silently', async () => {
-    (apiAdminRefundOrder as jest.Mock).mockRejectedValue({ status: 400, message: 'already refunded' });
-    const onClose = jest.fn();
-    render(<RefundOrderModal order={makeOrder()} onClose={onClose} onRefunded={jest.fn()} />);
+  it("requires a payout receipt for a non-COD refund", async () => {
+    render(
+      <RefundOrderModal
+        order={{ ...makeOrder(), paymentMethod: "INSTAPAY" }}
+        onClose={jest.fn()}
+        onRefunded={jest.fn()}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /^refund/i }));
+    expect(
+      await screen.findByText(/attach the payout receipt/i),
+    ).toBeInTheDocument();
+    expect(apiAdminRefundOrder).not.toHaveBeenCalled();
+  });
 
-    await userEvent.type(screen.getByLabelText(/reason/i), 'x');
-    await userEvent.click(screen.getByRole('button', { name: /^refund/i }));
+  it("surfaces an API failure instead of closing silently", async () => {
+    (apiAdminRefundOrder as jest.Mock).mockRejectedValue({
+      status: 400,
+      message: "already refunded",
+    });
+    const onClose = jest.fn();
+    render(
+      <RefundOrderModal
+        order={makeOrder()}
+        onClose={onClose}
+        onRefunded={jest.fn()}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /^refund/i }));
 
     expect(await screen.findByText(/already refunded/i)).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();

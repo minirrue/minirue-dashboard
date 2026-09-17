@@ -1,20 +1,25 @@
-import { apiFetch } from './client';
+import { apiFetch } from "./client";
 
 export type RefundStatus =
-  | 'REQUESTED'
-  | 'UNDER_REVIEW'
-  | 'APPROVED'
-  | 'REFUNDED'
-  | 'REJECTED'
-  | 'CANCELLED';
+  | "REQUESTED"
+  | "UNDER_REVIEW"
+  | "APPROVED"
+  | "REFUNDED"
+  | "REJECTED"
+  | "CANCELLED";
 
 export type RefundMethod =
-  | 'ORIGINAL_PAYMENT'
-  | 'STORE_CREDIT'
-  | 'BANK_TRANSFER'
-  | 'INSTAPAY';
+  "ORIGINAL_PAYMENT" | "STORE_CREDIT" | "BANK_TRANSFER" | "INSTAPAY";
 
-export type RefundSource = 'CUSTOMER' | 'ADMIN';
+export type RefundSource = "CUSTOMER" | "ADMIN";
+export type RefundReasonCode =
+  | "DAMAGED_ITEM"
+  | "WRONG_ITEM"
+  | "MISSING_ITEM"
+  | "NOT_AS_DESCRIBED"
+  | "LATE_DELIVERY"
+  | "CHANGED_MIND"
+  | "OTHER";
 
 export interface RefundTicketDto {
   id: string;
@@ -31,6 +36,8 @@ export interface RefundTicketDto {
   requestedAmountCents: number;
   approvedAmountCents: number | null;
   reason: string;
+  reasonCode: RefundReasonCode | null;
+  reasonNote: string | null;
   adminNote: string | null;
   createdAt: string;
   updatedAt: string;
@@ -42,12 +49,13 @@ export async function apiAdminListRefunds(params?: {
   limit?: number;
 }): Promise<{ data: RefundTicketDto[]; total: number }> {
   const qs = params
-    ? '?' + new URLSearchParams(
+    ? "?" +
+      new URLSearchParams(
         Object.entries(params)
           .filter(([, v]) => v != null)
-          .map(([k, v]) => [k, String(v)])
+          .map(([k, v]) => [k, String(v)]),
       ).toString()
-    : '';
+    : "";
   return apiFetch(`/admin/refunds${qs}`, { auth: true });
 }
 
@@ -57,11 +65,11 @@ export async function apiAdminGetRefund(id: string): Promise<RefundTicketDto> {
 
 export async function apiAdminReviewRefund(
   id: string,
-  action: 'start_review' | 'approve' | 'reject',
+  action: "start_review" | "approve" | "reject",
   options?: { adminNote?: string; approvedAmountCents?: number },
 ): Promise<RefundTicketDto> {
   return apiFetch(`/admin/refunds/${id}/review`, {
-    method: 'PATCH',
+    method: "PATCH",
     auth: true,
     body: JSON.stringify({ action, ...options }),
   });
@@ -73,20 +81,26 @@ export async function apiAdminMarkRefunded(
   idempotencyKey: string,
 ): Promise<RefundTicketDto> {
   return apiFetch(`/admin/refunds/${id}/mark-refunded`, {
-    method: 'PATCH',
+    method: "PATCH",
     auth: true,
     body: JSON.stringify({ reference, idempotencyKey }),
   });
 }
 
-export async function apiAdminCancelRefund(id: string): Promise<RefundTicketDto> {
-  return apiFetch(`/admin/refunds/${id}/cancel`, { method: 'PATCH', auth: true });
+export async function apiAdminCancelRefund(
+  id: string,
+): Promise<RefundTicketDto> {
+  return apiFetch(`/admin/refunds/${id}/cancel`, {
+    method: "PATCH",
+    auth: true,
+  });
 }
 
 export interface AdminRefundOrderPayload {
   /** Omit to refund the full order total. */
   amountCents?: number;
-  reason: string;
+  reasonCode: RefundReasonCode;
+  reasonNote?: string;
   adminNote?: string;
   /** Inline PNG/JPG data URL — genuinely optional. */
   proofDataUrl?: string;
@@ -103,7 +117,7 @@ export async function apiAdminRefundOrder(
   payload: AdminRefundOrderPayload,
 ): Promise<RefundTicketDto> {
   return apiFetch(`/admin/refunds/order/${orderId}`, {
-    method: 'POST',
+    method: "POST",
     auth: true,
     body: JSON.stringify(payload),
   });
