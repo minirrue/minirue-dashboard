@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useEffect, useState, useTransition, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useTransition, useCallback } from 'react';
 import Link from 'next/link';
 import DashboardTable from '@/components/dashboard/DashboardTable';
 import StatusBadge from '@/components/dashboard/StatusBadge';
 import type { Column } from '@/components/dashboard/DashboardTable';
 import type { StatusKind } from '@/components/dashboard/StatusBadge';
-import type { ProductListItem, ProductStatus } from '@/lib/catalog/types';
+import type { Category, ProductListItem, ProductStatus } from '@/lib/catalog/types';
 import {
   listProducts,
   publishProduct,
@@ -14,6 +14,7 @@ import {
   listManagedBrands,
   softDeleteProduct,
   hardDeleteProduct,
+  listCategories,
 } from '@/lib/catalog/api';
 import type { ManagedBrand } from '@/lib/catalog/api';
 import type { ApiError } from '@/lib/api/client';
@@ -23,9 +24,12 @@ import UploadPreviewImage from '@/components/dashboard/UploadPreviewImage';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import CopyButton from '@/components/dashboard/CopyButton';
+import { apiAccountingOverview, type PricingMode } from '@/lib/api/accounting';
 
 /* ── Row type for table ── */
 interface ProductRow extends ProductListItem {
+  priceMode: PricingMode | 'MIXED' | null;
+  stockAvailable: number;
   _actions?: undefined;
 }
 
@@ -41,7 +45,7 @@ function SkeletonRows({ count = 8 }: { count?: number }) {
         <table className="dash-table">
           <thead>
             <tr>
-              {['Product', 'Brand', 'SKU', 'Status', 'Variants', 'Created', 'Actions'].map(
+              {['Product', 'Brand', 'SKU', 'Price', 'Stock', 'Status', 'Created', 'Actions'].map(
                 (h) => (
                   <th key={h}>{h}</th>
                 ),
@@ -85,6 +89,32 @@ const STATUS_KIND: Record<ProductStatus, StatusKind> = {
 };
 function statusToKind(s: ProductStatus): StatusKind {
   return STATUS_KIND[s] ?? 'draft';
+}
+
+type StockFilter = '' | 'IN' | 'LOW' | 'OUT';
+type PriceModeFilter = '' | PricingMode | 'MIXED';
+
+function stockState(quantity: number): Exclude<StockFilter, ''> {
+  if (quantity <= 0) return 'OUT';
+  if (quantity <= 5) return 'LOW';
+  return 'IN';
+}
+
+function formatPrice(row: ProductRow): string {
+  if (row.priceMin == null) return 'No price';
+  const money = (value: number) => value.toLocaleString('en-EG', { maximumFractionDigits: 2 });
+  return row.priceMax != null && row.priceMax !== row.priceMin
+    ? `${row.currency} ${money(row.priceMin)}–${money(row.priceMax)}`
+    : `${row.currency} ${money(row.priceMin)}`;
+}
+
+function replaceCatalogueQuery(patch: Record<string, string | null>) {
+  const url = new URL(window.location.href);
+  for (const [key, value] of Object.entries(patch)) {
+    if (value) url.searchParams.set(key, value);
+    else url.searchParams.delete(key);
+  }
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}`);
 }
 
 const STATUS_OPTIONS: Array<{ value: '' | ProductStatus; label: string }> = [
@@ -171,6 +201,13 @@ export default function ProductsClient() {
   const [statusFilter, setStatusFilter] = useState<'' | ProductStatus>('');
   const [brandFilter, setBrandFilter] = useState('');
   const [brands, setBrands] = useState<ManagedBrand[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [stockFilter, setStockFilter] = useState<StockFilter>('');
+  const [priceModeFilter, setPriceModeFilter] = useState<PriceModeFilter>('');
+  const [pricingModes, setPricingModes] = useState<Record<string, PricingMode | 'MIXED'>>({});
+  const [pageSize, setPageSize] = useState(20);
+  const [page, setPage] = useState(0);
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearchInput = useDebounce(searchInput, 350);
 
@@ -186,16 +223,26 @@ export default function ProductsClient() {
       .catch(() => setBrands([]));
   }, []);
 
+  useEffect(() => {
+    listCategories({ space: 'house' })
+      .then((res) => setCategories(Array.isArray(res.items) ? res.items : []))
+      .catch(() => setCategories([]));
+  }, []);
+
   // Deep-links here with ?brandId=<id> (e.g. from the Brands tab). Read once
   // on mount rather than through useSearchParams, which would force a
   // Suspense boundary on this page for a one-time seed. A blank or unknown
   // value just leaves the filter on "All brands". Filtering by id rather than
   // name is what makes this unambiguous now that two spaces can each have a
   // brand called the same thing.
-  useEffect(() => {
+  useMountedEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const brandId = params.get('brandId');
     if (brandId) setBrandFilter(brandId);
+    const size = Number(params.get('size'));
+    if (size === 20 || size === 50 || size === 100) setPageSize(size);
+    const requestedPage = Number(params.get('page'));
+    if (Number.isInteger(requestedPage) && requestedPage > 0) setPage(requestedPage - 1);
   }, []);
 
   const load = useCallback(
@@ -203,17 +250,43 @@ export default function ProductsClient() {
       setError(null);
       setLoading(true);
       try {
-        const res = await listProducts({
+        const query = {
           status: statusFilter || undefined,
           brandId: brandFilter || undefined,
-          space: 'house',
+          space: 'house' as const,
           search: (searchOverride ?? debouncedSearchInput) || undefined,
-          limit: 50,
-        });
+          limit: 100,
+        };
+        const first = await listProducts({ ...query, page: 1 });
+        const all = [...first.items];
+        for (let nextPage = 2; all.length < first.total; nextPage += 1) {
+          const next = await listProducts({ ...query, page: nextPage });
+          if (next.items.length === 0) break;
+          all.push(...next.items);
+        }
         // Guarded: a response missing this key set state to undefined and the
-      // next .map()/.reduce() blanked the whole tab. Same bug as Settings
-      // and Loyalty had.
-      setItems(Array.isArray(res?.items) ? res.items : []);
+        // next .map()/.reduce() blanked the whole tab. Same bug as Settings
+        // and Loyalty had.
+        setItems(Array.isArray(all) ? all : []);
+        try {
+          const overview = await apiAccountingOverview();
+          const grouped = new Map<string, Set<PricingMode>>();
+          for (const variant of overview.variants ?? []) {
+            const modes = grouped.get(variant.productId) ?? new Set<PricingMode>();
+            modes.add(variant.mode);
+            grouped.set(variant.productId, modes);
+          }
+          setPricingModes(Object.fromEntries(
+            [...grouped].map(([productId, modes]) => [
+              productId,
+              modes.size > 1 ? 'MIXED' : ([...modes][0] ?? 'MANUAL'),
+            ]),
+          ));
+        } catch {
+          // Catalogue access is wider than Accounting access. Keep products
+          // usable for staff even when price-mode metadata is unavailable.
+          setPricingModes({});
+        }
       } catch (e) {
         const err = e as ApiError;
         setError(err.message ?? 'Failed to load products');
@@ -239,6 +312,27 @@ export default function ProductsClient() {
   function handleSearchKey(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') triggerImmediateSearch();
   }
+
+  function resetPage() {
+    setPage(0);
+    replaceCatalogueQuery({ page: null });
+  }
+
+  const rows = useMemo<ProductRow[]>(() => items
+    .map((item) => ({
+      ...item,
+      priceMode: pricingModes[item.id] ?? null,
+      stockAvailable: item.stockAvailable ?? 0,
+    }))
+    .filter((item) => !categoryFilter || item.categoryId === categoryFilter)
+    .filter((item) => !stockFilter || stockState(item.stockAvailable) === stockFilter)
+    .filter((item) => !priceModeFilter || item.priceMode === priceModeFilter), [
+      items,
+      pricingModes,
+      categoryFilter,
+      stockFilter,
+      priceModeFilter,
+    ]);
 
   async function handlePublish(id: string) {
     setActionError(null);
@@ -363,23 +457,40 @@ export default function ProductsClient() {
     {
       key: 'sku',
       label: 'SKU',
-      // Tabular figures so a column of zero-padded sequence numbers lines up.
-      // Copyable: a SKU exists to be pasted somewhere else, and the composite
-      // form is far too long to retype (owner, 2026-08-21).
-      render: (row) =>
-        row.sku ? (
-          <span style={{ display: 'inline-flex', alignItems: 'center', minWidth: 0 }}>
-            <span style={{ fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere' }}>
-              {row.sku}
+      render: (row) => row.sku ? (
+        <span style={{ display: 'inline-flex', alignItems: 'center', minWidth: 0 }}>
+          <span style={{ fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere' }}>{row.sku}</span>
+          <CopyButton
+            value={row.sku}
+            traceId={`PG-DASHBOARD-CAT-001::EL-BTN-copy-sku@${row.id}`}
+          />
+        </span>
+      ) : <span style={{ opacity: 0.45 }}>—</span>,
+    },
+    {
+      key: 'priceMin',
+      label: 'Price',
+      sortable: true,
+      render: (row) => (
+        <span className="dash-product-price-cell">
+          <strong>{formatPrice(row)}</strong>
+          {row.priceMode ? (
+            <span className="dash-status" data-status={row.priceMode === 'SYSTEM' ? 'processing' : row.priceMode === 'MIXED' ? 'warn' : 'draft'}>
+              {row.priceMode === 'SYSTEM' ? 'System' : row.priceMode === 'MIXED' ? 'Mixed' : 'My price'}
             </span>
-            <CopyButton
-              value={row.sku}
-              traceId={`PG-DASHBOARD-CAT-001::EL-BTN-copy-sku@${row.id}`}
-            />
-          </span>
-        ) : (
-          <span style={{ opacity: 0.45 }}>—</span>
-        ),
+          ) : null}
+        </span>
+      ),
+    },
+    {
+      key: 'stockAvailable',
+      label: 'Stock available',
+      sortable: true,
+      render: (row) => (
+        <span className="dash-stock-quantity" data-stock={stockState(row.stockAvailable).toLowerCase()}>
+          {row.stockAvailable}
+        </span>
+      ),
     },
     {
       key: 'status',
@@ -390,10 +501,6 @@ export default function ProductsClient() {
         </span>
       ),
     },
-    { key: 'variantCount', label: 'Variants', align: 'right' as const, sortable: true },
-    // Price Range removed 2026-08-21. It duplicated what the product's own
-    // page shows in more detail, and its width was better spent on the SKU,
-    // which is now a full composite rather than six digits.
     {
       key: 'createdAt',
       label: 'Created',
@@ -489,7 +596,7 @@ export default function ProductsClient() {
         <select
           className="dash-select"
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as '' | ProductStatus)}
+          onChange={(e) => { setStatusFilter(e.target.value as '' | ProductStatus); resetPage(); }}
           data-trace-id="PG-DASHBOARD-CAT-001::EL-SELECT-status-filter"
         >
           {STATUS_OPTIONS.map((o) => (
@@ -500,8 +607,41 @@ export default function ProductsClient() {
         </select>
         <select
           className="dash-select"
+          aria-label="Filter by category"
+          value={categoryFilter}
+          onChange={(e) => { setCategoryFilter(e.target.value); resetPage(); }}
+        >
+          <option value="">All categories</option>
+          {categories.map((category) => (
+            <option key={category.id} value={category.id}>{category.name}</option>
+          ))}
+        </select>
+        <select
+          className="dash-select"
+          aria-label="Filter by stock"
+          value={stockFilter}
+          onChange={(e) => { setStockFilter(e.target.value as StockFilter); resetPage(); }}
+        >
+          <option value="">All stock</option>
+          <option value="IN">In stock</option>
+          <option value="LOW">Low stock (1–5)</option>
+          <option value="OUT">Out of stock</option>
+        </select>
+        <select
+          className="dash-select"
+          aria-label="Filter by price mode"
+          value={priceModeFilter}
+          onChange={(e) => { setPriceModeFilter(e.target.value as PriceModeFilter); resetPage(); }}
+        >
+          <option value="">All price modes</option>
+          <option value="SYSTEM">System price</option>
+          <option value="MANUAL">My price</option>
+          <option value="MIXED">Mixed</option>
+        </select>
+        <select
+          className="dash-select"
           value={brandFilter}
-          onChange={(e) => setBrandFilter(e.target.value)}
+          onChange={(e) => { setBrandFilter(e.target.value); resetPage(); }}
           data-trace-id="PG-DASHBOARD-CAT-001::EL-SELECT-brand-filter"
         >
           <option value="">All brands</option>
@@ -515,7 +655,7 @@ export default function ProductsClient() {
           className="dash-input dash-input-search"
           placeholder="Search products…"
           value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
+          onChange={(e) => { setSearchInput(e.target.value); resetPage(); }}
           onKeyDown={handleSearchKey}
           data-trace-id="PG-DASHBOARD-CAT-001::EL-INPUT-search-products"
         />
@@ -555,14 +695,40 @@ export default function ProductsClient() {
           </button>
         </div>
       ) : (
-        <DashboardTable<ProductRow>
+        <>
+          <div className="dash-table-page-size">
+            <label htmlFor="products-page-size">Rows per page</label>
+            <select
+              id="products-page-size"
+              className="dash-select"
+              value={pageSize}
+              onChange={(e) => {
+                const size = Number(e.target.value);
+                setPageSize(size);
+                setPage(0);
+                replaceCatalogueQuery({ size: String(size), page: null });
+              }}
+            >
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+          <DashboardTable<ProductRow>
+          key={`${pageSize}:${statusFilter}:${brandFilter}:${categoryFilter}:${stockFilter}:${priceModeFilter}:${debouncedSearchInput}`}
           columns={columns}
-          data={items}
-          pageSize={20}
+          data={rows}
+          pageSize={pageSize}
+          initialPage={page}
+          onPageChange={(nextPage) => {
+            setPage(nextPage);
+            replaceCatalogueQuery({ page: nextPage > 0 ? String(nextPage + 1) : null });
+          }}
           emptyMessage="No products found. Create your first product to get started."
           tableTraceId="PG-DASHBOARD-CAT-001::EL-TABLE-products-table"
           getRowTraceId={(row) => `PG-DASHBOARD-CAT-001::EL-ROW-product-row@${row.id}`}
-        />
+          />
+        </>
       )}
     </>
   );

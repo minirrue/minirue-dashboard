@@ -37,6 +37,10 @@ export interface DashboardTableProps<T extends Record<string, any>> {
   data: T[];
   /** Rows per page. 0 = no pagination. */
   pageSize?: number;
+  /** Zero-based page restored by a route that keeps paging in its URL. */
+  initialPage?: number;
+  /** Called whenever pagination or sorting changes the page. */
+  onPageChange?: (page: number) => void;
   /** Render when data is empty */
   emptyMessage?: string;
   /**
@@ -66,13 +70,15 @@ export default function DashboardTable<T extends Record<string, any>>({
   columns,
   data,
   pageSize = 10,
+  initialPage = 0,
+  onPageChange,
   emptyMessage = 'No data to display',
   tableTraceId,
   getRowTraceId,
 }: DashboardTableProps<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(Math.max(0, initialPage));
   const [isMobile, setIsMobile] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
@@ -135,8 +141,9 @@ export default function DashboardTable<T extends Record<string, any>>({
         setSortDir('asc');
       }
       setPage(0);
+      onPageChange?.(0);
     },
-    [sortKey],
+    [sortKey, onPageChange],
   );
 
   const toggleExpand = useCallback((ri: number) => {
@@ -270,7 +277,11 @@ export default function DashboardTable<T extends Record<string, any>>({
             <button
               className="dash-pagination-btn"
               disabled={page === 0}
-              onClick={() => setPage((p) => p - 1)}
+              onClick={() => setPage((p) => {
+                const next = p - 1;
+                onPageChange?.(next);
+                return next;
+              })}
             >
               Prev
             </button>
@@ -279,7 +290,10 @@ export default function DashboardTable<T extends Record<string, any>>({
                 key={i}
                 className="dash-pagination-btn"
                 data-active={i === page ? 'true' : undefined}
-                onClick={() => setPage(i)}
+                onClick={() => {
+                  setPage(i);
+                  onPageChange?.(i);
+                }}
               >
                 {i + 1}
               </button>
@@ -287,7 +301,11 @@ export default function DashboardTable<T extends Record<string, any>>({
             <button
               className="dash-pagination-btn"
               disabled={page >= totalPages - 1}
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => setPage((p) => {
+                const next = p + 1;
+                onPageChange?.(next);
+                return next;
+              })}
             >
               Next
             </button>

@@ -131,6 +131,8 @@ export interface ProductListItem {
   name: string;
   brandId: string;
   brandName: string;
+  /** Used by the catalogue category filter. */
+  categoryId?: string;
   /** The brand's logo, so a brand is recognisable by its mark in the list and
    *  not only by its name (owner, 2026-08-21). Null when the brand has no
    *  image, or is the Generic brand. */
@@ -149,6 +151,8 @@ export interface ProductListItem {
   priceMin: number | null;
   priceMax: number | null;
   currency: string;
+  /** Sum of available stock across active variants. */
+  stockAvailable?: number;
   createdAt: string;
 }
 

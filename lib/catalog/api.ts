@@ -113,6 +113,7 @@ function mapListItem(p: BackendProduct): ProductListItem {
     name: p.name,
     brandId: p.brandId,
     brandName: p.brandName ?? '',
+    categoryId: p.categoryId,
     brandImageUrl: p.brandImageUrl ?? null,
     // COVER is the photo shoppers see in listings; falling back to the first
     // image means a product uploaded before roles existed still shows
@@ -129,6 +130,10 @@ function mapListItem(p: BackendProduct): ProductListItem {
     priceMin,
     priceMax,
     currency,
+    stockAvailable: active.reduce(
+      (sum, variant) => sum + Math.max(0, variant.availableQuantity ?? 0),
+      0,
+    ),
     createdAt: p.createdAt,
   };
 }
