@@ -30,6 +30,8 @@ export interface ProductSnapshot {
   sku: string;
   /** Product cover, resolved per line by the API (backend 0.38.0). */
   imageUrl?: string | null;
+  /** Uncropped high-resolution source used only when the image viewer opens. */
+  imagePreviewUrl?: string | null;
 }
 
 export interface OrderItem {
@@ -198,6 +200,7 @@ export interface OrderEmailLog {
   transport: MailTransport;
   /** Where this order's emails go: the account, the guest's checkout email, or nowhere. */
   recipient: 'ACCOUNT' | 'GUEST' | 'NONE';
+  recipientEmail?: string | null;
   emails: OrderEmailLogEntry[];
 }
 

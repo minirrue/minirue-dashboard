@@ -11,11 +11,13 @@ import UploadPreviewImage from './UploadPreviewImage';
  */
 export function ImagePreviewModal({
   src,
+  previewSrc,
   alt,
   localFile,
   onClose,
 }: {
   src: string;
+  previewSrc?: string | null;
   alt: string;
   /**
    * Bytes already in the browser for THIS image — the File/Blob just picked,
@@ -55,7 +57,7 @@ export function ImagePreviewModal({
       </button>
       <div className="dash-gallery-preview-frame" onClick={(e) => e.stopPropagation()}>
         <UploadPreviewImage
-          src={src}
+          src={previewSrc || src}
           localFile={localFile}
           alt={alt}
           className="dash-gallery-preview-media"
@@ -68,6 +70,7 @@ export function ImagePreviewModal({
 /** Wraps any thumbnail image in a clickable button that opens it enlarged. */
 export function EnlargeableImage({
   src,
+  previewSrc,
   alt,
   className,
   previewOpen,
@@ -78,6 +81,7 @@ export function EnlargeableImage({
   fallback,
 }: {
   src: string;
+  previewSrc?: string | null;
   alt: string;
   className?: string;
   previewOpen: boolean;
@@ -118,7 +122,7 @@ export function EnlargeableImage({
           fallback={fallback}
         />
       </button>
-      {previewOpen && <ImagePreviewModal src={src} alt={alt} onClose={onClosePreview} />}
+      {previewOpen && <ImagePreviewModal src={previewSrc || src} alt={alt} onClose={onClosePreview} />}
     </>
   );
 }

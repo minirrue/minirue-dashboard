@@ -649,6 +649,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
                       {item.productSnapshot.imageUrl ? (
                         <EnlargeableImage
                           src={item.productSnapshot.imageUrl}
+                          previewSrc={item.productSnapshot.imagePreviewUrl}
                           alt={item.productSnapshot.name}
                           className="dash-order-item-thumb"
                           previewOpen={itemPreview === item.id}
@@ -852,7 +853,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
         )}
       </div>
 
-      {emailLog && <OrderEmailsSection log={emailLog} orderId={order.id} orderNumber={order.orderNumber} customerName={order.guestContact?.fullName || order.shippingAddressSnapshot.fullName} recipientEmail={order.guestContact?.email} />}
+      {emailLog && <OrderEmailsSection log={emailLog} orderId={order.id} orderNumber={order.orderNumber} customerName={order.guestContact?.fullName || order.shippingAddressSnapshot.fullName} recipientEmail={emailLog.recipientEmail || order.guestContact?.email} />}
 
       {/* Status history */}
       {order.statusHistory && order.statusHistory.length > 0 && (

@@ -4027,10 +4027,8 @@
 }
 
 /* ── Order line thumbnail ──
-   Was an inline 36x45: an odd portrait ratio that crop-mangled square product
-   shots, at a size too small to tell two bottles apart. Square matches how the
-   gallery and the payment receipt already render, and 64px is large enough to
-   recognise a bottle without inflating the row. */
+   Keep the whole purchased product visible on desktop and mobile. The square
+   is only the frame; portrait and landscape art must never be cropped. */
 .dash-order-item-thumb {
   width: 64px;
   height: 64px;
@@ -4040,7 +4038,7 @@
      letterbox strip. min-width holds the floor if the column narrows further. */
   min-width: 64px;
   max-width: none;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 6px;
   border: 1px solid var(--mr-dash-border, #e5e0d8);
   background: var(--mr-dash-sub, #f4f1ec);

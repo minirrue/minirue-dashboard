@@ -72,7 +72,7 @@ export default function DirectEmailComposer({
     try {
       idempotencyKey.current ??= globalThis.crypto?.randomUUID?.()
         ?? `email-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      await apiSendDirectEmail({
+      const result = await apiSendDirectEmail({
         to: normalizedRecipient,
         customerId,
         orderId,
@@ -81,6 +81,9 @@ export default function DirectEmailComposer({
         text: text.trim(),
         variables,
       }, idempotencyKey.current);
+      if (result.status === 'FAILED') {
+        throw new Error('The email provider could not deliver this message. Please try again.');
+      }
       idempotencyKey.current = null;
       setNotice({ tone: 'ok', text: `Email sent to ${normalizedRecipient}.` });
     } catch (error) {
