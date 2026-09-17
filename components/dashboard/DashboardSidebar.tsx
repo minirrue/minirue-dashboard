@@ -621,7 +621,7 @@ export default function DashboardSidebar({
     </nav>
   );
 
-  const renderBrand = (showNotifButton = false, rail = false, mobile = false) => (
+  const renderBrand = (showNotifButton = false, mobile = false) => (
     <div className="dash-sidebar-brand">
       <div className="dash-sidebar-brand-copy">
         <div className="dash-sidebar-logo">
@@ -635,7 +635,7 @@ export default function DashboardSidebar({
         <div className="dash-sidebar-subtitle">Dashboard</div>
       </div>
       <div className="dash-sidebar-brand-actions">
-      {showNotifButton && !rail && (
+      {showNotifButton && (
         <>
         <button
           type="button"
@@ -700,7 +700,7 @@ export default function DashboardSidebar({
     <>
       {/* Desktop sidebar */}
       <aside className="dash-sidebar" data-collapsed={collapsed ? 'true' : undefined} aria-label="Dashboard navigation">
-        {renderBrand(true, collapsed)}
+        {renderBrand(true)}
         {renderNav(collapsed)}
         {renderFooter(collapsed)}
       </aside>
@@ -719,8 +719,9 @@ export default function DashboardSidebar({
         aria-modal="true"
         aria-label="Dashboard navigation"
         aria-hidden={!mobileDrawerOpen}
+        inert={!mobileDrawerOpen}
       >
-        {renderBrand(false, false, true)}
+        {renderBrand(false, true)}
         {renderNav(false, true)}
         {renderFooter()}
       </aside>

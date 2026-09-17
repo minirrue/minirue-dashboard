@@ -480,6 +480,10 @@
     width: 36px;
   }
 
+  .dash-sidebar[data-collapsed="true"] .dash-sidebar-brand-actions {
+    flex-direction: column;
+  }
+
   .dash-sidebar[data-collapsed="true"] .dash-sidebar-nav {
     padding: 10px 8px;
     gap: 8px;

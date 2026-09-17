@@ -66,6 +66,7 @@ describe('collapsible dashboard navigation', () => {
     const orders = screen.getByRole('link', { name: 'Orders' });
     expect(orders).toHaveAttribute('data-tooltip', 'Orders');
     expect(orders).toHaveAttribute('data-active', 'true');
+    expect(screen.getByRole('button', { name: 'Open notifications' })).toBeVisible();
   });
 
   it('closes the mobile drawer with Escape', () => {
@@ -87,5 +88,20 @@ describe('collapsible dashboard navigation', () => {
     expect(accountButtons[accountButtons.length - 1]).toHaveFocus();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the closed mobile drawer out of keyboard navigation', () => {
+    const { container } = render(
+      <DashboardSidebar
+        userName="Youssef"
+        userRole={Role.STAFF}
+        activePath="/orders"
+        mobileDrawerOpen={false}
+      />,
+    );
+
+    const drawer = container.querySelector('.dash-mobile-drawer');
+    expect(drawer).toHaveAttribute('aria-hidden', 'true');
+    expect(drawer).toHaveAttribute('inert');
   });
 });
