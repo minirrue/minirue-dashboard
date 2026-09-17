@@ -2445,6 +2445,49 @@
   background: var(--mr-st-danger-bg);
   color: var(--mr-st-danger-fg);
 }
+.dash-status[data-status="internal"] {
+  background: var(--mr-st-muted-bg);
+  color: var(--mr-st-muted-fg);
+  border: 1px solid var(--mr-border);
+}
+
+.dash-order-reference-link {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  color: var(--mr-accent);
+  text-decoration: none;
+}
+
+.dash-order-reference-link:hover { text-decoration: underline; }
+.dash-order-reference-link .dash-internal-order-badge { margin-left: 4px; }
+
+.dash-staff-device-control,
+.dash-staff-device-note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--mr-border);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-bg-2);
+  color: var(--mr-fg-2);
+}
+
+.dash-staff-device-control > div { flex: 1; min-width: 0; }
+.dash-staff-device-control strong,
+.dash-staff-device-note strong { color: var(--mr-fg); }
+.dash-staff-device-control p { margin: 4px 0 0; font-size: 13px; }
+.dash-staff-device-control > .dash-inline-error { flex-basis: 100%; margin: 0; }
+
+@media (max-width: 640px) {
+  .dash-staff-device-control,
+  .dash-staff-device-note { align-items: stretch; flex-direction: column; }
+  .dash-staff-device-control .dash-btn-secondary { justify-content: center; min-height: 44px; }
+}
 .dash-status[data-status="in_transit"] {
   background: var(--mr-st-info-bg);
   color: var(--mr-st-info-fg);

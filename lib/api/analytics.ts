@@ -81,6 +81,19 @@ export interface OrdersFunnel {
   conversion_to_fulfilled: number;
 }
 
+export type StaffDeviceExclusionReason =
+  | 'STAFF_DEVICE_COOKIE'
+  | 'STAFF_SESSION'
+  | 'IMPERSONATION'
+  | 'DASHBOARD_SESSION'
+  | 'DASHBOARD_ORIGIN';
+
+export interface StaffDeviceStatus {
+  staffDevice: boolean;
+  excluded: boolean;
+  reasons: StaffDeviceExclusionReason[];
+}
+
 export async function apiGetAnalyticsOverview(): Promise<AnalyticsOverview> {
   return apiFetch('/analytics/overview', { auth: true });
 }
@@ -99,4 +112,14 @@ export async function apiGetTopCustomers(limit = 10): Promise<TopCustomer[]> {
 
 export async function apiGetOrdersFunnel(): Promise<OrdersFunnel> {
   return apiFetch('/analytics/orders-funnel', { auth: true });
+}
+
+/** Public by design: the httpOnly marker can outlive a dashboard session. */
+export async function apiGetStaffDeviceStatus(): Promise<StaffDeviceStatus> {
+  return apiFetch('/analytics/staff-device');
+}
+
+/** Clears the httpOnly staff-device marker through the backend. */
+export async function apiClearStaffDevice(): Promise<StaffDeviceStatus> {
+  return apiFetch('/analytics/staff-device', { method: 'DELETE' });
 }

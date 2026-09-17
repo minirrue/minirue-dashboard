@@ -91,4 +91,15 @@ describe('OrderDetailClient refund display', () => {
 
     expect(await screen.findByText('Delivered', { selector: '.dash-status' })).toBeInTheDocument();
   });
+
+  it('labels a staff/test order on the detail page', async () => {
+    mockedOrders.apiAdminGetOrder.mockResolvedValue({
+      ...base,
+      isInternal: true,
+    });
+
+    render(<OrderDetailClient id="ord_1" />);
+
+    expect(await screen.findByText('Staff/test order')).toBeInTheDocument();
+  });
 });

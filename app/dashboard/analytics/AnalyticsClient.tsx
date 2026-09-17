@@ -9,6 +9,7 @@ import type { AnalyticsRangeState } from '@/lib/hooks/use-analytics';
 import { layoutReducer, loadLayout, saveLayout } from '@/lib/analytics/layout-store';
 import type { AnalyticsFreshness } from '@/lib/api/analytics-insights';
 import { useMinutesAgoLabel } from '@/lib/hooks/use-minutes-ago';
+import StaffDeviceControl from './StaffDeviceControl';
 
 /**
  * Lane 12 rewrite. Replaces the old hard-coded 8-tile + bar-table + funnel +
@@ -162,6 +163,8 @@ export default function AnalyticsClient() {
         <RangeControl range={range} onChange={setRange} />
         {freshness ? <FreshnessIndicator freshness={freshness} /> : null}
       </div>
+
+      <StaffDeviceControl />
 
       {degraded && freshness ? <CollectionDegradedBanner staleBuckets={freshness.staleBuckets} /> : null}
 

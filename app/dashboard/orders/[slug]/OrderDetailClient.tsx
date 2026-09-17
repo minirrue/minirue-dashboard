@@ -27,6 +27,7 @@ import SameDayFeeEntry from '@/components/dashboard/SameDayFeeEntry';
 import RefundOrderModal from '@/components/dashboard/RefundOrderModal';
 import type { RefundTicketDto } from '@/lib/api/refunds';
 import { formatOrderRef } from '@/lib/orders/order-format';
+import InternalOrderBadge from '@/components/dashboard/InternalOrderBadge';
 import ReturnToStockModal from '@/components/dashboard/ReturnToStockModal';
 import { formatDeliveryWindow, mapsLinkFor } from '@/lib/orders/delivery-format';
 
@@ -488,6 +489,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
           </Link>
           <h1 className="dash-page-title" style={{ overflowWrap: 'anywhere' }}>{formatOrderRef(order)}</h1>
           <span style={{ color: 'var(--mr-fg-4)', fontSize: 13 }}>{order.orderNumber}</span>
+          {order.isInternal ? <InternalOrderBadge /> : null}
           {/* The reverse of the link on the customer page. A guest/manual order has
               no account, so there is nothing to link to. */}
           {order.userId && (

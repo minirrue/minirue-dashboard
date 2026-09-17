@@ -132,4 +132,18 @@ describe('OrdersClient channel column and customer fallback', () => {
       })
     );
   });
+
+  it('labels internal orders without changing their normal actions', async () => {
+    mockedOrders.apiAdminListOrders.mockResolvedValue({
+      data: [makeOrder({ id: 'ord_staff', orderNumber: 'MR-STAFF', isInternal: true })],
+      total: 1,
+      page: 1,
+      limit: 100,
+    });
+
+    render(<OrdersClient />);
+
+    expect(await screen.findByText('Staff/test order')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /view/i })).toHaveAttribute('href', '/orders/ord_staff');
+  });
 });

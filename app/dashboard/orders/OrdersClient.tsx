@@ -14,6 +14,7 @@ import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
 import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
 import FulfillmentControl from '@/components/dashboard/FulfillmentControl';
 import ManualOrderModal from './ManualOrderModal';
+import InternalOrderBadge from '@/components/dashboard/InternalOrderBadge';
 
 function formatAmount(amount: string, currency: string): string {
   return `${currency} ${parseFloat(amount).toLocaleString('en-EG', { minimumFractionDigits: 2 })}`;
@@ -204,13 +205,14 @@ export default function OrdersClient() {
         label: 'Order',
         sortable: true,
         render: (row) => (
-          <Link href={`/orders/${row.id}`} className="dash-link">
+          <Link href={`/orders/${row.id}`} className="dash-order-reference-link">
             <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
               {formatOrderRef(row)}
             </span>
             <span style={{ color: 'var(--mr-fg-4)', fontSize: 12, marginLeft: 8 }}>
               {row.orderNumber}
             </span>
+            {row.isInternal ? <InternalOrderBadge /> : null}
           </Link>
         ),
       },

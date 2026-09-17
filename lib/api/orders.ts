@@ -123,6 +123,8 @@ export interface Order {
   paid?: boolean;
   /** Most recent payment attempt's method, or null with no attempts yet. */
   paymentMethod?: 'COD' | 'INSTAPAY' | 'GATEWAY' | 'MANUAL' | null;
+  /** True for staff/test purchases excluded from business analytics. */
+  isInternal?: boolean;
   items: OrderItem[];
   statusHistory?: OrderStatusHistoryEntry[];
   /** Latest failed InstaPay review, returned on the order-detail response. */
