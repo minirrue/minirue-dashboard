@@ -374,6 +374,8 @@ type SettingsForm = {
    * field is simply `''` on screen. `instapayFromForm` turns blanks into `null`.
    */
   instapay: InstapayForm;
+  /** Trustpilot AFS BCC address. Blank means invitations are disabled. */
+  trustpilotBccEmail: string;
 };
 
 type InstapayForm = Record<keyof InstapayGuide, string>;
@@ -411,6 +413,10 @@ function isHttpsUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+function isEmailAddress(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 /** Minor units (what the API stores) to a major-unit string for an input. */
@@ -498,6 +504,7 @@ function settingsToForm(s: StoreSettings): SettingsForm {
     shippingRates: ratesToDrafts(s.shipping?.rates),
     codLimit: codLimitToInput(s.payments?.codMaxOrderMinor),
     instapay: instapayToForm(s.payments?.instapay),
+    trustpilotBccEmail: s.reviews?.trustpilotBccEmail ?? '',
   };
 }
 
@@ -512,12 +519,14 @@ export default function SettingsClient() {
     shippingRates: [],
     codLimit: '',
     instapay: instapayToForm(undefined),
+    trustpilotBccEmail: '',
   });
   const [raw, setRaw] = useState<StoreSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [trustpilotEmailError, setTrustpilotEmailError] = useState<string | null>(null);
   /**
    * Whether the admin has asked to hand-type a logo URL.
    *
@@ -620,8 +629,17 @@ export default function SettingsClient() {
       return;
     }
 
+    const trustpilotBccEmail = form.trustpilotBccEmail.trim();
+    if (trustpilotBccEmail !== '' && !isEmailAddress(trustpilotBccEmail)) {
+      setTrustpilotEmailError('Enter a complete email address, or leave this blank to turn invitations off.');
+      setSaveError(null);
+      setSaved(false);
+      return;
+    }
+
     setSaving(true);
     setSaveError(null);
+    setTrustpilotEmailError(null);
     setSaved(false);
     try {
       const patch: Partial<StoreSettings> = {
@@ -664,6 +682,9 @@ export default function SettingsClient() {
         // screen is the truth, and a cleared field means "no limit".
         // `instapay` goes with all four keys, blanks as null (backend#170).
         payments: { codMaxOrderMinor: codLimitFromInput(form.codLimit), instapay },
+        // Replaced wholesale by the backend. This block currently has one key,
+        // and it is always sent so clearing the field persists as null.
+        reviews: { trustpilotBccEmail: trustpilotBccEmail || null },
         brand: {
           // Sent EXACTLY as typed — free casing, free internal spaces
           // ("MINI RUE" must survive as "MINI RUE", never collapsed or
@@ -712,7 +733,15 @@ export default function SettingsClient() {
       setForm(settingsToForm(updated));
       setSaved(true);
     } catch (err) {
-      setSaveError((err as ApiError).message ?? 'Failed to save settings');
+      const apiError = err as ApiError;
+      const message = apiError.message ?? 'Failed to save settings';
+      if (apiError.status === 422 && /(?:reviews\.)?trustpilotBccEmail|trustpilot/i.test(message)) {
+        setTrustpilotEmailError(
+          message.includes(':') ? message.slice(message.lastIndexOf(':') + 1).trim() : 'Enter a valid email address.',
+        );
+      } else {
+        setSaveError(message);
+      }
     } finally {
       setSaving(false);
     }
@@ -751,7 +780,7 @@ export default function SettingsClient() {
 
       <AdminProfileCard logoUrl={raw?.brand?.logoUrl ?? null} onLogoUploaded={applyUpdatedSettings} />
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <div className="dash-form-card">
           <div className="dash-field-row">
             <div className="dash-field">
@@ -1002,6 +1031,50 @@ export default function SettingsClient() {
             </div>
           </section>
 
+          <section className="dash-instapay" aria-labelledby="trustpilot-invitations-title">
+            <div className="dash-instapay-head">
+              <h2 id="trustpilot-invitations-title" className="dash-section-title">
+                Trustpilot review invitations
+              </h2>
+              <p className="dash-help-text">
+                Automatically invite customers to review an order after delivery.
+              </p>
+            </div>
+            <div className="dash-field">
+              <label className="dash-label" htmlFor="trustpilot-bcc-email">
+                Trustpilot review invitations (BCC address)
+              </label>
+              <input
+                id="trustpilot-bcc-email"
+                type="email"
+                inputMode="email"
+                autoComplete="off"
+                className={`dash-input${trustpilotEmailError ? ' dash-input-error' : ''}`}
+                value={form.trustpilotBccEmail}
+                onChange={(event) => {
+                  setSaved(false);
+                  setTrustpilotEmailError(null);
+                  setForm((previous) => ({ ...previous, trustpilotBccEmail: event.target.value }));
+                }}
+                maxLength={254}
+                placeholder="your-shop@invite.trustpilot.com"
+                aria-invalid={Boolean(trustpilotEmailError)}
+                aria-describedby={`trustpilot-bcc-help trustpilot-bcc-privacy${trustpilotEmailError ? ' trustpilot-bcc-error' : ''}`}
+              />
+              <p id="trustpilot-bcc-help" className="dash-help-text">
+                Paste the address from Trustpilot → Get reviews → AFS. Blank turns invitations off.
+              </p>
+              <p id="trustpilot-bcc-privacy" className="dash-help-text">
+                MiniRue uses it only as a hidden BCC recipient on eligible order emails; shoppers never see it.
+              </p>
+              {trustpilotEmailError && (
+                <p id="trustpilot-bcc-error" className="dash-field-error" role="alert">
+                  {trustpilotEmailError}
+                </p>
+              )}
+            </div>
+          </section>
+
           <div className="dash-field">
             {/*
               Field contract (2026-07-31, owner report "logo url is
@@ -1064,13 +1137,17 @@ export default function SettingsClient() {
             </p>
           </div>
 
-          {saveError && <p className="dash-inline-error">{saveError}</p>}
+          {saveError && <p className="dash-inline-error" role="alert">{saveError}</p>}
 
           <div className="dash-form-actions">
             <button type="submit" className="dash-btn-primary" disabled={saving}>
               {saving ? 'Saving…' : 'Save Settings'}
             </button>
-            {saved && <span style={{ fontSize: 13, color: 'var(--mr-st-ok-fg)' }}>Saved</span>}
+            {saved && (
+              <span role="status" style={{ fontSize: 13, color: 'var(--mr-st-ok-fg)' }}>
+                Settings saved
+              </span>
+            )}
           </div>
         </div>
       </form>

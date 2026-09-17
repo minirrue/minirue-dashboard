@@ -57,6 +57,12 @@ export interface InstapayGuide {
   exampleMediaUrl: string | null;
 }
 
+/** Admin-only review invitation settings (minirue-backend#178). */
+export interface ReviewsConfig {
+  /** Trustpilot AFS address. Null means automatic review invitations are off. */
+  trustpilotBccEmail: string | null;
+}
+
 /**
  * Delivery methods (dashboard#84 / backend#186's pinned contract). Stored on
  * the authenticated settings payload under `fulfillment.delivery` — the
@@ -140,6 +146,8 @@ export interface StoreSettings {
      */
     instapay?: InstapayGuide;
   };
+  /** Never exposed by /settings/public. */
+  reviews?: ReviewsConfig;
   brand: BrandConfig;
   maintenanceMode: boolean;
   storefront?: StorefrontLayout;

@@ -169,6 +169,7 @@ function settings(over: Partial<StoreSettings> = {}): StoreSettings {
       codMaxOrderMinor: 300_000,
       instapay: { payLink: null, handle: null, qrMediaUrl: null, exampleMediaUrl: null },
     },
+    reviews: { trustpilotBccEmail: null },
     ...over,
   } as StoreSettings;
 }
@@ -254,5 +255,62 @@ describe('InstaPay on the Settings page', () => {
 
     expect(open).toHaveBeenCalledWith('https://ipn.eg/S/shop/instapay/abc', '_blank', 'noopener,noreferrer');
     open.mockRestore();
+  });
+});
+
+describe('Trustpilot review invitations on the Settings page', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('round-trips the stored address and preserves the complete settings patch', async () => {
+    await renderSettings(settings({ reviews: { trustpilotBccEmail: 'orders@invite.trustpilot.com' } }));
+
+    const field = screen.getByLabelText('Trustpilot review invitations (BCC address)');
+    expect(field).toHaveValue('orders@invite.trustpilot.com');
+    await userEvent.clear(field);
+    await userEvent.type(field, '  reviews@invite.trustpilot.com  ');
+    await save();
+
+    await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
+    expect(mockUpdate.mock.calls[0][0]).toEqual(expect.objectContaining({
+      currency: 'EGP',
+      brand: expect.objectContaining({ contactEmail: 'a@a.com' }),
+      payments: expect.objectContaining({ codMaxOrderMinor: 300_000 }),
+      reviews: { trustpilotBccEmail: 'reviews@invite.trustpilot.com' },
+    }));
+    expect(await screen.findByRole('status')).toHaveTextContent('Settings saved');
+  });
+
+  it('saves a cleared address as null', async () => {
+    await renderSettings(settings({ reviews: { trustpilotBccEmail: 'orders@invite.trustpilot.com' } }));
+    await userEvent.clear(screen.getByLabelText('Trustpilot review invitations (BCC address)'));
+    await save();
+
+    await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
+    expect(mockUpdate.mock.calls[0][0].reviews).toStrictEqual({ trustpilotBccEmail: null });
+  });
+
+  it('shows an accessible field error and does not send an invalid address', async () => {
+    await renderSettings(settings());
+    const field = screen.getByLabelText('Trustpilot review invitations (BCC address)');
+    await userEvent.type(field, 'not-an-email');
+    await save();
+
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+    expect(await screen.findByRole('alert')).toHaveTextContent(/complete email address/i);
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it('places a backend 422 validation message beside the field', async () => {
+    await renderSettings(settings());
+    mockUpdate.mockRejectedValueOnce({
+      status: 422,
+      message: 'reviews.trustpilotBccEmail: Must be an email address',
+    });
+    const field = screen.getByLabelText('Trustpilot review invitations (BCC address)');
+    await userEvent.type(field, 'reviews@example.com');
+    await save();
+
+    expect(await screen.findByText('Must be an email address')).toHaveAttribute('role', 'alert');
+    expect(field).toHaveAttribute('aria-invalid', 'true');
   });
 });
