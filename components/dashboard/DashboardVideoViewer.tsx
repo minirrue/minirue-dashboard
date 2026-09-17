@@ -121,7 +121,7 @@ export default function DashboardVideoViewer({
   if (variant === 'thumbnail') {
     const ready = status === 'ready' && Boolean(media.url);
     return (
-      <span className={['dash-video-thumb', className].filter(Boolean).join(' ')} style={style} data-video-state={status}>
+      <span className={['dash-video-thumb', className].filter(Boolean).join(' ')} style={style} data-media-kind="video" data-video-state={status}>
         {status !== 'ready' ? (
           <NotReadyVideoStill item={{ posterUrl: media.posterUrl ?? null, status }} className="dash-video-thumb-media" />
         ) : ready && preferPoster && media.posterUrl ? (
@@ -141,7 +141,7 @@ export default function DashboardVideoViewer({
   if (status !== 'ready') {
     const failed = status === 'failed';
     return (
-      <section className={['dash-video-viewer', className].filter(Boolean).join(' ')} style={style} data-video-state={status} aria-label={`${label} player`}>
+      <section className={['dash-video-viewer', className].filter(Boolean).join(' ')} style={style} data-media-kind="video" data-video-state={status} aria-label={`${label} player`}>
         <div className="dash-video-stage dash-video-stage-static">
           <NotReadyVideoStill item={{ posterUrl: media.posterUrl ?? null, status }} className="dash-video-poster" />
           <div className="dash-video-state-panel" role={failed ? 'alert' : 'status'}>
@@ -171,7 +171,7 @@ export default function DashboardVideoViewer({
   const sourceError = failedSource === (media.url ?? '');
 
   return (
-    <section className={['dash-video-viewer', className].filter(Boolean).join(' ')} style={style} data-video-state={sourceError ? 'error' : buffering ? 'buffering' : 'ready'} aria-label={`${label} player`}>
+    <section className={['dash-video-viewer', className].filter(Boolean).join(' ')} style={style} data-media-kind="video" data-video-state={sourceError ? 'error' : buffering ? 'buffering' : 'ready'} aria-label={`${label} player`}>
       <div ref={frameRef} className="dash-video-stage" tabIndex={0} onKeyDown={handleKeyboard}>
         <video
           ref={videoRef}
