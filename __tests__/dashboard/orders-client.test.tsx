@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import OrdersClient from '@/app/dashboard/orders/OrdersClient';
 import * as ordersApi from '@/lib/api/orders';
 import type { Order } from '@/lib/api/orders';
@@ -150,5 +150,56 @@ describe('OrdersClient channel column and customer fallback', () => {
 
     expect(await screen.findByText('Staff/test order')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /view/i })).toHaveAttribute('href', '/orders/ord_staff');
+  });
+
+  describe('#124: row-end next-step button replaces the Status-column dropdown', () => {
+    it('shows only the chip in Status, and a "Confirm →" button that advances the order', async () => {
+      const pending = makeOrder({ id: 'ord_pending', orderNumber: 'MR-PEND', status: 'PENDING' });
+      mockedOrders.apiAdminListOrders.mockResolvedValue({ data: [pending], total: 1, page: 1, limit: 100 });
+      mockedOrders.apiAdminTransitionStatus.mockResolvedValue({ ...pending, status: 'CONFIRMED' });
+
+      render(<OrdersClient />);
+      await screen.findByText('MR-PEND');
+
+      // No write control left in the Status column.
+      expect(screen.queryByLabelText(/update status for/i)).not.toBeInTheDocument();
+      expect(screen.queryByRole('combobox', { name: /advance/i })).not.toBeInTheDocument();
+
+      const advanceButton = screen.getByRole('button', { name: 'Confirm →' });
+      fireEvent.click(advanceButton);
+
+      expect(mockedOrders.apiAdminTransitionStatus).toHaveBeenCalledWith('ord_pending', 'CONFIRMED');
+      expect(await screen.findByText('Confirmed')).toBeInTheDocument();
+    });
+
+    it('puts Cancel in the "…" menu instead of the row-end button, and can still cancel from there', async () => {
+      const pending = makeOrder({ id: 'ord_pending', orderNumber: 'MR-PEND', status: 'PENDING' });
+      mockedOrders.apiAdminListOrders.mockResolvedValue({ data: [pending], total: 1, page: 1, limit: 100 });
+      mockedOrders.apiAdminTransitionStatus.mockResolvedValue({ ...pending, status: 'CANCELLED' });
+
+      render(<OrdersClient />);
+      await screen.findByText('MR-PEND');
+
+      expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /more actions for mr-pend/i }));
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'Cancel' }));
+
+      expect(mockedOrders.apiAdminTransitionStatus).toHaveBeenCalledWith('ord_pending', 'CANCELLED');
+      expect(await screen.findByText('Cancelled')).toBeInTheDocument();
+    });
+
+    it('shows no next-step button and no "…" menu for a terminal order', async () => {
+      const delivered = makeOrder({ id: 'ord_done', orderNumber: 'MR-DONE', status: 'DELIVERED' });
+      mockedOrders.apiAdminListOrders.mockResolvedValue({ data: [delivered], total: 1, page: 1, limit: 100 });
+
+      render(<OrdersClient />);
+      await screen.findByText('MR-DONE');
+
+      expect(screen.queryByRole('button', { name: /more actions for mr-done/i })).not.toBeInTheDocument();
+      // Only View remains for a delivered order.
+      const row = screen.getByText('MR-DONE').closest('tr')!;
+      expect(within(row).queryAllByRole('button')).toHaveLength(0);
+      expect(within(row).getByRole('link', { name: /view/i })).toBeInTheDocument();
+    });
   });
 });

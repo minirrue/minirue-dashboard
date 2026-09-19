@@ -14,6 +14,7 @@ import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
 import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
 import ManualOrderModal from './ManualOrderModal';
 import InternalOrderBadge from '@/components/dashboard/InternalOrderBadge';
+import RowActionsMenu from '@/components/dashboard/RowActionsMenu';
 
 function formatAmount(amount: string, currency: string): string {
   return `${currency} ${parseFloat(amount).toLocaleString('en-EG', { minimumFractionDigits: 2 })}`;
@@ -47,7 +48,45 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
   );
 }
 
-function OrderStatusCell({
+/** Never disagrees with the order detail page or the Refunds tab: a refund on
+ * this order overrides whatever `status` still says, even for a row no repair
+ * migration touched. */
+function shownStatus(order: Order): OrderStatus {
+  return order.refundedAt ? 'REFUNDED' : order.status;
+}
+
+/**
+ * The button names the ACTION, not the destination status (#124) — "Confirm",
+ * not "Confirmed". Any status this map has no entry for (there is none today)
+ * falls back to formatOrderStatus, so a future status never renders a blank
+ * button.
+ */
+const NEXT_STEP_ACTION: Partial<Record<OrderStatus, string>> = {
+  CONFIRMED: 'Confirm',
+  PROCESSING: 'Mark ready',
+  SHIPPED: 'Out for delivery',
+  DELIVERED: 'Mark delivered',
+  CANCELLED: 'Cancel',
+};
+
+/** The one transition that moves the order forward in its normal sequence —
+ * everything else (today, only CANCELLED) is a deviation, not a "next step",
+ * and belongs in the row's "…" menu instead of the row-end button. */
+function primaryTransition(status: OrderStatus): OrderStatus | null {
+  return ORDER_TRANSITIONS[status].find((s) => s !== 'CANCELLED') ?? null;
+}
+
+function menuTransitions(status: OrderStatus): OrderStatus[] {
+  return ORDER_TRANSITIONS[status].filter((s) => s !== primaryTransition(status));
+}
+
+/**
+ * Row-end order actions (#124): the Status column now holds only the chip,
+ * and this is where advancing an order actually happens — one button naming
+ * the next step in sequence, rarer transitions (cancel) in the "…" menu, and
+ * the existing View link. No button at all for a terminal order.
+ */
+function OrderRowActions({
   order,
   onTransition,
   onError,
@@ -57,45 +96,48 @@ function OrderStatusCell({
   onError: (message: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
-  // Never disagrees with the order detail page or the Refunds tab: a refund
-  // on this order overrides whatever `status` still says, even for a row no
-  // repair migration touched.
-  const shown: OrderStatus = order.refundedAt ? 'REFUNDED' : order.status;
-  const next = ORDER_TRANSITIONS[order.status];
+  const next = primaryTransition(order.status);
+  const rest = menuTransitions(order.status);
 
-  if (next.length === 0) {
-    return <OrderStatusBadge status={shown} />;
-  }
+  const transition = useCallback(
+    (status: OrderStatus) => {
+      setBusy(true);
+      void apiAdminTransitionStatus(order.id, status)
+        .then(onTransition)
+        .catch((err: ApiError) => onError(err.message ?? 'Invalid status transition'))
+        .finally(() => setBusy(false));
+    },
+    [order.id, onTransition, onError],
+  );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: '100%' }}>
-      <OrderStatusBadge status={shown} />
-      <select
-        className="dash-select"
-        disabled={busy}
-        defaultValue=""
-        aria-label={`Update status for ${order.orderNumber}`}
-        onChange={(e) => {
-          const value = e.target.value as OrderStatus;
-          if (!value) return;
-          setBusy(true);
-          void apiAdminTransitionStatus(order.id, value)
-            .then(onTransition)
-            .catch((err: ApiError) => {
-              onError(err.message ?? 'Invalid status transition');
-              e.target.value = '';
-            })
-            .finally(() => setBusy(false));
-        }}
-        style={{ fontSize: 12, padding: '4px 8px' }}
-      >
-        <option value="">Advance…</option>
-        {next.map((status) => (
-          <option key={status} value={status}>
-            → {formatOrderStatus(status)}
-          </option>
-        ))}
-      </select>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+      {next && (
+        <button
+          type="button"
+          className="dash-btn-secondary"
+          disabled={busy}
+          onClick={() => transition(next)}
+          style={{ fontSize: 12, padding: '6px 10px' }}
+        >
+          {NEXT_STEP_ACTION[next] ?? formatOrderStatus(next)} →
+        </button>
+      )}
+      {rest.length > 0 && (
+        <RowActionsMenu
+          label={`More actions for ${order.orderNumber}`}
+          items={rest.map((status) => ({
+            key: status,
+            label: `${NEXT_STEP_ACTION[status] ?? formatOrderStatus(status)}${status === 'CANCELLED' ? '' : ' →'}`,
+            tone: status === 'CANCELLED' ? 'danger' : undefined,
+            disabled: busy,
+            onClick: () => transition(status),
+          }))}
+        />
+      )}
+      <Link href={`/orders/${order.id}`} className="dash-btn-ghost">
+        View
+      </Link>
     </div>
   );
 }
@@ -239,13 +281,9 @@ export default function OrdersClient() {
       {
         key: 'status',
         label: 'Status',
-        render: (row) => (
-          <OrderStatusCell
-            order={row}
-            onTransition={handleOrderUpdated}
-            onError={setTransitionError}
-          />
-        ),
+        // Read-only chip only (#124): advancing the order moved to the
+        // row-end button/menu in the '' column below.
+        render: (row) => <OrderStatusBadge status={shownStatus(row)} />,
       },
       {
         key: 'fulfillment',
@@ -277,9 +315,7 @@ export default function OrdersClient() {
         label: '',
         align: 'right',
         render: (row) => (
-          <Link href={`/orders/${row.id}`} className="dash-btn-ghost">
-            View
-          </Link>
+          <OrderRowActions order={row} onTransition={handleOrderUpdated} onError={setTransitionError} />
         ),
       },
     ],
