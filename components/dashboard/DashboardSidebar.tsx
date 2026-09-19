@@ -690,7 +690,7 @@ export default function DashboardSidebar({
         {/* Latency is admin-only: STAFF and partners have no action to take on
             it and no sense of whether a number is bad, so for them it is noise
             that reads like a warning. Everyone still sees up/down. */}
-        <ServerStatus variant={rail ? 'dot' : 'full'} showLatency={!rail && isAdminRole(userRole)} />
+        <ServerStatus variant={rail ? 'dot' : 'full'} showLatency={!rail && isAdminRole(userRole)} compact={rail} />
       </div>
       <UserMenu userName={userName} userRole={userRole} />
     </div>

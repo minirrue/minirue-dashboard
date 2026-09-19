@@ -43,6 +43,17 @@ interface ServerStatusProps {
    */
   showLatency?: boolean;
   className?: string;
+  /**
+   * Keeps the label visually hidden even while `dot` would otherwise reveal
+   * it for an unhealthy server. For an instance placed somewhere with no
+   * room to grow — the collapsed sidebar rail is 72px wide — "SERVER
+   * DEGRADED" doesn't fit and instead overflows its centered container in
+   * both directions, bleeding clipped text into the sidebar's own edge and
+   * squeezing/offsetting whatever renders beside it (#91). The dot's color
+   * and pulse already carry the signal there; the full text is one hover
+   * (native `title`) or a screen reader away, same as it always was.
+   */
+  compact?: boolean;
 }
 
 /**
@@ -97,12 +108,13 @@ export default function ServerStatus({
   variant = 'full',
   showLatency = false,
   className,
+  compact = false,
 }: ServerStatusProps) {
   const { status, checkedAt, latencyMs, refresh } = useServerHealth();
   const view = PRESENTATION[status ?? 'checking'];
   const healthy = status === 'online';
   const quiet = healthy || status === null;
-  const labelHidden = variant === 'dot' && quiet;
+  const labelHidden = variant === 'dot' && (quiet || compact);
 
   return (
     <button

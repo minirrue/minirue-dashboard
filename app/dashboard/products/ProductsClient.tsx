@@ -2,7 +2,9 @@
 
 import React, { useEffect, useMemo, useState, useTransition, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import DashboardTable from '@/components/dashboard/DashboardTable';
+import RowActionsMenu from '@/components/dashboard/RowActionsMenu';
 import StatusBadge from '@/components/dashboard/StatusBadge';
 import type { Column } from '@/components/dashboard/DashboardTable';
 import type { StatusKind } from '@/components/dashboard/StatusBadge';
@@ -181,17 +183,9 @@ function DeleteIcon() {
   );
 }
 
-const iconBtn: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 32,
-  height: 32,
-  padding: 0,
-};
-
 /* ── Main Component ── */
 export default function ProductsClient() {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [items, setItems] = useState<ProductListItem[]>([]);
@@ -486,6 +480,11 @@ export default function ProductsClient() {
       key: 'stockAvailable',
       label: 'Stock available',
       sortable: true,
+      // Centered (#99): the pill itself was already centered within its own
+      // box (`justify-content: center` on .dash-stock-quantity), but the
+      // <td> around it defaults to left, so the pill sat flush against the
+      // column's left edge instead of under "Stock available"'s own centre.
+      align: 'center',
       render: (row) => (
         <span className="dash-stock-quantity" data-stock={stockState(row.stockAvailable).toLowerCase()}>
           {row.stockAvailable}
@@ -510,56 +509,60 @@ export default function ProductsClient() {
     {
       key: '_actions',
       label: 'Actions',
+      align: 'right',
+      // One "..." trigger opening a dropdown (#99), replacing what used to be
+      // up to four separate icon buttons crowding the narrowest column on the
+      // table's widest row. Each entry keeps the exact handler — and the
+      // exact confirm flow for Delete (DeleteChoiceDialog below) — it had as
+      // a standalone button; only how it's reached changed.
       render: (row) => (
-        <div className="dash-row-actions">
-          <Link
-            href={`/catalogue/products/${row.id}/edit`}
-            className="dash-btn-ghost"
-            aria-label={`Edit ${row.name}`}
-            title="Edit"
-            style={iconBtn}
-            data-trace-id={`PG-DASHBOARD-CAT-001::EL-LINK-edit-product@${row.id}`}
-          >
-            <EditIcon />
-          </Link>
-          {row.status !== 'PUBLISHED' && (
-            <button
-              className="dash-btn-ghost dash-btn-ok"
-              disabled={actionLoadingId === row.id}
-              onClick={() => startTransition(() => { handlePublish(row.id); })}
-              aria-label={`Publish ${row.name}`}
-              title="Publish"
-              style={iconBtn}
-              data-trace-id={`PG-DASHBOARD-CAT-001::EL-BTN-publish-product@${row.id}`}
-            >
-              <PublishIcon />
-            </button>
-          )}
-          {row.status !== 'ARCHIVED' && (
-            <button
-              className="dash-btn-ghost dash-btn-muted"
-              disabled={actionLoadingId === row.id}
-              onClick={() => startTransition(() => { handleArchive(row.id); })}
-              aria-label={`Archive ${row.name}`}
-              title="Archive"
-              style={iconBtn}
-              data-trace-id={`PG-DASHBOARD-CAT-001::EL-BTN-archive-product@${row.id}`}
-            >
-              <ArchiveIcon />
-            </button>
-          )}
-          <button
-            className="dash-btn-ghost dash-btn-danger"
-            disabled={actionLoadingId === row.id}
-            onClick={() => setDeleteTarget(row)}
-            aria-label={`Delete ${row.name}`}
-            title="Delete"
-            style={iconBtn}
-            data-trace-id={`PG-DASHBOARD-CAT-001::EL-BTN-delete-product@${row.id}`}
-          >
-            <DeleteIcon />
-          </button>
-        </div>
+        <RowActionsMenu
+          label={`Actions for ${row.name}`}
+          triggerTraceId={`PG-DASHBOARD-CAT-001::EL-BTN-row-actions@${row.id}`}
+          items={[
+            {
+              key: 'edit',
+              label: 'Edit',
+              icon: <EditIcon />,
+              onClick: () => router.push(`/catalogue/products/${row.id}/edit`),
+              traceId: `PG-DASHBOARD-CAT-001::EL-LINK-edit-product@${row.id}`,
+            },
+            ...(row.status !== 'PUBLISHED'
+              ? [
+                  {
+                    key: 'publish',
+                    label: 'Publish',
+                    icon: <PublishIcon />,
+                    tone: 'ok' as const,
+                    disabled: actionLoadingId === row.id,
+                    onClick: () => startTransition(() => { handlePublish(row.id); }),
+                    traceId: `PG-DASHBOARD-CAT-001::EL-BTN-publish-product@${row.id}`,
+                  },
+                ]
+              : []),
+            ...(row.status !== 'ARCHIVED'
+              ? [
+                  {
+                    key: 'archive',
+                    label: 'Archive',
+                    icon: <ArchiveIcon />,
+                    disabled: actionLoadingId === row.id,
+                    onClick: () => startTransition(() => { handleArchive(row.id); }),
+                    traceId: `PG-DASHBOARD-CAT-001::EL-BTN-archive-product@${row.id}`,
+                  },
+                ]
+              : []),
+            {
+              key: 'delete',
+              label: 'Delete',
+              icon: <DeleteIcon />,
+              tone: 'danger',
+              disabled: actionLoadingId === row.id,
+              onClick: () => setDeleteTarget(row),
+              traceId: `PG-DASHBOARD-CAT-001::EL-BTN-delete-product@${row.id}`,
+            },
+          ]}
+        />
       ),
     },
   ];
@@ -666,6 +669,28 @@ export default function ProductsClient() {
         >
           Search
         </button>
+        {/* Beside the search input, not below it (#99) — it lives here in the
+            filters bar rather than as its own row above the table, and
+            `.dash-filters`' own flex-wrap already gives it a sensible spot to
+            drop to on narrow screens. */}
+        <div className="dash-table-page-size">
+          <label htmlFor="products-page-size">Rows per page</label>
+          <select
+            id="products-page-size"
+            className="dash-select"
+            value={pageSize}
+            onChange={(e) => {
+              const size = Number(e.target.value);
+              setPageSize(size);
+              setPage(0);
+              replaceCatalogueQuery({ size: String(size), page: null });
+            }}
+          >
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+        </div>
       </div>
 
       {/* Errors */}
@@ -695,40 +720,20 @@ export default function ProductsClient() {
           </button>
         </div>
       ) : (
-        <>
-          <div className="dash-table-page-size">
-            <label htmlFor="products-page-size">Rows per page</label>
-            <select
-              id="products-page-size"
-              className="dash-select"
-              value={pageSize}
-              onChange={(e) => {
-                const size = Number(e.target.value);
-                setPageSize(size);
-                setPage(0);
-                replaceCatalogueQuery({ size: String(size), page: null });
-              }}
-            >
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-          </div>
-          <DashboardTable<ProductRow>
-          key={`${pageSize}:${statusFilter}:${brandFilter}:${categoryFilter}:${stockFilter}:${priceModeFilter}:${debouncedSearchInput}`}
-          columns={columns}
-          data={rows}
-          pageSize={pageSize}
-          initialPage={page}
-          onPageChange={(nextPage) => {
-            setPage(nextPage);
-            replaceCatalogueQuery({ page: nextPage > 0 ? String(nextPage + 1) : null });
-          }}
-          emptyMessage="No products found. Create your first product to get started."
-          tableTraceId="PG-DASHBOARD-CAT-001::EL-TABLE-products-table"
-          getRowTraceId={(row) => `PG-DASHBOARD-CAT-001::EL-ROW-product-row@${row.id}`}
-          />
-        </>
+        <DashboardTable<ProductRow>
+        key={`${pageSize}:${statusFilter}:${brandFilter}:${categoryFilter}:${stockFilter}:${priceModeFilter}:${debouncedSearchInput}`}
+        columns={columns}
+        data={rows}
+        pageSize={pageSize}
+        initialPage={page}
+        onPageChange={(nextPage) => {
+          setPage(nextPage);
+          replaceCatalogueQuery({ page: nextPage > 0 ? String(nextPage + 1) : null });
+        }}
+        emptyMessage="No products found. Create your first product to get started."
+        tableTraceId="PG-DASHBOARD-CAT-001::EL-TABLE-products-table"
+        getRowTraceId={(row) => `PG-DASHBOARD-CAT-001::EL-ROW-product-row@${row.id}`}
+        />
       )}
     </>
   );

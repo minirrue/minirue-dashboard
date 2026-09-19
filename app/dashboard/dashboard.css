@@ -1702,6 +1702,90 @@
   align-items: center;
 }
 
+/* ── Row actions menu (RowActionsMenu) ──
+   One "..." trigger expanding into a dropdown, replacing a row of separate
+   buttons (#99: products table Archive/Edit/Delete). The popover itself is
+   portaled to <body> by the component and positioned inline via style, so
+   only the trigger and the popover's own contents are styled here — nothing
+   here anchors it, because anchoring it to a table-row ancestor is exactly
+   what let `.dash-table-wrap` (overflow-x: auto) and `.dash-card`
+   (overflow: hidden) clip it for any row that wasn't near the top. */
+.dash-actions-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
+.dash-actions-menu-popover {
+  position: fixed;
+  min-width: 168px;
+  padding: 6px;
+  background: var(--mr-dash-surface);
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+  box-shadow: var(--mr-shadow-md);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dash-actions-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--mr-radius-sm);
+  background: transparent;
+  color: var(--mr-fg-2);
+  font-size: 13px;
+  font-family: var(--mr-font-ui);
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  transition: background var(--mr-dur-fast) var(--mr-ease-snappy), color var(--mr-dur-fast) var(--mr-ease-snappy);
+}
+
+.dash-actions-menu-item svg {
+  flex-shrink: 0;
+}
+
+.dash-actions-menu-item:hover:not(:disabled) {
+  background: var(--mr-dash-sub);
+  color: var(--mr-fg);
+}
+
+.dash-actions-menu-item:focus-visible {
+  outline: 2px solid var(--mr-gold-500);
+  outline-offset: -2px;
+}
+
+.dash-actions-menu-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dash-actions-menu-item--danger {
+  color: var(--mr-st-danger-fg);
+}
+
+.dash-actions-menu-item--danger:hover:not(:disabled) {
+  background: var(--mr-st-danger-bg);
+}
+
+.dash-actions-menu-item--ok {
+  color: var(--mr-st-ok-fg);
+}
+
+.dash-actions-menu-item--ok:hover:not(:disabled) {
+  background: var(--mr-st-ok-bg);
+}
+
 /* ── Form card ── */
 .dash-form-card {
   background: var(--mr-dash-surface);
@@ -2461,7 +2545,15 @@
 .dash-product-price-cell {
   display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
+  /* nowrap, not wrap (#99): the system/my-price tag is a second flex child
+     beside <strong>price</strong>, and `flex-wrap: wrap` let a narrow Price
+     column drop it to its own line the moment the two didn't fit side by
+     side — inconsistent row to row depending on how long the formatted price
+     string happened to be. The column already scrolls horizontally inside
+     `.dash-table-wrap` rather than wrapping its cells, so nothing is gained
+     by wrapping here and it only cost the one thing this cell must do:
+     keep the tag beside the price on every row. */
+  flex-wrap: nowrap;
   gap: 7px;
   white-space: nowrap;
 }
@@ -2499,13 +2591,19 @@
 }
 
 .dash-table-page-size {
-  display: flex;
+  /* Lives inline in `.dash-filters` now, beside the search input (#99) — was
+     its own full-width row underneath, right-justified, which read as
+     unrelated to search when it is really "how many of these results show at
+     once". `.dash-filters` already wraps and gives every child `gap: 8px`; this
+     only needs to behave like the other filter controls instead of like a
+     standalone block. */
+  display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 9px;
-  margin: 0 0 10px;
+  flex: 0 0 auto;
   color: var(--mr-fg-3);
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .dash-table-page-size .dash-select {
