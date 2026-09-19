@@ -112,7 +112,12 @@ function scopeQuery(params: AnalyticsQueryParams, extra: Record<string, string |
   return q.toString();
 }
 
-const filterParam = (f: FlowFilter) => (Object.keys(f).length ? JSON.stringify(f) : undefined);
+/** The backend names the landing column `landingPath`; everything else matches. */
+const filterParam = (f: FlowFilter) => {
+  if (!Object.keys(f).length) return undefined;
+  const { landing, ...rest } = f;
+  return JSON.stringify(landing ? { ...rest, landingPath: landing } : rest);
+};
 
 const notYet = (e: unknown) => {
   const st = (e as ApiError | undefined)?.status;
@@ -295,6 +300,7 @@ export const STAGE_LABEL: Record<string, string> = {
   product: 'Viewed a product',
   bag: 'Added to bag',
   checkout: 'Started checkout',
+  checkout_step: 'Started checkout',
   checkout_contact: 'Checkout · contact',
   checkout_address: 'Checkout · address',
   checkout_shipping: 'Checkout · shipping',
