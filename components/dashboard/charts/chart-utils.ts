@@ -216,3 +216,29 @@ export function roundedBarPath(
     'Z',
   ].join(' ');
 }
+
+/**
+ * Tick labels are 12px with tabular numerals; ~6.8px per character is a safe
+ * upper bound for the dashboard's label face. Used where an SVG text must fit
+ * a measured box without a DOM measuring pass.
+ */
+const LABEL_CHAR_PX = 6.8;
+
+/**
+ * Space to reserve at the right of a horizontal bar chart for the value
+ * labels drawn after the bar end (owner, 2026-09-19: "numbers are overflowed
+ * away from table view"). The longest bar used to run the full width, which
+ * pushed its own number off the canvas. Clamped so bars always keep most of
+ * the row.
+ */
+export function valueLabelGutter(labels: string[], width: number): number {
+  const longest = labels.reduce((m, l) => Math.max(m, l.length), 0);
+  const need = Math.ceil(longest * LABEL_CHAR_PX) + 12;
+  return Math.min(Math.max(need, 40), Math.floor(width * 0.45));
+}
+
+/** Trims a label to fit `maxPx`, ending in "…"; the full text goes in a <title>. */
+export function fitLabel(text: string, maxPx: number): string {
+  const max = Math.max(4, Math.floor(maxPx / LABEL_CHAR_PX));
+  return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
+}

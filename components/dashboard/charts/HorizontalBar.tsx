@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import ChartFrame from './ChartFrame';
 import ChartTooltip from './ChartTooltip';
-import { roundedBarPath, formatCompact } from './chart-utils';
+import { roundedBarPath, formatCompact, valueLabelGutter, fitLabel } from './chart-utils';
 import type { MeasuredSize } from './chart-utils';
 import type { Column } from '@/components/dashboard/DashboardTable';
 
@@ -45,12 +45,14 @@ export default function HorizontalBar<T>({
   const renderChart = (size: MeasuredSize) => {
     const width = Math.max(size.width, 40);
     const innerW = Math.max(width - MARGIN.left - MARGIN.right, 1);
+    // The biggest bar's number used to land past the edge; reserve room for it.
+    const barSpace = Math.max(innerW - valueLabelGutter(data.map((d) => valueFormat(Math.max(value(d), 0))), innerW), 1);
 
     return (
       <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
         {data.map((d, i) => {
           const v = Math.max(value(d), 0);
-          const barW = (v / maxValue) * innerW;
+          const barW = (v / maxValue) * barSpace;
           const rowTop = MARGIN.top + i * ROW_HEIGHT;
           const barY = rowTop + 20;
           const path = roundedBarPath(MARGIN.left, barY, Math.max(barW, 1), BAR_HEIGHT, RADIUS, 'horizontal');
@@ -64,7 +66,8 @@ export default function HorizontalBar<T>({
               onPointerLeave={() => setHover(null)}
             >
               <text x={MARGIN.left} y={rowTop + 12} className="dash-chart-tick-label" style={{ fill: 'var(--mr-fg-2)' }}>
-                {label(d, i)}
+                <title>{String(label(d, i))}</title>
+                {fitLabel(String(label(d, i)), innerW)}
               </text>
               <path d={path} fill={color} />
               {/* Selective direct label at the data-end — not one per tick, the single number that matters. */}

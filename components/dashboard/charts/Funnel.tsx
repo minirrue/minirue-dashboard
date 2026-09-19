@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import ChartFrame from './ChartFrame';
 import ChartTooltip from './ChartTooltip';
-import { rampColor, roundedBarPath, formatCompact } from './chart-utils';
+import { rampColor, roundedBarPath, formatCompact, valueLabelGutter, fitLabel } from './chart-utils';
 import type { MeasuredSize } from './chart-utils';
 import type { Column } from '@/components/dashboard/DashboardTable';
 
@@ -42,13 +42,20 @@ export default function Funnel({ stages, title, valueFormat = formatCompact, ani
   const renderChart = (size: MeasuredSize) => {
     const width = Math.max(size.width, 40);
     const innerW = Math.max(width - MARGIN.left - MARGIN.right, 1);
+    // Every stage's value label must fit after its bar, the longest bar included.
+    const valueText = stages.map((stage, i) => {
+      const rate = first > 0 ? (stage.value / first) * 100 : 0;
+      const prev = i > 0 ? stages[i - 1].value : 0;
+      const drop = i > 0 && prev > 0 ? ((prev - stage.value) / prev) * 100 : null;
+      return `${valueFormat(stage.value)} · ${pct(rate)}${drop != null ? ` · −${pct(drop)}` : ''}`;
+    });
+    const barSpace = Math.max(innerW - valueLabelGutter(valueText, innerW), 1);
 
     return (
       <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
         {stages.map((stage, i) => {
           const rateFromStart = first > 0 ? (stage.value / first) * 100 : 0;
-          const dropOff = i > 0 && stages[i - 1].value > 0 ? ((stages[i - 1].value - stage.value) / stages[i - 1].value) * 100 : null;
-          const barW = Math.max((rateFromStart / 100) * innerW, 1);
+          const barW = Math.max((rateFromStart / 100) * barSpace, 1);
           const rowTop = MARGIN.top + i * ROW_HEIGHT;
           const barY = rowTop + 22;
           const path = roundedBarPath(MARGIN.left, barY, barW, BAR_HEIGHT, RADIUS, 'horizontal');
@@ -62,12 +69,12 @@ export default function Funnel({ stages, title, valueFormat = formatCompact, ani
               onPointerLeave={() => setHover(null)}
             >
               <text x={MARGIN.left} y={rowTop + 12} className="dash-chart-tick-label" style={{ fill: 'var(--mr-fg-2)' }}>
-                {stage.label}
+                <title>{stage.label}</title>
+                {fitLabel(stage.label, innerW)}
               </text>
               <path d={path} fill={rampColor(i)} />
               <text x={MARGIN.left + barW + 8} y={barY + BAR_HEIGHT / 2} dominantBaseline="middle" className="dash-chart-tick-label mr-num">
-                {valueFormat(stage.value)} · {pct(rateFromStart)}
-                {dropOff != null ? ` · −${pct(dropOff)}` : ''}
+                {valueText[i]}
               </text>
             </g>
           );
