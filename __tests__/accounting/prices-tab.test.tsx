@@ -308,6 +308,78 @@ describe('PricesTab', () => {
     expect(itemNames()).toEqual(['Atelier Tote', 'Lumen Mist', 'REVOX PLEX']);
     fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'PROFIT_DESC' } });
     expect(itemNames()).toEqual(['REVOX PLEX', 'Lumen Mist', 'Atelier Tote']);
+    fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'COST_ASC' } });
+    // Atelier Tote has no cost; null sorts last regardless of direction.
+    expect(itemNames()).toEqual(['Lumen Mist', 'REVOX PLEX', 'Atelier Tote']);
+  });
+
+  it('searches by product name, SKU and set name, persisted as ?q=', async () => {
+    const set: SetRow = {
+      bundleId: 'b-evening',
+      slug: 'evening-set',
+      name: 'Evening Set',
+      isActive: true,
+      mode: 'MANUAL',
+      savingBp: null,
+      effectiveSavingBp: 1000,
+      currentPriceMinor: 120000,
+      members: [{ productId: 'p-a', productName: 'A', variantId: 'v-a', sku: 'A-1', quantity: 1, unitPriceMinor: 80900, costMinor: 65000 }],
+      listTotalMinor: 167800,
+      costMinor: 135000,
+      system: { ...revox.system, priceMinor: 155900, floors: { law1Minor: 139750, noLossMinor: 135000, law1ShownMinor: 139900, noLossShownMinor: 135900 } },
+      why: '',
+      current: { marginBp: -1250, markupBp: null, productProfitMinor: -19750, orderProfitMinor: -9750 },
+      warnings: [],
+    };
+    serve({ ...overviewOf([revox, mist, tote]), sets: [set] });
+    render(<PricesTab />);
+    const table = await screen.findByRole('table', { name: /prices/i });
+    expect(within(table).getAllByRole('row')).toHaveLength(5);
+
+    const search = screen.getByLabelText('Search prices by product, SKU or set name');
+    fireEvent.change(search, { target: { value: 'revox' } });
+    await waitFor(() => expect(within(table).getAllByRole('row')).toHaveLength(2));
+    expect(within(table).getByText('REVOX PLEX')).toBeInTheDocument();
+    await waitFor(() => expect(replace).toHaveBeenLastCalledWith('/accounting?q=revox', { scroll: false }));
+
+    fireEvent.change(search, { target: { value: 'SKN-RVX-PLEX-STEP6' } });
+    await waitFor(() => expect(within(table).getByText('REVOX PLEX')).toBeInTheDocument());
+
+    fireEvent.change(search, { target: { value: 'evening' } });
+    await waitFor(() => expect(within(table).getByText('Evening Set')).toBeInTheDocument());
+    expect(within(table).queryByText('REVOX PLEX')).not.toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: 'nothing matches this' } });
+    await waitFor(() => expect(screen.getByText('No item matches "nothing matches this".')).toBeInTheDocument());
+  });
+
+  it('sorts by clicking a column header, toggling desc → asc → default, in sync with the Sort dropdown', async () => {
+    serve(overviewOf([revox, mist, tote]));
+    render(<PricesTab />);
+    const table = await screen.findByRole('table', { name: /prices/i });
+    const sortSelect = screen.getByLabelText('Sort') as HTMLSelectElement;
+    const itemNames = () =>
+      within(table)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => within(row).getAllByRole('button')[0].textContent?.match(/REVOX PLEX|Lumen Mist|Atelier Tote/)?.[0]);
+
+    const priceHeader = within(table).getByRole('columnheader', { name: /price/i });
+    expect(priceHeader).toHaveAttribute('aria-sort', 'none');
+
+    fireEvent.click(within(priceHeader).getByRole('button', { name: 'Price' }));
+    expect(priceHeader).toHaveAttribute('aria-sort', 'descending');
+    expect(sortSelect.value).toBe('PRICE_DESC');
+    expect(itemNames()).toEqual(['REVOX PLEX', 'Lumen Mist', 'Atelier Tote']);
+
+    fireEvent.click(within(priceHeader).getByRole('button', { name: 'Price' }));
+    expect(priceHeader).toHaveAttribute('aria-sort', 'ascending');
+    expect(sortSelect.value).toBe('PRICE_ASC');
+    expect(itemNames()).toEqual(['Atelier Tote', 'Lumen Mist', 'REVOX PLEX']);
+
+    fireEvent.click(within(priceHeader).getByRole('button', { name: 'Price' }));
+    expect(priceHeader).toHaveAttribute('aria-sort', 'none');
+    expect(sortSelect.value).toBe('DEFAULT');
   });
 
   it('renders one row per variant from the live row shape', async () => {

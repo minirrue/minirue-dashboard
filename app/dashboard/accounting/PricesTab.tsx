@@ -20,14 +20,44 @@ const PAGE_SIZES = [20, 50, 100] as const;
 type PageSize = (typeof PAGE_SIZES)[number];
 type ModeFilter = 'ALL' | 'SYSTEM' | 'MANUAL';
 type FlagFilter = 'ALL' | 'FLAGGED' | 'CLEAR';
+type SortField = 'COST' | 'PRICE' | 'MARGIN' | 'PROFIT';
 type SortValue =
   | 'DEFAULT'
+  | 'COST_DESC'
+  | 'COST_ASC'
   | 'MARGIN_DESC'
   | 'MARGIN_ASC'
   | 'PRICE_DESC'
   | 'PRICE_ASC'
   | 'PROFIT_DESC'
   | 'PROFIT_ASC';
+
+const SORT_VALUES: readonly SortValue[] = [
+  'DEFAULT',
+  'COST_DESC',
+  'COST_ASC',
+  'MARGIN_DESC',
+  'MARGIN_ASC',
+  'PRICE_DESC',
+  'PRICE_ASC',
+  'PROFIT_DESC',
+  'PROFIT_ASC',
+] as const;
+
+/** desc -> asc -> default, matching the header's own column each time. */
+function nextSort(current: SortValue, field: SortField): SortValue {
+  const desc = `${field}_DESC` as SortValue;
+  const asc = `${field}_ASC` as SortValue;
+  if (current === desc) return asc;
+  if (current === asc) return 'DEFAULT';
+  return desc;
+}
+
+function ariaSortFor(current: SortValue, field: SortField): 'ascending' | 'descending' | 'none' {
+  if (current === `${field}_DESC`) return 'descending';
+  if (current === `${field}_ASC`) return 'ascending';
+  return 'none';
+}
 
 function pageSizeFrom(raw: string | null): PageSize {
   const size = Number(raw);
@@ -81,6 +111,36 @@ function FlagCount({ flags }: { flags: PriceFlag[] }) {
   );
 }
 
+/** Sort direction glyph for a clickable column header (#98). */
+function SortIcon({ direction }: { direction: 'ascending' | 'descending' | 'none' }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="11"
+      height="11"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="acct-prices-sort-icon"
+      data-direction={direction}
+    >
+      {direction === 'ascending' ? (
+        <path d="M7 14 12 9 17 14" />
+      ) : direction === 'descending' ? (
+        <path d="M7 10 12 15 17 10" />
+      ) : (
+        <>
+          <path d="M7 10 12 6 17 10" />
+          <path d="M7 14 12 18 17 14" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 function WarnIcon() {
   return (
     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -116,19 +176,16 @@ export default function PricesTab() {
   const [flagFilter, setFlagFilter] = useState<FlagFilter>(() =>
     enumFrom(params.get('flags'), ['ALL', 'FLAGGED', 'CLEAR'] as const, 'ALL'),
   );
-  const [sort, setSort] = useState<SortValue>(() =>
-    enumFrom(
-      params.get('sort'),
-      ['DEFAULT', 'MARGIN_DESC', 'MARGIN_ASC', 'PRICE_DESC', 'PRICE_ASC', 'PROFIT_DESC', 'PROFIT_ASC'] as const,
-      'DEFAULT',
-    ),
-  );
+  const [sort, setSort] = useState<SortValue>(() => enumFrom(params.get('sort'), SORT_VALUES, 'DEFAULT'));
+  const [search, setSearch] = useState(() => params.get('q') ?? '');
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
   const setRowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
   const queryRef = useRef(params.toString());
 
   useEffect(() => {
     queryRef.current = params.toString();
   }, [params]);
+
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -179,6 +236,43 @@ export default function PricesTab() {
     [pathname, router],
   );
 
+  const applySort = useCallback(
+    (field: SortField) => {
+      const value = nextSort(sort, field);
+      setSort(value);
+      setPage(1);
+      updateUrl({ sort: value === 'DEFAULT' ? null : value, page: null });
+    },
+    [sort, updateUrl],
+  );
+
+  const sortHeader = useCallback(
+    (field: SortField, label: string) => (
+      <th scope="col" className="acct-num" aria-sort={ariaSortFor(sort, field)}>
+        <button type="button" className="acct-prices-sort-btn" onClick={() => applySort(field)}>
+          {label}
+          <SortIcon direction={ariaSortFor(sort, field)} />
+        </button>
+      </th>
+    ),
+    [sort, applySort],
+  );
+
+  // 300ms so typing a product name is one filter pass, not one per keystroke.
+  // The URL and page reset land in the same timeout callback (not the effect
+  // body) so a settled search never leaves a stale `page` param behind.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const trimmed = search.trim();
+      setDebouncedSearch(trimmed);
+      if (trimmed !== (params.get('q') ?? '')) {
+        setPage(1);
+        updateUrl({ q: trimmed || null, page: null });
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search, params, updateUrl]);
+
   const allRows = useMemo(
     () => [
       ...items.map((row) => ({
@@ -186,33 +280,39 @@ export default function PricesTab() {
         row,
         mode: row.mode,
         flagged: row.system.flags.length > 0,
+        cost: row.costMinor,
         margin: row.current.marginBp,
         price: row.currentPriceMinor,
         profit: row.current.productProfitMinor,
+        searchText: `${row.productName} ${row.sku}`.toLowerCase(),
       })),
       ...sets.map((row) => ({
         kind: 'set' as const,
         row,
         mode: row.mode,
         flagged: row.warnings.length > 0,
+        cost: row.costMinor,
         margin: row.current.marginBp,
         price: row.currentPriceMinor,
         profit: row.current.productProfitMinor,
+        searchText: row.name.toLowerCase(),
       })),
     ],
     [items, sets],
   );
 
   const filteredRows = useMemo(() => {
+    const needle = debouncedSearch.toLowerCase();
     const next = allRows.filter(
       (item) =>
         (modeFilter === 'ALL' || item.mode === modeFilter) &&
-        (flagFilter === 'ALL' || (flagFilter === 'FLAGGED' ? item.flagged : !item.flagged)),
+        (flagFilter === 'ALL' || (flagFilter === 'FLAGGED' ? item.flagged : !item.flagged)) &&
+        (!needle || item.searchText.includes(needle)),
     );
     if (sort === 'DEFAULT') return next;
-    const [field, direction] = sort.split('_') as ['MARGIN' | 'PRICE' | 'PROFIT', 'ASC' | 'DESC'];
+    const [field, direction] = sort.split('_') as [SortField, 'ASC' | 'DESC'];
     const value = (item: (typeof next)[number]) =>
-      field === 'MARGIN' ? item.margin : field === 'PRICE' ? item.price : item.profit;
+      field === 'COST' ? item.cost : field === 'MARGIN' ? item.margin : field === 'PRICE' ? item.price : item.profit;
     return next.sort((a, b) => {
       const av = value(a);
       const bv = value(b);
@@ -220,7 +320,7 @@ export default function PricesTab() {
       if (bv === null) return -1;
       return direction === 'ASC' ? av - bv : bv - av;
     });
-  }, [allRows, flagFilter, modeFilter, sort]);
+  }, [allRows, flagFilter, modeFilter, sort, debouncedSearch]);
 
   const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -322,6 +422,17 @@ export default function PricesTab() {
       </header>
 
       <div className="acct-prices-tools" aria-label="Price table controls">
+        <label className="acct-prices-search">
+          <span>Search</span>
+          <input
+            type="search"
+            className="dash-input"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Product, SKU or set name…"
+            aria-label="Search prices by product, SKU or set name"
+          />
+        </label>
         <label>
           <span>Mode</span>
           <select
@@ -366,10 +477,12 @@ export default function PricesTab() {
             }}
           >
             <option value="DEFAULT">Catalogue order</option>
-            <option value="MARGIN_DESC">Margin: highest first</option>
-            <option value="MARGIN_ASC">Margin: lowest first</option>
+            <option value="COST_DESC">Cost: highest first</option>
+            <option value="COST_ASC">Cost: lowest first</option>
             <option value="PRICE_DESC">Price: highest first</option>
             <option value="PRICE_ASC">Price: lowest first</option>
+            <option value="MARGIN_DESC">Margin: highest first</option>
+            <option value="MARGIN_ASC">Margin: lowest first</option>
             <option value="PROFIT_DESC">Profit: highest first</option>
             <option value="PROFIT_ASC">Profit: lowest first</option>
           </select>
@@ -404,12 +517,12 @@ export default function PricesTab() {
               <tr>
                 <th scope="col">Item</th>
                 <th scope="col">Mode</th>
-                <th scope="col" className="acct-num">Cost</th>
+                {sortHeader('COST', 'Cost')}
                 <th scope="col" className="acct-num">Market</th>
                 <th scope="col" className="acct-num">Law 1 / no-loss floor</th>
-                <th scope="col" className="acct-num">Price</th>
-                <th scope="col" className="acct-num">Margin</th>
-                <th scope="col" className="acct-num">Profit</th>
+                {sortHeader('PRICE', 'Price')}
+                {sortHeader('MARGIN', 'Margin')}
+                {sortHeader('PROFIT', 'Profit')}
                 <th scope="col" className="acct-num">Flags</th>
               </tr>
             </thead>
@@ -619,7 +732,9 @@ export default function PricesTab() {
             </tbody>
           </table>
           {filteredRows.length === 0 ? (
-            <p className="acct-prices-empty">No prices match these filters.</p>
+            <p className="acct-prices-empty">
+              {debouncedSearch ? `No item matches "${debouncedSearch}".` : 'No prices match these filters.'}
+            </p>
           ) : (
             <nav className="acct-prices-pagination" aria-label="Prices pagination">
               <p>

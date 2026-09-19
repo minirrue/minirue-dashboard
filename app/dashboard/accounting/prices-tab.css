@@ -40,7 +40,11 @@
 .acct-prices-tools .acct-prices-sort {
   flex-basis: 210px;
 }
-.acct-prices-tools select {
+.acct-prices-tools .acct-prices-search {
+  flex: 1 1 220px;
+}
+.acct-prices-tools select,
+.acct-prices-tools .dash-input {
   min-width: 0;
   height: 36px;
   padding: 0 32px 0 10px;
@@ -50,9 +54,40 @@
   color: var(--mr-fg);
   font: inherit;
 }
-.acct-prices-tools select:focus-visible {
+.acct-prices-tools select:focus-visible,
+.acct-prices-tools .dash-input:focus-visible {
   outline: 2px solid var(--mr-gold-500);
   outline-offset: 2px;
+}
+
+.acct-prices-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+}
+.acct-prices-sort-btn:hover {
+  color: var(--mr-fg);
+}
+.acct-prices-sort-btn:focus-visible {
+  outline: 2px solid var(--mr-gold-500);
+  outline-offset: 2px;
+  border-radius: var(--mr-radius-sm);
+}
+.acct-prices-sort-icon {
+  flex: 0 0 auto;
+  opacity: 0.35;
+}
+.acct-prices-sort-icon[data-direction='ascending'],
+.acct-prices-sort-icon[data-direction='descending'] {
+  opacity: 1;
+  color: var(--mr-gold-600);
 }
 .acct-prices-empty,
 .acct-prices-state p {
