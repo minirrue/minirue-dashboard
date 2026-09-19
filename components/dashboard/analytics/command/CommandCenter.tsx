@@ -148,7 +148,7 @@ export default function CommandCenter({ range }: { range: AnalyticsRangeState })
           { label: range.traffic === 'all' ? 'Visitors' : 'Real visitors', value: a ? n(a.visitors) : null, href: '/analytics/visitors', note: a ? `${n(a.newVisitors)} new` : '' },
           { label: 'Orders', value: a ? n(a.purchases) : null, href: '/analytics/visitors?stage=paid', note: a && a.visitors ? `${pct(a.purchases, a.visitors)}% of visitors` : '' },
           { label: 'Revenue', value: a ? egpWhole(a.revenueMinor) : null, href: '/analytics/visitors?stage=paid', note: a && a.purchases ? `${egpWhole(a.revenueMinor / a.purchases)} per order` : '' },
-          { label: 'From paid ads', value: channels.data ? egpWhole(paidRevenue) : null, href: '/analytics/acquisition', note: a && a.revenueMinor ? `${pct(paidRevenue, a.revenueMinor)}% of revenue` : '' },
+          { label: 'From paid ads', value: channels.data ? egpWhole(paidRevenue) : null, href: '/analytics/visitors', note: a && a.revenueMinor ? `${pct(paidRevenue, a.revenueMinor)}% of revenue` : '' },
           { label: 'Carts open now', value: abandoned.data ? n(openCarts.length) : null, href: '/analytics/visitors?stage=bag', note: openCarts.length ? egpWhole(openCarts.reduce((s, r) => s + r.valueMinor, 0)) : '' },
         ].map((f) => (
           <Link key={f.label} href={withScope(f.href, range)} className="cc-figure">

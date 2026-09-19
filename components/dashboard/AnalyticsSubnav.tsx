@@ -34,12 +34,10 @@ const TABS: Tab[] = [
   { label: 'Realtime', href: '/analytics/realtime', match: (p) => p.startsWith('/analytics/realtime') },
   // dashboard#123: every real shopper as one connected flow, down to the person
   // and why they didn't buy. Story Flow merged in here; /analytics/flow redirects.
-  { label: 'Visitors', href: '/analytics/visitors', match: (p) => p.startsWith('/analytics/visitors') || p.startsWith('/analytics/flow') },
-  { label: 'Acquisition', href: '/analytics/acquisition', match: (p) => p.startsWith('/analytics/acquisition') },
+  { label: 'Visitors', href: '/analytics/visitors', match: (p) => ['/analytics/visitors', '/analytics/flow', '/analytics/acquisition', '/analytics/checkout'].some((r) => p.startsWith(r)) },
   { label: 'Pages', href: '/analytics/pages', match: (p) => p.startsWith('/analytics/pages') },
   { label: 'Products', href: '/analytics/products', match: (p) => p.startsWith('/analytics/products') },
   { label: 'Events', href: '/analytics/events', match: (p) => p.startsWith('/analytics/events') },
-  { label: 'Checkout', href: '/analytics/checkout', match: (p) => p.startsWith('/analytics/checkout') },
   // Money in and back, computed from orders alone — true even if tracking breaks.
   { label: 'Sales', href: '/analytics/sales', match: (p) => p.startsWith('/analytics/sales') },
   // dashboard#111: every verdict on who counts.
@@ -64,11 +62,10 @@ export const ANALYTICS_GROUPS: AnalyticsGroup[] = [
   { label: 'Overview', tabs: ['Overview'] },
   {
     label: 'People & Journeys',
-    tabs: ['Visitors', 'Realtime', 'Acquisition', 'Pages', 'Products', 'Events', 'Checkout', 'Sales'],
+    tabs: ['Visitors', 'Realtime', 'Pages', 'Products', 'Events', 'Sales'],
     sections: [
       { label: 'People', tabs: ['Visitors', 'Realtime'] },
-      { label: 'Came from', tabs: ['Acquisition'] },
-      { label: 'Did', tabs: ['Pages', 'Products', 'Events', 'Checkout'] },
+      { label: 'Did', tabs: ['Pages', 'Products', 'Events'] },
       { label: 'Bought', tabs: ['Sales'] },
     ],
   },

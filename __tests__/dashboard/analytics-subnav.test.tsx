@@ -19,11 +19,12 @@ describe('AnalyticsSubnav', () => {
     ['/analytics/realtime', 'Realtime', 'People & Journeys'],
     ['/analytics/visitors', 'Visitors', 'People & Journeys'],
     ['/analytics/visitors/vis-abc-123', 'Visitors', 'People & Journeys'],
-    ['/analytics/acquisition', 'Acquisition', 'People & Journeys'],
+    // Acquisition and Checkout merged into Visitors; old URLs redirect there.
+    ['/analytics/acquisition', 'Visitors', 'People & Journeys'],
     ['/analytics/pages', 'Pages', 'People & Journeys'],
     ['/analytics/products/prod-abc-123', 'Products', 'People & Journeys'],
     ['/analytics/events', 'Events', 'People & Journeys'],
-    ['/analytics/checkout', 'Checkout', 'People & Journeys'],
+    ['/analytics/checkout', 'Visitors', 'People & Journeys'],
     ['/analytics/sales', 'Sales', 'People & Journeys'],
     ['/analytics/flags', 'Who counts', 'Health'],
     ['/analytics/devops', 'DevOps', 'Health'],
@@ -42,11 +43,9 @@ describe('AnalyticsSubnav', () => {
       'Overview',
       'Visitors',
       'Realtime',
-      'Acquisition',
       'Pages',
       'Products',
       'Events',
-      'Checkout',
       'Sales',
       'Who counts',
       'DevOps',
@@ -55,7 +54,7 @@ describe('AnalyticsSubnav', () => {
 
   it('groups People & Journeys by question, and every section screen is one of its tabs', () => {
     const pj = ANALYTICS_GROUPS.find((g) => g.label === 'People & Journeys')!;
-    expect(pj.sections?.map((s) => s.label)).toEqual(['People', 'Came from', 'Did', 'Bought']);
+    expect(pj.sections?.map((s) => s.label)).toEqual(['People', 'Did', 'Bought']);
     expect(pj.sections?.flatMap((s) => s.tabs)).toEqual(pj.tabs);
   });
 });

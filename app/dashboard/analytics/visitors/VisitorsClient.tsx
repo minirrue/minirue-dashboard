@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import AnalyticsSubnav from '@/components/dashboard/AnalyticsSubnav';
 import AnalyticsScopeBar from '@/components/dashboard/analytics/AnalyticsScopeBar';
@@ -9,7 +9,8 @@ import { useAnalyticsRange, useAudienceSummary, useAudienceTimeseries } from '@/
 import { LineChart } from '@/components/dashboard/charts';
 import {
   apiGetFlow,
-  apiGetPeople,
+  apiGetAllPeople,
+  PEOPLE_CAP,
   apiGetVisitorStory,
   DIMENSION_LABEL,
   personName,
@@ -19,11 +20,15 @@ import {
   type FlowFilter,
   type FlowFilterKey,
   type FlowResponse,
+  type PeopleSort,
   type PersonRow,
   type VisitorStory,
 } from '@/lib/api/story';
 import type { ApiError } from '@/lib/api/client';
 import { downloadRows, type ExportRow } from '@/lib/analytics/export';
+import PeopleTable, { type PeopleOptions } from './PeopleTable';
+import CameFrom from './CameFrom';
+import { formatDateTime } from '@/lib/dates/format';
 import './flow.css';
 
 const COLUMNS: FlowDimension[] = ['platform', 'campaign', 'landing', 'product', 'stage'];
@@ -42,13 +47,6 @@ const NODE_GAP = 8;
 
 const n = (v: number | null | undefined) => (v ?? 0).toLocaleString('en-US');
 const egp = (minor: number | null | undefined) => `EGP ${Math.round((minor ?? 0) / 100).toLocaleString('en-US')}`;
-const ago = (iso: string) => {
-  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 90) return 'just now';
-  if (s < 3600) return `${Math.round(s / 60)}m ago`;
-  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
-  return `${Math.round(s / 86400)}d ago`;
-};
 
 function nodeLabel(dim: FlowFilterKey, value: string, label?: string) {
   if (dim === 'stage') return STAGE_LABEL[value] ?? label ?? value;
@@ -272,7 +270,7 @@ function StoryDrawer({ visitorId, range, onClose }: { visitorId: string; range: 
             {s.sessions.map((ss, i) => (
               <li key={ss.sessionId ?? i} className="flow-session">
                 <div className="flow-session__touch">
-                  <span className="flow-session__when">{new Date(ss.startedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="flow-session__when">{formatDateTime(ss.startedAt)}</span>
                   <span className="flow-session__src" data-medium={ss.touch.medium ?? undefined}>
                     {ss.touch.platform ?? 'Direct'}
                     {ss.touch.campaign ? ` · ${ss.touch.campaign}` : ''}
@@ -395,8 +393,9 @@ export default function VisitorsClient() {
     return f;
   });
   const [flow, setFlow] = useState<Load<FlowResponse>>({ state: 'loading' });
-  const [people, setPeople] = useState<Load<{ rows: PersonRow[]; next: string | null; total?: number; legacy: boolean }>>({ state: 'loading' });
+  const [people, setPeople] = useState<{ rows: PersonRow[]; done: boolean; legacy: boolean; error: string | null }>({ rows: [], done: false, legacy: false, error: null });
   const [q, setQ] = useState('');
+  const [sort, setSort] = useState<PeopleSort>('lastSeenAt');
   const [openVisitor, setOpenVisitor] = useState<string | null>(() => params.get('visitor'));
 
   useEffect(() => {
@@ -410,35 +409,20 @@ export default function VisitorsClient() {
     };
   }, [range, filter]);
 
-  const loadPeople = useCallback(
-    (cursor: string | null) => {
-      let off = false;
-      if (!cursor) setPeople({ state: 'loading' });
-      apiGetPeople(range, filter, { q: q.trim() || undefined, cursor })
-        .then((r) => {
-          if (off) return;
-          setPeople((prev) => ({
-            state: 'ready',
-            data: {
-              rows: cursor && prev.state === 'ready' ? [...prev.data.rows, ...r.data.rows] : r.data.rows,
-              next: r.data.nextCursor,
-              total: r.data.total,
-              legacy: !!r.legacy,
-            },
-          }));
-        })
-        .catch((e) => !off && setPeople(isNotYet(e) ? { state: 'offline' } : { state: 'error', message: (e as ApiError).message ?? 'People could not load.' }));
-      return () => {
-        off = true;
-      };
-    },
-    [range, filter, q],
-  );
-
+  // Everyone in the range, loaded page after page until the list is whole.
   useEffect(() => {
-    const t = window.setTimeout(() => loadPeople(null), q ? 250 : 0);
-    return () => window.clearTimeout(t);
-  }, [loadPeople, q]);
+    const signal = { aborted: false };
+    const t = window.setTimeout(() => {
+      setPeople({ rows: [], done: false, legacy: false, error: null });
+      apiGetAllPeople(range, filter, { q: q.trim() || undefined, sort }, (rows, done, legacy) => setPeople({ rows, done, legacy, error: null }), signal).catch(
+        (e) => !signal.aborted && setPeople((p) => ({ ...p, done: true, error: (e as ApiError).message ?? 'People could not load.' })),
+      );
+    }, q ? 250 : 0);
+    return () => {
+      signal.aborted = true;
+      window.clearTimeout(t);
+    };
+  }, [range, filter, q, sort]);
 
   const toggle = (dim: FlowFilterKey, value: string) =>
     setFilter((f) => {
@@ -449,20 +433,58 @@ export default function VisitorsClient() {
     });
 
   const chips = FILTER_KEYS.filter((d) => filter[d]);
-  const legacy = people.state === 'ready' && people.data.legacy;
-  const loaded = useMemo(() => (people.state === 'ready' ? people.data.rows : []), [people]);
+  const legacy = people.legacy;
+  const loaded = people.rows;
   // The visitors-list fallback can't filter by reason server-side; do it here.
   const rows = legacy && filter.reason ? loaded.filter((p) => p.stopReason === filter.reason) : loaded;
 
-  const reasons = useMemo<{ rows: ReasonRow[]; sampleOf: number | null }>(() => {
+  // Options accumulate for the range, so picking one value never hides the others.
+  const [pool, setPool] = useState<{ key: string; platform: string[]; country: string[] }>({ key: '', platform: [], country: [] });
+  const poolKey = `${range.from}|${range.to}|${range.traffic}`;
+  const flowPlatforms = flow.state === 'ready' ? flow.data.nodes.filter((nd) => nd.dimension === 'platform').map((nd) => nd.value) : [];
+  const nextPlatforms = [...flowPlatforms, ...loaded.map((p) => p.platform), filter.platform];
+  const nextCountries = [...loaded.map((p) => p.country), filter.country];
+  const merge = (base: string[], add: (string | null | undefined)[]) => {
+    const set = new Set(base);
+    for (const v of add) if (v) set.add(v);
+    return set.size === base.length ? base : [...set];
+  };
+  const mergedPlatform = merge(pool.key === poolKey ? pool.platform : [], nextPlatforms);
+  const mergedCountry = merge(pool.key === poolKey ? pool.country : [], nextCountries);
+  if (pool.key !== poolKey || mergedPlatform !== pool.platform || mergedCountry !== pool.country) {
+    // Adjusting state during render from derived data (React's documented pattern).
+    setPool({ key: poolKey, platform: mergedPlatform, country: mergedCountry });
+  }
+  const options = useMemo<PeopleOptions>(
+    () => ({
+      platform: [...pool.platform].sort(),
+      country: [...pool.country].sort((a, b) => countryName(a).localeCompare(countryName(b))),
+    }),
+    [pool],
+  );
+
+  const setKey = (key: FlowFilterKey, value: string) =>
+    setFilter((f) => {
+      const next = { ...f };
+      if (value) next[key] = value;
+      else delete next[key];
+      return next;
+    });
+
+  const liveReasons = useMemo<{ rows: ReasonRow[]; sampleOf: number | null }>(() => {
     if (flow.state === 'ready' && flow.data.reasons?.length) return { rows: flow.data.reasons, sampleOf: null };
     const counts = new Map<string, number>();
     for (const p of loaded) if (p.stopReason) counts.set(p.stopReason, (counts.get(p.stopReason) ?? 0) + 1);
     return {
       rows: [...counts].map(([reason, visitors]) => ({ reason, label: STOP_REASON_LABEL[reason] ?? reason, visitors })),
-      sampleOf: loaded.length,
+      sampleOf: people.done && loaded.length < PEOPLE_CAP ? null : loaded.length,
     };
-  }, [flow, loaded]);
+  }, [flow, loaded, people.done]);
+  // Picking a reason narrows the people to it; the panel keeps showing every
+  // reason (from the last complete count) so the others stay one click away.
+  const [heldReasons, setHeldReasons] = useState(liveReasons);
+  if (!filter.reason && people.done && heldReasons !== liveReasons) setHeldReasons(liveReasons);
+  const reasons = filter.reason ? heldReasons : liveReasons;
 
   const s = summary.data?.data;
   const figures = s
@@ -512,9 +534,10 @@ export default function VisitorsClient() {
         )}
       </div>
 
+      <CameFrom rows={rows} done={people.done} filter={filter} setKey={setKey} countryName={countryName} range={range} />
+
       <div className="flow-layout">
         <div className="flow-stack">
-          <WhyNoPurchase reasons={reasons.rows} sampleOf={reasons.sampleOf} active={filter.reason} onPick={(r) => toggle('reason', r)} />
 
           <section className="flow-main" aria-label="Flow">
             {flow.state === 'loading' && <span className="dash-skeleton" style={{ display: 'block', height: 360, borderRadius: 16 }} />}
@@ -560,62 +583,26 @@ export default function VisitorsClient() {
               ))}
           </section>
         </div>
+        <WhyNoPurchase reasons={reasons.rows} sampleOf={reasons.sampleOf} active={filter.reason} onPick={(r) => toggle('reason', r)} />
 
-        <aside className="flow-people" aria-label="People">
-          <header className="flow-people__head">
-            <div>
-              <h2 className="cc-block__title">People</h2>
-              <p className="cc-block__sub">
-                {people.state === 'ready' ? `${n(people.data.total ?? rows.length)}${people.data.next ? '+' : ''} ${chips.length ? 'in this part of the flow' : 'in this range'}` : ' '}
-              </p>
-            </div>
-            <div className="flow-people__exports">
-              <button type="button" className="flow-pill-btn" disabled={!rows.length} onClick={() => downloadRows('visitors', peopleExportRows(rows), 'csv', range)}>CSV</button>
-              <button type="button" className="flow-pill-btn" disabled={!rows.length} onClick={() => downloadRows('visitors', peopleExportRows(rows), 'json', range)}>JSON</button>
-            </div>
-          </header>
-          <label className="flow-search">
-            <span className="dash-sr-only">Search people</span>
-            <input className="dash-input dash-input-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name, visitor #, phone, campaign, product…" />
-          </label>
-          {people.state === 'loading' && <span className="dash-skeleton" style={{ display: 'block', height: 240, borderRadius: 12 }} />}
-          {people.state === 'offline' && <p className="flow-note">The people list is switching on.</p>}
-          {people.state === 'error' && <p className="dash-inline-error">{people.message}</p>}
-          <ul className="flow-people__list">
-            {rows.map((p) => (
-              <li key={p.visitorId}>
-                <button type="button" className="flow-person" onClick={() => setOpenVisitor(p.visitorId)}>
-                  <span className="flow-person__top">
-                    <span className="flow-person__name" data-customer={p.customer ? '' : undefined}>{personName(p)}</span>
-                    {p.trafficClass !== 'REAL' && <span className="dash-flag-chip" data-class={p.trafficClass}>{p.trafficClass.toLowerCase()}</span>}
-                    <span className="flow-person__when">{ago(p.lastSeenAt)}</span>
-                  </span>
-                  <span className="flow-person__story">
-                    {[p.platform ?? 'Direct', p.campaign, p.productsViewed[0], p.furthestStage ? STAGE_LABEL[p.furthestStage] ?? p.furthestStage : null]
-                      .filter(Boolean)
-                      .join(' → ')}
-                  </span>
-                  {p.orders === 0 && (p.stopReason || p.stopDetail) && (
-                    <span className="flow-person__stop">
-                      {[p.stopReason && p.stopReason !== 'bought' ? STOP_REASON_LABEL[p.stopReason] ?? p.stopReason : null, p.stopDetail].filter(Boolean).join(' · ')}
-                    </span>
-                  )}
-                  <span className="flow-person__meta">
-                    {[p.city ?? (p.country ? countryName(p.country) : null), p.device, p.cartValueMinor ? `bag ${egp(p.cartValueMinor)}` : null, p.orders ? `${p.orders} order${p.orders === 1 ? '' : 's'} · ${egp(p.revenueMinor)}` : null]
-                      .filter(Boolean)
-                      .join(' · ')}
-                    {p.contactable && <span className="flow-person__contact">can contact</span>}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          {people.state === 'ready' && people.data.next && (
-            <button type="button" className="flow-more" onClick={() => loadPeople(people.data.next)}>Show more</button>
-          )}
-          {people.state === 'ready' && rows.length === 0 && <p className="flow-note">No one matches.</p>}
-        </aside>
       </div>
+
+      <PeopleTable
+        rows={rows}
+        loading={!people.done}
+        done={people.done}
+        error={people.error}
+        filter={filter}
+        setKey={setKey}
+        q={q}
+        setQ={setQ}
+        sort={sort}
+        setSort={setSort}
+        options={options}
+        countryName={countryName}
+        onOpen={setOpenVisitor}
+        onExport={(format) => downloadRows('visitors', peopleExportRows(rows), format, range)}
+      />
 
       {openVisitor && <StoryDrawer visitorId={openVisitor} range={range} onClose={() => setOpenVisitor(null)} />}
     </>

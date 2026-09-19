@@ -491,7 +491,7 @@ const LOCAL_WIDGETS: AnalyticsWidgetDefinition<any>[] = [
     // Promoted from md: five device rows plus five OS rows need the height, and
     // this is the widget marketing decisions are made from.
     defaultSize: 'lg',
-    href: '/analytics/acquisition',
+    href: '/analytics/visitors',
     useData: useDeviceOsSplit,
     Render: DeviceOsRender,
   },
@@ -500,7 +500,7 @@ const LOCAL_WIDGETS: AnalyticsWidgetDefinition<any>[] = [
     title: 'Countries',
     description: 'Visitors by country in this range.',
     defaultSize: 'sm',
-    href: '/analytics/acquisition',
+    href: '/analytics/visitors',
     useData: useCountrySplit,
     Render: CountrySplitRender,
   },

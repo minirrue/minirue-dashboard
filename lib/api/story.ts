@@ -136,11 +136,12 @@ export function apiGetFlow(params: AnalyticsQueryParams, filter: FlowFilter): Pr
 export async function apiGetPeople(
   params: AnalyticsQueryParams,
   filter: FlowFilter,
-  opts: { q?: string; sort?: string; cursor?: string | null } = {},
+  opts: { q?: string; sort?: PeopleSort; cursor?: string | null; limit?: number } = {},
 ): Promise<{ data: PeoplePage; legacy?: boolean }> {
+  const limit = opts.limit ? String(opts.limit) : undefined;
   try {
     return await apiFetch(
-      `/analytics/people?${scopeQuery(params, { filter: filterParam(filter), q: opts.q, sort: opts.sort, cursor: opts.cursor ?? undefined })}`,
+      `/analytics/people?${scopeQuery(params, { filter: filterParam(filter), q: opts.q, sort: opts.sort, cursor: opts.cursor ?? undefined, limit })}`,
       { auth: true },
     );
   } catch (e) {
@@ -152,6 +153,7 @@ export async function apiGetPeople(
       country: filter.country,
       hasOrder: filter.stage === 'paid' ? 'true' : undefined,
       cursor: opts.cursor ?? undefined,
+      limit,
     })}`,
     { auth: true },
   );
@@ -188,6 +190,36 @@ export async function apiGetPeople(
       })),
     },
   };
+}
+
+export type PeopleSort = 'lastSeenAt' | 'firstSeenAt' | 'revenueMinor' | 'orders';
+
+/** More than any real range holds today; past it the screen says so and export stays exact. */
+export const PEOPLE_CAP = 5000;
+
+/**
+ * Everyone in the range, not a first page: walks the cursor 200 at a time,
+ * reporting progress so the list fills in as it loads. `signal.aborted`
+ * stops it when the filters change mid-walk.
+ */
+export async function apiGetAllPeople(
+  params: AnalyticsQueryParams,
+  filter: FlowFilter,
+  opts: { q?: string; sort?: PeopleSort },
+  onPage: (rows: PersonRow[], done: boolean, legacy: boolean) => void,
+  signal: { aborted: boolean },
+): Promise<void> {
+  let cursor: string | null = null;
+  let all: PersonRow[] = [];
+  do {
+    const r = await apiGetPeople(params, filter, { ...opts, cursor, limit: 200 });
+    if (signal.aborted) return;
+    all = all.concat(r.data.rows);
+    cursor = r.data.nextCursor;
+    const done = !cursor || all.length >= PEOPLE_CAP;
+    onPage(all, done, !!r.legacy);
+    if (done) return;
+  } while (cursor);
 }
 
 const EVENT_LABEL: Record<string, string> = {
