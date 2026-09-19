@@ -5924,3 +5924,13 @@ a.dash-visitor-name:hover { text-decoration: underline; text-underline-offset: 3
   font-weight: 500;
   letter-spacing: -0.015em;
 }
+
+/* People & Journeys sub-row, grouped by question (#115). */
+.dash-analytics-nav__tabs { gap: 6px 18px; align-items: center; }
+.dash-analytics-nav__section { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.dash-analytics-nav__section + .dash-analytics-nav__section { padding-left: 18px; border-left: 1px solid var(--mr-dash-hair); }
+.dash-analytics-nav__section-label { margin-right: 2px; color: var(--mr-fg-4); font-family: var(--mr-font-label); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+@media (max-width: 760px) {
+  .dash-analytics-nav__section { flex-wrap: nowrap; flex: none; }
+  .dash-analytics-nav__section + .dash-analytics-nav__section { padding-left: 12px; }
+}

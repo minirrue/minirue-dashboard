@@ -51,13 +51,27 @@ const TABS: Tab[] = [
 export interface AnalyticsGroup {
   label: string;
   tabs: string[];
+  /** Sub-groups inside the second row, by the question they answer. */
+  sections?: { label: string; tabs: string[] }[];
 }
 
+/**
+ * Owner, 2026-09-19: "merge Acquisition & Media and Behaviour into People &
+ * Journeys" — one place where the people, where they came from and what they
+ * did live together and link to each other.
+ */
 export const ANALYTICS_GROUPS: AnalyticsGroup[] = [
   { label: 'Overview', tabs: ['Overview'] },
-  { label: 'People & Journeys', tabs: ['Story Flow', 'Visitors', 'Realtime'] },
-  { label: 'Acquisition & Media', tabs: ['Acquisition'] },
-  { label: 'Behaviour', tabs: ['Pages', 'Products', 'Events', 'Checkout', 'Sales'] },
+  {
+    label: 'People & Journeys',
+    tabs: ['Story Flow', 'Visitors', 'Realtime', 'Acquisition', 'Pages', 'Products', 'Events', 'Checkout', 'Sales'],
+    sections: [
+      { label: 'People', tabs: ['Story Flow', 'Visitors', 'Realtime'] },
+      { label: 'Came from', tabs: ['Acquisition'] },
+      { label: 'Did', tabs: ['Pages', 'Products', 'Events', 'Checkout'] },
+      { label: 'Bought', tabs: ['Sales'] },
+    ],
+  },
   { label: 'Health', tabs: ['Who counts', 'DevOps'] },
 ];
 
@@ -136,7 +150,10 @@ function SubnavView({ params }: { params: ScopeParams | null }) {
       </div>
       {currentGroup.tabs.length > 1 && (
         <div className="dash-analytics-nav__tabs" role="list" aria-label={currentGroup.label}>
-          {currentGroup.tabs.map((label) => {
+          {(currentGroup.sections ?? [{ label: '', tabs: currentGroup.tabs }]).map((section, si) => (
+            <div key={section.label || si} className="dash-analytics-nav__section" role="group" aria-label={section.label || undefined}>
+              {section.label ? <span className="dash-analytics-nav__section-label">{section.label}</span> : null}
+          {section.tabs.map((label) => {
             const tab = tabByLabel(label);
             const active = label === currentTab;
             return (
@@ -153,6 +170,8 @@ function SubnavView({ params }: { params: ScopeParams | null }) {
               </Link>
             );
           })}
+            </div>
+          ))}
         </div>
       )}
     </nav>
