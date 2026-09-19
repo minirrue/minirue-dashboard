@@ -240,3 +240,17 @@ a.cc-guest:focus-visible, a.cc-cart:focus-visible { outline: 2px solid var(--mr-
 .cc-bar__track { grid-column: 1 / -1; height: 4px; border-radius: 4px; background: var(--mr-dash-sub); overflow: hidden; }
 .cc-bar__track > span { display: block; height: 100%; border-radius: 4px; background: var(--mr-gold-500); }
 .cc-cart__who { font-size: 12px; font-weight: 700; color: var(--mr-cream-100, #f7f1e3); }
+
+/* Grid order (owner review): journey | live, campaigns | open carts, then who
+   they are across the full width with its two lists side by side. */
+.cc-journey { grid-column: 1; }
+.cc-live { grid-column: 2; }
+.cc-campaigns { grid-column: 1; }
+.cc-money { grid-column: 2; }
+.cc-who { grid-column: 1 / -1; }
+.cc-who .cc-who__cols { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.cc-table td:first-child { white-space: nowrap; max-width: 34ch; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 1100px) {
+  .cc-journey, .cc-live, .cc-campaigns, .cc-money, .cc-who { grid-column: 1; }
+  .cc-who .cc-who__cols { grid-template-columns: minmax(0, 1fr); }
+}

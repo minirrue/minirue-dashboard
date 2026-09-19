@@ -243,9 +243,6 @@ export default function CommandCenter({ range }: { range: AnalyticsRangeState })
           <Link href={withScope('/analytics/realtime', range)} className="cc-live__more">Open Realtime →</Link>
         </section>
 
-        {/* 3b ─ Who they are: beside the journey it explains */}
-        <WhoTheyAre range={range} />
-
         {/* 5 ─ Campaign board */}
         <section className="cc-block cc-campaigns" aria-label="Campaigns">
           <BlockHead
@@ -330,7 +327,11 @@ export default function CommandCenter({ range }: { range: AnalyticsRangeState })
                     {r.contactable && <span className="cc-cart__contact">Can be contacted</span>}
                   </Link>
                 ) : (
-                  <span className="cc-cart"><span className="cc-cart__value">{egpWhole(r.valueMinor)}</span></span>
+                  <span className="cc-cart">
+                    <span className="cc-cart__who">Unlinked cart</span>
+                    <span className="cc-cart__value">{egpWhole(r.valueMinor)}</span>
+                    <span className="cc-cart__meta">{r.itemCount} {r.itemCount === 1 ? 'item' : 'items'} · {r.stage.toLowerCase().replace(/_/g, ' ')}</span>
+                  </span>
                 )}
               </li>
             ))}
@@ -344,6 +345,9 @@ export default function CommandCenter({ range }: { range: AnalyticsRangeState })
             </Link>
           )}
         </section>
+
+        {/* 7 ─ Who they are: the audience behind the journey, full width */}
+        <WhoTheyAre range={range} />
       </div>
     </div>
   );
@@ -394,8 +398,8 @@ function WhoTheyAre({ range }: { range: AnalyticsRangeState }) {
       />
       {a && (
         <p className="cc-who__split">
-          <span className="cc-who__big">{pct(a.newVisitors, a.visitors)}%</span> new ·{' '}
-          <span className="cc-who__big">{pct(a.returningVisitors, a.visitors)}%</span> came back
+          <span className="cc-who__big">{n(a.newVisitors)}</span> first-time ·{' '}
+          <span className="cc-who__big">{n(a.returningVisitors)}</span> came back
         </p>
       )}
       <div className="cc-who__cols">
