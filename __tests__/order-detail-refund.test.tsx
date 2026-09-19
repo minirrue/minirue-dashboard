@@ -92,6 +92,26 @@ describe('OrderDetailClient refund display', () => {
     expect(await screen.findByText('Delivered', { selector: '.dash-status' })).toBeInTheDocument();
   });
 
+  it('offers "Package received back" on an order carrying a refund even when status lags behind it (dashboard#95, backend#207)', async () => {
+    mockedOrders.apiAdminGetOrder.mockResolvedValue({
+      ...base,
+      // The exact legacy shape the badge above already guards against: a
+      // refund happened (refundedAt/refundedAmountCents set) but the status
+      // column itself was never advanced to 'REFUNDED' — and landed on a
+      // value ('CANCELLED') that isn't in SHIPPED_STATUSES either, so the
+      // button's own status check must not be fooled by it.
+      status: 'CANCELLED',
+      refundedAt: '2026-07-29T10:00:00Z',
+      refundedAmountCents: 45000,
+    });
+
+    render(<OrderDetailClient id="ord_1" />);
+
+    expect(
+      await screen.findByText('Package received back'),
+    ).toBeInTheDocument();
+  });
+
   it('labels a staff/test order on the detail page', async () => {
     mockedOrders.apiAdminGetOrder.mockResolvedValue({
       ...base,

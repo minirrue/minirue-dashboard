@@ -267,7 +267,12 @@ function OrderActions({
   onReturnToStock: () => void;
   busy: boolean;
 }) {
-  const { status } = order;
+  // Never disagrees with the badge above it (or the Refunds tab): a refund
+  // overrides whatever `status` still says, even for a row no repair
+  // migration touched (dashboard#95 / backend#207) — `order.status` on a
+  // refunded order is not reliably 'REFUNDED', so "Package received back"
+  // must not be gated on the raw column alone.
+  const status = order.refundedAt ? 'REFUNDED' : order.status;
   return (
     <div className="dash-row-actions">
       {status === 'PENDING' && (
