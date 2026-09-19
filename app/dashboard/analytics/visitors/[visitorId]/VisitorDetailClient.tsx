@@ -8,7 +8,8 @@ import { useAnalyticsRange, useVisitorDetail, useVisitorJourney } from '@/lib/ho
 import { egp } from '@/lib/api/analytics-insights';
 import AnalyticsScopeBar from '@/components/dashboard/analytics/AnalyticsScopeBar';
 import { visitorLabel } from '@/components/dashboard/analytics/VisitorName';
-import { storyFromJourney } from '@/lib/api/story';
+import { apiGetVisitorStory, STOP_REASON_LABEL, storyFromJourney } from '@/lib/api/story';
+import { useQuery } from '@tanstack/react-query';
 import '../flow.css';
 import { formatDateTime, formatTime } from '@/lib/dates/format';
 
@@ -62,7 +63,16 @@ export default function VisitorDetailClient({ visitorId }: { visitorId: string }
   const events = journey.data?.data;
   // The same story the Visitors drawer shows: visits split on 30-minute gaps,
   // each summarised — including where a non-buyer stopped.
-  const story = useMemo(() => storyFromJourney(visitorId, events ?? [], null), [visitorId, events]);
+  // The server story (named products, touch, verdict over the whole history);
+  // the journey-built one stands in while it loads or if it is unavailable.
+  const served = useQuery({
+    queryKey: ['analytics', 'story', visitorId, range],
+    queryFn: () => apiGetVisitorStory(visitorId, range),
+    staleTime: 60_000,
+  });
+  const localStory = useMemo(() => storyFromJourney(visitorId, events ?? [], null), [visitorId, events]);
+  const story = served.data?.data ?? localStory;
+  const verdict = story.verdict;
 
   return (
     <>
@@ -128,10 +138,17 @@ export default function VisitorDetailClient({ visitorId }: { visitorId: string }
             {detail.data.data.isBot && ' · Flagged as bot traffic'}
           </p>
 
-          {detail.data.data.orderCount === 0 && story.sessions.length > 0 && (
+          {verdict && verdict.reason !== 'bought' ? (
             <p className="flow-verdict">
-              <strong>Didn&apos;t buy.</strong> Last visit: {story.sessions[0].summary}
+              <strong>{STOP_REASON_LABEL[verdict.reason] ?? 'Didn’t buy'}.</strong> {verdict.detail}
             </p>
+          ) : (
+            detail.data.data.orderCount === 0 &&
+            story.sessions.length > 0 && (
+              <p className="flow-verdict">
+                <strong>Didn&apos;t buy.</strong> Last visit: {story.sessions[0].summary}
+              </p>
+            )
           )}
           <p className="dash-section-title" style={{ marginBottom: 12 }}>Story</p>
           {story.sessions.length === 0 ? (
@@ -147,7 +164,10 @@ export default function VisitorDetailClient({ visitorId }: { visitorId: string }
                   <li key={i} className="flow-session">
                     <div className="flow-session__touch">
                       <span className="flow-session__when">{formatDate(ss.startedAt)}</span>
-                      {ss.touch.landingPath && <span className="flow-session__src">Landed on {ss.touch.landingPath}</span>}
+                      <span className="flow-session__src" data-medium={ss.touch.medium ?? undefined}>
+                        {[ss.touch.platform ?? 'Direct', ss.touch.campaign].filter(Boolean).join(' · ')}
+                      </span>
+                      {ss.touch.landingPath && <span className="flow-session__when">landed on {ss.touch.landingPath}</span>}
                     </div>
                     <p className="flow-session__summary">{ss.summary}</p>
                     <ol className="flow-steps">
