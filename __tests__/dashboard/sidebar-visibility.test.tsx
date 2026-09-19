@@ -124,7 +124,8 @@ describe('sidebar visibility', () => {
       'Orders', 'Customers', 'Loyalty', 'Gallery', 'Discounts', 'Bundles',
       'Chat', 'Email', 'Reviews', 'Fulfillment', 'Refunds and payments', 'Inventory',
     ]);
-    expect(bySection('Insights')).toEqual(['Analytics', 'SEO']);
+    // dashboard#90: renamed Analytics & Media (owner-approved regroup).
+    expect(bySection('Insights')).toEqual(['Analytics & Media', 'SEO']);
     expect(bySection('System')).toEqual(['Notifications', 'Settings', 'Info']);
     expect(menu.some((m) => m.section === 'Media')).toBe(false);
   });

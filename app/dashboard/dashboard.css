@@ -5699,3 +5699,94 @@ a.dash-card:focus-visible {
   background: var(--mr-st-warn-bg);
   color: var(--mr-st-warn-fg);
 }
+
+/* ── Analytics & Media (dashboard#90, #115) ─────────────────────────────
+   Two tiers: five questions on top, the screens inside the chosen one
+   underneath. Underlines for the questions (navigation between areas),
+   a quiet pill row for the screens (siblings you flip between). */
+.dash-analytics-nav { display: grid; gap: 12px; margin-bottom: 20px; }
+.dash-analytics-nav__groups {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--mr-dash-hair);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.dash-analytics-nav__groups::-webkit-scrollbar { display: none; }
+.dash-analytics-nav__group {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 11px 16px 12px;
+  color: var(--mr-fg-3);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  white-space: nowrap;
+  border-radius: var(--mr-radius-sm) var(--mr-radius-sm) 0 0;
+  transition: color var(--mr-dur-fast) var(--mr-ease-snappy), background var(--mr-dur-fast) var(--mr-ease-snappy);
+}
+.dash-analytics-nav__group:hover { color: var(--mr-fg); background: var(--mr-dash-sub); }
+.dash-analytics-nav__group[data-active] { color: var(--mr-fg); }
+.dash-analytics-nav__group[data-active]::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--mr-gold-500);
+}
+.dash-analytics-nav__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dash-analytics-nav__tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: 999px;
+  background: var(--mr-dash-surface);
+  color: var(--mr-fg-3);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--mr-dur-fast) var(--mr-ease-snappy), border-color var(--mr-dur-fast) var(--mr-ease-snappy), background var(--mr-dur-fast) var(--mr-ease-snappy);
+}
+.dash-analytics-nav__tab:hover { color: var(--mr-fg); border-color: var(--mr-fg-4); }
+.dash-analytics-nav__tab[data-active] { background: var(--mr-ink-900); border-color: var(--mr-ink-900); color: var(--mr-cream-100); }
+.dash-analytics-nav__group:focus-visible,
+.dash-analytics-nav__tab:focus-visible { outline: 2px solid var(--mr-gold-500); outline-offset: 2px; }
+
+/* One toolbar on every analytics screen: when, whose traffic, how fresh. */
+.dash-analytics-scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+  margin: 0 0 20px;
+}
+.dash-analytics-scope__range { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+.dash-analytics-scope__range .dash-field { width: 156px; margin: 0; }
+.dash-analytics-scope__compare { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; color: var(--mr-fg-2); font-size: 13px; }
+.dash-analytics-scope__traffic { display: grid; gap: 6px; }
+.dash-analytics-scope__quality {
+  margin-left: auto;
+  align-self: center;
+  color: var(--mr-fg-4);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.dash-analytics-scope__quality strong { color: var(--mr-fg-2); font-weight: 600; }
+@media (max-width: 760px) {
+  .dash-analytics-scope__range .dash-field { width: calc(50% - 5px); }
+  .dash-analytics-scope__quality { margin-left: 0; text-align: left; flex-basis: 100%; }
+  .dash-analytics-nav__tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .dash-analytics-nav__tabs::-webkit-scrollbar { display: none; }
+}

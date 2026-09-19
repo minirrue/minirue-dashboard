@@ -12,7 +12,6 @@ import {
   usePaymentsFunnel,
   useAbandonedCheckouts,
 } from '@/lib/hooks/use-analytics';
-import type { AnalyticsRangeState } from '@/lib/hooks/use-analytics';
 import { egp } from '@/lib/api/analytics-insights';
 import { useMinutesAgoLabel } from '@/lib/hooks/use-minutes-ago';
 import type {
@@ -22,31 +21,7 @@ import type {
   CheckoutFunnelStep,
   PaymentMethodRow,
 } from '@/lib/api/analytics-insights';
-
-function RangeControl({
-  range,
-  onChange,
-}: {
-  range: AnalyticsRangeState;
-  onChange: (next: Partial<AnalyticsRangeState>) => void;
-}) {
-  return (
-    <div className="dash-filters" style={{ marginBottom: 20 }}>
-      <label className="dash-field" style={{ maxWidth: 160 }}>
-        <span className="dash-label">From</span>
-        <input type="date" className="dash-input" value={range.from} max={range.to} onChange={(e) => onChange({ from: e.target.value })} />
-      </label>
-      <label className="dash-field" style={{ maxWidth: 160 }}>
-        <span className="dash-label">To</span>
-        <input type="date" className="dash-input" value={range.to} min={range.from} onChange={(e) => onChange({ to: e.target.value })} />
-      </label>
-      <label className="dash-checkbox-label" style={{ marginLeft: 8 }}>
-        <input type="checkbox" className="dash-checkbox" checked={range.compare} onChange={(e) => onChange({ compare: e.target.checked })} />
-        Compare to previous period
-      </label>
-    </div>
-  );
-}
+import AnalyticsScopeBar from '@/components/dashboard/analytics/AnalyticsScopeBar';
 
 function FreshnessNote({ freshness }: { freshness: AnalyticsFreshness }) {
   // Clock read in an effect, and re-read on a timer — see useMinutesAgoLabel.
@@ -176,7 +151,7 @@ export default function CheckoutFunnelClient() {
       <div className="dash-page-header">
         <h1 className="dash-page-title">Checkout</h1>
       </div>
-      <RangeControl range={range} onChange={setRange} />
+      <AnalyticsScopeBar range={range} onChange={setRange} />
 
       {isLoading ? (
         <ScreenSkeleton />

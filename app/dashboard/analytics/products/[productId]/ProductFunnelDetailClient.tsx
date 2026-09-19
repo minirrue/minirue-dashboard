@@ -7,34 +7,9 @@ import DashboardTable from '@/components/dashboard/DashboardTable';
 import type { Column } from '@/components/dashboard/DashboardTable';
 import { Funnel } from '@/components/dashboard/charts';
 import { useAnalyticsRange, useProductFunnel } from '@/lib/hooks/use-analytics';
-import type { AnalyticsRangeState } from '@/lib/hooks/use-analytics';
 import { egp } from '@/lib/api/analytics-insights';
 import type { ProductFunnel } from '@/lib/api/analytics-insights';
-
-function RangeControl({
-  range,
-  onChange,
-}: {
-  range: AnalyticsRangeState;
-  onChange: (next: Partial<AnalyticsRangeState>) => void;
-}) {
-  return (
-    <div className="dash-filters" style={{ marginBottom: 20 }}>
-      <label className="dash-field" style={{ maxWidth: 160 }}>
-        <span className="dash-label">From</span>
-        <input type="date" className="dash-input" value={range.from} max={range.to} onChange={(e) => onChange({ from: e.target.value })} />
-      </label>
-      <label className="dash-field" style={{ maxWidth: 160 }}>
-        <span className="dash-label">To</span>
-        <input type="date" className="dash-input" value={range.to} min={range.from} onChange={(e) => onChange({ to: e.target.value })} />
-      </label>
-      <label className="dash-checkbox-label" style={{ marginLeft: 8 }}>
-        <input type="checkbox" className="dash-checkbox" checked={range.compare} onChange={(e) => onChange({ compare: e.target.checked })} />
-        Compare to previous period
-      </label>
-    </div>
-  );
-}
+import AnalyticsScopeBar from '@/components/dashboard/analytics/AnalyticsScopeBar';
 
 function ScreenSkeleton() {
   return (
@@ -119,7 +94,7 @@ export default function ProductFunnelDetailClient({ productId }: { productId: st
         <h1 className="dash-page-title">{funnel.data ? productLabel : `Product ${productId}`}</h1>
         <Link href="/analytics/products" className="dash-btn-secondary">Back to products</Link>
       </div>
-      <RangeControl range={range} onChange={setRange} />
+      <AnalyticsScopeBar range={range} onChange={setRange} />
 
       {funnel.isLoading ? (
         <ScreenSkeleton />

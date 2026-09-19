@@ -5,33 +5,8 @@ import Link from 'next/link';
 import AnalyticsSubnav from '@/components/dashboard/AnalyticsSubnav';
 import TrafficFlagPanel from '@/components/dashboard/analytics/TrafficFlagPanel';
 import { useAnalyticsRange, useVisitorDetail, useVisitorJourney } from '@/lib/hooks/use-analytics';
-import type { AnalyticsRangeState } from '@/lib/hooks/use-analytics';
 import { egp } from '@/lib/api/analytics-insights';
-
-function RangeControl({
-  range,
-  onChange,
-}: {
-  range: AnalyticsRangeState;
-  onChange: (next: Partial<AnalyticsRangeState>) => void;
-}) {
-  return (
-    <div className="dash-filters" style={{ marginBottom: 20 }}>
-      <label className="dash-field" style={{ maxWidth: 160 }}>
-        <span className="dash-label">From</span>
-        <input type="date" className="dash-input" value={range.from} max={range.to} onChange={(e) => onChange({ from: e.target.value })} />
-      </label>
-      <label className="dash-field" style={{ maxWidth: 160 }}>
-        <span className="dash-label">To</span>
-        <input type="date" className="dash-input" value={range.to} min={range.from} onChange={(e) => onChange({ to: e.target.value })} />
-      </label>
-      <label className="dash-checkbox-label" style={{ marginLeft: 8 }}>
-        <input type="checkbox" className="dash-checkbox" checked={range.compare} onChange={(e) => onChange({ compare: e.target.checked })} />
-        Compare to previous period
-      </label>
-    </div>
-  );
-}
+import AnalyticsScopeBar from '@/components/dashboard/analytics/AnalyticsScopeBar';
 
 function ScreenSkeleton() {
   return (
@@ -95,7 +70,7 @@ export default function VisitorDetailClient({ visitorId }: { visitorId: string }
       <div style={{ marginBottom: 20 }}>
         <TrafficFlagPanel subjectType="VISITOR" subjectId={visitorId} onChange={() => { void detail.refetch(); }} />
       </div>
-      <RangeControl range={range} onChange={setRange} />
+      <AnalyticsScopeBar range={range} onChange={setRange} />
 
       {isLoading ? (
         <ScreenSkeleton />

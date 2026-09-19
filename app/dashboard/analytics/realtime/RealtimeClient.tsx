@@ -5,55 +5,13 @@ import AnalyticsSubnav from '@/components/dashboard/AnalyticsSubnav';
 import DashboardTable from '@/components/dashboard/DashboardTable';
 import type { Column } from '@/components/dashboard/DashboardTable';
 import { useAnalyticsRange, useRealtime, useLiveVisitors } from '@/lib/hooks/use-analytics';
-import type { AnalyticsRangeState } from '@/lib/hooks/use-analytics';
 import type { AnalyticsFreshness, LiveVisitor } from '@/lib/api/analytics-insights';
 import { useMinutesAgoLabel } from '@/lib/hooks/use-minutes-ago';
+import AnalyticsScopeBar from '@/components/dashboard/analytics/AnalyticsScopeBar';
 
 /* ── Shared small pieces (kept local to this screen, matching the existing
    per-screen-helper style in AnalyticsClient.tsx rather than a shared file
    this lane doesn't own) ── */
-
-function RangeControl({
-  range,
-  onChange,
-}: {
-  range: AnalyticsRangeState;
-  onChange: (next: Partial<AnalyticsRangeState>) => void;
-}) {
-  return (
-    <div className="dash-filters" style={{ marginBottom: 20 }}>
-      <label className="dash-field" style={{ maxWidth: 160 }}>
-        <span className="dash-label">From</span>
-        <input
-          type="date"
-          className="dash-input"
-          value={range.from}
-          max={range.to}
-          onChange={(e) => onChange({ from: e.target.value })}
-        />
-      </label>
-      <label className="dash-field" style={{ maxWidth: 160 }}>
-        <span className="dash-label">To</span>
-        <input
-          type="date"
-          className="dash-input"
-          value={range.to}
-          min={range.from}
-          onChange={(e) => onChange({ to: e.target.value })}
-        />
-      </label>
-      <label className="dash-checkbox-label" style={{ marginLeft: 8 }}>
-        <input
-          type="checkbox"
-          className="dash-checkbox"
-          checked={range.compare}
-          onChange={(e) => onChange({ compare: e.target.checked })}
-        />
-        Compare to previous period
-      </label>
-    </div>
-  );
-}
 
 function FreshnessNote({ freshness }: { freshness: AnalyticsFreshness }) {
   // Clock read in an effect, and re-read on a timer — see useMinutesAgoLabel.
@@ -146,7 +104,7 @@ export default function RealtimeClient() {
         the background. The date range below scopes nothing on this screen yet — it exists so the
         control stays where every other analytics screen expects it.
       </p>
-      <RangeControl range={range} onChange={setRange} />
+      <AnalyticsScopeBar range={range} onChange={setRange} />
 
       {isLoading ? (
         <ScreenSkeleton />

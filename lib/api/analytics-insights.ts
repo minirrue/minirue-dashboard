@@ -55,6 +55,8 @@ export interface AnalyticsQueryParams {
   from: string;
   to: string;
   compare?: boolean;
+  /** `all` includes bots, staff, owner and flagged traffic; default is real only. */
+  traffic?: 'real' | 'all';
 }
 
 function buildQuery(params: AnalyticsQueryParams, extra?: Record<string, string | undefined>): string {
@@ -67,6 +69,8 @@ function buildQuery(params: AnalyticsQueryParams, extra?: Record<string, string 
   // the "Compare to previous period" checkbox is on. The UI only ever offers
   // that one comparison, so `previous` is the correct (and only) mapping.
   if (params.compare) q.set('compare', 'previous');
+  // Excluded traffic (bots, staff, owner, flagged) is dropped unless asked for (#115, #122).
+  if (params.traffic === 'all') q.set('includeBots', 'true');
   if (extra) {
     for (const [key, value] of Object.entries(extra)) {
       if (value !== undefined) q.set(key, value);
@@ -702,6 +706,8 @@ export function buildAnalyticsQueryString(
   q.set('from', params.from);
   q.set('to', params.to);
   if (params.compare) q.set('compare', 'previous');
+  // Excluded traffic (bots, staff, owner, flagged) is dropped unless asked for (#115, #122).
+  if (params.traffic === 'all') q.set('includeBots', 'true');
   if (extra) {
     for (const [key, value] of Object.entries(extra)) q.set(key, value);
   }

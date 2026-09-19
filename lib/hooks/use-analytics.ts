@@ -238,10 +238,18 @@ export function useVisitorJourney(visitorId: string | undefined, params: Analyti
 /* ── Range state, held in the URL so a filtered view is shareable and
    survives a refresh ─────────────────────────────────────────────────── */
 
+/**
+ * Whose traffic a screen shows (dashboard#90, #115). `real` — the default —
+ * leaves out bots, staff, the owner and anything an admin flagged; `all`
+ * shows everything, for checking the exclusions themselves.
+ */
+export type TrafficScope = 'real' | 'all';
+
 export interface AnalyticsRangeState {
   from: string;
   to: string;
   compare: boolean;
+  traffic: TrafficScope;
 }
 
 const DEFAULT_WINDOW_DAYS = 30;
@@ -276,8 +284,9 @@ export function useAnalyticsRange(): {
     const from = searchParams.get('from');
     const to = searchParams.get('to');
     const compare = searchParams.get('compare') === 'true';
-    if (from && to) return { from, to, compare };
-    return { ...defaultWindow(), compare };
+    const traffic: TrafficScope = searchParams.get('traffic') === 'all' ? 'all' : 'real';
+    if (from && to) return { from, to, compare, traffic };
+    return { ...defaultWindow(), compare, traffic };
   }, [searchParams]);
 
   const setRange = useCallback(
@@ -288,6 +297,8 @@ export function useAnalyticsRange(): {
       params.set('to', merged.to);
       if (merged.compare) params.set('compare', 'true');
       else params.delete('compare');
+      if (merged.traffic === 'all') params.set('traffic', 'all');
+      else params.delete('traffic');
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
     [range, router, pathname, searchParams],

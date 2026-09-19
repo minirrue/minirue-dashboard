@@ -363,7 +363,7 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
     items: [
       // Admin-only. Loyalty moved out (#74) into Operations, where STAFF can
       // reach it.
-      { label: 'Analytics', href: '/analytics', icon: <IconTrendingUp /> },
+      { label: 'Analytics & Media', href: '/analytics', icon: <IconTrendingUp /> },
       { label: 'SEO', href: '/seo', icon: <IconSearchCheck /> },
     ],
   },

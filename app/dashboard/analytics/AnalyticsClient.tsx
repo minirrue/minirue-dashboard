@@ -5,11 +5,11 @@ import AnalyticsSubnav from '@/components/dashboard/AnalyticsSubnav';
 import OverviewGrid, { ANALYTICS_OVERVIEW_WIDGETS, buildDefaultOverviewLayout } from './OverviewGrid';
 import AddWidgetPanel from './AddWidgetPanel';
 import { useAnalyticsRange, useAudienceSummary } from '@/lib/hooks/use-analytics';
-import type { AnalyticsRangeState } from '@/lib/hooks/use-analytics';
 import { layoutReducer, loadLayout, saveLayout } from '@/lib/analytics/layout-store';
 import type { AnalyticsFreshness } from '@/lib/api/analytics-insights';
 import { useMinutesAgoLabel } from '@/lib/hooks/use-minutes-ago';
 import StaffDeviceControl from './StaffDeviceControl';
+import AnalyticsScopeBar from '@/components/dashboard/analytics/AnalyticsScopeBar';
 
 /**
  * Lane 12 rewrite. Replaces the old hard-coded 8-tile + bar-table + funnel +
@@ -19,53 +19,6 @@ import StaffDeviceControl from './StaffDeviceControl';
  * header comment for the widgets the brief names that have no backing data
  * anywhere in this app yet.
  */
-
-/** Same shape/behaviour as every sibling analytics screen's local
- * `RangeControl` (`AcquisitionClient.tsx`, `EventsExplorerClient.tsx`, …) —
- * this is "the shared date-range + compare control" the brief refers to;
- * there is no separate shared component file to import, only a shared
- * convention, so it is reproduced here rather than invented differently. */
-function RangeControl({
-  range,
-  onChange,
-}: {
-  range: AnalyticsRangeState;
-  onChange: (next: Partial<AnalyticsRangeState>) => void;
-}) {
-  return (
-    <div className="dash-filters" style={{ marginBottom: 0 }}>
-      <label className="dash-field" style={{ maxWidth: 160 }}>
-        <span className="dash-label">From</span>
-        <input
-          type="date"
-          className="dash-input"
-          value={range.from}
-          max={range.to}
-          onChange={(e) => onChange({ from: e.target.value })}
-        />
-      </label>
-      <label className="dash-field" style={{ maxWidth: 160 }}>
-        <span className="dash-label">To</span>
-        <input
-          type="date"
-          className="dash-input"
-          value={range.to}
-          min={range.from}
-          onChange={(e) => onChange({ to: e.target.value })}
-        />
-      </label>
-      <label className="dash-checkbox-label" style={{ marginLeft: 8 }}>
-        <input
-          type="checkbox"
-          className="dash-checkbox"
-          checked={range.compare}
-          onChange={(e) => onChange({ compare: e.target.checked })}
-        />
-        Compare to previous period
-      </label>
-    </div>
-  );
-}
 
 /** Small, always-on freshness note next to the range control — distinct from
  * the louder degraded banner below, which only appears when something is
@@ -159,10 +112,11 @@ export default function AnalyticsClient() {
         </button>
       </div>
 
-      <div className="dash-analytics-toolbar">
-        <RangeControl range={range} onChange={setRange} />
-        {freshness ? <FreshnessIndicator freshness={freshness} /> : null}
-      </div>
+      <AnalyticsScopeBar
+        range={range}
+        onChange={setRange}
+        quality={freshness ? <FreshnessIndicator freshness={freshness} /> : null}
+      />
 
       <StaffDeviceControl />
 

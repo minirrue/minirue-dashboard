@@ -7,7 +7,6 @@ import {
   useAudienceSummary,
   usePurchaseReconciliation,
 } from '@/lib/hooks/use-analytics';
-import type { AnalyticsRangeState } from '@/lib/hooks/use-analytics';
 import { useMinutesAgo } from '@/lib/hooks/use-minutes-ago';
 import {
   MEASURED_AT,
@@ -15,6 +14,7 @@ import {
   READ_CAPACITY,
   WRITE_CAPACITY,
 } from '@/lib/capacity-model';
+import AnalyticsScopeBar from '@/components/dashboard/analytics/AnalyticsScopeBar';
 
 /**
  * System health, measured now — with the last load test kept at the bottom as
@@ -34,39 +34,6 @@ function daysBetween(from: string, to: string): number {
   if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return 1;
   // Inclusive: a single-day range is one day of traffic, not zero.
   return Math.max(1, Math.round((b - a) / 86_400_000) + 1);
-}
-
-function RangeControl({
-  range,
-  onChange,
-}: {
-  range: AnalyticsRangeState;
-  onChange: (next: Partial<AnalyticsRangeState>) => void;
-}) {
-  return (
-    <div className="dash-filters" style={{ marginBottom: 24 }}>
-      <label className="dash-field" style={{ maxWidth: 160 }}>
-        <span className="dash-label">From</span>
-        <input
-          type="date"
-          className="dash-input"
-          value={range.from}
-          max={range.to}
-          onChange={(e) => onChange({ from: e.target.value })}
-        />
-      </label>
-      <label className="dash-field" style={{ maxWidth: 160 }}>
-        <span className="dash-label">To</span>
-        <input
-          type="date"
-          className="dash-input"
-          value={range.to}
-          min={range.from}
-          onChange={(e) => onChange({ to: e.target.value })}
-        />
-      </label>
-    </div>
-  );
 }
 
 /** A live reading. Value first, because that is what is being asked. */
@@ -193,7 +160,7 @@ export default function DevOpsClient() {
         on the day it was run.
       </p>
 
-      <RangeControl range={range} onChange={setRange} />
+      <AnalyticsScopeBar range={range} onChange={setRange} />
 
       {summary.isLoading ? (
         <div className="dash-skeleton" style={{ height: 200 }} />
