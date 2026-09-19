@@ -10,6 +10,7 @@ import type { AnalyticsFreshness } from '@/lib/api/analytics-insights';
 import { useMinutesAgoLabel } from '@/lib/hooks/use-minutes-ago';
 import StaffDeviceControl from './StaffDeviceControl';
 import AnalyticsScopeBar from '@/components/dashboard/analytics/AnalyticsScopeBar';
+import CommandCenter from '@/components/dashboard/analytics/command/CommandCenter';
 
 /**
  * Lane 12 rewrite. Replaces the old hard-coded 8-tile + bar-table + funnel +
@@ -101,7 +102,25 @@ export default function AnalyticsClient() {
       <AnalyticsSubnav />
 
       <div className="dash-page-header">
-        <h1 className="dash-page-title">Analytics overview</h1>
+        <h1 className="dash-page-title cc-masthead">Analytics &amp; Media</h1>
+      </div>
+
+      <AnalyticsScopeBar
+        range={range}
+        onChange={setRange}
+        quality={freshness ? <FreshnessIndicator freshness={freshness} /> : null}
+      />
+
+      {degraded && freshness ? <CollectionDegradedBanner staleBuckets={freshness.staleBuckets} /> : null}
+
+      {/* dashboard#115: the brief and command center — how we're doing, where it
+          comes from, what is happening now. The owner's own board follows. */}
+      <CommandCenter range={range} />
+
+      <StaffDeviceControl />
+
+      <div className="dash-page-header cc-board-head">
+        <h2 className="dash-section-title" style={{ margin: 0 }}>Your board</h2>
         <button
           type="button"
           className={editMode ? 'dash-btn-primary' : 'dash-btn-secondary'}
@@ -111,16 +130,6 @@ export default function AnalyticsClient() {
           {editMode ? 'Done editing' : 'Edit layout'}
         </button>
       </div>
-
-      <AnalyticsScopeBar
-        range={range}
-        onChange={setRange}
-        quality={freshness ? <FreshnessIndicator freshness={freshness} /> : null}
-      />
-
-      <StaffDeviceControl />
-
-      {degraded && freshness ? <CollectionDegradedBanner staleBuckets={freshness.staleBuckets} /> : null}
 
       <OverviewGrid
         widgets={ANALYTICS_OVERVIEW_WIDGETS}
