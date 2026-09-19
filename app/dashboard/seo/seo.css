@@ -170,6 +170,12 @@
   font-size: var(--mr-text-xs);
   color: var(--mr-fg-3);
 }
+.seo-score-updating {
+  margin: 0 0 4px;
+  font-size: var(--mr-text-xs);
+  font-weight: 600;
+  color: var(--mr-gold-600, var(--mr-gold-500));
+}
 
 /* ── Progress (indeterminate: the POST gives no partial progress) ── */
 .seo-progress {

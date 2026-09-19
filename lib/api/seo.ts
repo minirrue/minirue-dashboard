@@ -3,7 +3,8 @@ import { apiFetch } from './client';
 /**
  * SEO audit (minirue-dashboard#69). Contract pinned in minirrue/minirue-backend#171:
  * the backend fetches the live storefront server-side, scores every page and the
- * site as a whole, and caches the report for ~10 minutes.
+ * site as a whole, and persists the report (backend#106) so it survives a
+ * backend restart or deploy — no TTL.
  */
 
 export type SeoCheckStatus = 'pass' | 'warn' | 'fail';
@@ -38,7 +39,7 @@ export interface SeoAuditReport {
   score: number;
 }
 
-/** The last cached report, or null when no audit has run yet. */
+/** The last persisted report, however long ago it ran, or null when no audit has ever run. */
 export async function apiGetSeoAudit(): Promise<SeoAuditReport | null> {
   try {
     const res = await apiFetch<SeoAuditReport | null>('/seo/audit', { auth: true });

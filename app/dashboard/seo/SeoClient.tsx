@@ -181,8 +181,27 @@ function RunProgress({ host }: { host: string }) {
 
 /* ── Sections ── */
 
+/**
+ * The exact wall-clock time to show in parentheses next to the relative
+ * "Last checked" label (minirue-dashboard#106) — computed in an effect, not
+ * during render, so server and client agree on the initial HTML and the
+ * viewer's own timezone is what's shown rather than the server's.
+ */
+function useExactTimeLabel(iso: string | null | undefined): string | null {
+  const [label, setLabel] = useState<string | null>(null);
+  useEffect(() => {
+    if (!iso) {
+      setLabel(null);
+      return;
+    }
+    setLabel(new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }));
+  }, [iso]);
+  return label;
+}
+
 function ScoreHeader({ report, running }: { report: SeoAuditReport; running: boolean }) {
   const ago = useMinutesAgoLabel(report.ranAt);
+  const exact = useExactTimeLabel(report.ranAt);
   const { pass, warn, fail } = report.totals;
   const total = pass + warn + fail || 1;
   const host = domainOf(report.storefrontUrl);
@@ -203,11 +222,13 @@ function ScoreHeader({ report, running }: { report: SeoAuditReport; running: boo
           <li><StatusIcon status="warn" size={14} /><span className="mr-num">{warn} warn</span></li>
           <li><StatusIcon status="fail" size={14} /><span className="mr-num">{fail} fail</span></li>
         </ul>
+        {running && <p className="seo-score-updating" role="status">Updating…</p>}
         {running ? (
           <RunProgress host={host} />
         ) : (
           <p className="seo-score-meta">
-            {ago ? `Last checked ${ago}` : 'Last checked'} · {report.pages.length}{' '}
+            {ago ? `Last checked ${ago}` : 'Last checked'}
+            {exact ? ` (${exact})` : ''} · {report.pages.length}{' '}
             {report.pages.length === 1 ? 'page' : 'pages'} on {host}
           </p>
         )}
