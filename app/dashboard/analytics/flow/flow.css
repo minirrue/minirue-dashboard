@@ -1,0 +1,114 @@
+/* Story Flow (dashboard#123). Canvas left, the people inside it right; the
+   story of any one person slides over from the right. */
+
+.flow-filterbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -4px 0 16px; min-height: 34px; }
+.flow-filterbar__label { color: var(--mr-fg-3); font-family: var(--mr-font-label); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.flow-chip {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 12px;
+  border: 1px solid var(--mr-ink-900); border-radius: 999px; background: var(--mr-ink-900); color: var(--mr-cream-100);
+  font: 600 13px/1 var(--mr-font-ui); cursor: pointer;
+}
+.flow-chip__dim { opacity: .65; font-weight: 500; }
+.flow-chip:focus-visible, .flow-link-btn:focus-visible, .flow-pill-btn:focus-visible { outline: 2px solid var(--mr-gold-500); outline-offset: 2px; }
+.flow-link-btn { border: 0; background: none; color: var(--mr-fg-2); font: 600 13px var(--mr-font-ui); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+.flow-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; align-items: start; }
+.flow-main, .flow-people {
+  min-width: 0; padding: 18px 20px 20px;
+  border: 1px solid var(--mr-dash-hair); border-radius: var(--mr-dash-card-radius, 16px); background: var(--mr-dash-surface);
+}
+.flow-people { position: sticky; top: 16px; max-height: calc(100svh - 32px); display: flex; flex-direction: column; gap: 10px; }
+.flow-total { display: flex; align-items: baseline; gap: 10px; margin: 0 0 14px; color: var(--mr-fg-3); font-size: 14px; }
+.flow-total__n { font-family: var(--mr-font-display, var(--mr-font-serif, Georgia, serif)); font-size: 30px; color: var(--mr-fg); font-variant-numeric: tabular-nums; }
+.flow-total .flow-pill-btn { margin-left: auto; }
+.flow-scroll { overflow-x: auto; }
+.flow-empty { display: grid; gap: 6px; padding: 40px 12px; text-align: center; justify-items: center; }
+.flow-empty strong { font-family: var(--mr-font-display, var(--mr-font-serif, Georgia, serif)); font-size: 20px; color: var(--mr-fg); }
+.flow-empty p, .flow-note { max-width: 52ch; margin: 0; color: var(--mr-fg-3); font-size: 13px; line-height: 1.55; }
+
+/* Canvas */
+.flow-canvas { position: relative; min-width: 760px; }
+.flow-canvas__heads { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); height: 30px; }
+.flow-canvas__head { color: var(--mr-fg-4); font-family: var(--mr-font-label); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.flow-canvas__links { position: absolute; top: 30px; left: 0; pointer-events: none; overflow: visible; }
+.flow-link { fill: none; stroke: color-mix(in srgb, var(--mr-gold-500) 45%, transparent); stroke-linecap: round; transition: stroke 160ms ease, opacity 160ms ease; }
+.flow-link[data-dim] { stroke: color-mix(in srgb, var(--mr-fg-4) 18%, transparent); }
+.flow-canvas__cols { display: grid; }
+.flow-col { display: grid; align-content: start; gap: 8px; }
+.flow-node {
+  position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 0 10px; overflow: hidden;
+  border: 1px solid var(--mr-dash-hair); border-radius: 10px; background: var(--mr-dash-surface);
+  color: var(--mr-fg); font: 600 12px/1.2 var(--mr-font-ui); text-align: left; cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.flow-node:hover { border-color: var(--mr-fg-4); box-shadow: 0 4px 12px rgba(20, 18, 15, .08); }
+.flow-node:focus-visible { outline: 2px solid var(--mr-gold-500); outline-offset: 2px; }
+.flow-node[data-selected] { border-color: var(--mr-ink-900); box-shadow: inset 0 0 0 1px var(--mr-ink-900); }
+.flow-node__fill { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--mr-gold-500) 16%, transparent); pointer-events: none; }
+.flow-node[data-medium='paid'] .flow-node__fill { background: color-mix(in srgb, var(--mr-gold-500) 28%, transparent); }
+.flow-node[data-medium='social'] .flow-node__fill { background: color-mix(in srgb, #8a6bb8 22%, transparent); }
+.flow-node__label { position: relative; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flow-node__n { position: relative; flex: none; color: var(--mr-fg-3); font-variant-numeric: tabular-nums; }
+
+/* People */
+.flow-people__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.flow-people__exports { display: flex; gap: 6px; }
+.flow-pill-btn {
+  display: inline-flex; align-items: center; min-height: 30px; padding: 0 12px;
+  border: 1px solid var(--mr-dash-hair); border-radius: 999px; background: transparent; color: var(--mr-fg);
+  font: 600 12px/1 var(--mr-font-ui); text-decoration: none; cursor: pointer; white-space: nowrap;
+}
+.flow-pill-btn:hover { border-color: var(--mr-fg-4); }
+.flow-pill-btn:disabled { opacity: .45; cursor: default; }
+.flow-search .dash-input { width: 100%; }
+.flow-people__list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; overflow-y: auto; min-height: 0; }
+.flow-person {
+  display: grid; gap: 3px; width: 100%; padding: 10px 12px;
+  border: 1px solid transparent; border-radius: 10px; background: var(--mr-dash-sub); color: inherit; text-align: left; cursor: pointer;
+}
+.flow-person:hover { border-color: var(--mr-dash-hair); background: var(--mr-dash-surface); }
+.flow-person:focus-visible { outline: 2px solid var(--mr-gold-500); outline-offset: 1px; }
+.flow-person__top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.flow-person__name { font-weight: 700; font-size: 13px; color: var(--mr-fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flow-person__when { margin-left: auto; flex: none; color: var(--mr-fg-4); font-size: 11px; font-variant-numeric: tabular-nums; }
+.flow-person__story { color: var(--mr-fg-2); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.flow-person__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--mr-fg-4); font-size: 11px; font-variant-numeric: tabular-nums; }
+.flow-person__contact { padding: 1px 7px; border-radius: 999px; background: var(--mr-st-ok-bg); color: var(--mr-st-ok-fg); font-weight: 700; }
+.flow-more { align-self: center; border: 0; background: none; color: var(--mr-fg-2); font: 600 13px var(--mr-font-ui); text-decoration: underline; cursor: pointer; }
+
+/* Story drawer */
+.flow-drawer { position: fixed; inset: 0; z-index: 80; }
+.flow-drawer__scrim { position: absolute; inset: 0; border: 0; background: rgba(20, 18, 15, .32); cursor: default; }
+.flow-drawer__panel {
+  position: absolute; top: 0; right: 0; bottom: 0; width: min(560px, 100vw);
+  padding: 20px 22px 28px; overflow-y: auto; background: var(--mr-dash-surface); box-shadow: -18px 0 40px rgba(20, 18, 15, .18);
+  animation: flow-in 220ms cubic-bezier(.2, .8, .2, 1);
+}
+@keyframes flow-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.flow-drawer__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.flow-drawer__actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.flow-eyebrowless { margin: 0; font-family: var(--mr-font-display, var(--mr-font-serif, Georgia, serif)); font-size: 24px; color: var(--mr-fg); }
+.flow-link-inline { display: inline-block; margin-top: 4px; color: var(--mr-fg-2); font-size: 13px; font-weight: 600; }
+.flow-sessions { display: grid; gap: 18px; margin: 0; padding: 0; list-style: none; }
+.flow-session { padding-left: 14px; border-left: 2px solid var(--mr-dash-hair); }
+.flow-session__touch { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.flow-session__when { color: var(--mr-fg-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.flow-session__src { padding: 2px 9px; border-radius: 999px; background: var(--mr-dash-sub); color: var(--mr-fg); font-size: 12px; font-weight: 700; }
+.flow-session__src[data-medium='paid'] { background: color-mix(in srgb, var(--mr-gold-500) 22%, transparent); }
+.flow-session__summary { margin: 6px 0 8px; color: var(--mr-fg-2); font-size: 13px; line-height: 1.5; }
+.flow-steps { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.flow-step { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: baseline; gap: 10px; font-size: 13px; }
+.flow-step__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mr-fg-4); transform: translateY(-1px); }
+.flow-step[data-kind='add_to_cart'] .flow-step__dot, .flow-step[data-kind='purchase'] .flow-step__dot { background: var(--mr-gold-500); }
+.flow-step[data-kind='purchase'] .flow-step__label { font-weight: 700; }
+.flow-step__label { color: var(--mr-fg); overflow-wrap: anywhere; }
+.flow-step__meta { color: var(--mr-fg-4); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+@media (max-width: 1100px) {
+  .flow-layout { grid-template-columns: minmax(0, 1fr); }
+  .flow-people { position: static; max-height: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow-drawer__panel { animation: none; }
+}

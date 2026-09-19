@@ -5897,3 +5897,23 @@ a.dash-card:focus-visible {
   .dash-analytics-nav__tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .dash-analytics-nav__tabs::-webkit-scrollbar { display: none; }
 }
+
+/* Visitor names (dashboard#123): customers by name, everyone else "Visitor #N". */
+.dash-visitor-name { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: inherit; font-weight: 600; text-decoration: none; }
+a.dash-visitor-name:hover { text-decoration: underline; text-underline-offset: 3px; }
+.dash-visitor-name__badge { flex: none; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--mr-gold-500) 20%, transparent); font-size: 10px; font-weight: 700; letter-spacing: .03em; }
+
+/* Scope toolbar on phones: a single summary line until tapped (#115). */
+.dash-analytics-scope__summary { display: none; }
+@media (max-width: 640px) {
+  .dash-analytics-scope { gap: 10px; margin-bottom: 16px; }
+  .dash-analytics-scope__summary {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
+    min-height: 44px; padding: 0 14px; border: 1px solid var(--mr-dash-hair); border-radius: 12px;
+    background: var(--mr-dash-surface); color: var(--mr-fg); font: 600 14px/1 var(--mr-font-ui); cursor: pointer;
+  }
+  .dash-analytics-scope:not([data-open]) .dash-analytics-scope__range,
+  .dash-analytics-scope:not([data-open]) .dash-analytics-scope__traffic { display: none; }
+  .dash-analytics-scope__range { width: 100%; }
+  .dash-analytics-scope__compare { flex-basis: 100%; }
+}

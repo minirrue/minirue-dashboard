@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import type { AnalyticsRangeState, TrafficScope } from '@/lib/hooks/use-analytics';
 
 const TRAFFIC_OPTIONS: { value: TrafficScope; label: string; hint: string }[] = [
@@ -27,8 +27,22 @@ export default function AnalyticsScopeBar({
   quality?: React.ReactNode;
   showCompare?: boolean;
 }) {
+  // Phones: one summary line first, controls on tap, so the numbers lead.
+  const [open, setOpen] = useState(false);
+  const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const summary = `${fmt(range.from)} – ${fmt(range.to)} · ${range.traffic === 'all' ? 'Everything' : 'Real only'}`;
+
   return (
-    <div className="dash-analytics-scope" role="group" aria-label="Report scope">
+    <div className="dash-analytics-scope" role="group" aria-label="Report scope" data-open={open || undefined}>
+      <button
+        type="button"
+        className="dash-analytics-scope__summary"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span>{summary}</span>
+        <span aria-hidden="true">{open ? '▴' : '▾'}</span>
+      </button>
       <div className="dash-analytics-scope__range">
         <label className="dash-field">
           <span className="dash-label">From</span>

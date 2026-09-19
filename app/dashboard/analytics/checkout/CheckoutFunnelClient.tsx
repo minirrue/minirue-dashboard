@@ -22,6 +22,7 @@ import type {
   PaymentMethodRow,
 } from '@/lib/api/analytics-insights';
 import AnalyticsScopeBar from '@/components/dashboard/analytics/AnalyticsScopeBar';
+import VisitorName from '@/components/dashboard/analytics/VisitorName';
 
 function FreshnessNote({ freshness }: { freshness: AnalyticsFreshness }) {
   // Clock read in an effect, and re-read on a timer — see useMinutesAgoLabel.
@@ -86,8 +87,14 @@ function CartOrCheckoutFunnelCard({
 const ABANDONED_COLUMNS: Column<AbandonedRow>[] = [
   {
     key: 'cartId',
-    label: 'Cart',
-    render: (row) => row.cartId ?? row.visitorId ?? row.userId ?? '—',
+    label: 'Shopper',
+    // The person behind the cart, linked — not a cart UUID (owner: "not related to any customer").
+    render: (row) =>
+      row.visitorId || row.customer ? (
+        <VisitorName visitor={row} link={row.customer ? 'customer' : 'visitor'} />
+      ) : (
+        '—'
+      ),
   },
   { key: 'stage', label: 'Stage reached' },
   { key: 'valueMinor', label: 'Cart value', align: 'right', sortable: true, render: (row) => egp(row.valueMinor) },

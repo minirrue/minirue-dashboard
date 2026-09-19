@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 import AnalyticsSubnav from '@/components/dashboard/AnalyticsSubnav';
 import DashboardTable from '@/components/dashboard/DashboardTable';
 import type { Column } from '@/components/dashboard/DashboardTable';
@@ -10,6 +9,7 @@ import { useAnalyticsRange, useAudienceSummary, useAudienceTimeseries, useVisito
 import type { AnalyticsFreshness, VisitorListRow } from '@/lib/api/analytics-insights';
 import { useMinutesAgoLabel } from '@/lib/hooks/use-minutes-ago';
 import AnalyticsScopeBar from '@/components/dashboard/analytics/AnalyticsScopeBar';
+import VisitorName from '@/components/dashboard/analytics/VisitorName';
 
 function FreshnessNote({ freshness }: { freshness: AnalyticsFreshness }) {
   // Clock read in an effect, and re-read on a timer — see useMinutesAgoLabel.
@@ -61,11 +61,8 @@ const VISITOR_COLUMNS: Column<VisitorListRow>[] = [
   {
     key: 'visitorId',
     label: 'Visitor',
-    render: (row) => (
-      <Link href={`/analytics/visitors/${encodeURIComponent(row.visitorId)}`} className="dash-link">
-        {row.visitorId}
-      </Link>
-    ),
+    // Customers by name, everyone else "Visitor #N" — never the raw id (#123).
+    render: (row) => <VisitorName visitor={row} />,
   },
   { key: 'sessionCount', label: 'Sessions', align: 'right', sortable: true },
   { key: 'pageviewCount', label: 'Pageviews', align: 'right', sortable: true },

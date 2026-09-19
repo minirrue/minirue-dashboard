@@ -13,7 +13,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
  * inside the chosen question.
  *
  *   Overview              — the summary
- *   Live & Visitors       — who is here now, and everyone who ever came
+ *   People & Journeys     — the connected flow, every visitor, who is here now
  *   Acquisition & Media   — where they came from, which ads worked
  *   Behaviour             — what they looked at, what they bought
  *   Health                — can these numbers be trusted (who counts, capacity)
@@ -31,6 +31,8 @@ interface Tab {
 
 const TABS: Tab[] = [
   { label: 'Overview', href: '/analytics', match: (p) => p === '/analytics' || p === '/analytics/' },
+  // dashboard#123: every real shopper as one connected flow, down to the person.
+  { label: 'Story Flow', href: '/analytics/flow', match: (p) => p.startsWith('/analytics/flow') },
   { label: 'Realtime', href: '/analytics/realtime', match: (p) => p.startsWith('/analytics/realtime') },
   { label: 'Visitors', href: '/analytics/visitors', match: (p) => p.startsWith('/analytics/visitors') },
   { label: 'Acquisition', href: '/analytics/acquisition', match: (p) => p.startsWith('/analytics/acquisition') },
@@ -53,7 +55,7 @@ export interface AnalyticsGroup {
 
 export const ANALYTICS_GROUPS: AnalyticsGroup[] = [
   { label: 'Overview', tabs: ['Overview'] },
-  { label: 'Live & Visitors', tabs: ['Realtime', 'Visitors'] },
+  { label: 'People & Journeys', tabs: ['Story Flow', 'Visitors', 'Realtime'] },
   { label: 'Acquisition & Media', tabs: ['Acquisition'] },
   { label: 'Behaviour', tabs: ['Pages', 'Products', 'Events', 'Checkout', 'Sales'] },
   { label: 'Health', tabs: ['Who counts', 'DevOps'] },

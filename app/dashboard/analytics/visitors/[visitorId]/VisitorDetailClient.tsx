@@ -7,6 +7,7 @@ import TrafficFlagPanel from '@/components/dashboard/analytics/TrafficFlagPanel'
 import { useAnalyticsRange, useVisitorDetail, useVisitorJourney } from '@/lib/hooks/use-analytics';
 import { egp } from '@/lib/api/analytics-insights';
 import AnalyticsScopeBar from '@/components/dashboard/analytics/AnalyticsScopeBar';
+import { visitorLabel } from '@/components/dashboard/analytics/VisitorName';
 
 function ScreenSkeleton() {
   return (
@@ -63,7 +64,14 @@ export default function VisitorDetailClient({ visitorId }: { visitorId: string }
     <>
       <AnalyticsSubnav />
       <div className="dash-page-header">
-        <h1 className="dash-page-title">Visitor {visitorId}</h1>
+        <h1 className="dash-page-title">
+          {detail.data ? visitorLabel({ ...detail.data.data, visitorId }) : 'Visitor'}
+          {detail.data?.data.customer && (
+            <Link href={`/customers/${detail.data.data.customer.id}`} className="dash-link" style={{ marginLeft: 12, fontSize: 14, fontWeight: 600 }}>
+              Customer profile →
+            </Link>
+          )}
+        </h1>
         <Link href="/analytics/visitors" className="dash-btn-secondary">Back to visitors</Link>
       </div>
       {/* dashboard#111: this one device's verdict — misfiled bot, our own phone, or verified real. */}

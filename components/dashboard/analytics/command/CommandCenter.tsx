@@ -10,12 +10,16 @@ import {
   usePurchaseReconciliation,
   useRealtime,
   useSources,
+  useTech,
   type AnalyticsRangeState,
 } from '@/lib/hooks/use-analytics';
-import { egp, type SourceRow } from '@/lib/api/analytics-insights';
+import { buildAnalyticsQueryString, egp, type GeoRow, type SourceRow } from '@/lib/api/analytics-insights';
+import { apiFetch } from '@/lib/api/client';
+import { useQuery } from '@tanstack/react-query';
 import { channelName, composeBrief, pct } from '@/lib/analytics/brief';
 import { downloadRows, type ExportFormat, type ExportRow } from '@/lib/analytics/export';
 import './command.css';
+import { visitorLabel } from '@/components/dashboard/analytics/VisitorName';
 
 /* ── small pieces ──────────────────────────────────────────────────────── */
 
@@ -140,11 +144,12 @@ export default function CommandCenter({ range }: { range: AnalyticsRangeState })
       {/* 2 ─ Truth strip */}
       <section className="cc-truth" aria-label="Headline figures">
         {[
-          { label: range.traffic === 'all' ? 'Visitors' : 'Real visitors', value: a ? n(a.visitors) : null, href: '/analytics/visitors', note: a ? `${n(a.newVisitors)} new` : '' },
-          { label: 'Orders', value: a ? n(a.purchases) : null, href: '/analytics/sales', note: a && a.visitors ? `${pct(a.purchases, a.visitors)}% of visitors` : '' },
-          { label: 'Revenue', value: a ? egpWhole(a.revenueMinor) : null, href: '/analytics/sales', note: a && a.purchases ? `${egpWhole(a.revenueMinor / a.purchases)} per order` : '' },
+          // Every figure opens the people behind it in Story Flow (#123).
+          { label: range.traffic === 'all' ? 'Visitors' : 'Real visitors', value: a ? n(a.visitors) : null, href: '/analytics/flow', note: a ? `${n(a.newVisitors)} new` : '' },
+          { label: 'Orders', value: a ? n(a.purchases) : null, href: '/analytics/flow?stage=paid', note: a && a.visitors ? `${pct(a.purchases, a.visitors)}% of visitors` : '' },
+          { label: 'Revenue', value: a ? egpWhole(a.revenueMinor) : null, href: '/analytics/flow?stage=paid', note: a && a.purchases ? `${egpWhole(a.revenueMinor / a.purchases)} per order` : '' },
           { label: 'From paid ads', value: channels.data ? egpWhole(paidRevenue) : null, href: '/analytics/acquisition', note: a && a.revenueMinor ? `${pct(paidRevenue, a.revenueMinor)}% of revenue` : '' },
-          { label: 'Carts open now', value: abandoned.data ? n(openCarts.length) : null, href: '/analytics/checkout', note: openCarts.length ? egpWhole(openCarts.reduce((s, r) => s + r.valueMinor, 0)) : '' },
+          { label: 'Carts open now', value: abandoned.data ? n(openCarts.length) : null, href: '/analytics/flow?stage=bag', note: openCarts.length ? egpWhole(openCarts.reduce((s, r) => s + r.valueMinor, 0)) : '' },
         ].map((f) => (
           <Link key={f.label} href={withScope(f.href, range)} className="cc-figure">
             <span className="cc-figure__label">{f.label}</span>
@@ -188,7 +193,7 @@ export default function CommandCenter({ range }: { range: AnalyticsRangeState })
                 <span role="columnheader" className="cc-num">Revenue</span>
               </div>
               {channelRows.map((c) => (
-                <Link key={c.key} href={withScope(`/analytics/acquisition?channel=${encodeURIComponent(c.key)}`, range)} className="cc-strand" role="row">
+                <Link key={c.key} href={withScope('/analytics/flow', range)} className="cc-strand" role="row" title="Follow these people in Story Flow">
                   <span className="cc-strand__name" role="rowheader">
                     {channelName(c.key)}
                     <span className="cc-strand__bar" style={{ width: `${Math.max(4, (c.visitors / maxVisitors) * 100)}%` }} aria-hidden="true" />
@@ -227,7 +232,7 @@ export default function CommandCenter({ range }: { range: AnalyticsRangeState })
             {(liveVisitors.data?.data ?? []).slice(0, 8).map((v) => (
               <li key={v.visitorId}>
                 <Link href={withScope(`/analytics/visitors/${v.visitorId}`, range)} className="cc-guest">
-                  <span className="cc-guest__id">Visitor {v.visitorId.slice(0, 6)}</span>
+                  <span className="cc-guest__id">{visitorLabel(v)}</span>
                   <span className="cc-guest__where">{v.title || v.path || '—'}</span>
                   <span className="cc-guest__meta">{[v.country, v.deviceType, v.userId ? 'signed in' : null].filter(Boolean).join(' · ')} · {Math.round(v.secondsOnPage)}s</span>
                 </Link>
@@ -237,6 +242,9 @@ export default function CommandCenter({ range }: { range: AnalyticsRangeState })
           </ul>
           <Link href={withScope('/analytics/realtime', range)} className="cc-live__more">Open Realtime →</Link>
         </section>
+
+        {/* 3b ─ Who they are: beside the journey it explains */}
+        <WhoTheyAre range={range} />
 
         {/* 5 ─ Campaign board */}
         <section className="cc-block cc-campaigns" aria-label="Campaigns">
@@ -281,7 +289,7 @@ export default function CommandCenter({ range }: { range: AnalyticsRangeState })
                   {campaignRows.slice(0, 8).map((c) => (
                     <tr key={c.key}>
                       <td>
-                        <Link href={withScope(`/analytics/acquisition?campaign=${encodeURIComponent(c.key)}`, range)} className="cc-link">
+                        <Link href={withScope(`/analytics/flow?campaign=${encodeURIComponent(c.key)}`, range)} className="cc-link" title="Follow the people this campaign brought">
                           {c.key}
                         </Link>
                       </td>
@@ -316,6 +324,7 @@ export default function CommandCenter({ range }: { range: AnalyticsRangeState })
               <li key={r.cartId ?? `${r.visitorId}-${i}`}>
                 {r.visitorId ? (
                   <Link href={withScope(`/analytics/visitors/${r.visitorId}`, range)} className="cc-cart">
+                    <span className="cc-cart__who">{visitorLabel(r)}</span>
                     <span className="cc-cart__value">{egpWhole(r.valueMinor)}</span>
                     <span className="cc-cart__meta">{r.itemCount} {r.itemCount === 1 ? 'item' : 'items'} · {r.stage.toLowerCase().replace(/_/g, ' ')}{r.channel ? ` · ${channelName(r.channel)}` : ''}</span>
                     {r.contactable && <span className="cc-cart__contact">Can be contacted</span>}
@@ -337,5 +346,82 @@ export default function CommandCenter({ range }: { range: AnalyticsRangeState })
         </section>
       </div>
     </div>
+  );
+}
+
+/* ── Who they are ──────────────────────────────────────────────────────── */
+
+function countryName(code: string): string {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'region' }).of(code.toUpperCase()) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+/**
+ * Devices, countries and new vs returning — the audience behind the journey,
+ * set right beside it (they explain each other). Each row opens those people
+ * in Story Flow. Countries are shown by name, never as codes.
+ */
+function WhoTheyAre({ range }: { range: AnalyticsRangeState }) {
+  const devices = useTech(range, 'device');
+  const audience = useAudienceSummary(range);
+  const geo = useQuery({
+    queryKey: ['analytics', 'geo', 'country', range],
+    queryFn: () => apiFetch<{ data: GeoRow[] }>(`/analytics/geo?${buildAnalyticsQueryString(range, { dimension: 'country' })}`, { auth: true }),
+  });
+  const deviceRows = [...(devices.data?.data ?? [])].sort((x, y) => y.visitors - x.visitors).slice(0, 3);
+  const countryRows = [...(geo.data?.data ?? [])].filter((r) => r.key).sort((x, y) => y.visitors - x.visitors).slice(0, 5);
+  const totalD = deviceRows.reduce((s, r) => s + r.visitors, 0) || 1;
+  const totalC = (geo.data?.data ?? []).reduce((s, r) => s + r.visitors, 0) || 1;
+  const a = audience.data?.data;
+
+  return (
+    <section className="cc-block cc-who" aria-label="Who they are">
+      <BlockHead
+        title="Who they are"
+        action={
+          <ExportMenu
+            name="audience"
+            range={range}
+            rows={[
+              ...deviceRows.map((r) => ({ group: 'device', value: r.key, visitors: r.visitors })),
+              ...countryRows.map((r) => ({ group: 'country', value: countryName(r.key), visitors: r.visitors, revenue_egp: Math.round(r.revenueMinor / 100) })),
+            ]}
+          />
+        }
+      />
+      {a && (
+        <p className="cc-who__split">
+          <span className="cc-who__big">{pct(a.newVisitors, a.visitors)}%</span> new ·{' '}
+          <span className="cc-who__big">{pct(a.returningVisitors, a.visitors)}%</span> came back
+        </p>
+      )}
+      <div className="cc-who__cols">
+        <ul className="cc-bars" aria-label="Devices">
+          {deviceRows.map((r) => (
+            <li key={r.key}>
+              <Link href={withScope(`/analytics/flow?device=${encodeURIComponent(r.key.toLowerCase())}`, range)} className="cc-bar">
+                <span className="cc-bar__label">{r.key.charAt(0).toUpperCase() + r.key.slice(1)}</span>
+                <span className="cc-bar__n">{pct(r.visitors, totalD)}%</span>
+                <span className="cc-bar__track" aria-hidden="true"><span style={{ width: `${pct(r.visitors, totalD)}%` }} /></span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <ul className="cc-bars" aria-label="Countries">
+          {countryRows.map((r) => (
+            <li key={r.key}>
+              <Link href={withScope(`/analytics/flow?country=${encodeURIComponent(r.key)}`, range)} className="cc-bar">
+                <span className="cc-bar__label">{countryName(r.key)}</span>
+                <span className="cc-bar__n">{n(r.visitors)}</span>
+                <span className="cc-bar__track" aria-hidden="true"><span style={{ width: `${pct(r.visitors, totalC)}%` }} /></span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   );
 }

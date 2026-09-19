@@ -223,3 +223,20 @@ a.cc-guest:focus-visible, a.cc-cart:focus-visible { outline: 2px solid var(--mr-
   letter-spacing: -0.015em;
 }
 .cc-board-head { margin-top: 12px; }
+
+/* Who they are */
+.cc-who__split { margin: 0 0 14px; color: var(--mr-fg-3); font-size: 13px; }
+.cc-who__big { font-family: var(--mr-font-display, var(--mr-font-serif, Georgia, serif)); font-size: 22px; color: var(--mr-fg); font-variant-numeric: tabular-nums; }
+.cc-who__cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.cc-bars { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.cc-bar {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 5px; column-gap: 10px;
+  padding: 7px 8px; border-radius: 8px; color: var(--mr-fg); text-decoration: none; font-size: 13px;
+}
+.cc-bar:hover { background: var(--mr-dash-sub); }
+.cc-bar:focus-visible { outline: 2px solid var(--mr-gold-500); outline-offset: -2px; }
+.cc-bar__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.cc-bar__n { color: var(--mr-fg-3); font-variant-numeric: tabular-nums; }
+.cc-bar__track { grid-column: 1 / -1; height: 4px; border-radius: 4px; background: var(--mr-dash-sub); overflow: hidden; }
+.cc-bar__track > span { display: block; height: 100%; border-radius: 4px; background: var(--mr-gold-500); }
+.cc-cart__who { font-size: 12px; font-weight: 700; color: var(--mr-cream-100, #f7f1e3); }

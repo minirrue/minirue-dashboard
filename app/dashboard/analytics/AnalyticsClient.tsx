@@ -1,11 +1,8 @@
 'use client';
 
-import React, { useMemo, useReducer, useState } from 'react';
+import React from 'react';
 import AnalyticsSubnav from '@/components/dashboard/AnalyticsSubnav';
-import OverviewGrid, { ANALYTICS_OVERVIEW_WIDGETS, buildDefaultOverviewLayout } from './OverviewGrid';
-import AddWidgetPanel from './AddWidgetPanel';
 import { useAnalyticsRange, useAudienceSummary } from '@/lib/hooks/use-analytics';
-import { layoutReducer, loadLayout, saveLayout } from '@/lib/analytics/layout-store';
 import type { AnalyticsFreshness } from '@/lib/api/analytics-insights';
 import { useMinutesAgoLabel } from '@/lib/hooks/use-minutes-ago';
 import StaffDeviceControl from './StaffDeviceControl';
@@ -62,41 +59,19 @@ function CollectionDegradedBanner({ staleBuckets }: { staleBuckets: number }) {
 
 export default function AnalyticsClient() {
   const { range, setRange } = useAnalyticsRange();
-  const [editMode, setEditMode] = useState(false);
 
-  // Stable across the component's lifetime — the registry/composed-widget
-  // list doesn't change at runtime, so this only needs to be computed once.
-  const defaultLayout = useMemo(() => buildDefaultOverviewLayout(), []);
-  const [layout, dispatch] = useReducer(layoutReducer, defaultLayout, loadLayout);
-
-  // Every dispatch flows straight into localStorage — `saveLayout` is a
-  // synchronous, side-effect-free write, so doing it inline (rather than in
-  // a useEffect) avoids a render's worth of lag between an edit and it
-  // surviving a refresh, and there is no cleanup to skip on unmount.
-  function dispatchAndPersist(action: Parameters<typeof dispatch>[0]) {
-    const next = layoutReducer(layout, action);
-    dispatch(action);
-    saveLayout(next);
-  }
-
-  // `useAudienceSummary` is already fetched by the first default widget —
-  // React Query dedupes by key, so reading it again here for the header's
-  // freshness indicator and the degraded banner is a cache hit, not a
-  // second request. This component doesn't need a widget-shaped query of
-  // its own.
+  // The command center reads the same audience summary — React Query dedupes
+  // by key, so this is a cache hit used only for freshness and the banner.
   const freshnessProbe = useAudienceSummary(range);
   const freshness = freshnessProbe.data?.freshness;
   const degraded = !!freshness?.rollupLastOkAt && freshness.staleBuckets > 0;
 
-  function handleAdd(id: string) {
-    const widget = ANALYTICS_OVERVIEW_WIDGETS.find((w) => w.id === id);
-    dispatchAndPersist({ type: 'add', id, size: widget?.defaultSize });
-  }
-
-  function handleReset() {
-    dispatchAndPersist({ type: 'reset', defaults: defaultLayout });
-  }
-
+  /*
+   * One Overview (owner, 2026-09-19: "everything is scattered"). The old
+   * editable widget board repeated the command center's numbers below it; its
+   * useful parts now live inside the command center ("Who they are") and on
+   * the screen each belongs to, and every figure links onward instead.
+   */
   return (
     <>
       <AnalyticsSubnav />
@@ -113,42 +88,9 @@ export default function AnalyticsClient() {
 
       {degraded && freshness ? <CollectionDegradedBanner staleBuckets={freshness.staleBuckets} /> : null}
 
-      {/* dashboard#115: the brief and command center — how we're doing, where it
-          comes from, what is happening now. The owner's own board follows. */}
       <CommandCenter range={range} />
 
       <StaffDeviceControl />
-
-      <div className="dash-page-header cc-board-head">
-        <h2 className="dash-section-title" style={{ margin: 0 }}>Your board</h2>
-        <button
-          type="button"
-          className={editMode ? 'dash-btn-primary' : 'dash-btn-secondary'}
-          onClick={() => setEditMode((v) => !v)}
-          aria-pressed={editMode}
-        >
-          {editMode ? 'Done editing' : 'Edit layout'}
-        </button>
-      </div>
-
-      <OverviewGrid
-        widgets={ANALYTICS_OVERVIEW_WIDGETS}
-        layout={layout}
-        params={range}
-        editMode={editMode}
-        dispatch={dispatchAndPersist}
-      />
-
-      {editMode ? (
-        <div style={{ marginTop: 20 }}>
-          <AddWidgetPanel
-            widgets={ANALYTICS_OVERVIEW_WIDGETS}
-            layout={layout}
-            onAdd={handleAdd}
-            onReset={handleReset}
-          />
-        </div>
-      ) : null}
     </>
   );
 }

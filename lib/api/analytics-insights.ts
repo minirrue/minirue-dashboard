@@ -165,6 +165,10 @@ export interface LiveSummary {
 
 /** `GET /analytics/live/visitors` → `dto/live.dto.ts#LiveVisitor`. */
 export interface LiveVisitor {
+  /** Friendly "Visitor #1042" (dashboard#123); absent until the backend sends it. */
+  visitorNumber?: number | null;
+  /** Set when this visitor is a signed-up customer — shown by name, linked. */
+  customer?: { id: string; name: string | null } | null;
   visitorId: string;
   path: string | null;
   pageCode: string | null;
@@ -350,6 +354,10 @@ export type AbandonedDetector = 'behavioural' | 'cart' | 'payment';
  * literal address.
  */
 export interface AbandonedRow {
+  /** Friendly "Visitor #1042" (dashboard#123); absent until the backend sends it. */
+  visitorNumber?: number | null;
+  /** Set when this visitor is a signed-up customer — shown by name, linked. */
+  customer?: { id: string; name: string | null } | null;
   cartId: string | null;
   visitorId: string | null;
   userId: string | null;
@@ -392,6 +400,10 @@ export interface SearchRow {
  * envelope's `data` is `{ rows, nextCursor }`, NOT a bare array of visitors.
  */
 export interface VisitorListRow {
+  /** Friendly "Visitor #1042" (dashboard#123); absent until the backend sends it. */
+  visitorNumber?: number | null;
+  /** Set when this visitor is a signed-up customer — shown by name, linked. */
+  customer?: { id: string; name: string | null } | null;
   visitorId: string;
   firstSeenAt: string;
   lastSeenAt: string;
@@ -426,6 +438,10 @@ export interface VisitorSessionSummary {
 
 /** `GET /analytics/visitors/{id}` → `dto/visitors.dto.ts#VisitorProfile`. */
 export interface VisitorProfile {
+  /** Friendly "Visitor #1042" (dashboard#123); absent until the backend sends it. */
+  visitorNumber?: number | null;
+  /** Set when this visitor is a signed-up customer — shown by name, linked. */
+  customer?: { id: string; name: string | null } | null;
   visitorId: string;
   firstSeenAt: string;
   lastSeenAt: string;

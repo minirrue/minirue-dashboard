@@ -13,9 +13,10 @@ import {
 describe('AnalyticsSubnav', () => {
   const cases: Array<[string, string, string]> = [
     ['/analytics', 'Overview', 'Overview'],
-    ['/analytics/realtime', 'Realtime', 'Live & Visitors'],
-    ['/analytics/visitors', 'Visitors', 'Live & Visitors'],
-    ['/analytics/visitors/vis-abc-123', 'Visitors', 'Live & Visitors'],
+    ['/analytics/flow', 'Story Flow', 'People & Journeys'],
+    ['/analytics/realtime', 'Realtime', 'People & Journeys'],
+    ['/analytics/visitors', 'Visitors', 'People & Journeys'],
+    ['/analytics/visitors/vis-abc-123', 'Visitors', 'People & Journeys'],
     ['/analytics/acquisition', 'Acquisition', 'Acquisition & Media'],
     ['/analytics/pages', 'Pages', 'Behaviour'],
     ['/analytics/products/prod-abc-123', 'Products', 'Behaviour'],
@@ -25,7 +26,7 @@ describe('AnalyticsSubnav', () => {
     ['/analytics/flags', 'Who counts', 'Health'],
     ['/analytics/devops', 'DevOps', 'Health'],
     // Tolerant of the app-router path with its /dashboard prefix.
-    ['/dashboard/analytics/visitors', 'Visitors', 'Live & Visitors'],
+    ['/dashboard/analytics/visitors', 'Visitors', 'People & Journeys'],
   ];
 
   it.each(cases)('%s → screen %s in group %s', (path, tab, group) => {
@@ -36,15 +37,16 @@ describe('AnalyticsSubnav', () => {
   it('asks five questions, in order, and loses no screen', () => {
     expect(ANALYTICS_GROUPS.map((g) => g.label)).toEqual([
       'Overview',
-      'Live & Visitors',
+      'People & Journeys',
       'Acquisition & Media',
       'Behaviour',
       'Health',
     ]);
     expect(ANALYTICS_TAB_LABELS).toEqual([
       'Overview',
-      'Realtime',
+      'Story Flow',
       'Visitors',
+      'Realtime',
       'Acquisition',
       'Pages',
       'Products',
