@@ -12,7 +12,6 @@ import { formatOrderRef } from '@/lib/orders/order-format';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
 import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
-import FulfillmentControl from '@/components/dashboard/FulfillmentControl';
 import ManualOrderModal from './ManualOrderModal';
 import InternalOrderBadge from '@/components/dashboard/InternalOrderBadge';
 
@@ -251,12 +250,13 @@ export default function OrdersClient() {
       {
         key: 'fulfillment',
         label: 'Fulfillment',
+        // Read-only: the channel the customer chose at checkout (#103).
+        // Assigning who fulfils the order happens on the Fulfillment
+        // screen (#96), not here.
         render: (row) => (
-          <FulfillmentControl
-            order={row}
-            onUpdated={handleOrderUpdated}
-            onError={setTransitionError}
-          />
+          <span style={{ color: 'var(--mr-fg-3)' }}>
+            {row.delivery?.method === 'SAME_DAY' ? 'Same-day' : 'Standard'}
+          </span>
         ),
       },
       {

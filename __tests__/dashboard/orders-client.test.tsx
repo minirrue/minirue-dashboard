@@ -88,6 +88,11 @@ describe('OrdersClient channel column and customer fallback', () => {
     expect(await screen.findByText('Guest Buyer')).toBeInTheDocument();
     // Falls back to the shipping address snapshot name when there is no guest contact.
     expect(await screen.findByText('Fallback Name')).toBeInTheDocument();
+
+    // #103: Fulfillment column is read-only — the customer's chosen delivery
+    // channel, not a write control. No dropdown to assign/change it here.
+    expect(await screen.findAllByText('Standard')).toHaveLength(2);
+    expect(screen.queryByLabelText(/fulfillment method for order/i)).not.toBeInTheDocument();
   });
 
   it('preserves channel filter when retrying a failed fetch', async () => {

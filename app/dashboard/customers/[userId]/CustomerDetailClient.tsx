@@ -34,7 +34,6 @@ import type { Order } from '@/lib/api/orders';
 import type { CustomerRefundsResponse } from '@/lib/api/customers';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
-import FulfillmentControl from '@/components/dashboard/FulfillmentControl';
 import { formatOrderRef } from '@/lib/orders/order-format';
 import { EnlargeableImage } from '@/components/dashboard/ImagePreviewModal';
 import { GenericAvatarIcon } from '@/components/GenericAvatarIcon';
@@ -162,12 +161,6 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
   const [refunds, setRefunds] = useState<CustomerRefundsResponse | null>(null);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
-  const [orderActionError, setOrderActionError] = useState<string | null>(null);
-
-  const handleOrderUpdated = useCallback((updated: Order) => {
-    setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
-    setOrderActionError(null);
-  }, []);
 
   // Address editing
   const [addrForm, setAddrForm] = useState<{
@@ -880,9 +873,6 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                 Order history ({orders.length})
               </h2>
             </div>
-            {orderActionError && (
-              <p className="dash-inline-error" style={{ marginBottom: 10 }}>{orderActionError}</p>
-            )}
             {ordersLoading ? (
               <p className="dash-help-text">Loading orders…</p>
             ) : ordersError ? (
@@ -931,11 +921,6 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <FulfillmentControl
-                        order={o}
-                        onUpdated={handleOrderUpdated}
-                        onError={setOrderActionError}
-                      />
                       <span style={{ fontWeight: 600, color: 'var(--mr-fg)' }}>
                         {formatMoney(o.totalAmount, o.totalCurrency)}
                       </span>
