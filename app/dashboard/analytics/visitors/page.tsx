@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import VisitorsClient from './VisitorsClient';
 
 export const metadata = {
@@ -5,5 +6,9 @@ export const metadata = {
 };
 
 export default function AnalyticsVisitorsPage() {
-  return <VisitorsClient />;
+  return (
+    <Suspense fallback={null}>
+      <VisitorsClient />
+    </Suspense>
+  );
 }

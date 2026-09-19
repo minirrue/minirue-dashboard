@@ -144,12 +144,12 @@ export default function CommandCenter({ range }: { range: AnalyticsRangeState })
       {/* 2 ─ Truth strip */}
       <section className="cc-truth" aria-label="Headline figures">
         {[
-          // Every figure opens the people behind it in Story Flow (#123).
-          { label: range.traffic === 'all' ? 'Visitors' : 'Real visitors', value: a ? n(a.visitors) : null, href: '/analytics/flow', note: a ? `${n(a.newVisitors)} new` : '' },
-          { label: 'Orders', value: a ? n(a.purchases) : null, href: '/analytics/flow?stage=paid', note: a && a.visitors ? `${pct(a.purchases, a.visitors)}% of visitors` : '' },
-          { label: 'Revenue', value: a ? egpWhole(a.revenueMinor) : null, href: '/analytics/flow?stage=paid', note: a && a.purchases ? `${egpWhole(a.revenueMinor / a.purchases)} per order` : '' },
+          // Every figure opens the people behind it in Visitors (#123).
+          { label: range.traffic === 'all' ? 'Visitors' : 'Real visitors', value: a ? n(a.visitors) : null, href: '/analytics/visitors', note: a ? `${n(a.newVisitors)} new` : '' },
+          { label: 'Orders', value: a ? n(a.purchases) : null, href: '/analytics/visitors?stage=paid', note: a && a.visitors ? `${pct(a.purchases, a.visitors)}% of visitors` : '' },
+          { label: 'Revenue', value: a ? egpWhole(a.revenueMinor) : null, href: '/analytics/visitors?stage=paid', note: a && a.purchases ? `${egpWhole(a.revenueMinor / a.purchases)} per order` : '' },
           { label: 'From paid ads', value: channels.data ? egpWhole(paidRevenue) : null, href: '/analytics/acquisition', note: a && a.revenueMinor ? `${pct(paidRevenue, a.revenueMinor)}% of revenue` : '' },
-          { label: 'Carts open now', value: abandoned.data ? n(openCarts.length) : null, href: '/analytics/flow?stage=bag', note: openCarts.length ? egpWhole(openCarts.reduce((s, r) => s + r.valueMinor, 0)) : '' },
+          { label: 'Carts open now', value: abandoned.data ? n(openCarts.length) : null, href: '/analytics/visitors?stage=bag', note: openCarts.length ? egpWhole(openCarts.reduce((s, r) => s + r.valueMinor, 0)) : '' },
         ].map((f) => (
           <Link key={f.label} href={withScope(f.href, range)} className="cc-figure">
             <span className="cc-figure__label">{f.label}</span>
@@ -193,7 +193,7 @@ export default function CommandCenter({ range }: { range: AnalyticsRangeState })
                 <span role="columnheader" className="cc-num">Revenue</span>
               </div>
               {channelRows.map((c) => (
-                <Link key={c.key} href={withScope('/analytics/flow', range)} className="cc-strand" role="row" title="Follow these people in Story Flow">
+                <Link key={c.key} href={withScope('/analytics/visitors', range)} className="cc-strand" role="row" title="Follow these people in Visitors">
                   <span className="cc-strand__name" role="rowheader">
                     {channelName(c.key)}
                     <span className="cc-strand__bar" style={{ width: `${Math.max(4, (c.visitors / maxVisitors) * 100)}%` }} aria-hidden="true" />
@@ -286,7 +286,7 @@ export default function CommandCenter({ range }: { range: AnalyticsRangeState })
                   {campaignRows.slice(0, 8).map((c) => (
                     <tr key={c.key}>
                       <td>
-                        <Link href={withScope(`/analytics/flow?campaign=${encodeURIComponent(c.key)}`, range)} className="cc-link" title="Follow the people this campaign brought">
+                        <Link href={withScope(`/analytics/visitors?campaign=${encodeURIComponent(c.key)}`, range)} className="cc-link" title="Follow the people this campaign brought">
                           {c.key}
                         </Link>
                       </td>
@@ -366,7 +366,7 @@ function countryName(code: string): string {
 /**
  * Devices, countries and new vs returning — the audience behind the journey,
  * set right beside it (they explain each other). Each row opens those people
- * in Story Flow. Countries are shown by name, never as codes.
+ * in Visitors. Countries are shown by name, never as codes.
  */
 function WhoTheyAre({ range }: { range: AnalyticsRangeState }) {
   const devices = useTech(range, 'device');
@@ -406,7 +406,7 @@ function WhoTheyAre({ range }: { range: AnalyticsRangeState }) {
         <ul className="cc-bars" aria-label="Devices">
           {deviceRows.map((r) => (
             <li key={r.key}>
-              <Link href={withScope(`/analytics/flow?device=${encodeURIComponent(r.key.toLowerCase())}`, range)} className="cc-bar">
+              <Link href={withScope(`/analytics/visitors?device=${encodeURIComponent(r.key.toLowerCase())}`, range)} className="cc-bar">
                 <span className="cc-bar__label">{r.key.charAt(0).toUpperCase() + r.key.slice(1)}</span>
                 <span className="cc-bar__n">{pct(r.visitors, totalD)}%</span>
                 <span className="cc-bar__track" aria-hidden="true"><span style={{ width: `${pct(r.visitors, totalD)}%` }} /></span>
@@ -417,7 +417,7 @@ function WhoTheyAre({ range }: { range: AnalyticsRangeState }) {
         <ul className="cc-bars" aria-label="Countries">
           {countryRows.map((r) => (
             <li key={r.key}>
-              <Link href={withScope(`/analytics/flow?country=${encodeURIComponent(r.key)}`, range)} className="cc-bar">
+              <Link href={withScope(`/analytics/visitors?country=${encodeURIComponent(r.key)}`, range)} className="cc-bar">
                 <span className="cc-bar__label">{countryName(r.key)}</span>
                 <span className="cc-bar__n">{n(r.visitors)}</span>
                 <span className="cc-bar__track" aria-hidden="true"><span style={{ width: `${pct(r.visitors, totalC)}%` }} /></span>

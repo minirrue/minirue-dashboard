@@ -14,7 +14,8 @@ import {
 describe('AnalyticsSubnav', () => {
   const cases: Array<[string, string, string]> = [
     ['/analytics', 'Overview', 'Overview'],
-    ['/analytics/flow', 'Story Flow', 'People & Journeys'],
+    // Story Flow merged into Visitors; its old URL redirects there.
+    ['/analytics/flow', 'Visitors', 'People & Journeys'],
     ['/analytics/realtime', 'Realtime', 'People & Journeys'],
     ['/analytics/visitors', 'Visitors', 'People & Journeys'],
     ['/analytics/visitors/vis-abc-123', 'Visitors', 'People & Journeys'],
@@ -39,7 +40,6 @@ describe('AnalyticsSubnav', () => {
     expect(ANALYTICS_GROUPS.map((g) => g.label)).toEqual(['Overview', 'People & Journeys', 'Health']);
     expect(ANALYTICS_TAB_LABELS).toEqual([
       'Overview',
-      'Story Flow',
       'Visitors',
       'Realtime',
       'Acquisition',

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import AnalyticsSubnav from '@/components/dashboard/AnalyticsSubnav';
 import TrafficFlagPanel from '@/components/dashboard/analytics/TrafficFlagPanel';
@@ -8,6 +8,8 @@ import { useAnalyticsRange, useVisitorDetail, useVisitorJourney } from '@/lib/ho
 import { egp } from '@/lib/api/analytics-insights';
 import AnalyticsScopeBar from '@/components/dashboard/analytics/AnalyticsScopeBar';
 import { visitorLabel } from '@/components/dashboard/analytics/VisitorName';
+import { storyFromJourney } from '@/lib/api/story';
+import '../flow.css';
 
 function ScreenSkeleton() {
   return (
@@ -58,7 +60,10 @@ export default function VisitorDetailClient({ visitorId }: { visitorId: string }
     void journey.refetch();
   };
 
-  const events = journey.data?.data ?? [];
+  const events = journey.data?.data;
+  // The same story the Visitors drawer shows: visits split on 30-minute gaps,
+  // each summarised — including where a non-buyer stopped.
+  const story = useMemo(() => storyFromJourney(visitorId, events ?? [], null), [visitorId, events]);
 
   return (
     <>
@@ -124,32 +129,44 @@ export default function VisitorDetailClient({ visitorId }: { visitorId: string }
             {detail.data.data.isBot && ' · Flagged as bot traffic'}
           </p>
 
-          <p className="dash-section-title" style={{ marginBottom: 12 }}>Journey</p>
-          {events.length === 0 ? (
+          {detail.data.data.orderCount === 0 && story.sessions.length > 0 && (
+            <p className="flow-verdict">
+              <strong>Didn&apos;t buy.</strong> Last visit: {story.sessions[0].summary}
+            </p>
+          )}
+          <p className="dash-section-title" style={{ marginBottom: 12 }}>Story</p>
+          {story.sessions.length === 0 ? (
             <div className="dash-card">
               <p style={{ color: 'var(--mr-fg-4)', fontSize: 14, textAlign: 'center', padding: '20px 0', margin: 0 }}>
                 No recorded events for this visitor in this range.
               </p>
             </div>
           ) : (
-            <div className="dash-card" style={{ padding: 0, overflow: 'hidden' }}>
-              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                {events.map((event) => (
-                  <li
-                    key={event.eventId}
-                    style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--mr-dash-hair)' }}
-                  >
-                    <span style={{ fontSize: 13, color: 'var(--mr-fg-2)' }}>
-                      {event.eventName}
-                      {event.path && <span style={{ color: 'var(--mr-fg-4)' }}> — {event.path}</span>}
-                      {event.valueMinor != null && <span style={{ color: 'var(--mr-fg-4)' }}> · {egp(event.valueMinor)}</span>}
-                    </span>
-                    <span style={{ fontSize: 12, color: 'var(--mr-fg-4)', whiteSpace: 'nowrap' }}>
-                      {formatDate(event.occurredAt)}
-                    </span>
+            <div className="dash-card">
+              <ol className="flow-sessions">
+                {story.sessions.map((ss, i) => (
+                  <li key={i} className="flow-session">
+                    <div className="flow-session__touch">
+                      <span className="flow-session__when">{formatDate(ss.startedAt)}</span>
+                      {ss.touch.landingPath && <span className="flow-session__src">Landed on {ss.touch.landingPath}</span>}
+                    </div>
+                    <p className="flow-session__summary">{ss.summary}</p>
+                    <ol className="flow-steps">
+                      {ss.steps.map((st, j) => (
+                        <li key={j} className="flow-step" data-kind={st.kind}>
+                          <span className="flow-step__dot" aria-hidden="true" />
+                          <span className="flow-step__label">{st.label}</span>
+                          <span className="flow-step__meta">
+                            {[st.valueMinor != null ? egp(st.valueMinor) : null, new Date(st.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
                   </li>
                 ))}
-              </ul>
+              </ol>
             </div>
           )}
         </>

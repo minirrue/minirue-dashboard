@@ -31,10 +31,10 @@ interface Tab {
 
 const TABS: Tab[] = [
   { label: 'Overview', href: '/analytics', match: (p) => p === '/analytics' || p === '/analytics/' },
-  // dashboard#123: every real shopper as one connected flow, down to the person.
-  { label: 'Story Flow', href: '/analytics/flow', match: (p) => p.startsWith('/analytics/flow') },
   { label: 'Realtime', href: '/analytics/realtime', match: (p) => p.startsWith('/analytics/realtime') },
-  { label: 'Visitors', href: '/analytics/visitors', match: (p) => p.startsWith('/analytics/visitors') },
+  // dashboard#123: every real shopper as one connected flow, down to the person
+  // and why they didn't buy. Story Flow merged in here; /analytics/flow redirects.
+  { label: 'Visitors', href: '/analytics/visitors', match: (p) => p.startsWith('/analytics/visitors') || p.startsWith('/analytics/flow') },
   { label: 'Acquisition', href: '/analytics/acquisition', match: (p) => p.startsWith('/analytics/acquisition') },
   { label: 'Pages', href: '/analytics/pages', match: (p) => p.startsWith('/analytics/pages') },
   { label: 'Products', href: '/analytics/products', match: (p) => p.startsWith('/analytics/products') },
@@ -64,9 +64,9 @@ export const ANALYTICS_GROUPS: AnalyticsGroup[] = [
   { label: 'Overview', tabs: ['Overview'] },
   {
     label: 'People & Journeys',
-    tabs: ['Story Flow', 'Visitors', 'Realtime', 'Acquisition', 'Pages', 'Products', 'Events', 'Checkout', 'Sales'],
+    tabs: ['Visitors', 'Realtime', 'Acquisition', 'Pages', 'Products', 'Events', 'Checkout', 'Sales'],
     sections: [
-      { label: 'People', tabs: ['Story Flow', 'Visitors', 'Realtime'] },
+      { label: 'People', tabs: ['Visitors', 'Realtime'] },
       { label: 'Came from', tabs: ['Acquisition'] },
       { label: 'Did', tabs: ['Pages', 'Products', 'Events', 'Checkout'] },
       { label: 'Bought', tabs: ['Sales'] },

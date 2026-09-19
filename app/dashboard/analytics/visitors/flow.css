@@ -1,5 +1,36 @@
-/* Story Flow (dashboard#123). Canvas left, the people inside it right; the
-   story of any one person slides over from the right. */
+/* Visitors (dashboard#90, #123; Story Flow merged in). Why-they-didn't-buy and
+   the flow canvas left, the people inside them right; the story of any one
+   person slides over from the right. */
+
+.flow-figures { display: flex; flex-wrap: wrap; gap: 8px 32px; margin: 0 0 14px; }
+.flow-figure { display: grid; gap: 2px; }
+.flow-figure dt { color: var(--mr-fg-3); font-family: var(--mr-font-label); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.flow-figure dd { margin: 0; font-family: var(--mr-font-display, var(--mr-font-serif, Georgia, serif)); font-size: 26px; color: var(--mr-fg); font-variant-numeric: tabular-nums; }
+
+.flow-stack { display: grid; gap: 16px; min-width: 0; }
+.flow-why {
+  padding: 18px 20px 16px;
+  border: 1px solid var(--mr-dash-hair); border-radius: var(--mr-dash-card-radius, 16px); background: var(--mr-dash-surface);
+}
+.flow-why__head { margin-bottom: 10px; }
+.flow-why__list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.flow-why__row {
+  display: grid; grid-template-columns: minmax(0, 13rem) minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  width: 100%; min-height: 36px; padding: 4px 8px; border: 1px solid transparent; border-radius: 8px;
+  background: none; color: var(--mr-fg); font: 600 13px var(--mr-font-ui); text-align: left; cursor: pointer;
+}
+.flow-why__row:hover { background: var(--mr-dash-sub); }
+.flow-why__row:focus-visible { outline: 2px solid var(--mr-gold-500); outline-offset: 1px; }
+.flow-why__row[data-selected] { border-color: var(--mr-ink-900); }
+.flow-why__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flow-why__bar { height: 8px; border-radius: 999px; background: var(--mr-dash-sub); overflow: hidden; }
+.flow-why__bar > span { display: block; height: 100%; border-radius: inherit; background: color-mix(in srgb, var(--mr-gold-500) 70%, transparent); }
+.flow-why__n { color: var(--mr-fg); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.flow-why__pct { margin-left: 6px; color: var(--mr-fg-4); font-weight: 500; }
+.flow-person__stop { color: var(--mr-fg-3); font-size: 12px; font-style: italic; }
+.flow-person__name[data-customer] { color: var(--mr-ink-900); }
+.flow-verdict { margin: 0 0 16px; padding: 12px 16px; border-radius: 12px; background: var(--mr-dash-sub); color: var(--mr-fg-2); font-size: 14px; line-height: 1.5; }
+.flow-verdict strong { color: var(--mr-fg); }
 
 .flow-filterbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -4px 0 16px; min-height: 34px; }
 .flow-filterbar__label { color: var(--mr-fg-3); font-family: var(--mr-font-label); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
@@ -108,6 +139,12 @@
 @media (max-width: 1100px) {
   .flow-layout { grid-template-columns: minmax(0, 1fr); }
   .flow-people { position: static; max-height: none; }
+}
+@media (max-width: 560px) {
+  .flow-why__row { grid-template-columns: minmax(0, 1fr) auto; }
+  .flow-why__bar { grid-column: 1 / -1; grid-row: 2; }
+  .flow-figures { gap: 8px 20px; }
+  .flow-figure dd { font-size: 22px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .flow-drawer__panel { animation: none; }
