@@ -2628,30 +2628,125 @@
 .dash-order-reference-link:hover { text-decoration: underline; }
 .dash-order-reference-link .dash-internal-order-badge { margin-left: 4px; }
 
-.dash-staff-device-control,
-.dash-staff-device-note {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin: 0 0 20px;
-  padding: 14px 16px;
-  border: 1px solid var(--mr-border);
-  border-radius: var(--mr-radius-md);
-  background: var(--mr-bg-2);
+/* ── Truth layer (dashboard#111): who counts in analytics ── */
+.dash-link-button {
+  padding: 0;
+  border: 0;
+  background: none;
   color: var(--mr-fg-2);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--mr-dash-hair);
+  text-underline-offset: 3px;
+  cursor: pointer;
 }
+.dash-link-button:hover { text-decoration-color: currentColor; }
+.dash-link-button:disabled { opacity: .5; cursor: default; }
+.dash-link-button:focus-visible { outline: 2px solid var(--mr-gold-500); outline-offset: 2px; border-radius: 2px; }
 
-.dash-staff-device-control > div { flex: 1; min-width: 0; }
-.dash-staff-device-control strong,
-.dash-staff-device-note strong { color: var(--mr-fg); }
-.dash-staff-device-control p { margin: 4px 0 0; font-size: 13px; }
-.dash-staff-device-control > .dash-inline-error { flex-basis: 100%; margin: 0; }
+/* The strip under the Analytics toolbar: facts on the left, one action on the right. */
+.dash-exclusions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-dash-sub);
+}
+.dash-exclusions__facts { display: grid; gap: 6px; min-width: 0; flex: 1 1 320px; }
+.dash-exclusions__facts p { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; font-size: 13px; color: var(--mr-fg-3); }
+.dash-exclusions__facts strong { min-width: 84px; color: var(--mr-fg); font-weight: 600; }
+.dash-exclusions > .dash-inline-error { flex-basis: 100%; margin: 0; }
+
+/* QR panel: code on the left at a size a phone camera reads from a laptop screen. */
+.dash-exclude-device { position: relative; min-width: 0; flex: none; }
+/* A popover under its button, right-aligned: opening it never reflows the page header. */
+.dash-exclude-device__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: 148px minmax(0, 1fr);
+  grid-template-areas: 'qr copy' 'row row' 'foot foot';
+  gap: 14px 18px;
+  width: min(540px, calc(100vw - 32px));
+  padding: 18px;
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-dash-surface);
+  box-shadow: 0 12px 32px rgba(20, 18, 15, .14);
+}
+.dash-exclude-device__qr { grid-area: qr; width: 148px; aspect-ratio: 1; padding: 6px; border-radius: var(--mr-radius-sm); background: #fff; }
+.dash-exclude-device__qr svg { display: block; width: 100%; height: 100%; }
+.dash-exclude-device__qr[data-expired] { opacity: .25; filter: grayscale(1); }
+.dash-exclude-device__copy { grid-area: copy; display: grid; gap: 8px; min-width: 0; align-content: center; }
+.dash-exclude-device__copy strong { color: var(--mr-fg); font-size: 15px; line-height: 1.3; }
+.dash-exclude-device__copy p { margin: 0; color: var(--mr-fg-3); font-size: 13px; line-height: 1.55; }
+.dash-exclude-device__row { grid-area: row; display: flex; gap: 8px; min-width: 0; }
+.dash-exclude-device__row .dash-input { flex: 1; min-width: 0; font-size: 12px; font-family: var(--mr-font-mono, monospace); }
+.dash-exclude-device__foot { grid-area: foot; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid var(--mr-dash-hair); font-size: 13px; color: var(--mr-fg-3); }
+.dash-exclude-device__actions { display: flex; gap: 16px; }
+.dash-exclude-device__timer { font-variant-numeric: tabular-nums; }
+
+/* Verdict chip: one colour per meaning, shared by the panel and the flags list. */
+.dash-flag-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--mr-st-muted-bg);
+  color: var(--mr-st-muted-fg);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  white-space: nowrap;
+}
+.dash-flag-chip[data-class='OWNER'],
+.dash-flag-chip[data-class='INTERNAL'] { background: var(--mr-st-info-bg); color: var(--mr-st-info-fg); }
+.dash-flag-chip[data-class='SUSPICIOUS'] { background: var(--mr-st-warn-bg); color: var(--mr-st-warn-fg); }
+.dash-flag-chip[data-class='BOT'] { background: var(--mr-st-danger-bg); color: var(--mr-st-danger-fg); }
+.dash-flag-chip[data-class='TRUSTED'] { background: var(--mr-st-ok-bg); color: var(--mr-st-ok-fg); }
+
+.dash-flag-panel { margin: 0; min-width: 0; }
+.dash-flag-panel__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.dash-flag-panel__head .dash-btn-secondary { flex: none; }
+.dash-flag-panel__title { margin: 0 0 6px; }
+.dash-flag-panel__status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; color: var(--mr-fg-2); font-size: 14px; }
+.dash-flag-panel__meta { margin: 10px 0 0; color: var(--mr-fg-4); font-size: 12px; line-height: 1.5; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.dash-flag-panel__form { display: grid; gap: 12px; margin-top: 16px; }
+.dash-flag-panel__form .dash-form-actions { margin: 0; }
+.dash-flag-panel__warn { margin: 0; }
+
+/* Flags list */
+.dash-segmented { display: inline-flex; align-self: flex-end; padding: 3px; border: 1px solid var(--mr-dash-hair); border-radius: 999px; background: var(--mr-dash-sub); }
+.dash-segmented button { min-height: 32px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; color: var(--mr-fg-3); font: 600 13px/1 var(--mr-font-ui); cursor: pointer; white-space: nowrap; }
+.dash-segmented button[data-active='true'] { background: var(--mr-dash-surface); color: var(--mr-fg); box-shadow: var(--mr-shadow-xs); }
+.dash-segmented button:focus-visible { outline: 2px solid var(--mr-gold-500); outline-offset: 2px; }
+.dash-flags-filters { align-items: flex-end; flex-wrap: wrap; }
+.dash-flags-filters__class { max-width: 200px; }
+.dash-flags-filters__search { flex: 1 1 220px; max-width: 360px; }
+.dash-flags-table td { vertical-align: middle; }
+.dash-flags-id { font-family: var(--mr-font-mono, monospace); font-size: 12px; color: var(--mr-fg-4); }
+.dash-flags-reason { max-width: 32ch; color: var(--mr-fg-2); overflow-wrap: anywhere; }
+.dash-flags-empty { display: grid; gap: 6px; padding: 28px; text-align: center; justify-items: center; }
+.dash-flags-empty strong { color: var(--mr-fg); }
+.dash-flags-empty p { max-width: 52ch; margin: 0; color: var(--mr-fg-3); font-size: 13px; line-height: 1.55; }
 
 @media (max-width: 640px) {
-  .dash-staff-device-control,
-  .dash-staff-device-note { align-items: stretch; flex-direction: column; }
-  .dash-staff-device-control .dash-btn-secondary { justify-content: center; min-height: 44px; }
+  .dash-exclude-device__panel { position: static; width: 100%; margin-top: 10px; grid-template-columns: 1fr; grid-template-areas: 'qr' 'copy' 'row' 'foot'; box-shadow: none; }
+  .dash-exclude-device__qr { width: min(200px, 60vw); justify-self: center; }
+  .dash-flag-panel__head { flex-direction: column; }
+  .dash-flag-panel__head .dash-btn-secondary,
+  .dash-exclusions .dash-exclude-device > .dash-btn-secondary { width: 100%; justify-content: center; min-height: 44px; }
+  .dash-exclusions .dash-exclude-device { width: 100%; }
+  .dash-flags-filters__class, .dash-flags-filters__search { max-width: none; flex: 1 1 100%; }
 }
 .dash-status[data-status="in_transit"] {
   background: var(--mr-st-info-bg);

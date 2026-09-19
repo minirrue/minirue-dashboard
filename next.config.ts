@@ -135,6 +135,8 @@ const nextConfig: NextConfig = {
       { source: "/analytics/realtime", destination: "/dashboard/analytics/realtime" },
       { source: "/analytics/visitors", destination: "/dashboard/analytics/visitors" },
       { source: "/analytics/visitors/:visitorId", destination: "/dashboard/analytics/visitors/:visitorId" },
+      // dashboard#111: who counts in analytics — owner/staff/bot/suspicious/verified verdicts.
+      { source: "/analytics/flags", destination: "/dashboard/analytics/flags" },
       { source: "/analytics/pages", destination: "/dashboard/analytics/pages" },
       { source: "/analytics/products", destination: "/dashboard/analytics/products" },
       { source: "/analytics/products/:productId", destination: "/dashboard/analytics/products/:productId" },

@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import AnalyticsSubnav from '@/components/dashboard/AnalyticsSubnav';
+import TrafficFlagPanel from '@/components/dashboard/analytics/TrafficFlagPanel';
 import { useAnalyticsRange, useVisitorDetail, useVisitorJourney } from '@/lib/hooks/use-analytics';
 import type { AnalyticsRangeState } from '@/lib/hooks/use-analytics';
 import { egp } from '@/lib/api/analytics-insights';
@@ -89,6 +90,10 @@ export default function VisitorDetailClient({ visitorId }: { visitorId: string }
       <div className="dash-page-header">
         <h1 className="dash-page-title">Visitor {visitorId}</h1>
         <Link href="/analytics/visitors" className="dash-btn-secondary">Back to visitors</Link>
+      </div>
+      {/* dashboard#111: this one device's verdict — misfiled bot, our own phone, or verified real. */}
+      <div style={{ marginBottom: 20 }}>
+        <TrafficFlagPanel subjectType="VISITOR" subjectId={visitorId} onChange={() => { void detail.refetch(); }} />
       </div>
       <RangeControl range={range} onChange={setRange} />
 

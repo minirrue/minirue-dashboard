@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 229,
+    date: '2026-09-19',
+    area: 'Analytics',
+    summary:
+      'You now decide who counts in your numbers. On any customer, open the new Analytics card and mark the account as Owner / test account or Staff: everything that account does, on every phone it used, drops out of analytics, and its orders are never reported to Meta or TikTok as ad sales. Past activity is corrected too. A real shopper the bot filter caught can be marked Real customer. To exclude your own phone or the Instagram/TikTok in-app browser, press Exclude another device on the Analytics page and scan the QR code. Every decision is listed under Analytics › Who counts.',
+  },
+  {
     id: 228,
     date: '2026-09-15',
     area: 'SEO',

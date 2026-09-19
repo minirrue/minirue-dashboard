@@ -2,6 +2,7 @@
 
 import React, {useCallback, useState } from 'react';
 import Link from 'next/link';
+import TrafficFlagPanel from '@/components/dashboard/analytics/TrafficFlagPanel';
 import CustomerDiscountUsage from './CustomerDiscountUsage';
 import {
   DEFAULT_DIAL_CODE,
@@ -670,6 +671,9 @@ export default function CustomerDetailClient({ userId }: { userId: string }) {
                 {saving ? 'Saving…' : 'Save tier'}
               </button>
             </section>
+            {/* dashboard#111: the owner's own account, staff, or a misfiled bot —
+                decided here, where the person is, and applied to history. */}
+            <TrafficFlagPanel subjectType="USER" subjectId={userId} />
           </div>
 
           <section className="dash-form-section" style={{ marginBottom: 20 }}>
