@@ -459,7 +459,18 @@ describe('VariantsSection — existing house variants', () => {
     expect(byTrace('EL-TEXT-variant-mode@v-man')).toHaveTextContent('My price');
     const links = screen.getAllByRole('link', { name: /change in accounting/i });
     expect(links).toHaveLength(2);
-    expect(links[0]).toHaveAttribute('href', '/accounting?tab=prices');
+    expect(links[0]).toHaveAttribute('href', '/accounting?tab=prices&open=v-sys');
+    expect(links[1]).toHaveAttribute('href', '/accounting?tab=prices&open=v-man');
+  });
+
+  it('shows stock read-only with a Change in Inventory link scoped to the SKU (#101)', async () => {
+    serveExisting();
+    render(<Harness variants={existing} isHouse />);
+    await waitFor(() => expect(byTrace('EL-TEXT-variant-mode@v-man')).toHaveTextContent('My price'));
+
+    expect(screen.queryByRole('spinbutton', { name: /available quantity/i })).not.toBeInTheDocument();
+    const inv = byTrace('EL-LINK-variant-change-in-inventory@v-man');
+    expect(inv).toHaveAttribute('href', '/inventory?q=SKN-MAN');
   });
 
   it('never offers the inline price edit on a System price row, and never writes its price', async () => {
@@ -484,7 +495,7 @@ describe('VariantsSection — existing house variants', () => {
     expect(body).not.toHaveProperty('price_currency');
   });
 
-  it('keeps the inline price edit on a My price row', async () => {
+  it('never offers the inline price edit on a My price row either — it links to Accounting (#101)', async () => {
     serveExisting();
     const user = userEvent.setup();
     render(<Harness variants={existing} isHouse />);
@@ -493,17 +504,20 @@ describe('VariantsSection — existing house variants', () => {
     const manRow = screen.getByText('SKN-MAN').closest('tr') as HTMLElement;
     await user.click(within(manRow).getByRole('button', { name: /^edit$/i }));
     const form = byTrace('EL-FORM-edit-variant-form@v-man');
-    const price = within(form).getByLabelText(/^price/i);
-    await user.clear(price);
-    await user.type(price, '1250');
+    expect(within(form).queryByLabelText(/^price/i)).not.toBeInTheDocument();
+    expect(within(form).getByText(/is your price/i)).toBeInTheDocument();
+    expect(within(form).getByRole('link', { name: /change in accounting/i })).toHaveAttribute(
+      'href',
+      '/accounting?tab=prices&open=v-man',
+    );
     await user.click(within(form).getByRole('button', { name: /^save$/i }));
 
     await waitFor(() =>
       expect(calls('PATCH /catalog/admin/products/product-1/variants/v-man')).toHaveLength(1),
     );
-    expect(bodyOf('PATCH /catalog/admin/products/product-1/variants/v-man')).toMatchObject({
-      price_amount: '1250.0000',
-    });
+    expect(bodyOf('PATCH /catalog/admin/products/product-1/variants/v-man')).not.toHaveProperty(
+      'price_amount',
+    );
   });
 
   it('withholds the price edit while the mode is unknown (Accounting unreadable)', async () => {

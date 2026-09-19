@@ -150,7 +150,7 @@ function makeRows(
   return rows;
 }
 
-export default function StockOverviewClient() {
+export default function StockOverviewClient({ initialSearch = '' }: { initialSearch?: string }) {
   useClearNavBadge(HREF_CATEGORIES['/inventory']);
   const fileInput = useRef<HTMLInputElement>(null);
   const [rows, setRows] = useState<InventoryRow[]>([]);
@@ -158,7 +158,8 @@ export default function StockOverviewClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
+  // A product's "Change in Inventory" link lands here as `?q=<sku>` (#101).
+  const [search, setSearch] = useState(initialSearch);
   const [status, setStatus] = useState<'' | StockStatus>('');
   const [brand, setBrand] = useState('');
   const [category, setCategory] = useState('');

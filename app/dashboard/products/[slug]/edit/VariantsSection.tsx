@@ -11,7 +11,6 @@ import {
   createProductMedia,
   listAttributes,
   listAttributeOptions,
-  apiSetVariantStock,
   toProductVariant,
 } from '@/lib/catalog/api';
 import {
@@ -188,7 +187,15 @@ const MODE_LABEL: Record<PricingMode, string> = {
   MANUAL: 'My price',
 };
 
-const ACCOUNTING_PRICES = '/accounting?tab=prices';
+/** Opens this variant's pricing drawer in Accounting (`?open=` — #61). */
+function accountingHref(variantId: string): string {
+  return `/accounting?tab=prices&open=${encodeURIComponent(variantId)}`;
+}
+
+/** Inventory, already searched down to this variant's SKU. */
+function inventoryHref(sku: string): string {
+  return `/inventory?q=${encodeURIComponent(sku)}`;
+}
 
 interface HouseDraft {
   systemCost: string;
@@ -297,9 +304,13 @@ export default function VariantsSection({
     return modes?.[v.id] ?? null;
   }
 
-  /** Partner rows always; house rows only when known to be My price. */
-  function priceEditable(v: ProductVariant): boolean {
-    return !isHouse || modeOf(v) === 'MANUAL';
+  /**
+   * Partner rows only. A house price — System or My price — is changed in
+   * Accounting, never here (owner, 2026-09-19, #101); partner products have
+   * no Accounting row, so this is still their only price edit.
+   */
+  function priceEditable(_v: ProductVariant): boolean {
+    return !isHouse;
   }
 
   const [showForm, setShowForm] = useState(false);
@@ -317,53 +328,6 @@ export default function VariantsSection({
   const [pickerVariantId, setPickerVariantId] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [copiedSku, setCopiedSku] = useState<string | null>(null);
-
-  // Stock is edited per row and saved on its own, not with the variant form:
-  // correcting a quantity is a one-field job and should not require opening the
-  // whole variant editor.
-  const [stockDrafts, setStockDrafts] = useState<Record<string, string>>({});
-  const [stockSavingId, setStockSavingId] = useState<string | null>(null);
-  const [stockError, setStockError] = useState<Record<string, string>>({});
-
-  async function handleSaveStock(variant: ProductVariant) {
-    const raw = stockDrafts[variant.id];
-    if (raw === undefined) return;
-    const qty = Number(raw);
-    if (!Number.isInteger(qty) || qty < 0) {
-      setStockError((e) => ({ ...e, [variant.id]: 'Whole number, 0 or more.' }));
-      return;
-    }
-    setStockError((e) => ({ ...e, [variant.id]: '' }));
-    setStockSavingId(variant.id);
-    try {
-      const result = await apiSetVariantStock(variant.id, qty);
-      onVariantsChange(
-        variants.map((v) =>
-          v.id === variant.id ? { ...v, stock: result.available } : v,
-        ),
-      );
-      setStockDrafts((d) => {
-        const next = { ...d };
-        delete next[variant.id];
-        return next;
-      });
-    } catch (err) {
-      // apiFetch rejects with an ApiError OBJECT, not an Error instance, so the
-      // old `err instanceof Error` was never true and every failure here read
-      // "Could not save the quantity." — the one sentence that says nothing.
-      // The server had already sent the answer: on 2026-08-15 it was "No active
-      // warehouse to hold stock", and that sentence never reached the screen.
-      setStockError((e) => ({
-        ...e,
-        [variant.id]: errorMessageToText(
-          (err as ApiError | undefined)?.message,
-          'Could not save the quantity.',
-        ),
-      }));
-    } finally {
-      setStockSavingId(null);
-    }
-  }
 
   /** SKUs are read-only but searchable — one click puts one on the clipboard. */
   async function handleCopySku(sku: string) {
@@ -846,7 +810,7 @@ export default function VariantsSection({
                                 : 'Mode unavailable'}
                           </span>
                           <Link
-                            href={ACCOUNTING_PRICES}
+                            href={accountingHref(v.id)}
                             className="vp-mode-link"
                             data-trace-id={`PG-DASHBOARD-CAT-003::EL-LINK-variant-change-in-accounting@${v.id}`}
                           >
@@ -855,57 +819,30 @@ export default function VariantsSection({
                         </span>
                       )}
                     </td>
+                    {/* Stock is read here, changed in Inventory (owner,
+                        2026-09-19, #101): one place writes quantities, so the
+                        movement log there stays the whole story. */}
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <input
-                        className="dash-input"
-                        type="number"
-                        min={0}
-                        step={1}
-                        inputMode="numeric"
-                        aria-label={`Available quantity for ${v.sku}`}
-                        style={{ width: 78, textAlign: 'right', display: 'inline-block' }}
-                        value={stockDrafts[v.id] ?? String(v.stock)}
-                        onChange={(e) =>
-                          setStockDrafts((d) => ({ ...d, [v.id]: e.target.value }))
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            void handleSaveStock(v);
-                          }
-                        }}
-                        disabled={stockSavingId === v.id}
-                        data-trace-id={`PG-DASHBOARD-CAT-003::EL-FIELD-variant-stock@${v.id}`}
-                      />
-                      {stockDrafts[v.id] !== undefined &&
-                        stockDrafts[v.id] !== String(v.stock) && (
-                          <button
-                            type="button"
-                            className="dash-btn-ghost"
-                            onClick={() => void handleSaveStock(v)}
-                            disabled={stockSavingId === v.id}
-                            data-trace-id={`PG-DASHBOARD-CAT-003::EL-BTN-save-variant-stock@${v.id}`}
-                          >
-                            {stockSavingId === v.id ? 'Saving…' : 'Save'}
-                          </button>
+                      <span
+                        style={{ fontVariantNumeric: 'tabular-nums' }}
+                        data-trace-id={`PG-DASHBOARD-CAT-003::EL-TEXT-variant-stock@${v.id}`}
+                      >
+                        {v.stock}
+                      </span>
+                      <span className="vp-mode">
+                        {v.stock === 0 && (
+                          <span style={{ color: 'var(--mr-dash-danger, #c0392b)' }}>
+                            Out of stock
+                          </span>
                         )}
-                      {v.stock === 0 && stockDrafts[v.id] === undefined && (
-                        <span
-                          className="dash-help-text"
-                          style={{ display: 'block', color: 'var(--mr-dash-danger, #c0392b)' }}
+                        <Link
+                          href={inventoryHref(v.sku)}
+                          className="vp-mode-link"
+                          data-trace-id={`PG-DASHBOARD-CAT-003::EL-LINK-variant-change-in-inventory@${v.id}`}
                         >
-                          Out of stock
-                        </span>
-                      )}
-                      {stockError[v.id] && (
-                        <span
-                          role="alert"
-                          className="dash-help-text"
-                          style={{ display: 'block', color: 'var(--mr-dash-danger, #c0392b)' }}
-                        >
-                          {stockError[v.id]}
-                        </span>
-                      )}
+                          Change in Inventory
+                        </Link>
+                      </span>
                     </td>
                     <td>
                       {/* The only way to select a variant.
@@ -1013,8 +950,10 @@ export default function VariantsSection({
                             <p className="vp-locked" data-trace-id={`PG-DASHBOARD-CAT-003::EL-TEXT-edit-variant-price-locked@${v.id}`}>
                               {modeOf(v) === 'SYSTEM'
                                 ? `${formatPrice(v.priceAmount, v.currency)} is set by the system from this variant's cost, so it is not edited here. `
-                                : `The price mode could not be read, so the price is not edited here. `}
-                              <Link href={ACCOUNTING_PRICES} className="vp-mode-link">
+                                : modeOf(v) === 'MANUAL'
+                                  ? `${formatPrice(v.priceAmount, v.currency)} is your price. Prices are changed in Accounting. `
+                                  : `The price mode could not be read, so the price is not edited here. `}
+                              <Link href={accountingHref(v.id)} className="vp-mode-link">
                                 Change in Accounting
                               </Link>
                             </p>
