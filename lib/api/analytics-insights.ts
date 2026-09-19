@@ -657,11 +657,25 @@ export async function apiGetVisitorDetail(visitorId: string, params: AnalyticsQu
   );
 }
 
+/**
+ * Backend 0.125 (#123) wraps the events with the visitor's identity:
+ * `{ visitorId, visitorNumber, customer, events }`. Older backends send the
+ * bare array. Normalised here so every screen keeps reading `data` as the
+ * events, whichever backend answers, and the identity rides alongside.
+ */
 export async function apiGetVisitorJourney(visitorId: string, params: AnalyticsQueryParams) {
-  return apiFetch<AnalyticsEnvelope<JourneyEvent[]>>(
-    `/analytics/visitors/${encodeURIComponent(visitorId)}/journey?${buildQuery(params)}`,
-    { auth: true },
-  );
+  const res = await apiFetch<
+    AnalyticsEnvelope<
+      | JourneyEvent[]
+      | { visitorId: string; visitorNumber?: number | null; customer?: { id: string; name: string | null } | null; events: JourneyEvent[] }
+    >
+  >(`/analytics/visitors/${encodeURIComponent(visitorId)}/journey?${buildQuery(params)}`, { auth: true });
+  const raw = res.data;
+  const events = Array.isArray(raw) ? raw : (raw?.events ?? []);
+  const identity = Array.isArray(raw) || !raw ? null : { visitorNumber: raw.visitorNumber ?? null, customer: raw.customer ?? null };
+  return { ...res, data: events, identity } as AnalyticsEnvelope<JourneyEvent[]> & {
+    identity: { visitorNumber: number | null; customer: { id: string; name: string | null } | null } | null;
+  };
 }
 
 export async function apiGetDataQuality(params: AnalyticsQueryParams) {
