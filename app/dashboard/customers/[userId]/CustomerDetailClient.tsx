@@ -46,18 +46,13 @@ import {
   legacyReasonText,
   type CustomerTierReason,
 } from '@/lib/reasons/operational';
+import { formatDateTime } from '@/lib/dates/format';
 
 const TIER_OPTIONS: TierLevel[] = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM'];
 const ADDRESS_LABELS: CustomerAddressInput['label'][] = ['HOME', 'WORK', 'OTHER'];
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString('en-EG', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatDateTime(iso, { year: true });
 }
 
 function formatMoney(amount: string, currency: string): string {

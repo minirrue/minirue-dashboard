@@ -53,15 +53,10 @@ const STATUS_KIND_MAP: Record<string, StatusKind> = {
 
 /** Short, readable timestamp for the activity feed. */
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString('en-EG', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatDateTime(iso, { year: true });
 }
 import type { ApiError } from '@/lib/api/client';
+import { formatDateTime, formatTime } from '@/lib/dates/format';
 
 const MODULE_OPTIONS: Array<{ value: CollaboratorModule; label: string }> = [
   { value: 'ORDERS', label: 'Orders' },
@@ -731,7 +726,7 @@ export default function CollaboratorDetailClient() {
           >
             {saving ? 'Saving…' : 'Save identity'}
           </button>
-          {savedAt ? <span className="dash-help-text">Saved at {savedAt.toLocaleTimeString()}</span> : null}
+          {savedAt ? <span className="dash-help-text">Saved at {formatTime(savedAt)}</span> : null}
         </div>
       </form>
 
@@ -836,7 +831,7 @@ export default function CollaboratorDetailClient() {
             {settingsSaving ? 'Saving…' : 'Save settings'}
           </button>
           {settingsSavedAt ? (
-            <span className="dash-help-text">Saved at {settingsSavedAt.toLocaleTimeString()}</span>
+            <span className="dash-help-text">Saved at {formatTime(settingsSavedAt)}</span>
           ) : null}
         </div>
       </form>

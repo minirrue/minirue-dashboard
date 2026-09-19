@@ -27,6 +27,7 @@ import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
 import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
+import { formatDateTime } from '@/lib/dates/format';
 
 type SortKey = 'available-asc' | 'available-desc' | 'updated-desc' | 'updated-asc';
 type BulkMode = 'set' | 'add' | 'remove';
@@ -73,11 +74,7 @@ function StatusBadge({ status }: { status: StockStatus }) {
 
 function formatWhen(value: string | null): string {
   if (!value) return 'No movement yet';
-  return new Date(value).toLocaleString('en-EG', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    hour12: true,
-  });
+  return formatDateTime(value, { year: true });
 }
 
 function makeRows(

@@ -8,6 +8,7 @@ import { listMovements } from '@/lib/inventory/api';
 import type { MovementRow, MovementType } from '@/lib/inventory/api';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import { formatDateTime } from '@/lib/dates/format';
 
 function SkeletonRows({ count = 10 }: { count?: number }) {
   return (
@@ -76,10 +77,7 @@ function DeltaCell({ delta }: { delta: number }) {
 
 function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleString('en-GB', {
-      day: '2-digit', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-    });
+    return formatDateTime(iso, { year: true });
   } catch {
     return iso;
   }

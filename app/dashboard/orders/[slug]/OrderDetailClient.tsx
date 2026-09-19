@@ -30,16 +30,14 @@ import { formatOrderRef } from '@/lib/orders/order-format';
 import InternalOrderBadge from '@/components/dashboard/InternalOrderBadge';
 import ReturnToStockModal from '@/components/dashboard/ReturnToStockModal';
 import { formatDeliveryWindow, mapsLinkFor } from '@/lib/orders/delivery-format';
+import { formatDateTime } from '@/lib/dates/format';
 
 /* ── Helpers ── */
 function formatAmount(amount: string, currency: string): string {
   return `${currency} ${parseFloat(amount).toLocaleString('en-EG', { minimumFractionDigits: 2 })}`;
 }
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString('en-EG', {
-    year: 'numeric', month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
+  return formatDateTime(iso, { year: true });
 }
 // Same shape as the Refunds tab (RefundableOrdersPanel) — refundedAmountCents
 // is already minor units, unlike totalAmount which is a major-unit string.

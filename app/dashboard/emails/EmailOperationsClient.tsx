@@ -31,6 +31,7 @@ import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
 import { apiUploadBrandLogo } from '@/lib/api/settings';
 import DirectEmailComposer from '@/components/dashboard/email/DirectEmailComposer';
 import styles from './email-operations.module.css';
+import { formatDateTime } from '@/lib/dates/format';
 
 const DELIVERY_FILTERS: Array<{ value: EmailDeliveryStatus | ''; label: string }> = [
   { value: '', label: 'All activity' },
@@ -56,9 +57,7 @@ function fmt(value?: string | null) {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('en-EG', {
-    day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true,
-  }).format(date);
+  return formatDateTime(date);
 }
 
 function errorText(error: unknown, fallback: string) {

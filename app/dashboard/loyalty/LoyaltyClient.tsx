@@ -36,7 +36,9 @@ const REASONS: Array<{ value: LoyaltyAdjustmentReason; label: string; sign: 'add
   { value: 'OTHER', label: 'Other', sign: 'either' },
 ];
 
-const dateTime = new Intl.DateTimeFormat('en-EG', { dateStyle: 'medium', timeStyle: 'short', hour12: true });
+// 12-hour Cairo time, like every other screen (lib/dates/format).
+const dateTime = { format: (d: Date) => formatDateTime(d, { year: true }) };
+import { formatDateTime } from '@/lib/dates/format';
 const titleCase = (value: string) => value.toLowerCase().replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 function Avatar({ account, large = false }: { account: LoyaltyAccountDto; large?: boolean }) {

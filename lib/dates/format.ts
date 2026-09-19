@@ -23,6 +23,19 @@ export function formatDateTime(v: string | number | Date, o: { year?: boolean; s
   return `${date}, ${formatTime(d, o)}`;
 }
 
+/**
+ * A stored 24-hour clock value ("14:00", "09:30", or the "24:00" end-of-day
+ * sentinel) shown the shop's way: "2 PM", "9:30 AM", "12 AM".
+ */
+export function formatClock(hhmm: string): string {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
+  if (!m) return hhmm;
+  const h = Number(m[1]) % 24;
+  const min = m[2];
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}${min === '00' ? '' : `:${min}`} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
 /** "7:40 PM". */
 export function formatTime(v: string | number | Date, o: { seconds?: boolean } = {}): string {
   const d = toDate(v);

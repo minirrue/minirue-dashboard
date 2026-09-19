@@ -9,6 +9,7 @@ import {
 } from '@/lib/api/payments';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import { formatDateTime } from '@/lib/dates/format';
 
 const PAGE_SIZE = 25;
 
@@ -17,13 +18,7 @@ function egpFromCents(cents: number): string {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString('en-EG', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatDateTime(iso, { year: true });
 }
 
 /**

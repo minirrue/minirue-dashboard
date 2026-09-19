@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiCustomerEmailActivity, type CustomerEmailActivityItem } from '@/lib/api/email-operations';
 import DirectEmailComposer from './DirectEmailComposer';
+import { formatDateTime } from '@/lib/dates/format';
 
 function when(value: string) {
-  return new Intl.DateTimeFormat('en-EG', { dateStyle: 'medium', timeStyle: 'short', hour12: true }).format(new Date(value));
+  return formatDateTime(value, { year: true });
 }
 
 export default function CustomerEmailActivity({ customerId, customerName, email }: { customerId: string; customerName: string; email?: string | null }) {

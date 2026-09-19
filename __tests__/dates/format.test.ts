@@ -15,3 +15,13 @@ describe('12-hour Cairo time everywhere', () => {
     expect(formatDateTime('nope')).toBe('—');
   });
 });
+
+describe('stored clock values', () => {
+  it('reads 24-hour strings as 12-hour', () => {
+    const { formatClock } = jest.requireActual<typeof import('@/lib/dates/format')>('@/lib/dates/format');
+    expect(formatClock('14:00')).toBe('2 PM');
+    expect(formatClock('09:30')).toBe('9:30 AM');
+    expect(formatClock('24:00')).toBe('12 AM');
+    expect(formatClock('00:15')).toBe('12:15 AM');
+  });
+});

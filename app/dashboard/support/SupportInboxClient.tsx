@@ -32,6 +32,7 @@ import { useAdminNotifications } from '@/components/dashboard/notifications/useA
 import { useAutoDismissNotifications } from '@/components/dashboard/notifications/useAutoDismissNotifications';
 import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
 import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
+import { formatTime } from '@/lib/dates/format';
 
 /** Last-activity stamp: clock time for today, a short date otherwise — used
  * for both the people rail and the rooms pane, so "12:27 AM" only ever means
@@ -42,7 +43,7 @@ function relativeStamp(iso: string): string {
   const sameDay =
     d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
   return sameDay
-    ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    ? formatTime(d)
     : d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
@@ -191,7 +192,7 @@ function toMessage(dto: MessageDto): Message {
     name: dto.senderName ?? (isCustomer ? 'Customer' : 'MiniRue'),
     senderAvatarUrl: dto.senderAvatarUrl ?? null,
     text: dto.body,
-    time: new Date(dto.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    time: formatTime(dto.createdAt),
     day: dayLabel(dto.createdAt),
     attachments: dto.attachments as MessageAttachment[] | undefined,
   };
@@ -716,7 +717,7 @@ export default function SupportInboxClient({ showPresence = false }: SupportInbo
         // real message would render server-side for STAFF/ADMIN anyway.
         senderAvatarUrl: user?.avatarUrl ?? null,
         text: p.body,
-        time: new Date(p.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        time: formatTime(p.createdAt),
         day: dayLabel(p.createdAt),
         attachments: p.attachments as MessageAttachment[] | undefined,
         status: p.status,

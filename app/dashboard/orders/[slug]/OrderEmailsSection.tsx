@@ -1,6 +1,7 @@
 import React from 'react';
 import type { OrderEmailLog, OrderEmailLogEntry } from '@/lib/api/orders';
 import DirectEmailComposer from '@/components/dashboard/email/DirectEmailComposer';
+import { formatDateTime } from '@/lib/dates/format';
 
 /**
  * The emails the customer was sent about this order, read-only (backend#135).
@@ -30,13 +31,7 @@ const STATUS: Record<OrderEmailLogEntry['status'], { label: string; tone: string
 
 function formatWhen(iso: string | null): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleString('en-EG', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatDateTime(iso, { year: true });
 }
 
 function transportNote(log: OrderEmailLog): string | null {

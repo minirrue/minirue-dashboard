@@ -9,6 +9,7 @@ import {
   type Warnings,
 } from '@/lib/api/discounts';
 import { errorMessageToText } from '@/lib/api/client';
+import { formatDateTime } from '@/lib/dates/format';
 
 function money(minor: number): string {
   return (minor / 100).toFixed(2);
@@ -158,7 +159,7 @@ export default function UsagePanel({ refreshToken }: { refreshToken: number }) {
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.id}>
-                    <td>{new Date(r.createdAt).toLocaleString()}</td>
+                    <td>{formatDateTime(r.createdAt, { year: true })}</td>
                     <td>
                       <code className="dash-slug">{r.code ?? 'bundle'}</code>
                     </td>

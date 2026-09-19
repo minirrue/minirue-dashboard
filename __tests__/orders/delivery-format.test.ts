@@ -31,14 +31,14 @@ describe('formatDeliveryWindow', () => {
   it("labels today's window as Today", () => {
     const today = cairoDate(Date.now());
     expect(formatDeliveryWindow({ date: today, start: '19:00', end: '24:00' })).toBe(
-      'Today, 19:00–24:00',
+      'Today, 7 PM–12 AM',
     );
   });
 
   it("labels tomorrow's window as Tomorrow (the after-cutoff case)", () => {
     const tomorrow = cairoDate(Date.now() + 24 * 60 * 60 * 1000);
     expect(formatDeliveryWindow({ date: tomorrow, start: '19:00', end: '24:00' })).toBe(
-      'Tomorrow, 19:00–24:00',
+      'Tomorrow, 7 PM–12 AM',
     );
   });
 
@@ -46,7 +46,7 @@ describe('formatDeliveryWindow', () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-09-15T22:30:00Z')); // 01:30 on 16 Sep in Cairo
     try {
       expect(formatDeliveryWindow({ date: '2026-09-16', start: '19:00', end: '24:00' })).toBe(
-        'Today, 19:00–24:00',
+        'Today, 7 PM–12 AM',
       );
     } finally {
       jest.useRealTimers();
@@ -55,7 +55,7 @@ describe('formatDeliveryWindow', () => {
 
   it('falls back to the raw date for anything further out', () => {
     expect(formatDeliveryWindow({ date: '2099-01-01', start: '19:00', end: '24:00' })).toBe(
-      '2099-01-01, 19:00–24:00',
+      '2099-01-01, 7 PM–12 AM',
     );
   });
 });

@@ -1,4 +1,5 @@
 import type { DeliveryLocation, DeliveryWindow } from '@/lib/api/orders';
+import { formatClock } from '@/lib/dates/format';
 
 /**
  * "Open in Google Maps" for a same-day order's pinned location
@@ -44,7 +45,7 @@ export function formatDeliveryWindow(window: DeliveryWindow | null | undefined):
   if (window.date === todayStr) dayLabel = 'Today';
   else if (window.date === tomorrowStr) dayLabel = 'Tomorrow';
 
-  return `${dayLabel}, ${window.start}–${window.end}`;
+  return `${dayLabel}, ${formatClock(window.start)}–${formatClock(window.end)}`;
 }
 
 /** YYYY-MM-DD in Africa/Cairo. */

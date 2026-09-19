@@ -16,6 +16,7 @@ import {
 import { LineChart } from '@/components/dashboard/charts';
 import SeoClient, { ExternalIcon, StatusIcon, type SeoExtraColumn, type SeoPagesSlots } from './SeoClient';
 import './seo-google.css';
+import { formatDateTime } from '@/lib/dates/format';
 
 /**
  * Google index status on the SEO tab (minirue-dashboard#70), from backend#172.
@@ -89,7 +90,7 @@ export function hasStaleGoogleCopy(pages: SeoGooglePage[]): boolean {
 function dateTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return formatDateTime(d);
 }
 
 function shortDate(iso: string): string {

@@ -25,6 +25,7 @@ import ProductWarningsBadge from '@/components/dashboard/ProductWarningsBadge';
 import VariantsSection from './VariantsSection';
 import MediaSection from './MediaSection';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import { formatTime } from '@/lib/dates/format';
 
 /* ── Types ── */
 interface FormValues {
@@ -439,7 +440,7 @@ export default function EditProductPage() {
           </button>
           {savedAt && (
             <span className="dash-help-text">
-              Saved at {savedAt.toLocaleTimeString()}
+              Saved at {formatTime(savedAt)}
             </span>
           )}
         </div>

@@ -10,6 +10,7 @@ import AnalyticsScopeBar from '@/components/dashboard/analytics/AnalyticsScopeBa
 import { visitorLabel } from '@/components/dashboard/analytics/VisitorName';
 import { storyFromJourney } from '@/lib/api/story';
 import '../flow.css';
+import { formatDateTime, formatTime } from '@/lib/dates/format';
 
 function ScreenSkeleton() {
   return (
@@ -40,9 +41,7 @@ function ScreenEmpty({ message }: { message: string }) {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString('en-EG', {
-    month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
+  return formatDateTime(iso, { year: true });
 }
 
 export default function VisitorDetailClient({ visitorId }: { visitorId: string }) {
@@ -157,7 +156,7 @@ export default function VisitorDetailClient({ visitorId }: { visitorId: string }
                           <span className="flow-step__dot" aria-hidden="true" />
                           <span className="flow-step__label">{st.label}</span>
                           <span className="flow-step__meta">
-                            {[st.valueMinor != null ? egp(st.valueMinor) : null, new Date(st.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })]
+                            {[st.valueMinor != null ? egp(st.valueMinor) : null, formatTime(st.at)]
                               .filter(Boolean)
                               .join(' · ')}
                           </span>

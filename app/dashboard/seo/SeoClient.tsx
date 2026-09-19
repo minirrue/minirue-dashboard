@@ -12,6 +12,7 @@ import {
 } from '@/lib/api/seo';
 import { useMinutesAgoLabel } from '@/lib/hooks/use-minutes-ago';
 import './seo.css';
+import { formatDateTime } from '@/lib/dates/format';
 
 /* ── Deep links ── */
 
@@ -194,7 +195,7 @@ function useExactTimeLabel(iso: string | null | undefined): string | null {
       setLabel(null);
       return;
     }
-    setLabel(new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }));
+    setLabel(formatDateTime(iso, { year: true }));
   }, [iso]);
   return label;
 }
