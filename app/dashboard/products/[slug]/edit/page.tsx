@@ -315,6 +315,22 @@ export default function EditProductPage() {
               {publishing ? 'Publishing…' : 'Publish'}
             </button>
           )}
+          <Link
+            href={`/inventory?q=${encodeURIComponent(product.name)}`}
+            className="dash-btn-ghost"
+            data-trace-id="PG-DASHBOARD-CAT-003::EL-LINK-inventory-product-edit"
+          >
+            Inventory
+          </Link>
+          {product.isMinirueOwned && (
+            <Link
+              href={`/accounting?tab=prices&q=${encodeURIComponent(product.name)}`}
+              className="dash-btn-ghost"
+              data-trace-id="PG-DASHBOARD-CAT-003::EL-LINK-accounting-product-edit"
+            >
+              Accounting
+            </Link>
+          )}
           {product.status !== 'ARCHIVED' && (
             <button
               className="dash-btn-ghost dash-btn-muted"
