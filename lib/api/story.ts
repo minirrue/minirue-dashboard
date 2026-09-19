@@ -1,4 +1,5 @@
-import { apiFetch } from './client';
+import { API_BASE, apiFetch, CLIENT_AUDIENCE, CLIENT_HEADER } from './client';
+import { getAccessToken } from '@/lib/auth/tokens';
 import type { ApiError } from './client';
 import { apiGetVisitorJourney } from './analytics-insights';
 import type { AnalyticsQueryParams, JourneyEvent, VisitorsPage } from './analytics-insights';
@@ -309,6 +310,40 @@ export async function apiGetVisitorStory(visitorId: string, params: AnalyticsQue
   }
   const j = await apiGetVisitorJourney(visitorId, params);
   return { data: storyFromJourney(visitorId, j.data, j.identity) };
+}
+
+/**
+ * Download the whole filtered set as the server builds it (backend 0.132,
+ * streamed, capped at 2,000 visitors) — not just the rows loaded on screen.
+ * Resolves false when the server export isn't available, so the caller can
+ * fall back to exporting what it has.
+ */
+export async function downloadServerExport(
+  dataset: 'people' | 'flow' | 'story',
+  format: 'csv' | 'json',
+  params: AnalyticsQueryParams,
+  filter: FlowFilter,
+  filename: string,
+): Promise<boolean> {
+  try {
+    const headers = new Headers({ [CLIENT_HEADER]: CLIENT_AUDIENCE });
+    const token = getAccessToken();
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+    const res = await fetch(`${API_BASE}${exportPath(dataset, format, params, filter)}`, { headers, credentials: 'include' });
+    if (!res.ok) return false;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}-${params.from}-to-${params.to}.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Full-set export path (server builds it). */

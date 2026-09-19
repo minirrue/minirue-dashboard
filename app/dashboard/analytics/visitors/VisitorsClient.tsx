@@ -10,6 +10,7 @@ import { LineChart } from '@/components/dashboard/charts';
 import {
   apiGetFlow,
   apiGetAllPeople,
+  downloadServerExport,
   PEOPLE_CAP,
   apiGetVisitorStory,
   DIMENSION_LABEL,
@@ -565,12 +566,12 @@ export default function VisitorsClient() {
                       type="button"
                       className="flow-pill-btn"
                       onClick={() =>
-                        downloadRows(
+                        void downloadServerExport('flow', 'csv', range, filter, 'visitor-flow').then((ok) => ok || downloadRows(
                           'visitor-flow',
                           flow.data.links.map((l) => ({ from: `${DIMENSION_LABEL[l.from.dimension]}: ${l.from.value}`, to: `${DIMENSION_LABEL[l.to.dimension]}: ${l.to.value}`, visitors: l.visitors })),
                           'csv',
                           range,
-                        )
+                        ))
                       }
                     >
                       Export flow
@@ -601,7 +602,12 @@ export default function VisitorsClient() {
         options={options}
         countryName={countryName}
         onOpen={setOpenVisitor}
-        onExport={(format) => downloadRows('visitors', peopleExportRows(rows), format, range)}
+        onExport={(format) => {
+          // Everyone matching, built by the server; what's on screen if that fails.
+          void downloadServerExport('people', format, range, filter, 'visitors').then((ok) => {
+            if (!ok) downloadRows('visitors', peopleExportRows(rows), format, range);
+          });
+        }}
       />
 
       {openVisitor && <StoryDrawer visitorId={openVisitor} range={range} onClose={() => setOpenVisitor(null)} />}
