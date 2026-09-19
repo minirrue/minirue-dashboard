@@ -217,11 +217,6 @@ a.cc-guest:focus-visible, a.cc-cart:focus-visible { outline: 2px solid var(--mr-
   .cc-live__pulse { animation: none; }
 }
 
-.cc-masthead {
-  font-family: var(--mr-font-display, var(--mr-font-serif, Georgia, serif));
-  font-weight: 500;
-  letter-spacing: -0.015em;
-}
 .cc-board-head { margin-top: 12px; }
 
 /* Who they are */

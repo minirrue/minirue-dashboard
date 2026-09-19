@@ -97,7 +97,7 @@ export default function RealtimeClient() {
     <>
       <AnalyticsSubnav />
       <div className="dash-page-header">
-        <h1 className="dash-page-title">Realtime</h1>
+        <h1 className="dash-page-title cc-masthead">Realtime</h1>
       </div>
       <p className="dash-help-text" style={{ marginBottom: 12 }}>
         Active-visitor counts refresh automatically every 10 seconds and pause while this tab is in

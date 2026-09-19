@@ -196,7 +196,7 @@ export default function SalesClient() {
     <>
       <AnalyticsSubnav />
       <div className="dash-page-header">
-        <h1 className="dash-page-title">Sales</h1>
+        <h1 className="dash-page-title cc-masthead">Sales</h1>
         <p className="dash-page-subtitle">
           Money in and money back, from the orders themselves — independent of
           visitor tracking.

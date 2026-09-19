@@ -149,7 +149,7 @@ export default function DevOpsClient() {
   return (
     <div data-trace-id="PG-DASHBOARD-ANL-DEVOPS::EL-REGION-root">
       <header className="dash-page-header">
-        <h1 className="dash-page-title">System</h1>
+        <h1 className="dash-page-title cc-masthead">System</h1>
       </header>
 
       <AnalyticsSubnav />

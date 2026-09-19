@@ -156,7 +156,7 @@ export default function CheckoutFunnelClient() {
     <>
       <AnalyticsSubnav />
       <div className="dash-page-header">
-        <h1 className="dash-page-title">Checkout</h1>
+        <h1 className="dash-page-title cc-masthead">Checkout</h1>
       </div>
       <AnalyticsScopeBar range={range} onChange={setRange} />
 

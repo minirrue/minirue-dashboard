@@ -100,7 +100,7 @@ export default function PagesClient() {
     <>
       <AnalyticsSubnav />
       <div className="dash-page-header">
-        <h1 className="dash-page-title">Pages</h1>
+        <h1 className="dash-page-title cc-masthead">Pages</h1>
       </div>
       <AnalyticsScopeBar range={range} onChange={setRange} />
 

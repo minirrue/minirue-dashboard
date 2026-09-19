@@ -74,7 +74,7 @@ export default function FlagsClient() {
       <AnalyticsSubnav />
       <div className="dash-page-header">
         <div>
-          <h1 className="dash-page-title">Who counts</h1>
+          <h1 className="dash-page-title cc-masthead">Who counts</h1>
           <p className="dash-page-subtitle">
             Accounts and visitors left out of analytics, or verified as real. Every verdict corrects past data too.
           </p>

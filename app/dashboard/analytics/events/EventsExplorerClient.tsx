@@ -90,7 +90,7 @@ export default function EventsExplorerClient() {
     <>
       <AnalyticsSubnav />
       <div className="dash-page-header">
-        <h1 className="dash-page-title">Events</h1>
+        <h1 className="dash-page-title cc-masthead">Events</h1>
       </div>
       <AnalyticsScopeBar range={range} onChange={setRange} />
 

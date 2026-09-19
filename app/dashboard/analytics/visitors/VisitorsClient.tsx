@@ -100,7 +100,7 @@ export default function VisitorsClient() {
     <>
       <AnalyticsSubnav />
       <div className="dash-page-header">
-        <h1 className="dash-page-title">Visitors</h1>
+        <h1 className="dash-page-title cc-masthead">Visitors</h1>
       </div>
       <AnalyticsScopeBar range={range} onChange={setRange} />
 

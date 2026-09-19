@@ -5917,3 +5917,10 @@ a.dash-visitor-name:hover { text-decoration: underline; text-underline-offset: 3
   .dash-analytics-scope__range { width: 100%; }
   .dash-analytics-scope__compare { flex-basis: 100%; }
 }
+
+/* Analytics & Media screen titles in the brand serif, on every screen (#115). */
+.cc-masthead {
+  font-family: var(--mr-font-display, var(--mr-font-serif, Georgia, serif));
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}

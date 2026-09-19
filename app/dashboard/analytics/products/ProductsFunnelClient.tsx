@@ -88,7 +88,7 @@ export default function ProductsFunnelClient() {
     <>
       <AnalyticsSubnav />
       <div className="dash-page-header">
-        <h1 className="dash-page-title">Products</h1>
+        <h1 className="dash-page-title cc-masthead">Products</h1>
       </div>
       <AnalyticsScopeBar range={range} onChange={setRange} />
 
