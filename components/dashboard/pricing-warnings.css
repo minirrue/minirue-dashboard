@@ -3,6 +3,14 @@
    yellow means "something is standing wrong with a price". So it never
    breathes, and its count is ink on the warn tint rather than white on red. */
 
+/* dashboard#91: this file used to be unlayered while dashboard.css lives in
+   @layer components — an unlayered rule always wins over a layered one
+   regardless of specificity, so `.dash-warn-btn { display: inline-flex }`
+   here overrode dashboard.css's collapsed-rail `display: none` for the same
+   selector, crowding the expand toggle. Same layer, so the cascade goes back
+   to normal origin/specificity/order rules between the two files. */
+@layer components {
+
 /* Same anatomy as .dash-notif-btn so it sits beside the bell as its twin. */
 .dash-warn-btn {
   position: relative;
@@ -95,3 +103,5 @@
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
+
+} /* @layer components */

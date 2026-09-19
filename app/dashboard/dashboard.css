@@ -16,6 +16,12 @@
     color: var(--mr-fg);
   }
 
+  /* dashboard#91: the rail's own width is the single animated property that
+     drives the whole collapse/expand — everything else (labels fading,
+     copy clipping) is keyed off the same [data-collapsed] flip and finishes
+     in lockstep because it shares this duration/easing. The rail itself
+     never scrolls horizontally (overflow: hidden): only .dash-sidebar-nav
+     scrolls, and only vertically. */
   .dash-sidebar {
     position: fixed;
     inset: 0 auto 0 0;
@@ -28,6 +34,17 @@
     overflow: hidden;
     border-right: 1px solid var(--mr-dash-hair);
     box-shadow: var(--mr-shadow-sm);
+    transition: width var(--mr-dur-normal) var(--mr-ease-out);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dash-sidebar,
+    .dash-main,
+    .dash-sidebar-link,
+    .dash-sidebar-link-label,
+    .dash-sidebar-link-badge {
+      transition: none;
+    }
   }
 
   .dash-sidebar-brand {
@@ -140,21 +157,60 @@
     color: var(--mr-fg-4);
   }
 
+  /* dashboard#91: overflow-x is hidden in BOTH states (never "visible") —
+     mixing visible on one axis with auto/scroll on the other computes to
+     auto on browsers, which is how a wide badge used to force a horizontal
+     scrollbar here. scrollbar-gutter reserves the thumb's space up front so
+     a thin scrollbar appearing/disappearing never shifts nav content. */
   .dash-sidebar-nav {
     flex: 1;
     min-height: 0;
+    overflow-x: hidden;
     overflow-y: auto;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: var(--mr-dash-hair) transparent;
     padding: 18px 16px 16px;
     display: flex;
     flex-direction: column;
     gap: 18px;
   }
 
+  .dash-sidebar-nav::-webkit-scrollbar {
+    width: 6px;
+  }
+  .dash-sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .dash-sidebar-nav::-webkit-scrollbar-thumb {
+    background: var(--mr-dash-hair);
+    border-radius: 3px;
+  }
+
+  /* dashboard#91's actual horizontal-scroll root cause was here: fill-mode
+     "both" kept mr-fade-up's `to { transform: translateY(0) }` applied
+     forever after the entrance animation finished. Per spec, ANY transform
+     value other than the keyword "none" — translateY(0) included — makes an
+     element a containing block for its `position: fixed` descendants. A
+     collapsed nav item's hover tooltip (.dash-sidebar-link[data-tooltip]
+     ::after) is `position: fixed; left: 78px`, meant to sit relative to the
+     *viewport* just past the 72px rail; once its ancestor group silently
+     became a containing block, that 78px became relative to a ~60px-wide
+     collapsed column instead, and the tooltip's full label text rendered
+     far outside it — the actual source of the rail's scrollable overflow
+     (overflow-x: hidden above only stopped it from being visibly
+     scrollable, not from existing: scrollWidth still read past clientWidth).
+     "backwards" alone still shows the from-keyframe during each item's
+     stagger delay (no flash-before-animating) and still plays the same
+     entrance slide-up, but drops the transform the instant the animation
+     ends instead of freezing it — same rendered end state (translateY(0)
+     and the browser's true default, none, paint identically), containing
+     block gone. */
   .dash-sidebar-group {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    animation: mr-fade-up 0.45s var(--mr-ease-out) both;
+    animation: mr-fade-up 0.45s var(--mr-ease-out) backwards;
   }
 
   .dash-sidebar-group:nth-child(1) { animation-delay: 80ms; }
@@ -212,6 +268,12 @@
     background: var(--mr-dash-hair);
   }
 
+  /* dashboard#91: width and padding stay constant across collapsed/expanded
+     — the link is always 100% of its column, which itself narrows because
+     the RAIL narrows. The only things that change here are gap (so the icon
+     recentres once the label has faded to nothing, see below) and
+     justify-content (belt-and-braces for the instant while the label is
+     still shrinking). Nothing about the link's own box "jumps". */
   .dash-sidebar-link {
     display: flex;
     align-items: center;
@@ -228,7 +290,8 @@
       background var(--mr-dur-fast) var(--mr-ease-snappy),
       color var(--mr-dur-fast) var(--mr-ease-snappy),
       border-color var(--mr-dur-fast) var(--mr-ease-snappy),
-      box-shadow var(--mr-dur-fast) var(--mr-ease-out);
+      box-shadow var(--mr-dur-fast) var(--mr-ease-out),
+      gap var(--mr-dur-normal) var(--mr-ease-out);
     border: 1px solid transparent;
     position: relative;
   }
@@ -260,6 +323,20 @@
     width: 14px;
     height: 14px;
     opacity: 0.9;
+  }
+
+  /* dashboard#91: hidden by fading opacity and collapsing max-width, not by
+     display:none — so it shrinks in step with the rail's own width
+     transition instead of vanishing on a separate, unanimated frame. */
+  .dash-sidebar-link-label {
+    flex: 1;
+    min-width: 0;
+    max-width: 200px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    opacity: 1;
+    transition: opacity var(--mr-dur-normal) var(--mr-ease-out), max-width var(--mr-dur-normal) var(--mr-ease-out);
   }
 
   /* Unread count for one nav section. Same pill and colour as the bell badge,
@@ -297,6 +374,8 @@
   .dash-sidebar-link-badge {
     margin-left: auto;
     flex-shrink: 0;
+    max-width: 100px;
+    overflow: hidden;
     padding: 1px 6px;
     border-radius: var(--mr-radius-pill);
     background: var(--mr-crimson-50, rgba(200, 40, 40, 0.1));
@@ -307,6 +386,8 @@
     text-transform: uppercase;
     letter-spacing: 0.03em;
     white-space: nowrap;
+    opacity: 1;
+    transition: opacity var(--mr-dur-normal) var(--mr-ease-out), max-width var(--mr-dur-normal) var(--mr-ease-out), padding var(--mr-dur-normal) var(--mr-ease-out), border-width var(--mr-dur-normal) var(--mr-ease-out);
   }
 
   .dash-sidebar-footer {
@@ -433,6 +514,10 @@
     flex-direction: column;
     min-height: 100svh;
     background: var(--mr-dash-bg);
+    /* Matches .dash-sidebar's own width transition exactly, so the content
+       column and the rail move as one piece instead of the page jumping
+       once the rail finishes (dashboard#91). */
+    transition: margin-left var(--mr-dur-normal) var(--mr-ease-out);
   }
 
   .dash-shell[data-sidebar-collapsed="true"] .dash-sidebar {
@@ -455,10 +540,22 @@
   .dash-sidebar[data-collapsed="true"] .dash-sidebar-logo-mark,
   .dash-sidebar[data-collapsed="true"] .dash-sidebar-subtitle,
   .dash-sidebar[data-collapsed="true"] .dash-user-menu-copy,
-  .dash-sidebar[data-collapsed="true"] .dash-user-menu-chevron,
+  .dash-sidebar[data-collapsed="true"] .dash-user-menu-chevron {
+    display: none;
+  }
+
+  /* dashboard#91: these two fade out (opacity + max-width -> 0) instead of
+     display:none, in step with the rail's own width transition — see the
+     base rules for .dash-sidebar-link-label / -badge. */
   .dash-sidebar[data-collapsed="true"] .dash-sidebar-link-label,
   .dash-sidebar[data-collapsed="true"] .dash-sidebar-link-badge {
-    display: none;
+    opacity: 0;
+    max-width: 0;
+  }
+
+  .dash-sidebar[data-collapsed="true"] .dash-sidebar-link-badge {
+    padding: 0;
+    border-width: 0;
   }
 
   .dash-sidebar[data-collapsed="true"] .dash-sidebar-logo-compact {
@@ -475,18 +572,18 @@
     font-size: 22px;
   }
 
-  .dash-sidebar[data-collapsed="true"] .dash-sidebar-brand-actions,
-  .dash-sidebar[data-collapsed="true"] .dash-sidebar-collapse {
-    width: 36px;
-  }
-
+  /* dashboard#91 redesign: a collapsed rail shows the logo, then exactly ONE
+     control — the expand toggle, full rail width, 36x36, centred. The bell
+     and pricing-warnings triangle move out of the way entirely (they stay
+     reachable from the topbar and from each nav item's own dot/tooltip) so
+     nothing can ever crowd the toggle again, regardless of how many badges
+     a future feature adds beside it. */
   .dash-sidebar[data-collapsed="true"] .dash-sidebar-brand-actions {
+    width: 100%;
     flex-direction: column;
+    align-items: center;
   }
 
-  /* A collapsed rail must always provide an obvious way back. The bell and
-     warning controls previously consumed the small brand stack and pushed the
-     expand button below its clipped area. They remain available after expand. */
   .dash-sidebar[data-collapsed="true"] .dash-notif-btn,
   .dash-sidebar[data-collapsed="true"] .dash-warn-btn {
     display: none;
@@ -494,33 +591,28 @@
 
   .dash-sidebar[data-collapsed="true"] .dash-sidebar-collapse {
     order: -1;
+    width: 36px;
+    height: 36px;
   }
 
   .dash-sidebar[data-collapsed="true"] .dash-sidebar-nav {
     padding: 10px 8px;
     gap: 8px;
-    overflow-x: visible;
   }
 
   .dash-sidebar[data-collapsed="true"] .dash-sidebar-group {
     gap: 2px;
   }
 
+  /* dashboard#91: width, padding and icon size are unchanged from the
+     expanded rule — this box never "jumps" a fixed pixel value. gap alone
+     collapses to 0 (transitioned, see the base .dash-sidebar-link rule) so
+     the icon settles dead-centre in a 54px-wide fixed slot exactly once the
+     label beside it has faded to nothing, on the same clock as the rail. */
   .dash-sidebar[data-collapsed="true"] .dash-sidebar-link {
     justify-content: center;
-    width: 54px;
+    gap: 0;
     min-height: 42px;
-    padding: 10px;
-  }
-
-  .dash-sidebar[data-collapsed="true"] .dash-sidebar-link-icon {
-    width: 18px;
-    height: 18px;
-  }
-
-  .dash-sidebar[data-collapsed="true"] .dash-sidebar-link-icon svg {
-    width: 17px;
-    height: 17px;
   }
 
   .dash-sidebar[data-collapsed="true"] .dash-sidebar-link-count,
@@ -532,12 +624,27 @@
     margin: 0;
   }
 
-  .dash-sidebar[data-collapsed="true"] .dash-sidebar-link-count {
-    min-width: 16px;
-    height: 16px;
-    padding: 0 4px;
-    font-size: 9px;
-    line-height: 16px;
+  /* dashboard#91: the collapsed 54px slot has no room for a full pill (icon
+     plus number) beside the nav icon — both counts become a plain coloured
+     dot, same anchor as the unread dot above. The number itself is never
+     lost: the badge's own aria-label (e.g. "3 pricing warnings") still
+     reaches screen readers, and the link's title/data-tooltip still shows
+     the item's label on hover. */
+  .dash-sidebar[data-collapsed="true"] .dash-sidebar-link-count,
+  .dash-sidebar[data-collapsed="true"] .dash-sidebar-link-warn {
+    width: 8px;
+    height: 8px;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+    font-size: 0;
+    line-height: 0;
+    overflow: hidden;
+  }
+
+  .dash-sidebar[data-collapsed="true"] .dash-sidebar-link-warn svg {
+    display: none;
   }
 
   .dash-sidebar[data-collapsed="true"] .dash-sidebar-link[data-tooltip]::after {
