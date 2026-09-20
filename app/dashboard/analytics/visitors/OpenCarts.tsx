@@ -46,6 +46,35 @@ export default function OpenCarts({ range, onFlagged }: { range: AnalyticsRangeS
   const rows = carts.data?.data ?? [];
   const total = rows.reduce((s, r) => s + r.valueMinor, 0);
 
+  /**
+   * Guest carts carry no account, so nothing links an old test cart back to
+   * the owner automatically (owner, 2026-09-20: "those 6 carts are from older
+   * dates"). Hiding them all at once is the honest shortcut: he is the only
+   * one who knows which were his, and one click beats six.
+   */
+  const markAllOurs = async () => {
+    const ids = rows.map((r) => r.visitorId).filter((v): v is string => !!v);
+    if (!ids.length) return;
+    setBusy('all');
+    setError(null);
+    try {
+      for (const id of ids) {
+        await apiSetTrafficFlag({
+          subjectType: 'VISITOR',
+          subjectId: id,
+          trafficClass: 'OWNER',
+          reason: 'Our own carts — hidden in bulk from Open carts',
+        });
+      }
+      await carts.refetch();
+      onFlagged();
+    } catch {
+      setError('Some of them could not be hidden. Refresh and try the rest.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const markOurs = async (r: AbandonedRow) => {
     if (!r.visitorId) return;
     setBusy(r.visitorId);
@@ -81,6 +110,15 @@ export default function OpenCarts({ range, onFlagged }: { range: AnalyticsRangeS
         </div>
         <div className="ppl__exports">
           <RefreshButton onRefresh={() => carts.refetch()} title="Reload open carts only" />
+          <button
+            type="button"
+            className="flow-pill-btn"
+            disabled={!rows.length || busy === 'all'}
+            title="Mark every cart in this list as ours — each one can be restored individually afterwards"
+            onClick={() => void markAllOurs()}
+          >
+            {busy === 'all' ? 'Hiding…' : `These ${rows.length || ''} are all us`}
+          </button>
           <button
             type="button"
             className="flow-pill-btn"
