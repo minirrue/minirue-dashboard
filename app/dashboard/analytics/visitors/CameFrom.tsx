@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import type { FlowFilter, FlowFilterKey, PersonRow } from '@/lib/api/story';
+import { PLATFORM_NETWORK, type FlowFilter, type FlowFilterKey, type PersonRow } from '@/lib/api/story';
 import { downloadRows } from '@/lib/analytics/export';
 import type { AnalyticsQueryParams } from '@/lib/api/analytics-insights';
 
@@ -15,10 +15,11 @@ import type { AnalyticsQueryParams } from '@/lib/api/analytics-insights';
  * dimension, search, sort any column, export — and click to show only them.
  */
 
-type Dim = 'medium' | 'platform' | 'campaign' | 'landing' | 'country' | 'device';
+type Dim = 'medium' | 'network' | 'platform' | 'campaign' | 'landing' | 'country' | 'device';
 
 const DIM_LABEL: Record<Dim, string> = {
   medium: 'Kind',
+  network: 'Network',
   platform: 'Platform',
   campaign: 'Campaign',
   landing: 'Landing page',
@@ -26,7 +27,7 @@ const DIM_LABEL: Record<Dim, string> = {
   device: 'Device',
 };
 /** The drill-down chain (#90: Channel → Source → Campaign → Landing URL). */
-const CHAIN: Dim[] = ['medium', 'platform', 'campaign', 'landing'];
+const CHAIN: Dim[] = ['medium', 'network', 'platform', 'campaign', 'landing'];
 /** Where a click narrows the people and the flow. */
 const FILTER_OF: Partial<Record<Dim, FlowFilterKey>> = {
   platform: 'platform',
@@ -52,6 +53,9 @@ function keyOf(p: PersonRow, dim: Dim): string {
   switch (dim) {
     case 'medium':
       return (p.medium ?? (p.platform ? 'other' : 'direct')).toLowerCase();
+    case 'network':
+      // Facebook and Instagram share one Meta pixel: shown apart, totalled here.
+      return p.platform ? PLATFORM_NETWORK[p.platform] ?? p.platform : 'Direct';
     case 'platform':
       return p.platform ?? 'Direct';
     case 'campaign':
@@ -135,6 +139,7 @@ export default function CameFrom({
 
   const label = (d: Dim, k: string) => {
     if (d === 'medium') return MEDIUM_LABEL[k] ?? k[0]?.toUpperCase() + k.slice(1);
+    if (d === 'landing' && k) return k;
     if (!k) return d === 'campaign' ? 'Untagged — no campaign on the link' : d === 'landing' ? 'Unknown' : 'Unknown';
     if (d === 'country') return countryName(k);
     if (d === 'device') return k[0].toUpperCase() + k.slice(1);

@@ -72,6 +72,8 @@ function peopleExportRows(rows: PersonRow[]): ExportRow[] {
     medium: p.medium,
     campaign: p.campaign,
     landed_on: p.landingPath,
+    came_from_url: p.referrerUrl ?? null,
+    landing_url: p.landingUrl ?? null,
     looked_at: p.productsViewed.join(' | '),
     got_to: p.furthestStage ? STAGE_LABEL[p.furthestStage] ?? p.furthestStage : null,
     stopped_because: p.stopReason ? STOP_REASON_LABEL[p.stopReason] ?? p.stopReason : null,

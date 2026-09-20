@@ -247,3 +247,4 @@
 .src-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--mr-fg-2); }
 .src-num--strong { color: var(--mr-fg); font-weight: 700; }
 @media (max-width: 900px) { .src { padding: 14px; } }
+.ppl__url { display: block; color: var(--mr-fg-4); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

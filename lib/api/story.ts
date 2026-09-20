@@ -57,6 +57,10 @@ export interface PersonRow {
   medium: string | null;
   campaign: string | null;
   landingPath: string | null;
+  /** The exact URL they arrived from, host and path (backend#223). */
+  referrerUrl?: string | null;
+  /** The page they landed on, with its utm tags and no click ids. */
+  landingUrl?: string | null;
   productsViewed: string[];
   furthestStage: string | null;
   cartValueMinor: number | null;
@@ -391,6 +395,18 @@ export const STOP_REASON_LABEL: Record<string, string> = {
   payment_failed: 'Payment failed',
   bought: 'Bought',
   refunded: 'Refunded',
+};
+
+/**
+ * Facebook and Instagram share one Meta pixel, so the dashboard shows them
+ * apart (the ads tag utm_source=fb / ig) and totals them under Meta
+ * (backend#223). "Meta" alone is a click whose placement is unknowable.
+ */
+export const PLATFORM_NETWORK: Record<string, string> = {
+  Facebook: 'Meta',
+  Instagram: 'Meta',
+  Meta: 'Meta',
+  TikTok: 'TikTok',
 };
 
 export function personName(p: { visitorNumber: number | null; visitorId: string; customer?: { name: string | null } | null }): string {

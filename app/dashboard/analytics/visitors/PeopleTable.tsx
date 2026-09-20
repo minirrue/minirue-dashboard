@@ -176,8 +176,12 @@ export default function PeopleTable({
                 {p.platform ?? 'Direct'}
                 {p.medium && p.medium !== 'direct' && <small className="ppl__medium">{MEDIUM[p.medium] ?? p.medium}</small>}
                 {p.campaign && !/^__.*__$/.test(p.campaign) && <small title="utm_campaign">{p.campaign}</small>}
+                {p.referrerUrl && <small className="ppl__url" title={`Came from ${p.referrerUrl}`}>{p.referrerUrl}</small>}
               </span>
-              <span role="cell" className="ppl__muted">{p.productsViewed.length ? p.productsViewed.join(', ') : p.landingPath ?? '—'}</span>
+              <span role="cell" className="ppl__muted">
+                {p.productsViewed.length ? p.productsViewed.join(', ') : '—'}
+                {(p.landingUrl ?? p.landingPath) && <small className="ppl__url" title={`Landed on ${p.landingUrl ?? p.landingPath}`}>landed on {p.landingUrl ?? p.landingPath}</small>}
+              </span>
               <span role="cell">{p.furthestStage ? STAGE_LABEL[p.furthestStage] ?? p.furthestStage : '—'}</span>
               <span role="cell" className="ppl__stop" title={p.stopDetail ?? undefined}>
                 {p.orders > 0 ? '—' : p.stopReason ? STOP_REASON_LABEL[p.stopReason] ?? p.stopReason : '—'}
