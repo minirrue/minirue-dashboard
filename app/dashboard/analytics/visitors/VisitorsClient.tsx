@@ -29,6 +29,7 @@ import type { ApiError } from '@/lib/api/client';
 import { downloadRows, type ExportRow } from '@/lib/analytics/export';
 import PeopleTable, { type PeopleOptions } from './PeopleTable';
 import CameFrom from './CameFrom';
+import RefreshButton from '@/components/dashboard/analytics/RefreshButton';
 import { formatDateTime } from '@/lib/dates/format';
 import './flow.css';
 
@@ -400,6 +401,10 @@ export default function VisitorsClient() {
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<PeopleSort>('lastSeenAt');
   const [openVisitor, setOpenVisitor] = useState<string | null>(() => params.get('visitor'));
+  // Bumped by a section's Refresh button; the fetch effects below watch it,
+  // so one section reloads without touching the rest of the page.
+  const [flowTick, setFlowTick] = useState(0);
+  const [peopleTick, setPeopleTick] = useState(0);
 
   useEffect(() => {
     let off = false;
@@ -410,7 +415,7 @@ export default function VisitorsClient() {
     return () => {
       off = true;
     };
-  }, [range, filter]);
+  }, [range, filter, flowTick]);
 
   // Everyone in the range, loaded page after page until the list is whole.
   useEffect(() => {
@@ -425,7 +430,7 @@ export default function VisitorsClient() {
       signal.aborted = true;
       window.clearTimeout(t);
     };
-  }, [range, filter, q, sort]);
+  }, [range, filter, q, sort, peopleTick]);
 
   const toggle = (dim: FlowFilterKey, value: string) =>
     setFilter((f) => {
@@ -537,7 +542,15 @@ export default function VisitorsClient() {
         )}
       </div>
 
-      <CameFrom rows={rows} done={people.done} filter={filter} setKey={setKey} countryName={countryName} range={range} />
+      <CameFrom
+        rows={rows}
+        done={people.done}
+        filter={filter}
+        setKey={setKey}
+        countryName={countryName}
+        range={range}
+        onRefresh={() => setPeopleTick((t) => t + 1)}
+      />
 
       <div className="flow-layout">
         <div className="flow-stack">
@@ -564,6 +577,7 @@ export default function VisitorsClient() {
                 <>
                   <p className="flow-total">
                     <span className="flow-total__n">{n(flow.data.totalVisitors)}</span> {chips.length ? 'people match' : 'real shoppers'}
+                    <RefreshButton compact onRefresh={() => setFlowTick((t) => t + 1)} title="Reload the flow only" />
                     <button
                       type="button"
                       className="flow-pill-btn"
@@ -604,6 +618,7 @@ export default function VisitorsClient() {
         options={options}
         countryName={countryName}
         onOpen={setOpenVisitor}
+        onRefresh={() => setPeopleTick((t) => t + 1)}
         onExport={(format) => {
           // Everyone matching, built by the server; what's on screen if that fails.
           void downloadServerExport('people', format, range, filter, 'visitors').then((ok) => {

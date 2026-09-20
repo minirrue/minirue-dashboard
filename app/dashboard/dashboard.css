@@ -5934,3 +5934,21 @@ a.dash-visitor-name:hover { text-decoration: underline; text-underline-offset: 3
   .dash-analytics-nav__section { flex-wrap: nowrap; flex: none; }
   .dash-analytics-nav__section + .dash-analytics-nav__section { padding-left: 12px; }
 }
+
+/* Refresh one section, or one screen, without reloading the page
+   (owner, 2026-09-20). Lives next to the scope controls, never in the way. */
+.dash-analytics-scope__refresh { display: flex; align-items: center; }
+.dash-refresh { display: inline-flex; align-items: center; gap: 8px; }
+.dash-refresh__btn {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 12px;
+  border: 1px solid var(--mr-dash-hair); border-radius: 999px; background: transparent; color: var(--mr-fg);
+  font: 600 12px/1 var(--mr-font-ui); cursor: pointer; white-space: nowrap;
+}
+.dash-refresh__btn:hover:not(:disabled) { border-color: var(--mr-fg-4); }
+.dash-refresh__btn:disabled { opacity: .6; cursor: default; }
+.dash-refresh__btn:focus-visible { outline: 2px solid var(--mr-gold-500); outline-offset: 2px; }
+.dash-refresh__at { color: var(--mr-fg-4); font-size: 11px; white-space: nowrap; }
+.dash-refresh__icon { font-size: 14px; line-height: 1; }
+.dash-refresh__icon[data-spin] { animation: dash-refresh-spin 800ms linear infinite; }
+@keyframes dash-refresh-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .dash-refresh__icon[data-spin] { animation: none; } }

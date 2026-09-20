@@ -14,6 +14,7 @@ import {
   type PersonRow,
 } from '@/lib/api/story';
 import { formatDateTime } from '@/lib/dates/format';
+import RefreshButton from '@/components/dashboard/analytics/RefreshButton';
 
 export interface PeopleOptions {
   platform: string[];
@@ -94,6 +95,7 @@ export default function PeopleTable({
   countryName,
   onOpen,
   onExport,
+  onRefresh,
 }: {
   rows: PersonRow[];
   loading: boolean;
@@ -109,6 +111,7 @@ export default function PeopleTable({
   countryName: (code: string) => string;
   onOpen: (visitorId: string) => void;
   onExport: (format: 'csv' | 'json') => void;
+  onRefresh: () => void;
 }) {
   const capped = done && rows.length >= PEOPLE_CAP;
   return (
@@ -127,6 +130,7 @@ export default function PeopleTable({
           </p>
         </div>
         <div className="ppl__exports">
+          <RefreshButton onRefresh={onRefresh} title="Reload the people list only" />
           <button type="button" className="flow-pill-btn" disabled={!rows.length} onClick={() => onExport('csv')}>Export CSV</button>
           <button type="button" className="flow-pill-btn" disabled={!rows.length} onClick={() => onExport('json')}>JSON</button>
         </div>

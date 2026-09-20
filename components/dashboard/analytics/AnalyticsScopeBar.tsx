@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import type { AnalyticsRangeState, TrafficScope } from '@/lib/hooks/use-analytics';
+import { RefreshScreenButton } from './RefreshButton';
 
 const TRAFFIC_OPTIONS: { value: TrafficScope; label: string; hint: string }[] = [
   { value: 'real', label: 'Real only', hint: 'Customers only — bots, staff, the owner and flagged traffic left out' },
@@ -58,6 +59,9 @@ export default function AnalyticsScopeBar({
             Compare to previous period
           </label>
         )}
+      </div>
+      <div className="dash-analytics-scope__refresh">
+        <RefreshScreenButton compact />
       </div>
       <div className="dash-analytics-scope__traffic">
         <span className="dash-label" id="scope-traffic-label">Traffic</span>

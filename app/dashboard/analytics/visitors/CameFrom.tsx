@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { PLATFORM_NETWORK, realOrNull, type FlowFilter, type FlowFilterKey, type PersonRow } from '@/lib/api/story';
 import { downloadRows } from '@/lib/analytics/export';
+import RefreshButton from '@/components/dashboard/analytics/RefreshButton';
 import type { AnalyticsQueryParams } from '@/lib/api/analytics-insights';
 
 /**
@@ -124,6 +125,7 @@ export default function CameFrom({
   setKey,
   countryName,
   range,
+  onRefresh,
 }: {
   rows: PersonRow[];
   done: boolean;
@@ -131,6 +133,7 @@ export default function CameFrom({
   setKey: (key: FlowFilterKey, value: string) => void;
   countryName: (code: string) => string;
   range: AnalyticsQueryParams;
+  onRefresh: () => void;
 }) {
   const [dim, setDim] = useState<Dim>('medium');
   const [q, setQ] = useState('');
@@ -255,6 +258,7 @@ export default function CameFrom({
           </p>
         </div>
         <div className="ppl__exports">
+          <RefreshButton onRefresh={onRefresh} title="Reload sources only" />
           <button type="button" className="flow-pill-btn" onClick={() => exportRows('csv')}>Export CSV</button>
           <button type="button" className="flow-pill-btn" onClick={() => exportRows('json')}>JSON</button>
         </div>
