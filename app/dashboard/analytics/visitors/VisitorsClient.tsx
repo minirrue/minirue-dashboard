@@ -30,6 +30,8 @@ import { downloadRows, type ExportRow } from '@/lib/analytics/export';
 import PeopleTable, { type PeopleOptions } from './PeopleTable';
 import CameFrom from './CameFrom';
 import RefreshButton from '@/components/dashboard/analytics/RefreshButton';
+import OpenCarts from './OpenCarts';
+import HiddenPeople from './HiddenPeople';
 import { formatDateTime } from '@/lib/dates/format';
 import './flow.css';
 
@@ -604,6 +606,8 @@ export default function VisitorsClient() {
 
       </div>
 
+      <OpenCarts range={range} onFlagged={() => setPeopleTick((t) => t + 1)} />
+
       <PeopleTable
         rows={rows}
         loading={!people.done}
@@ -619,6 +623,7 @@ export default function VisitorsClient() {
         countryName={countryName}
         onOpen={setOpenVisitor}
         onRefresh={() => setPeopleTick((t) => t + 1)}
+        onFlagged={() => setPeopleTick((t) => t + 1)}
         onExport={(format) => {
           // Everyone matching, built by the server; what's on screen if that fails.
           void downloadServerExport('people', format, range, filter, 'visitors').then((ok) => {
@@ -626,6 +631,8 @@ export default function VisitorsClient() {
           });
         }}
       />
+
+      <HiddenPeople onChange={() => setPeopleTick((t) => t + 1)} />
 
       {openVisitor && <StoryDrawer visitorId={openVisitor} range={range} onClose={() => setOpenVisitor(null)} />}
     </>

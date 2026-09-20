@@ -15,6 +15,7 @@ import {
 } from '@/lib/api/story';
 import { formatDateTime } from '@/lib/dates/format';
 import RefreshButton from '@/components/dashboard/analytics/RefreshButton';
+import { apiSetTrafficFlag } from '@/lib/api/traffic-flags';
 
 export interface PeopleOptions {
   platform: string[];
@@ -96,6 +97,7 @@ export default function PeopleTable({
   onOpen,
   onExport,
   onRefresh,
+  onFlagged,
 }: {
   rows: PersonRow[];
   loading: boolean;
@@ -112,8 +114,25 @@ export default function PeopleTable({
   onOpen: (visitorId: string) => void;
   onExport: (format: 'csv' | 'json') => void;
   onRefresh: () => void;
+  onFlagged: () => void;
 }) {
   const capped = done && rows.length >= PEOPLE_CAP;
+  // "This is us" hides that person everywhere, past and future, until they are
+  // restored from the hidden list below (owner, 2026-09-20).
+  const [hiding, setHiding] = React.useState<string | null>(null);
+  const [flagError, setFlagError] = React.useState<string | null>(null);
+  const markOurs = async (visitorId: string) => {
+    setHiding(visitorId);
+    setFlagError(null);
+    try {
+      await apiSetTrafficFlag({ subjectType: 'VISITOR', subjectId: visitorId, trafficClass: 'OWNER', reason: 'Marked "This is us" from People' });
+      onFlagged();
+    } catch {
+      setFlagError('That person could not be hidden. Try again.');
+    } finally {
+      setHiding(null);
+    }
+  };
   return (
     <section className="ppl" aria-label="People">
       <header className="ppl__head">
@@ -156,7 +175,7 @@ export default function PeopleTable({
         </label>
       </div>
 
-      {error && <p className="dash-inline-error">{error}</p>}
+      {(error || flagError) && <p className="dash-inline-error">{error ?? flagError}</p>}
       {loading && !rows.length && <span className="dash-skeleton" style={{ display: 'block', height: 240, borderRadius: 12 }} />}
 
       {rows.length > 0 && (
@@ -170,9 +189,10 @@ export default function PeopleTable({
             <span role="columnheader" className="ppl__num">Orders</span>
             <span role="columnheader">Where</span>
             <span role="columnheader">Last seen</span>
+            <span role="columnheader">This is us</span>
           </div>
           {rows.map((p) => (
-            <button key={p.visitorId} type="button" role="row" className="ppl__row" onClick={() => onOpen(p.visitorId)}>
+            <div key={p.visitorId} role="row" className="ppl__row" tabIndex={0} onClick={() => onOpen(p.visitorId)} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onOpen(p.visitorId)}>
               <span role="cell" className="ppl__name" data-customer={p.customer?.name ? '' : undefined}>
                 {personName(p)}
                 {p.trafficClass !== 'REAL' && <span className="dash-flag-chip" data-class={p.trafficClass}>{p.trafficClass.toLowerCase()}</span>}
@@ -196,7 +216,21 @@ export default function PeopleTable({
               <span role="cell" className="ppl__num">{p.orders ? `${p.orders} · ${egp(p.revenueMinor)}` : p.cartValueMinor ? `bag ${egp(p.cartValueMinor)}` : '—'}</span>
               <span role="cell" className="ppl__muted">{[placeLabel(p.city, p.country, countryName), realOrNull(p.device)].filter(Boolean).join(' · ')}</span>
               <span role="cell" className="ppl__muted ppl__when">{when(p.lastSeenAt)}</span>
-            </button>
+              <span role="cell" className="ppl__ours">
+                <button
+                  type="button"
+                  className="flow-pill-btn"
+                  disabled={hiding === p.visitorId}
+                  title="Hide this person from analytics — their whole history, not just today"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void markOurs(p.visitorId);
+                  }}
+                >
+                  {hiding === p.visitorId ? 'Hiding…' : 'This is us'}
+                </button>
+              </span>
+            </div>
           ))}
         </div>
       )}
