@@ -4,6 +4,7 @@ import React from 'react';
 import {
   PEOPLE_CAP,
   personName,
+  shortPath,
   STAGE_LABEL,
   placeLabel,
   realOrNull,
@@ -197,19 +198,19 @@ export default function PeopleTable({
                   {personName(p)}
                   {p.trafficClass !== 'REAL' && <span className="dash-flag-chip" data-class={p.trafficClass}>{p.trafficClass.toLowerCase()}</span>}
                   {p.contactable && <span className="flow-person__contact">can contact</span>}
+                  <button
+                    type="button"
+                    className="ppl__ours-btn"
+                    disabled={hiding === p.visitorId}
+                    title="This is us — hide this person from analytics, their whole history, not just today"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void markOurs(p.visitorId);
+                    }}
+                  >
+                    {hiding === p.visitorId ? '…' : 'This is us'}
+                  </button>
                 </span>
-                <button
-                  type="button"
-                  className="ppl__ours-link"
-                  disabled={hiding === p.visitorId}
-                  title="Hide this person from analytics — their whole history, not just today"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void markOurs(p.visitorId);
-                  }}
-                >
-                  {hiding === p.visitorId ? 'Hiding…' : 'This is us — hide'}
-                </button>
               </span>
               <span role="cell" className="ppl__src">
                 {p.platform ?? 'Direct'}
@@ -219,7 +220,11 @@ export default function PeopleTable({
               </span>
               <span role="cell" className="ppl__muted">
                 {p.productsViewed.length ? p.productsViewed.join(', ') : '—'}
-                {(p.landingUrl ?? p.landingPath) && <small className="ppl__url" title={`Landed on ${p.landingUrl ?? p.landingPath}`}>landed on {p.landingUrl ?? p.landingPath}</small>}
+                {(p.landingUrl ?? p.landingPath) && (
+                  <small className="ppl__url" title={`Landed on ${p.landingUrl ?? p.landingPath}`}>
+                    landed on {shortPath(p.landingUrl ?? p.landingPath)}
+                  </small>
+                )}
               </span>
               <span role="cell">{p.furthestStage ? STAGE_LABEL[p.furthestStage] ?? p.furthestStage : '—'}</span>
               <span role="cell" className="ppl__stop" title={p.stopDetail ?? undefined}>

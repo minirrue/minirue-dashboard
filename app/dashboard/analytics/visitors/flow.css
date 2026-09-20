@@ -276,15 +276,15 @@
   .carts__row > .ppl__ours { grid-column: 2; grid-row: 1; }
 }
 .ppl__name-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.ppl__ours-link {
-  display: inline-block; margin-top: 3px; padding: 0; border: 0; background: none;
-  color: var(--mr-fg-3); font: 600 11px var(--mr-font-ui); text-decoration: underline; text-underline-offset: 3px;
-  cursor: pointer;
-}
-.ppl__ours-link:hover:not(:disabled) { color: var(--mr-st-err-fg, #9b2c2c); }
-.ppl__ours-link:disabled { opacity: .6; cursor: default; }
-.ppl__ours-link:focus-visible { outline: 2px solid var(--mr-gold-500); outline-offset: 2px; border-radius: 4px; }
 /* A story card never lets a 200-character ad URL escape it. */
 .flow-session, .flow-session__touch, .flow-steps, .flow-step { min-width: 0; }
 .flow-session__when, .flow-session__src, .flow-step__label, .flow-step__meta { overflow-wrap: anywhere; word-break: break-word; }
 .flow-step { grid-template-columns: 10px minmax(0, 1fr) auto; }
+.ppl__ours-btn {
+  flex: none; min-height: 20px; padding: 1px 8px;
+  border: 1px solid var(--mr-dash-hair); border-radius: 999px; background: transparent;
+  color: var(--mr-fg-3); font: 600 10.5px/1.5 var(--mr-font-ui); letter-spacing: .01em; cursor: pointer;
+}
+.ppl__ours-btn:hover:not(:disabled) { border-color: var(--mr-st-err-fg, #9b2c2c); color: var(--mr-st-err-fg, #9b2c2c); }
+.ppl__ours-btn:disabled { opacity: .6; cursor: default; }
+.ppl__ours-btn:focus-visible { outline: 2px solid var(--mr-gold-500); outline-offset: 2px; }
