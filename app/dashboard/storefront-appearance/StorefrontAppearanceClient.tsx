@@ -21,6 +21,8 @@ import type {
 } from '@/lib/api/storefront';
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
+import { apiGetSettings } from '@/lib/api/settings';
+import type { StoreSettings } from '@/lib/api/settings';
 import SectionCard from './SectionCard';
 import HeroEditor from './editors/HeroEditor';
 import LinkTargetField from './pickers/LinkTargetField';
@@ -33,6 +35,42 @@ import MobileMenuEditor from './editors/MobileMenuEditor';
 import FooterEditor from './editors/FooterEditor';
 import PagesEditor from './PagesEditor';
 import ProductSectionEditor from './editors/ProductSectionEditor';
+import TrustEditor from './editors/TrustEditor';
+import type { PromiseTokenValues } from '@/lib/api/storefront';
+
+/**
+ * Live values for the promise-token preview and the "already advertised
+ * automatically" panel, derived from Settings — never sent back to the
+ * server; the storefront resolves the real values itself at render time.
+ * Loaded best-effort: a failure here must never block editing or saving the
+ * storefront layout, so it fails silently to `null` (undefined values).
+ */
+function derivePromiseFacts(settings: StoreSettings | null): PromiseTokenValues & {
+  freeShippingIsTrue: boolean;
+  sameDayIsTrue: boolean;
+  codIsTrue: boolean;
+} {
+  if (!settings) return { freeShippingIsTrue: false, sameDayIsTrue: false, codIsTrue: false };
+
+  const freeRates = (settings.shipping?.rates ?? []).filter((r) => r.feeCents === 0);
+  const freeGovernorates = freeRates.map((r) => r.label);
+
+  const sameDay = settings.fulfillment?.delivery?.sameDay;
+  const sameDayGovernorates = sameDay?.enabled ? sameDay.governorates : [];
+
+  const codLimitMinor = settings.payments?.codMaxOrderMinor ?? null;
+
+  return {
+    freeShippingIsTrue: freeGovernorates.length > 0,
+    sameDayIsTrue: (sameDayGovernorates?.length ?? 0) > 0,
+    codIsTrue: settings.payments != null,
+    freeGovernorates: freeGovernorates.length > 0 ? freeGovernorates.join(', ') : null,
+    sameDayGovernorates:
+      sameDayGovernorates && sameDayGovernorates.length > 0 ? sameDayGovernorates.join(', ') : null,
+    codLimit: codLimitMinor != null ? `EGP ${(codLimitMinor / 100).toLocaleString()}` : null,
+    deliveryDays: settings.fulfillment?.delivery?.standard?.etaLabel ?? null,
+  };
+}
 
 const SECTION_TYPES: SectionType[] = [
   'hero',
@@ -42,7 +80,15 @@ const SECTION_TYPES: SectionType[] = [
   'journal',
 ];
 
-type Tab = 'page' | 'navbar' | 'mobileMenu' | 'footer' | 'announcement' | 'productSection' | 'pages';
+type Tab =
+  | 'page'
+  | 'navbar'
+  | 'mobileMenu'
+  | 'footer'
+  | 'announcement'
+  | 'productSection'
+  | 'pages'
+  | 'trust';
 
 const TAB_LABELS: Record<Tab, string> = {
   page: 'Home page',
@@ -52,6 +98,7 @@ const TAB_LABELS: Record<Tab, string> = {
   announcement: 'Announcement',
   productSection: 'Product section',
   pages: 'Pages',
+  trust: 'Trust',
 };
 
 
@@ -114,6 +161,11 @@ export default function StorefrontAppearanceClient() {
   const [saved, setSaved] = useState(false);
   const [droppedNavItemCount, setDroppedNavItemCount] = useState(0);
   const [droppedMobileMenuItemCount, setDroppedMobileMenuItemCount] = useState(0);
+  // Best-effort only — powers the token preview and the "already advertised
+  // automatically" panel. Never blocks loading or saving the layout itself:
+  // a failure here leaves `settings` null and every derived fact reads as
+  // unknown/false, which is the safe direction to fail in.
+  const [settings, setSettings] = useState<StoreSettings | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -124,6 +176,11 @@ export default function StorefrontAppearanceClient() {
       setLoadError((e as ApiError).message ?? 'Failed to load the storefront layout');
     } finally {
       setLoading(false);
+    }
+    try {
+      setSettings(await apiGetSettings());
+    } catch {
+      setSettings(null);
     }
   }, []);
 
@@ -267,7 +324,9 @@ export default function StorefrontAppearanceClient() {
       </div>
 
       <div className="dash-tabstrip">
-        {(['page', 'navbar', 'mobileMenu', 'footer', 'announcement', 'productSection', 'pages'] as Tab[]).map((t) => (
+        {(
+          ['page', 'navbar', 'mobileMenu', 'footer', 'announcement', 'productSection', 'pages', 'trust'] as Tab[]
+        ).map((t) => (
           <button
             key={t}
             type="button"
@@ -369,12 +428,21 @@ export default function StorefrontAppearanceClient() {
           // A layout saved before this field existed has no productSection
           // until the API backfills it on read; never dereference undefined.
           section={layout.productSection ?? { perks: [] }}
+          facts={{
+            ...derivePromiseFacts(settings),
+            returnsDays: layout.trust?.returnsWindowDays != null ? String(layout.trust.returnsWindowDays) : null,
+            returnsIsSet: layout.trust?.returnsWindowDays != null,
+          }}
           onChange={(productSection) => patch({ productSection })}
         />
       )}
 
       {tab === 'pages' && (
         <PagesEditor pages={layout.pages} onChange={(pages) => patch({ pages })} />
+      )}
+
+      {tab === 'trust' && (
+        <TrustEditor trust={layout.trust} onChange={(trust) => patch({ trust })} />
       )}
 
       {tab === 'announcement' && (

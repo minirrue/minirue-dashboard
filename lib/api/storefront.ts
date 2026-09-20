@@ -261,9 +261,94 @@ export interface StorefrontPage {
 /** Icon names the storefront can render for a product-page service promise. */
 export type ProductPerkIcon = 'truck' | 'gift' | 'check' | 'heart' | 'grid';
 
+/**
+ * Decides whether a promise row is even eligible to appear on a given
+ * product — checked BEFORE `enabled`. `always` prints the owner's line
+ * exactly as written (this is how a hand-authored line like "premium gift
+ * wrap on every order" gets advertised: the owner types it, it shows). The
+ * other five are storefront-computed against live settings, per product:
+ * `freeShipping` only where the delivery fee actually is 0, `sameDay` only
+ * where same-day fulfillment covers the shopper's governorate, `cod` only
+ * when cash-on-delivery is on and the order is under the COD limit,
+ * `returns` only when a returns window is set below, `reviews` only when the
+ * product has reviews. Nothing here invents a fact — this dashboard never
+ * seeds copy claiming any of these; the owner writes the words, this field
+ * only controls when those words are allowed to appear.
+ */
+export type PromiseShowWhen =
+  | 'always'
+  | 'freeShipping'
+  | 'sameDay'
+  | 'cod'
+  | 'returns'
+  | 'reviews';
+
+export const PROMISE_SHOW_WHEN_OPTIONS: Array<{ value: PromiseShowWhen; label: string }> = [
+  { value: 'always', label: 'Always — print exactly as written' },
+  { value: 'freeShipping', label: 'Only where delivery is free' },
+  { value: 'sameDay', label: 'Only where same-day delivery is offered' },
+  { value: 'cod', label: 'Only where cash on delivery applies' },
+  { value: 'returns', label: 'Only when a returns window is set' },
+  { value: 'reviews', label: 'Only when the product has reviews' },
+];
+
+/**
+ * Tokens the owner may type into a promise's `text`. The storefront
+ * substitutes each with the live value from settings at render time — this
+ * dashboard never resolves them, it only lists and previews them (see
+ * `previewPromiseText`).
+ */
+export const PROMISE_TOKEN_LIST = [
+  '{deliveryDays}',
+  '{freeGovernorates}',
+  '{sameDayGovernorates}',
+  '{codLimit}',
+  '{returnsDays}',
+  '{fee}',
+] as const;
+
+export type PromiseToken = (typeof PROMISE_TOKEN_LIST)[number];
+
+/**
+ * One owner-authored row shown (subject to `showWhen`) under every product.
+ * `enabled`, `showWhen` and `order` are optional so a perk saved before this
+ * feature existed keeps rendering exactly as it did — absent `enabled` means
+ * true, absent `showWhen` means `'always'` (today's unconditional behavior),
+ * absent `order` falls back to the row's position in the array.
+ */
+export interface ProductPerk {
+  id: string;
+  icon: ProductPerkIcon;
+  text: string;
+  enabled?: boolean;
+  showWhen?: PromiseShowWhen;
+  order?: number;
+}
+
 /** Admin-editable service promises shown on every product page. */
 export interface ProductSectionConfig {
-  perks: Array<{ id: string; icon: ProductPerkIcon; text: string }>;
+  perks: ProductPerk[];
+}
+
+/**
+ * The plain facts behind the promises — not advertising copy themselves.
+ * Every field optional/nullable: absent or null means "not set", and the
+ * storefront and this dashboard must never present an unset fact as though
+ * it were true. Free delivery / same-day / COD are NOT stored here — those
+ * are derived live from shipping rates, fulfillment settings and the COD
+ * limit, which already exist elsewhere in Settings.
+ */
+export interface TrustSettings {
+  /** Days the owner accepts returns. null = no window set — the storefront must not claim one exists. */
+  returnsWindowDays: number | null;
+  /** For the contact page and the product page's contact link. */
+  whatsappNumber: string | null;
+  /** Free text, e.g. "Sun–Thu, 10am–6pm Cairo time". */
+  supportHours: string | null;
+}
+
+export function defaultTrustSettings(): TrustSettings {
+  return { returnsWindowDays: null, whatsappNumber: null, supportHours: null };
 }
 
 export interface StorefrontLayout {
@@ -276,6 +361,8 @@ export interface StorefrontLayout {
   mobileMenu: MobileMenuConfig;
   footer: FooterConfig;
   pages: StorefrontPage[];
+  /** Optional — absent on any layout saved before this feature existed. */
+  trust?: TrustSettings;
 }
 
 let idCounter = 0;
@@ -374,8 +461,164 @@ export function slugify(title: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
+/**
+ * The five "pages customers look for" (issue dashboard#125), created in one
+ * click with starter copy the owner edits. Every body below is deliberately
+ * honest placeholder prose: it names exactly what real detail is missing and
+ * tells the owner to fill it in, and it never invents a registration number,
+ * address, phone number, or delivery promise. `createTrustPages` only adds
+ * whichever of these do not already exist (matched by slug) — it never
+ * overwrites a page the owner has already written.
+ */
+export const TRUST_PAGE_STARTERS: Array<Pick<StorefrontPage, 'slug' | 'title' | 'body'>> = [
+  {
+    slug: 'contact',
+    title: 'Contact',
+    body: [
+      '# Contact',
+      '',
+      "We're happy to help before or after you order.",
+      '',
+      '**Phone / WhatsApp:** *(add your number here — this line is a placeholder until you do)*',
+      '',
+      '**Email:** *(add your support email here)*',
+      '',
+      '**Hours:** *(add the days and times you can be reached)*',
+      '',
+      '**Where we are:** *(add your city or address here, or leave this out if you operate online-only)*',
+    ].join('\n'),
+  },
+  {
+    slug: 'about',
+    title: 'About',
+    body: [
+      '# About',
+      '',
+      "*(Write who MiniRue is in your own words — this paragraph is a placeholder.)*",
+      '',
+      "We're a shop working on original brands and a small, careful selection of products. Replace this section with your own story: how you started, what you look for before you list something, and why it's worth a customer's trust.",
+      '',
+      '## Why these products',
+      '',
+      "*(Say, plainly, why you carry what you carry — sourcing, quality checks, or anything else that's true and specific to you.)*",
+    ].join('\n'),
+  },
+  {
+    slug: 'shipping-delivery',
+    title: 'Shipping & delivery',
+    body: [
+      '# Shipping & delivery',
+      '',
+      '*(This page is a placeholder — replace every bracketed line below with your real policy.)*',
+      '',
+      '**Delivery time:** *(add your typical delivery window here — be specific, so this is never left as a guess)*',
+      '',
+      '**Delivery fee:** see the checkout for the exact fee for your area — we do not repeat it here so this page can never say something the checkout does not charge.',
+      '',
+      '**Same-day delivery:** *(state here whether you offer it, and where — leave this out entirely if you do not)*',
+      '',
+      'We will contact you if anything about your order or delivery changes.',
+    ].join('\n'),
+  },
+  {
+    slug: 'returns-refunds',
+    title: 'Returns & refunds',
+    body: [
+      '# Returns & refunds',
+      '',
+      '*(This page is a placeholder — replace every bracketed line below with your real policy.)*',
+      '',
+      '**Returns window:** *(add how many days a customer has to request a return — set the number under Storefront appearance → Trust and mention it here)*',
+      '',
+      '**Condition:** *(state what condition an item must be in to be returned — unopened, original packaging, etc.)*',
+      '',
+      '**How to start a return:** *(add the steps — e.g. contact us first using the Contact page)*',
+      '',
+      '**Refunds:** *(add how and when a refund is issued once a return is received)*',
+    ].join('\n'),
+  },
+  {
+    slug: 'imprint-legal',
+    title: 'Imprint / legal',
+    body: [
+      '# Imprint / legal',
+      '',
+      '*(This page is a placeholder. Every line below needs a real detail before this page means anything — do not publish it as-is.)*',
+      '',
+      '**Business name:** *(add your registered business name)*',
+      '',
+      '**Registration number:** *(add your commercial registration / tax number, if applicable)*',
+      '',
+      '**Registered address:** *(add your registered business address)*',
+      '',
+      '**Contact:** see the [Contact](/contact) page.',
+    ].join('\n'),
+  },
+];
+
+/**
+ * Adds whichever `TRUST_PAGE_STARTERS` are not already present by slug,
+ * enabled, with their starter copy. Never touches or duplicates a page that
+ * already exists at that slug — an owner who already wrote a real "Contact"
+ * page keeps it untouched. Returns the pages actually added, so the caller
+ * (the "Create the pages customers look for" button) can tell the owner how
+ * many were created versus already there.
+ */
+export function createTrustPages(pages: StorefrontPage[]): {
+  pages: StorefrontPage[];
+  added: StorefrontPage[];
+} {
+  const existingSlugs = new Set(pages.map((p) => p.slug.trim()));
+  const added: StorefrontPage[] = TRUST_PAGE_STARTERS.filter(
+    (starter) => !existingSlugs.has(starter.slug),
+  ).map((starter) => ({
+    id: newId('page'),
+    slug: starter.slug,
+    title: starter.title,
+    body: starter.body,
+    enabled: true,
+  }));
+  return { pages: [...pages, ...added], added };
+}
+
 function isBlank(value: string | null | undefined): boolean {
   return value == null || value.trim() === '';
+}
+
+export function newPerk(): ProductPerk {
+  return { id: newId('perk'), icon: 'truck', text: '', enabled: true, showWhen: 'always', order: 0 };
+}
+
+/**
+ * Live values to preview a promise's tokens with, so the editor can show
+ * "Free delivery to Cairo, Giza" instead of the raw `{freeGovernorates}`
+ * literal. All optional/nullable — an unset value previews as an em dash
+ * rather than a blank, so a missing fact is visibly missing, not silently
+ * dropped.
+ */
+export interface PromiseTokenValues {
+  deliveryDays?: string | null;
+  freeGovernorates?: string | null;
+  sameDayGovernorates?: string | null;
+  codLimit?: string | null;
+  returnsDays?: string | null;
+  fee?: string | null;
+}
+
+/**
+ * Renders `text` with every `{token}` substituted for a live value, for the
+ * editor's own preview only — the storefront does the real substitution
+ * against live settings at render time. Never persisted; this is display-only.
+ */
+export function previewPromiseText(text: string, values: PromiseTokenValues): string {
+  const dash = '—';
+  return text
+    .replace(/\{deliveryDays\}/g, values.deliveryDays ?? dash)
+    .replace(/\{freeGovernorates\}/g, values.freeGovernorates ?? dash)
+    .replace(/\{sameDayGovernorates\}/g, values.sameDayGovernorates ?? dash)
+    .replace(/\{codLimit\}/g, values.codLimit ?? dash)
+    .replace(/\{returnsDays\}/g, values.returnsDays ?? dash)
+    .replace(/\{fee\}/g, values.fee ?? dash);
 }
 
 /**
@@ -526,6 +769,17 @@ export function normalizeStorefrontLayoutForSave(layout: StorefrontLayout): Norm
   next.pages = next.pages.filter(
     (page) => !isBlank(page.title) && SLUG_PATTERN.test(page.slug),
   );
+
+  // `order` is optional on the wire, but always written as the row's actual
+  // position on save — the array order and the field can never disagree once
+  // this has run, however many times a layout has round-tripped through an
+  // older client that doesn't know the field exists.
+  if (next.productSection) {
+    next.productSection = {
+      ...next.productSection,
+      perks: next.productSection.perks.map((perk, i) => ({ ...perk, order: i })),
+    };
+  }
 
   return { layout: next, droppedNavItemCount, droppedMobileMenuItemCount };
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { newPage, slugify, SLUG_PATTERN } from '@/lib/api/storefront';
+import { createTrustPages, newPage, slugify, SLUG_PATTERN } from '@/lib/api/storefront';
 import type { StorefrontPage } from '@/lib/api/storefront';
 
 /**
@@ -45,6 +45,13 @@ export default function PagesEditor({
   // Slug auto-fills from the title until the admin types in the slug field
   // directly — once that happens for a page, stop overwriting their choice.
   const [manualSlugIds, setManualSlugIds] = useState<Set<string>>(new Set());
+  const [createResult, setCreateResult] = useState<'created' | 'noneMissing' | null>(null);
+
+  const handleCreateTrustPages = () => {
+    const { pages: next, added } = createTrustPages(pages);
+    if (added.length > 0) onChange(next);
+    setCreateResult(added.length > 0 ? 'created' : 'noneMissing');
+  };
 
   const patchPage = (index: number, next: StorefrontPage) =>
     onChange(pages.map((p, i) => (i === index ? next : p)));
@@ -60,18 +67,45 @@ export default function PagesEditor({
       <div className="dash-form-section">
         <div className="dash-section-header">
           <h2 className="dash-section-title">Pages</h2>
-          <button
-            type="button"
-            className="dash-btn-secondary"
-            onClick={() => onChange([...pages, newPage()])}
-          >
-            Add page
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              className="dash-btn-secondary"
+              onClick={handleCreateTrustPages}
+            >
+              Create the pages customers look for
+            </button>
+            <button
+              type="button"
+              className="dash-btn-secondary"
+              onClick={() => onChange([...pages, newPage()])}
+            >
+              Add page
+            </button>
+          </div>
         </div>
         <p className="dash-hint">
           Terms, Privacy, Shipping, Returns, and any other standalone page shown at
           /&lt;slug&gt; on the storefront.
         </p>
+        <p className="dash-hint">
+          &quot;Create the pages customers look for&quot; adds Contact, About, Shipping &amp;
+          delivery, Returns &amp; refunds, and Imprint / legal — whichever of those five don&apos;t
+          exist yet — enabled, with honest placeholder starter copy. It never touches a page you
+          already have. The starter copy never invents a phone number, address, registration
+          number, or delivery time — every real detail is left as a bracketed placeholder for you
+          to fill in before publishing.
+        </p>
+        {createResult === 'created' && (
+          <p className="dash-inline-ok">
+            Added the missing trust pages below — edit the bracketed placeholders, then save.
+          </p>
+        )}
+        {createResult === 'noneMissing' && (
+          <p className="dash-hint">
+            All five already exist — nothing was added or changed.
+          </p>
+        )}
 
         {pages.length === 0 && (
           <p className="dash-hint">No pages yet — add one to publish it on the storefront.</p>
