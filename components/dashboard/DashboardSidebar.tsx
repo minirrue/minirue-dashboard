@@ -344,7 +344,6 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
       // Catalogue sets, not catalogue product editing — has its own
       // DASHBOARD_ROUTE_ACCESS entry (a longer, more specific prefix than
       // '/catalogue') so STAFF can run bundles without /catalogue itself.
-      { label: 'Bundles', href: '/catalogue/bundles', icon: <IconPackage /> },
       { label: 'Chat', href: '/support', icon: <IconUsers /> },
       { label: 'Email', href: '/emails', icon: <IconMail /> },
       // Moderation work, so it sits with support rather than with the

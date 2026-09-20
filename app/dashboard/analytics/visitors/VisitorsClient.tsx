@@ -5,7 +5,7 @@ import Link from 'next/link';
 import AnalyticsSubnav from '@/components/dashboard/AnalyticsSubnav';
 import AnalyticsScopeBar from '@/components/dashboard/analytics/AnalyticsScopeBar';
 import { useSearchParams } from 'next/navigation';
-import { useAnalyticsRange, useAudienceSummary, useAudienceTimeseries } from '@/lib/hooks/use-analytics';
+import { useAnalyticsRange, useAudienceTimeseries } from '@/lib/hooks/use-analytics';
 import { LineChart } from '@/components/dashboard/charts';
 import {
   apiGetFlow,
@@ -388,7 +388,6 @@ function WhyNoPurchase({
 export default function VisitorsClient() {
   const { range, setRange } = useAnalyticsRange();
   const params = useSearchParams();
-  const summary = useAudienceSummary(range);
   const trend = useAudienceTimeseries(range);
   // Links from the Overview (campaign, country, device…) arrive pre-filtered.
   const [filter, setFilter] = useState<FlowFilter>(() => {
@@ -498,13 +497,19 @@ export default function VisitorsClient() {
   if (!filter.reason && people.done && heldReasons !== liveReasons) setHeldReasons(liveReasons);
   const reasons = filter.reason ? heldReasons : liveReasons;
 
-  const s = summary.data?.data;
-  const figures = s
+  // Counted from the very people listed below, never from a separate rollup:
+  // the old strip read "240 real visitors" over a list of 174, because the
+  // rollup predates the bot gate and knows nothing about who is hidden
+  // (owner, 2026-09-20: "mismatch how 240 real visitors and 170 visitors??").
+  const bought = loaded.filter((p) => p.orders > 0).length;
+  const newcomers = loaded.filter((p) => p.firstSeenAt >= range.from).length;
+  const bounced = loaded.filter((p) => p.stopReason === 'bounced').length;
+  const figures = people.done
     ? [
-        { label: range.traffic === 'all' ? 'Visitors' : 'Real visitors', value: n(s.visitors) },
-        { label: 'New', value: s.visitors ? `${Math.round((s.newVisitors / s.visitors) * 100)}%` : '—' },
-        { label: 'Visits', value: n(s.sessions) },
-        { label: 'Left after one page', value: `${(s.bounceRate * 100).toFixed(0)}%` },
+        { label: range.traffic === 'all' ? 'Visitors' : 'Real visitors', value: n(loaded.length) },
+        { label: 'New here', value: loaded.length ? `${Math.round((newcomers / loaded.length) * 100)}%` : '—' },
+        { label: 'Left after one page', value: loaded.length ? `${Math.round((bounced / loaded.length) * 100)}%` : '—' },
+        { label: 'Bought', value: n(bought) },
       ]
     : null;
 

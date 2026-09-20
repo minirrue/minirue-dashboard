@@ -146,23 +146,29 @@ export default function PeopleTable({
                 ? `${n(rows.length)} loaded, loading the rest…`
                 : capped
                   ? `First ${n(rows.length)} shown — narrow the dates or filters to see the rest`
-                  : `${n(rows.length)} ${rows.length === 1 ? 'person' : 'people'} — everyone who matches`}
+                  : `${n(rows.length)} ${rows.length === 1 ? 'person' : 'people'} — everyone who matches. Export gives every visit and every step, with each person's full detail on every row.`}
           </p>
         </div>
         <div className="ppl__exports">
           <RefreshButton onRefresh={onRefresh} title="Reload the people list only" />
-          <details className="ppl__export">
-            <summary className="flow-pill-btn">Export ▾</summary>
-            <div className="ppl__export-menu" role="menu">
-              <p className="ppl__export-head">One row per person</p>
-              <button type="button" role="menuitem" disabled={!rows.length} onClick={() => onExport('people', 'csv')}>Summary · CSV</button>
-              <button type="button" role="menuitem" disabled={!rows.length} onClick={() => onExport('people', 'json')}>Summary · JSON</button>
-              <p className="ppl__export-head">Every visit and every step</p>
-              <button type="button" role="menuitem" disabled={!rows.length} onClick={() => onExport('story', 'csv')}>Full journeys · CSV</button>
-              <button type="button" role="menuitem" disabled={!rows.length} onClick={() => onExport('story', 'json')}>Full journeys · JSON</button>
-              <p className="ppl__export-note">Journeys carry each person&apos;s visits, where each came from, and every step they took, in the order they took it.</p>
-            </div>
-          </details>
+          <button
+            type="button"
+            className="flow-pill-btn"
+            disabled={!rows.length}
+            title="Every person, every visit, every step — with all their details on each row"
+            onClick={() => onExport('story', 'csv')}
+          >
+            Export CSV
+          </button>
+          <button
+            type="button"
+            className="flow-pill-btn"
+            disabled={!rows.length}
+            title="The same, as JSON: each person with their whole journey nested"
+            onClick={() => onExport('story', 'json')}
+          >
+            JSON
+          </button>
         </div>
       </header>
 

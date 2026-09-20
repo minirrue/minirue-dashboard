@@ -121,7 +121,7 @@ describe('sidebar visibility', () => {
     expect(bySection('Store')).toEqual(['Overview', 'Catalogue', 'Collaborators', 'Accounting', 'Storefront']);
     // Inventory is open to ADMIN again (owner, 2026-09-15: "inventory for admin also").
     expect(bySection('Operations')).toEqual([
-      'Orders', 'Customers', 'Loyalty', 'Gallery', 'Discounts', 'Bundles',
+      'Orders', 'Customers', 'Loyalty', 'Gallery', 'Discounts',
       'Chat', 'Email', 'Reviews', 'Fulfillment', 'Refunds and payments', 'Inventory',
     ]);
     // dashboard#90: renamed Analytics & Media (owner-approved regroup).
