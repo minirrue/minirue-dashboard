@@ -5,6 +5,8 @@ import {
   PEOPLE_CAP,
   personName,
   STAGE_LABEL,
+  placeLabel,
+  realOrNull,
   STOP_REASON_LABEL,
   type FlowFilter,
   type FlowFilterKey,
@@ -188,7 +190,7 @@ export default function PeopleTable({
                 {p.orders === 0 && p.stopDetail && <small>{p.stopDetail}</small>}
               </span>
               <span role="cell" className="ppl__num">{p.orders ? `${p.orders} · ${egp(p.revenueMinor)}` : p.cartValueMinor ? `bag ${egp(p.cartValueMinor)}` : '—'}</span>
-              <span role="cell" className="ppl__muted">{[p.city ?? (p.country ? countryName(p.country) : null), p.device].filter(Boolean).join(' · ') || '—'}</span>
+              <span role="cell" className="ppl__muted">{[placeLabel(p.city, p.country, countryName), realOrNull(p.device)].filter(Boolean).join(' · ')}</span>
               <span role="cell" className="ppl__muted ppl__when">{when(p.lastSeenAt)}</span>
             </button>
           ))}

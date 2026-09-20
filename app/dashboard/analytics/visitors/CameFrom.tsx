@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { PLATFORM_NETWORK, type FlowFilter, type FlowFilterKey, type PersonRow } from '@/lib/api/story';
+import { PLATFORM_NETWORK, realOrNull, type FlowFilter, type FlowFilterKey, type PersonRow } from '@/lib/api/story';
 import { downloadRows } from '@/lib/analytics/export';
 import type { AnalyticsQueryParams } from '@/lib/api/analytics-insights';
 
@@ -63,9 +63,9 @@ function keyOf(p: PersonRow, dim: Dim): string {
     case 'landing':
       return p.landingPath ? p.landingPath.split('?')[0] || '/' : '';
     case 'country':
-      return p.country ?? '';
+      return realOrNull(p.country) ?? '';
     case 'device':
-      return p.device ?? '';
+      return realOrNull(p.device) ?? '';
   }
 }
 
@@ -140,7 +140,14 @@ export default function CameFrom({
   const label = (d: Dim, k: string) => {
     if (d === 'medium') return MEDIUM_LABEL[k] ?? k[0]?.toUpperCase() + k.slice(1);
     if (d === 'landing' && k) return k;
-    if (!k) return d === 'campaign' ? 'Untagged — no campaign on the link' : d === 'landing' ? 'Unknown' : 'Unknown';
+    if (!k)
+      return d === 'campaign'
+        ? 'Untagged — no campaign on the link'
+        : d === 'country'
+          ? 'Country unknown'
+          : d === 'device'
+            ? 'Device unknown'
+            : 'Unknown';
     if (d === 'country') return countryName(k);
     if (d === 'device') return k[0].toUpperCase() + k.slice(1);
     return k;

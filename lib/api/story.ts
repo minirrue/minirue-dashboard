@@ -409,6 +409,27 @@ export const PLATFORM_NETWORK: Record<string, string> = {
   TikTok: 'TikTok',
 };
 
+/**
+ * The collector writes the literal string "unknown" for a city or region it
+ * cannot resolve (the MaxMind city database is not live — backend#177), so a
+ * bare `city ?? country` printed "unknown" over perfectly good country data.
+ */
+export function realOrNull(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const v = value.trim();
+  return v && !/^(unknown|undefined|null|n\/a|-)$/i.test(v) ? v : null;
+}
+
+/** "Cairo · Egypt", "Egypt", or "Country unknown" — never the word "unknown" alone. */
+export function placeLabel(city: string | null | undefined, country: string | null | undefined, countryName: (code: string) => string): string {
+  const c = realOrNull(city);
+  const cc = realOrNull(country);
+  if (c && cc) return `${c} · ${countryName(cc)}`;
+  if (c) return c;
+  if (cc) return countryName(cc);
+  return 'Country unknown';
+}
+
 export function personName(p: { visitorNumber: number | null; visitorId: string; customer?: { name: string | null } | null }): string {
   if (p.customer?.name) return p.customer.name;
   return p.visitorNumber ? `Visitor #${p.visitorNumber.toLocaleString('en-US')}` : `Visitor ${p.visitorId.slice(0, 6)}`;
