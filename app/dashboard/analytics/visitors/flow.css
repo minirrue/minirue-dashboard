@@ -288,3 +288,23 @@
 .ppl__ours-btn:hover:not(:disabled) { border-color: var(--mr-st-err-fg, #9b2c2c); color: var(--mr-st-err-fg, #9b2c2c); }
 .ppl__ours-btn:disabled { opacity: .6; cursor: default; }
 .ppl__ours-btn:focus-visible { outline: 2px solid var(--mr-gold-500); outline-offset: 2px; }
+
+/* Export menu: the summary, or every step of every visit. */
+.ppl__export { position: relative; }
+.ppl__export > summary { list-style: none; cursor: pointer; }
+.ppl__export > summary::-webkit-details-marker { display: none; }
+.ppl__export-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; width: max-content; max-width: min(300px, 86vw);
+  display: grid; gap: 2px; padding: 10px; border: 1px solid var(--mr-dash-hair); border-radius: 12px;
+  background: var(--mr-dash-surface); box-shadow: 0 10px 28px rgba(20, 18, 15, .16);
+}
+.ppl__export-head { margin: 6px 0 2px; color: var(--mr-fg-4); font-family: var(--mr-font-label); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.ppl__export-head:first-child { margin-top: 0; }
+.ppl__export-menu button {
+  padding: 7px 10px; border: 0; border-radius: 8px; background: none; color: var(--mr-fg);
+  font: 600 13px var(--mr-font-ui); text-align: left; cursor: pointer;
+}
+.ppl__export-menu button:hover:not(:disabled) { background: var(--mr-dash-sub); }
+.ppl__export-menu button:disabled { opacity: .5; cursor: default; }
+.ppl__export-menu button:focus-visible { outline: 2px solid var(--mr-gold-500); outline-offset: -2px; }
+.ppl__export-note { margin: 6px 0 0; color: var(--mr-fg-4); font-size: 11.5px; line-height: 1.45; }

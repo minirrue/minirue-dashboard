@@ -404,6 +404,7 @@ export default function VisitorsClient() {
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<PeopleSort>('lastSeenAt');
   const [openVisitor, setOpenVisitor] = useState<string | null>(() => params.get('visitor'));
+  const [exportError, setExportError] = useState<string | null>(null);
   // Bumped by a section's Refresh button; the fetch effects below watch it,
   // so one section reloads without touching the rest of the page.
   const [flowTick, setFlowTick] = useState(0);
@@ -609,6 +610,8 @@ export default function VisitorsClient() {
 
       <OpenCarts range={range} onFlagged={() => setPeopleTick((t) => t + 1)} />
 
+      {exportError && <p className="dash-inline-error">{exportError}</p>}
+
       <PeopleTable
         rows={rows}
         loading={!people.done}
@@ -625,10 +628,14 @@ export default function VisitorsClient() {
         onOpen={setOpenVisitor}
         onRefresh={() => setPeopleTick((t) => t + 1)}
         onFlagged={() => setPeopleTick((t) => t + 1)}
-        onExport={(format) => {
-          // Everyone matching, built by the server; what's on screen if that fails.
-          void downloadServerExport('people', format, range, filter, 'visitors').then((ok) => {
-            if (!ok) downloadRows('visitors', peopleExportRows(rows), format, range);
+        onExport={(dataset, format) => {
+          // Everyone matching, built by the server — the summary, or every
+          // visit and step per person (owner, 2026-09-20: "must export full
+          // visitor with each minor detail"). The on-screen rows are the
+          // fallback, and only the summary exists client-side.
+          void downloadServerExport(dataset, format, range, filter, dataset === 'story' ? 'visitor-journeys' : 'visitors').then((ok) => {
+            if (!ok && dataset === 'people') downloadRows('visitors', peopleExportRows(rows), format, range);
+            else if (!ok) setExportError('Full journeys could not be built. Try again, or narrow the dates.');
           });
         }}
       />

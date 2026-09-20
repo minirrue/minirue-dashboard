@@ -113,7 +113,7 @@ export default function PeopleTable({
   options: PeopleOptions;
   countryName: (code: string) => string;
   onOpen: (visitorId: string) => void;
-  onExport: (format: 'csv' | 'json') => void;
+  onExport: (dataset: 'people' | 'story', format: 'csv' | 'json') => void;
   onRefresh: () => void;
   onFlagged: () => void;
 }) {
@@ -151,8 +151,18 @@ export default function PeopleTable({
         </div>
         <div className="ppl__exports">
           <RefreshButton onRefresh={onRefresh} title="Reload the people list only" />
-          <button type="button" className="flow-pill-btn" disabled={!rows.length} onClick={() => onExport('csv')}>Export CSV</button>
-          <button type="button" className="flow-pill-btn" disabled={!rows.length} onClick={() => onExport('json')}>JSON</button>
+          <details className="ppl__export">
+            <summary className="flow-pill-btn">Export ▾</summary>
+            <div className="ppl__export-menu" role="menu">
+              <p className="ppl__export-head">One row per person</p>
+              <button type="button" role="menuitem" disabled={!rows.length} onClick={() => onExport('people', 'csv')}>Summary · CSV</button>
+              <button type="button" role="menuitem" disabled={!rows.length} onClick={() => onExport('people', 'json')}>Summary · JSON</button>
+              <p className="ppl__export-head">Every visit and every step</p>
+              <button type="button" role="menuitem" disabled={!rows.length} onClick={() => onExport('story', 'csv')}>Full journeys · CSV</button>
+              <button type="button" role="menuitem" disabled={!rows.length} onClick={() => onExport('story', 'json')}>Full journeys · JSON</button>
+              <p className="ppl__export-note">Journeys carry each person&apos;s visits, where each came from, and every step they took, in the order they took it.</p>
+            </div>
+          </details>
         </div>
       </header>
 
