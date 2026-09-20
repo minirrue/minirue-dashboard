@@ -1,8 +1,10 @@
 import {
   createTrustPages,
+  defaultPerkIcon,
   newSection,
   normalizeStorefrontLayoutForSave,
   previewPromiseText,
+  PRODUCT_PERK_ICONS,
   TRUST_PAGE_STARTERS,
 } from '@/lib/api/storefront';
 import type { StorefrontLayout, StorefrontPage } from '@/lib/api/storefront';
@@ -88,6 +90,28 @@ describe('previewPromiseText', () => {
 
   it('leaves text with no tokens untouched', () => {
     expect(previewPromiseText('Hand-wrapped, always.', {})).toBe('Hand-wrapped, always.');
+  });
+});
+
+describe('defaultPerkIcon', () => {
+  it('suggests a themed icon for each derived condition', () => {
+    expect(defaultPerkIcon('freeShipping')).toBe('truck');
+    expect(defaultPerkIcon('sameDay')).toBe('clock');
+    expect(defaultPerkIcon('cod')).toBe('cash');
+    expect(defaultPerkIcon('returns')).toBe('returns');
+    expect(defaultPerkIcon('reviews')).toBe('star');
+  });
+
+  it('only ever suggests a value from the real icon list', () => {
+    for (const showWhen of ['always', 'freeShipping', 'sameDay', 'cod', 'returns', 'reviews'] as const) {
+      expect(PRODUCT_PERK_ICONS).toContain(defaultPerkIcon(showWhen));
+    }
+  });
+
+  it('keeps the five original icon names valid', () => {
+    for (const legacy of ['truck', 'gift', 'check', 'heart', 'grid'] as const) {
+      expect(PRODUCT_PERK_ICONS).toContain(legacy);
+    }
   });
 });
 

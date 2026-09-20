@@ -1,7 +1,14 @@
 'use client';
 
-import React from 'react';
-import { newId, previewPromiseText, PROMISE_SHOW_WHEN_OPTIONS, PROMISE_TOKEN_LIST } from '@/lib/api/storefront';
+import React, { useState } from 'react';
+import {
+  defaultPerkIcon,
+  newId,
+  previewPromiseText,
+  PRODUCT_PERK_ICONS,
+  PROMISE_SHOW_WHEN_OPTIONS,
+  PROMISE_TOKEN_LIST,
+} from '@/lib/api/storefront';
 import type {
   ProductPerk,
   ProductPerkIcon,
@@ -10,14 +17,122 @@ import type {
   PromiseTokenValues,
 } from '@/lib/api/storefront';
 
-/** Must stay in step with the storefront's Icon component. */
-const PERK_ICONS: Array<{ value: ProductPerkIcon; label: string }> = [
-  { value: 'truck', label: 'Delivery van' },
-  { value: 'gift', label: 'Gift box' },
-  { value: 'check', label: 'Tick' },
-  { value: 'heart', label: 'Heart' },
-  { value: 'grid', label: 'Grid' },
-];
+/**
+ * The dashboard's own copy of the storefront's line-icon set, purely for
+ * picking by sight — the storefront draws the real glyphs itself as inline
+ * SVG in its own style (dashboard#125 owner ask: icons with a real theme for
+ * MiniRue's promises, not a generic badge set). Kept in sync by hand the
+ * same way `MobileMenuEditor`'s `ICON_PATHS` is; drift here only ever costs
+ * a slightly different preview, never a broken storefront render.
+ */
+const ICON_PATHS: Record<ProductPerkIcon, React.ReactNode> = {
+  truck: <><path d="M3 7h13l3 4v6a2 2 0 0 1-2 2H3V7z" /><circle cx="7" cy="19" r="2" /><circle cx="17" cy="19" r="2" /></>,
+  clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l4 2" /></>,
+  cash: <><rect x="2" y="6" width="20" height="12" rx="2" /><circle cx="12" cy="12" r="3" /><path d="M6 10v0M18 14v0" /></>,
+  returns: <path d="M4 12a8 8 0 1 1 2.5 5.8M4 12V6M4 12h6" />,
+  package: <><path d="M3 8l9-5 9 5-9 5-9-5z" /><path d="M3 8v9l9 5 9-5V8" /><path d="M12 13v9" /></>,
+  star: <path d="M12 3l2.6 5.9 6.4.6-4.8 4.3 1.4 6.3L12 17l-5.6 3.1 1.4-6.3L3 9.5l6.4-.6z" />,
+  shield: <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />,
+  sparkle: <path d="M12 3l1.6 4.9L18.5 9l-4.9 1.6L12 15.5l-1.6-4.9L5.5 9l4.9-1.6z" />,
+  support: <><circle cx="12" cy="8" r="3.5" /><path d="M5 20a7 7 0 0 1 14 0" /><path d="M3 12l2-1M21 12l-2-1" /></>,
+  lock: <><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></>,
+  leaf: <path d="M20 4C10 4 4 10 4 20c10 0 16-6 16-16zM4 20l7-7" />,
+  gift: <path d="M4 5h16v4H4zM6 9v11h12V9" />,
+  check: <path d="M4 12l5 5L20 6" />,
+  heart: <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.5l-1-.9a5.5 5.5 0 0 0-7.8 7.8l8.8 8.8 8.8-8.8a5.5 5.5 0 0 0 0-7.8z" />,
+  grid: <><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></>,
+};
+
+function IconGlyph({ icon, size = 18 }: { icon: ProductPerkIcon; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      style={{ flex: '0 0 auto' }}
+    >
+      {ICON_PATHS[icon]}
+    </svg>
+  );
+}
+
+/**
+ * A visual grid, not a dropdown of names — the owner picks by eye, at the
+ * same size and line weight the storefront renders (dashboard#125). Opens
+ * from a button showing the current glyph; closes on a pick or a second
+ * click.
+ */
+function IconPicker({
+  value,
+  onChange,
+}: {
+  value: ProductPerkIcon;
+  onChange: (icon: ProductPerkIcon) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: 'relative', flex: '0 0 auto' }}>
+      <button
+        type="button"
+        className="dash-btn-ghost"
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+      >
+        <IconGlyph icon={value} />
+        <span>Icon</span>
+      </button>
+      {open && (
+        <div
+          className="dash-form-card"
+          style={{
+            position: 'absolute',
+            zIndex: 10,
+            top: '100%',
+            left: 0,
+            marginTop: 4,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(5, 32px)',
+            gap: 6,
+            padding: 8,
+          }}
+        >
+          {PRODUCT_PERK_ICONS.map((icon) => (
+            <button
+              key={icon}
+              type="button"
+              className="dash-btn-ghost"
+              aria-label={icon}
+              aria-pressed={icon === value}
+              onClick={() => {
+                onChange(icon);
+                setOpen(false);
+              }}
+              style={{
+                width: 32,
+                height: 32,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+                outline: icon === value ? '2px solid currentColor' : undefined,
+              }}
+            >
+              <IconGlyph icon={icon} />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const MAX_PERKS = 6;
 
@@ -111,7 +226,7 @@ export default function ProductSectionEditor({
                 ...section,
                 perks: [
                   ...perks,
-                  { id: newId('perk'), icon: 'truck', text: '', enabled: true, showWhen: 'always', order: perks.length },
+                  { id: newId('perk'), icon: defaultPerkIcon('always'), text: '', enabled: true, showWhen: 'always', order: perks.length },
                 ],
               })
             }
@@ -146,20 +261,10 @@ export default function ProductSectionEditor({
               style={{ marginBottom: 8, padding: 12 }}
             >
               <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                <select
-                  className="dash-input"
-                  style={{ flex: '0 1 160px', minWidth: 0 }}
+                <IconPicker
                   value={perk.icon}
-                  onChange={(e) =>
-                    patchPerk(index, { ...perk, icon: e.target.value as ProductPerkIcon })
-                  }
-                >
-                  {PERK_ICONS.map((icon) => (
-                    <option key={icon.value} value={icon.value}>
-                      {icon.label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(icon) => patchPerk(index, { ...perk, icon })}
+                />
                 <input
                   className="dash-input"
                   style={{ flex: 1, minWidth: 0 }}
@@ -172,9 +277,12 @@ export default function ProductSectionEditor({
                   className="dash-input"
                   style={{ flex: '0 1 260px', minWidth: 0 }}
                   value={perk.showWhen}
-                  onChange={(e) =>
-                    patchPerk(index, { ...perk, showWhen: e.target.value as PromiseShowWhen })
-                  }
+                  onChange={(e) => {
+                    const showWhen = e.target.value as PromiseShowWhen;
+                    // Re-suggest the icon for the new condition — the owner can
+                    // still pick a different one right after (dashboard#125).
+                    patchPerk(index, { ...perk, showWhen, icon: defaultPerkIcon(showWhen) });
+                  }}
                 >
                   {PROMISE_SHOW_WHEN_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>

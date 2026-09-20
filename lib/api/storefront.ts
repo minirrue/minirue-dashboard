@@ -258,8 +258,65 @@ export interface StorefrontPage {
   enabled: boolean;
 }
 
-/** Icon names the storefront can render for a product-page service promise. */
-export type ProductPerkIcon = 'truck' | 'gift' | 'check' | 'heart' | 'grid';
+/**
+ * Icon names the storefront can render for a product-page service promise.
+ * The original five (`truck` | `gift` | `check` | `heart` | `grid`) stay
+ * valid forever — a perk saved before this list grew keeps rendering
+ * exactly as it did. The rest were added for MiniRue's own promise themes
+ * (dashboard#125 owner ask: icons that mean something for THESE rows, not a
+ * generic badge set) — delivery, same-day, cash on delivery, returns,
+ * packaging, reviews, authenticity, premium, support, secure checkout, and
+ * clean beauty. This dashboard only owns the NAMES, the picker, and the
+ * per-`showWhen` default; the storefront draws the actual glyphs as inline
+ * SVG in its own line style — see `PRODUCT_PERK_ICON_PATHS` below for the
+ * dashboard's own preview copies, kept in sync by hand the same way
+ * `MobileMenuIcon`'s are.
+ */
+export type ProductPerkIcon =
+  | 'truck'
+  | 'gift'
+  | 'check'
+  | 'heart'
+  | 'grid'
+  | 'clock'
+  | 'cash'
+  | 'returns'
+  | 'package'
+  | 'star'
+  | 'shield'
+  | 'sparkle'
+  | 'support'
+  | 'lock'
+  | 'leaf';
+
+export const PRODUCT_PERK_ICONS: ProductPerkIcon[] = [
+  'truck', 'clock', 'cash', 'returns', 'package', 'star', 'shield', 'sparkle',
+  'support', 'lock', 'leaf', 'gift', 'check', 'heart', 'grid',
+];
+
+/**
+ * A new promise row starts with the icon that matches its condition, so it
+ * looks sensible before the owner has touched it — he can still pick any
+ * other icon from the visual grid. `always` has no obvious icon (the row
+ * could be about anything), so it keeps the long-standing `truck` default a
+ * blank new row has always started with.
+ */
+export function defaultPerkIcon(showWhen: PromiseShowWhen): ProductPerkIcon {
+  switch (showWhen) {
+    case 'freeShipping':
+      return 'truck';
+    case 'sameDay':
+      return 'clock';
+    case 'cod':
+      return 'cash';
+    case 'returns':
+      return 'returns';
+    case 'reviews':
+      return 'star';
+    case 'always':
+      return 'truck';
+  }
+}
 
 /**
  * Decides whether a promise row is even eligible to appear on a given
