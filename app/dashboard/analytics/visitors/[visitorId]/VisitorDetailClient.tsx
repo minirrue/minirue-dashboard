@@ -8,7 +8,7 @@ import { useAnalyticsRange, useVisitorDetail, useVisitorJourney } from '@/lib/ho
 import { egp } from '@/lib/api/analytics-insights';
 import AnalyticsScopeBar from '@/components/dashboard/analytics/AnalyticsScopeBar';
 import { visitorLabel } from '@/components/dashboard/analytics/VisitorName';
-import { apiGetVisitorStory, STOP_REASON_LABEL, storyFromJourney } from '@/lib/api/story';
+import { apiGetVisitorStory, shortPath, STOP_REASON_LABEL, storyFromJourney } from '@/lib/api/story';
 import { useQuery } from '@tanstack/react-query';
 import '../flow.css';
 import { formatDateTime, formatTime } from '@/lib/dates/format';
@@ -167,14 +167,16 @@ export default function VisitorDetailClient({ visitorId }: { visitorId: string }
                       <span className="flow-session__src" data-medium={ss.touch.medium ?? undefined}>
                         {[ss.touch.platform ?? 'Direct', ss.touch.campaign].filter(Boolean).join(' · ')}
                       </span>
-                      {ss.touch.landingPath && <span className="flow-session__when">landed on {ss.touch.landingPath}</span>}
+                      {ss.touch.landingPath && (
+                        <span className="flow-session__when" title={ss.touch.landingPath}>landed on {shortPath(ss.touch.landingPath)}</span>
+                      )}
                     </div>
                     <p className="flow-session__summary">{ss.summary}</p>
                     <ol className="flow-steps">
                       {ss.steps.map((st, j) => (
                         <li key={j} className="flow-step" data-kind={st.kind}>
                           <span className="flow-step__dot" aria-hidden="true" />
-                          <span className="flow-step__label">{st.label}</span>
+                          <span className="flow-step__label" title={st.path ?? undefined}>{st.path ? `${st.label.split(' · ')[0]} · ${shortPath(st.path)}` : st.label}</span>
                           <span className="flow-step__meta">
                             {[st.valueMinor != null ? egp(st.valueMinor) : null, formatTime(st.at)]
                               .filter(Boolean)

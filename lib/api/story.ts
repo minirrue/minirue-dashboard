@@ -430,6 +430,21 @@ export function placeLabel(city: string | null | undefined, country: string | nu
   return 'Country unknown';
 }
 
+/**
+ * A path fit to print. Ad links arrive carrying a 200-character click id
+ * (fbclid, ttclid, gclid…) which ran straight out of the story card; the page
+ * itself is what a human reads, so the tags become a short "+ ad tags" note
+ * and the raw string stays in the title attribute.
+ */
+export function shortPath(raw: string | null | undefined): string {
+  if (!raw) return '';
+  const [path, query] = raw.split('?');
+  const clean = path.length > 72 ? `${path.slice(0, 69)}…` : path;
+  if (!query) return clean || '/';
+  const tagged = /(fbclid|ttclid|gclid|msclkid|yclid|utm_)/i.test(query);
+  return `${clean || '/'}${tagged ? ' · ad tags' : ''}`;
+}
+
 export function personName(p: { visitorNumber: number | null; visitorId: string; customer?: { name: string | null } | null }): string {
   if (p.customer?.name) return p.customer.name;
   return p.visitorNumber ? `Visitor #${p.visitorNumber.toLocaleString('en-US')}` : `Visitor ${p.visitorId.slice(0, 6)}`;

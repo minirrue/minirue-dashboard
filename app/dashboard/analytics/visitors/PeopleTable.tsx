@@ -189,14 +189,27 @@ export default function PeopleTable({
             <span role="columnheader" className="ppl__num">Orders</span>
             <span role="columnheader">Where</span>
             <span role="columnheader">Last seen</span>
-            <span role="columnheader">This is us</span>
           </div>
           {rows.map((p) => (
             <div key={p.visitorId} role="row" className="ppl__row" tabIndex={0} onClick={() => onOpen(p.visitorId)} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onOpen(p.visitorId)}>
               <span role="cell" className="ppl__name" data-customer={p.customer?.name ? '' : undefined}>
-                {personName(p)}
-                {p.trafficClass !== 'REAL' && <span className="dash-flag-chip" data-class={p.trafficClass}>{p.trafficClass.toLowerCase()}</span>}
-                {p.contactable && <span className="flow-person__contact">can contact</span>}
+                <span className="ppl__name-row">
+                  {personName(p)}
+                  {p.trafficClass !== 'REAL' && <span className="dash-flag-chip" data-class={p.trafficClass}>{p.trafficClass.toLowerCase()}</span>}
+                  {p.contactable && <span className="flow-person__contact">can contact</span>}
+                </span>
+                <button
+                  type="button"
+                  className="ppl__ours-link"
+                  disabled={hiding === p.visitorId}
+                  title="Hide this person from analytics — their whole history, not just today"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void markOurs(p.visitorId);
+                  }}
+                >
+                  {hiding === p.visitorId ? 'Hiding…' : 'This is us — hide'}
+                </button>
               </span>
               <span role="cell" className="ppl__src">
                 {p.platform ?? 'Direct'}
@@ -216,20 +229,6 @@ export default function PeopleTable({
               <span role="cell" className="ppl__num">{p.orders ? `${p.orders} · ${egp(p.revenueMinor)}` : p.cartValueMinor ? `bag ${egp(p.cartValueMinor)}` : '—'}</span>
               <span role="cell" className="ppl__muted">{[placeLabel(p.city, p.country, countryName), realOrNull(p.device)].filter(Boolean).join(' · ')}</span>
               <span role="cell" className="ppl__muted ppl__when">{when(p.lastSeenAt)}</span>
-              <span role="cell" className="ppl__ours">
-                <button
-                  type="button"
-                  className="flow-pill-btn"
-                  disabled={hiding === p.visitorId}
-                  title="Hide this person from analytics — their whole history, not just today"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void markOurs(p.visitorId);
-                  }}
-                >
-                  {hiding === p.visitorId ? 'Hiding…' : 'This is us'}
-                </button>
-              </span>
             </div>
           ))}
         </div>

@@ -114,6 +114,13 @@ export default function OpenCarts({ range, onFlagged }: { range: AnalyticsRangeS
       {carts.isError && <p className="dash-inline-error">Open carts could not load.</p>}
       {carts.isLoading && <span className="dash-skeleton" style={{ display: 'block', height: 120, borderRadius: 12 }} />}
 
+      {!carts.isLoading && !carts.isError && !rows.length && (
+        <p className="flow-note">
+          No cart is sitting open in this range. A bag someone already paid for, or one that was emptied, is not an
+          open cart — to hide a person who once added to a bag, use “This is us” on their row in People below.
+        </p>
+      )}
+
       {!!rows.length && (
         <div className="ppl__table" role="table" aria-label="Open carts">
           <div className="carts__row carts__row--head" role="row">

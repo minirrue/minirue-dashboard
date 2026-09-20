@@ -15,6 +15,7 @@ import {
   apiGetVisitorStory,
   DIMENSION_LABEL,
   personName,
+  shortPath,
   STAGE_LABEL,
   STOP_REASON_LABEL,
   type FlowDimension,
@@ -287,7 +288,7 @@ function StoryDrawer({ visitorId, range, onClose }: { visitorId: string; range: 
                   {ss.steps.map((st, j) => (
                     <li key={j} className="flow-step" data-kind={st.kind}>
                       <span className="flow-step__dot" aria-hidden="true" />
-                      <span className="flow-step__label">{st.label}</span>
+                      <span className="flow-step__label" title={st.path ?? undefined}>{st.path ? `${st.label.split(' · ')[0]} · ${shortPath(st.path)}` : st.label}</span>
                       <span className="flow-step__meta">
                         {[
                           st.seconds != null ? `${Math.round(st.seconds)}s` : null,
