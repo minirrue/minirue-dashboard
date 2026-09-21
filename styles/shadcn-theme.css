@@ -1,0 +1,107 @@
+/*
+ * shadcn/ui, wearing MiniRue.
+ *
+ * shadcn components are written against a fixed set of CSS variable names
+ * (--background, --primary, --border …). This file is the ONLY place those
+ * names are defined, and every one of them points at a token that already
+ * existed in mr-tokens.css. Nothing here invents a colour.
+ *
+ * That indirection is the whole point: the brand stays defined in one place,
+ * and a shadcn component dropped into this dashboard is MiniRue-coloured
+ * without being touched. Change a token in mr-tokens.css and every shadcn
+ * component follows.
+ *
+ * WHAT THIS FILE MUST NOT DO
+ * --------------------------
+ * It must not restyle anything that already exists. The dashboard has 5,633
+ * lines of hand-written CSS in app/dashboard/dashboard.css driving every
+ * current screen, and shadcn is being introduced scoped to the Storefront
+ * Appearance tab (owner, 2026-09-21 — "this tab only"). So there are no
+ * element selectors here, no resets, and no `.dash-*` rules. Two systems
+ * coexist deliberately until #102 decides whether shadcn spreads further.
+ *
+ * Imported from styles/globals.css AFTER mr-tokens.css, because every value
+ * below dereferences a token defined there.
+ */
+
+:root {
+  /* Surfaces. The dashboard's page ground is warm off-white, not pure white;
+     cards sit ON it in true white, which is what gives the shell its depth. */
+  --background: var(--mr-dash-bg);
+  --foreground: var(--mr-fg);
+
+  --card: var(--mr-dash-surface);
+  --card-foreground: var(--mr-fg);
+
+  --popover: var(--mr-dash-surface);
+  --popover-foreground: var(--mr-fg);
+
+  /* Primary is the near-black used by the shop's own CTA, not a blue.
+     A default shadcn install would put a generic slate here and the tab
+     would instantly stop looking like MiniRue. */
+  --primary: var(--mr-ink-900);
+  --primary-foreground: var(--mr-cream-100);
+
+  --secondary: var(--mr-dash-sub);
+  --secondary-foreground: var(--mr-fg-2);
+
+  --muted: var(--mr-dash-sub);
+  --muted-foreground: var(--mr-fg-3);
+
+  /* Gold is the brand accent and is reserved for emphasis and focus.
+     It is deliberately NOT the primary button colour — on a dense admin
+     screen gold everywhere reads as a warning, not as luxury. */
+  --accent: var(--mr-gold-400);
+  --accent-foreground: var(--mr-ink-900);
+
+  --destructive: var(--mr-st-danger-fg);
+  --destructive-foreground: var(--mr-cream-100);
+
+  --border: var(--mr-dash-hair);
+  --input: var(--mr-dash-hair);
+  --ring: var(--mr-gold-400);
+
+  /* shadcn derives its whole radius scale from this one value. */
+  --radius: var(--mr-radius-md);
+}
+
+/*
+ * Tailwind v4 is CSS-first: `@theme inline` is what turns the variables above
+ * into utilities (bg-background, text-muted-foreground, border-border …).
+ * Without this block the components render unstyled — the single most common
+ * way a v4 shadcn install silently fails.
+ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: var(--mr-radius-sm);
+  --radius-md: var(--mr-radius-md);
+  --radius-lg: var(--mr-radius-lg);
+  --radius-xl: var(--mr-radius-lg);
+}
