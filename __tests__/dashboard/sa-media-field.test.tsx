@@ -270,8 +270,18 @@ describe('local-bytes preview policy', () => {
     fireEvent.click(screen.getByRole('button', { name: /upload from this device/i }));
     chooseFile(new File(['xx'], 'holiday.jpg', { type: 'image/jpeg' }));
 
-    const img = await waitForImage(container);
-    expect(img.getAttribute('src')).toMatch(/^blob:/);
+    await waitForImage(container);
+    // WAIT for the blob rather than flushing a fixed number of times and
+    // reading whatever won. `UploadPreviewImage` mints its object URL in an
+    // effect, so the remote src paints first and the blob replaces it one or
+    // more flushes later — how many depends on the machine. The single
+    // `act()` flush inside waitForImage was enough on the machine this test
+    // was written on and not enough in the main checkout, where it read the
+    // remote URL and failed. A test whose result depends on how fast the box
+    // is proves nothing either way.
+    await waitFor(() => {
+      expect(container.querySelector('img')?.getAttribute('src')).toMatch(/^blob:/);
+    });
   });
 
   it('classifies by allowlist, because image/heic passes a startsWith test', () => {
