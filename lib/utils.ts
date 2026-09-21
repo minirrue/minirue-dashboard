@@ -1,20 +1,23 @@
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+export { cn } from 'cn';
 
 /**
- * Merge class names, last-write-wins on conflicting Tailwind utilities.
+ * `cn` — merge class names, last-write-wins on conflicting Tailwind utilities.
  *
- * `clsx` flattens conditionals and arrays; `twMerge` then resolves genuine
- * conflicts — `cn('p-2', 'p-4')` is `p-4`, not both. That second step is the
- * reason this exists rather than a template literal: every shadcn component
- * takes a `className` prop meant to override its own defaults, and without
- * twMerge the override and the default both land in the class list and the
- * winner is decided by stylesheet order rather than by the caller.
+ * `cn('p-2', 'p-4')` is `p-4`, not both. That conflict resolution is the whole
+ * point: every shadcn component takes a `className` meant to override its own
+ * defaults, and without it the override and the default both land in the class
+ * list and stylesheet order picks the winner instead of the caller.
  *
- * Required by every shadcn component. Kept here (not in a `components/ui`
- * barrel) because it is a plain utility, and `components.json` points the
- * generator at this path.
+ * WHY THIS FILE IS A RE-EXPORT AND NOT AN IMPLEMENTATION
+ * -----------------------------------------------------
+ * There were briefly two of these. `components.json` aliases `utils` to
+ * `@/lib/utils`, so the primitives under components/storefront-appearance/
+ * import from here — but shadcn's current registry emits `import { cn } from
+ * "cn"` and installed that package, so all eight files in components/ui/ used
+ * a different one. Two implementations of the same function, both live.
+ *
+ * Re-exporting settles it without fighting the generator: there is now exactly
+ * one implementation, both import paths reach it, and the next `shadcn add`
+ * still produces code that works. The `cn` package is a compiled drop-in for
+ * clsx + tailwind-merge, so nothing is lost by preferring it.
  */
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
