@@ -519,13 +519,37 @@ export function slugify(title: string): string {
 }
 
 /**
- * The five "pages customers look for" (issue dashboard#125), created in one
- * click with starter copy the owner edits. Every body below is deliberately
- * honest placeholder prose: it names exactly what real detail is missing and
- * tells the owner to fill it in, and it never invents a registration number,
- * address, phone number, or delivery promise. `createTrustPages` only adds
- * whichever of these do not already exist (matched by slug) — it never
+ * The "pages customers look for" (issue dashboard#125), created in one click
+ * with starter copy the owner edits. Every body below is deliberately honest
+ * placeholder prose: it names exactly what real detail is missing and tells
+ * the owner to fill it in, and it never invents a registration number,
+ * address, phone number, tax id, or a returns window. `createTrustPages` only
+ * adds whichever of these do not already exist (matched by slug) — it never
  * overwrites a page the owner has already written.
+ *
+ * Three things about this list are load-bearing and were got wrong once:
+ *
+ * 1. **The slugs match the shop's real addresses.** They used to read
+ *    `shipping-delivery` and `returns-refunds` while the live storefront
+ *    served `/shipping` and `/returns`, so one click would have created a
+ *    SECOND shipping page and a SECOND returns page — both orphaned, both
+ *    free to contradict the real ones. The slugs and titles here are the same
+ *    ones the backend seeds in `storefront-defaults.ts`.
+ * 2. **`terms` and `privacy` are in the list.** They 404 on the live shop
+ *    today. That is not cosmetic: Meta and TikTok both require a reachable
+ *    privacy policy from an advertiser running their pixels, and both pixels
+ *    are live here. `mergeDefaults` will never restore them once they were
+ *    dropped from the stored array, so this button is the way back.
+ * 3. **Shipping and Returns state their numbers as `{tokens}`, never as
+ *    literals.** The owner's rule: any dynamic fact on a trust page is
+ *    fetched server-side from the one place the dashboard sets it. The token
+ *    names are exactly the ones the storefront's promise filler understands
+ *    (`PROMISE_TOKEN_NAMES` below) — so a Shipping page can never quote a
+ *    delivery window the product-page chip disagrees with, because both read
+ *    the same setting.
+ *
+ * Terms and Privacy are drafting scaffolds, not legal advice, and each says
+ * so in its own first paragraph so the owner cannot miss it.
  */
 export const TRUST_PAGE_STARTERS: Array<Pick<StorefrontPage, 'slug' | 'title' | 'body'>> = [
   {
@@ -561,37 +585,147 @@ export const TRUST_PAGE_STARTERS: Array<Pick<StorefrontPage, 'slug' | 'title' | 
     ].join('\n'),
   },
   {
-    slug: 'shipping-delivery',
-    title: 'Shipping & delivery',
+    slug: 'shipping',
+    title: 'Shipping',
     body: [
-      '# Shipping & delivery',
+      '# Shipping',
       '',
-      '*(This page is a placeholder — replace every bracketed line below with your real policy.)*',
+      '**Delivery time:** {deliveryDays}.',
       '',
-      '**Delivery time:** *(add your typical delivery window here — be specific, so this is never left as a guess)*',
+      '**Free delivery:** free to {freeGovernorates}.',
       '',
-      '**Delivery fee:** see the checkout for the exact fee for your area — we do not repeat it here so this page can never say something the checkout does not charge.',
+      '**Same-day delivery:** available in {sameDayGovernorates}.',
       '',
-      '**Same-day delivery:** *(state here whether you offer it, and where — leave this out entirely if you do not)*',
+      '**Delivery fee:** {fee} — the checkout shows it again before you pay.',
       '',
-      'We will contact you if anything about your order or delivery changes.',
+      '**Cash on delivery:** available on orders up to {codLimit}.',
+      '',
+      '*(The lines above read your live shipping settings, so this page can never promise something the checkout does not do. Change them under Storefront appearance, not here.)*',
+      '',
+      '*(Add anything else that is true for your shop below — how you pack, what happens when nobody is home, how you let someone know an order is running late. Those lines are yours to write.)*',
+      '',
+      'We get in touch if anything about an order or its delivery changes.',
     ].join('\n'),
   },
   {
-    slug: 'returns-refunds',
-    title: 'Returns & refunds',
+    slug: 'returns',
+    title: 'Returns',
     body: [
-      '# Returns & refunds',
+      '# Returns',
       '',
-      '*(This page is a placeholder — replace every bracketed line below with your real policy.)*',
+      'You have {returnsDays} days from the day an order arrives to ask for a return. That number is read from your returns setting, so this page and the product page can never disagree.',
       '',
-      '**Returns window:** *(add how many days a customer has to request a return — set the number under Storefront appearance → Trust and mention it here)*',
+      '**Condition:** *(say what state an item has to be in to come back — unopened, original packaging, tags still on. Replace this line.)*',
       '',
-      '**Condition:** *(state what condition an item must be in to be returned — unopened, original packaging, etc.)*',
+      '**How to start one:** get in touch on the [Contact](/contact) page with the order number and what you would like to return. We reply with the next step.',
       '',
-      '**How to start a return:** *(add the steps — e.g. contact us first using the Contact page)*',
+      '**Refunds:** *(say how the money goes back — same payment method, cash, store credit — and how long that takes once the item is with us. Replace this line.)*',
       '',
-      '**Refunds:** *(add how and when a refund is issued once a return is received)*',
+      '**What cannot come back:** *(list anything you cannot accept — opened cosmetics, for instance. Delete this line if nothing applies.)*',
+    ].join('\n'),
+  },
+  {
+    slug: 'terms',
+    title: 'Terms of Service',
+    body: [
+      '# Terms of Service',
+      '',
+      '**Draft — not legal advice.** *(This page is a scaffold your dashboard wrote, not a lawyer. It lists what a shop like this normally has to say and leaves every fact about YOUR business blank. Have someone qualified read it, fill in every bracketed line, and delete this paragraph before you publish.)*',
+      '',
+      '## Who you are buying from',
+      '',
+      '*(Add the trading name and the legal entity behind it. Ways to reach us live on the [Contact](/contact) page, and the registration details on the [Imprint / legal](/imprint-legal) page — fill those in first.)*',
+      '',
+      '## Placing an order',
+      '',
+      'An order is an offer to buy. It becomes a contract when we confirm it. We may decline an order — an item that has just sold out, an address we cannot reach — and nothing is charged when we do.',
+      '',
+      '## Prices and payment',
+      '',
+      'Prices are shown on the product page, and the checkout is the last word on what is charged, delivery included. *(Add which payment methods you accept, and whether the prices you show include tax.)*',
+      '',
+      '## Delivery',
+      '',
+      'See the [Shipping](/shipping) page. A delivery estimate is an estimate, not a guarantee.',
+      '',
+      '## Returns and cancellation',
+      '',
+      'See the [Returns](/returns) page. *(If a statutory cancellation right applies where you sell, say so here in your own words. Do not guess at one.)*',
+      '',
+      '## What the product pages say',
+      '',
+      'We describe and photograph items as carefully as we can. A screen never shows colour exactly, and a small difference between the photo and the item is not a fault.',
+      '',
+      '## Your account',
+      '',
+      'Keep your account details to yourself. Anything done from an account is treated as done by the person it belongs to — tell us straight away if that stops being true.',
+      '',
+      '## Things outside our control',
+      '',
+      '*(Say what happens to an order when something genuinely outside your control holds it up. Replace this line.)*',
+      '',
+      '## Which law applies',
+      '',
+      '*(Name the country whose law governs these terms and where a dispute would be heard. Do not leave this blank and do not guess — it is the line a dispute turns on.)*',
+      '',
+      '## Changes to these terms',
+      '',
+      'We may update this page. The version live when an order is placed is the one that applies to that order.',
+      '',
+      '## Getting in touch',
+      '',
+      'Use the [Contact](/contact) page.',
+    ].join('\n'),
+  },
+  {
+    slug: 'privacy',
+    title: 'Privacy Policy',
+    body: [
+      '# Privacy Policy',
+      '',
+      '**Draft — not legal advice.** *(This page is a scaffold your dashboard wrote, not a lawyer. It describes the tools a shop like this normally runs and leaves every fact about YOUR business blank. Check every section against what is actually switched on, have someone qualified read it, and delete this paragraph before you publish.)*',
+      '',
+      '## What we collect',
+      '',
+      '- What you give us when you order: your name, delivery address, phone number, email, and what is in the order.',
+      '- What you give us when you make an account or sign up for our emails.',
+      '- What your browser sends when you visit: the pages you view, a rough location from your IP address, and your device and browser type.',
+      '',
+      '## The advertising and analytics tools on this site',
+      '',
+      'This shop runs the Meta (Facebook and Instagram) pixel and the TikTok pixel. They record that a browser viewed a product, added something to the cart, or finished an order, and they send that to Meta and to TikTok so our ads can be measured and shown to people likely to be interested. *(Check this list against what is actually installed before you publish, and delete anything you do not run. If you add another tool later — analytics, a chat widget — add it here the same day.)*',
+      '',
+      '## Cookies',
+      '',
+      'Cookies keep a cart from emptying between pages, keep an account signed in, and let the tools above recognise a browser that has been here before. *(If you show a cookie banner, say here what choosing to reject turns off. Do not describe a banner you have not built.)*',
+      '',
+      '## Why we use any of it',
+      '',
+      'To take and deliver an order, to answer a question about one, to keep the shop working and safe, and to advertise. Nothing else.',
+      '',
+      '## Who else sees it',
+      '',
+      'The courier who brings an order, the payment provider who takes the money, and the advertising platforms named above. *(Add the actual companies by name — a customer cannot check a policy that never names anyone.)*',
+      '',
+      '## How long we keep it',
+      '',
+      '*(Say how long you keep order records, and how long you keep everything else. Order records usually have to be kept for a set period for tax — find the real period where you sell rather than writing a round number here.)*',
+      '',
+      '## What you can ask us for',
+      '',
+      'You can ask what we hold about you, ask us to correct it, ask us to delete it, and ask us to stop sending you marketing email. *(Add any further rights that apply where you sell.)*',
+      '',
+      '## How to ask',
+      '',
+      'Write to us on the [Contact](/contact) page and say what you would like done. *(Add a dedicated address for data requests if you have one, and the time you aim to reply within.)*',
+      '',
+      '## Children',
+      '',
+      'This shop is not meant for children, and we do not knowingly collect anything about them.',
+      '',
+      '## Changes to this page',
+      '',
+      'We may update this page. *(Add the date it last changed, and update that date whenever you edit it.)*',
     ].join('\n'),
   },
   {
@@ -661,6 +795,22 @@ export interface PromiseTokenValues {
   returnsDays?: string | null;
   fee?: string | null;
 }
+
+/**
+ * Every `{token}` the storefront knows how to fill, and the only ones that may
+ * appear in a promise or in a trust-page starter body. Kept in step by hand
+ * with `tokenValue()` in minirue-frontend/lib/storefront/promises.ts — a token
+ * this list does not contain is filled by nobody and reaches a customer as a
+ * literal `{brace}`, so a test asserts the starters use nothing else.
+ */
+export const PROMISE_TOKEN_NAMES: ReadonlyArray<keyof PromiseTokenValues> = [
+  'deliveryDays',
+  'freeGovernorates',
+  'sameDayGovernorates',
+  'codLimit',
+  'returnsDays',
+  'fee',
+];
 
 /**
  * Renders `text` with every `{token}` substituted for a live value, for the

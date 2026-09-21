@@ -89,12 +89,17 @@ export default function PagesEditor({
           /&lt;slug&gt; on the storefront.
         </p>
         <p className="dash-hint">
-          &quot;Create the pages customers look for&quot; adds Contact, About, Shipping &amp;
-          delivery, Returns &amp; refunds, and Imprint / legal — whichever of those five don&apos;t
-          exist yet — enabled, with honest placeholder starter copy. It never touches a page you
-          already have. The starter copy never invents a phone number, address, registration
-          number, or delivery time — every real detail is left as a bracketed placeholder for you
-          to fill in before publishing.
+          &quot;Create the pages customers look for&quot; adds Contact, About, Shipping, Returns,
+          Terms of Service, Privacy Policy and Imprint / legal — whichever of those don&apos;t
+          exist yet — enabled, with honest placeholder starter copy. It never touches or
+          duplicates a page you already have. The starter copy never invents a phone number,
+          address, registration number, tax id or returns window: every real detail is left as a
+          bracketed placeholder for you to fill in before publishing, and Shipping and Returns
+          quote your live settings through {'{tokens}'} rather than numbers typed into the page.
+        </p>
+        <p className="dash-hint">
+          Terms of Service and Privacy Policy are drafting scaffolds, not legal advice — each
+          starts with a paragraph saying so. Read them with someone qualified before publishing.
         </p>
         {createResult === 'created' && (
           <p className="dash-inline-ok">
@@ -103,7 +108,7 @@ export default function PagesEditor({
         )}
         {createResult === 'noneMissing' && (
           <p className="dash-hint">
-            All five already exist — nothing was added or changed.
+            You already have all of them — nothing was added or changed.
           </p>
         )}
 
