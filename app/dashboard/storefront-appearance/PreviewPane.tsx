@@ -13,7 +13,7 @@
  * shop data crosses, and only to the exact origin we framed.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ExternalLink, Monitor, RefreshCw, Smartphone } from 'lucide-react';
+import { ExternalLink, Monitor, RefreshCw, Smartphone, Tablet } from 'lucide-react';
 import {
   apiPreviewStorefrontLayout,
   normalizeStorefrontLayoutForSave,
@@ -23,10 +23,14 @@ import {
 import { DRAFT_PREVIEW_PATH, storefrontOrigin } from '@/lib/storefront/origin';
 
 export type PreviewView = 'home' | 'menu' | 'product' | 'page';
-export type PreviewDevice = 'desktop' | 'phone';
+export type PreviewDevice = 'desktop' | 'tablet' | 'phone';
 
 /** A real device viewport. The shop's hero is 100vh, so the frame must never be taller than a screen. */
-const VIEWPORT: Record<PreviewDevice, { w: number; h: number }> = { desktop: { w: 1280, h: 800 }, phone: { w: 390, h: 844 } };
+const VIEWPORT: Record<PreviewDevice, { w: number; h: number }> = {
+  desktop: { w: 1280, h: 800 },
+  tablet: { w: 820, h: 1180 },
+  phone: { w: 390, h: 844 },
+};
 const READY_TIMEOUT_MS = 10000;
 const DEBOUNCE_MS = 400;
 
@@ -161,6 +165,9 @@ export default function PreviewPane({
           <div className="sfe-tg" role="group" aria-label="Preview size">
             <button type="button" aria-pressed={shown === 'desktop'} disabled={lockDevice === 'phone'} onClick={() => onDeviceChange('desktop')}>
               <Monitor aria-hidden /> Desktop
+            </button>
+            <button type="button" aria-pressed={shown === 'tablet'} disabled={lockDevice === 'phone'} onClick={() => onDeviceChange('tablet')}>
+              <Tablet aria-hidden /> Tablet
             </button>
             <button type="button" aria-pressed={shown === 'phone'} onClick={() => onDeviceChange('phone')}>
               <Smartphone aria-hidden /> Phone
