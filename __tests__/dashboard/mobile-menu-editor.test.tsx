@@ -17,8 +17,16 @@ jest.mock('@/lib/api/storefront', () => {
     ...actual,
     apiGetStorefrontLayout: jest.fn(),
     apiSaveStorefrontLayout: jest.fn(),
+    // The live preview is out of scope here; keep it pending so it never fetches.
+    apiPreviewStorefrontLayout: jest.fn(() => new Promise(() => {})),
   };
 });
+
+/** Publishing is Publish -> the summary sheet -> Publish now (it used to be one Save button). */
+async function publishNow() {
+  await userEvent.click((await screen.findAllByRole('button', { name: /^publish$/i }))[0]);
+  await userEvent.click(await screen.findByRole('button', { name: /publish now/i }));
+}
 
 const mocked = storefrontApi as jest.Mocked<typeof storefrontApi>;
 
@@ -70,7 +78,8 @@ describe('Mobile menu editor', () => {
     render(<StorefrontAppearanceClient />);
     await screen.findByText('Storefront');
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Mobile menu' }));
+    await userEvent.click(await screen.findByRole('tab', { name: /navigation/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /phone menu/i }));
 
     // "Home" also appears as the selected option text of the first
     // shortcut's target <select> ("Goes to" -> Home), so disambiguate to the
@@ -81,7 +90,7 @@ describe('Mobile menu editor', () => {
     await userEvent.clear(homeLabel);
     await userEvent.type(homeLabel, 'Shop home');
 
-    await userEvent.click(screen.getByRole('button', { name: /save changes/i }));
+    await publishNow();
 
     await waitFor(() => expect(mocked.apiSaveStorefrontLayout).toHaveBeenCalledTimes(1));
     const sent = mocked.apiSaveStorefrontLayout.mock.calls[0][0];
@@ -108,7 +117,7 @@ describe('Mobile menu editor', () => {
 
     render(<StorefrontAppearanceClient />);
     await screen.findByText('Storefront');
-    await userEvent.click(await screen.findByRole('button', { name: /save changes/i }));
+    await publishNow();
 
     await waitFor(() => expect(mocked.apiSaveStorefrontLayout).toHaveBeenCalledTimes(1));
     const sent = mocked.apiSaveStorefrontLayout.mock.calls[0][0];
@@ -127,13 +136,11 @@ describe('Mobile menu editor', () => {
 
     render(<StorefrontAppearanceClient />);
     await screen.findByText('Storefront');
-    await userEvent.click(await screen.findByRole('button', { name: 'Mobile menu' }));
+    await userEvent.click(await screen.findByRole('tab', { name: /navigation/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /phone menu/i }));
 
-    // 3 shortcuts + the footer button each render their own "Remove" — the
-    // footer button's is the last one in DOM order.
-    const removeButtons = await screen.findAllByRole('button', { name: 'Remove' });
-    await userEvent.click(removeButtons[removeButtons.length - 1]);
-    await userEvent.click(screen.getByRole('button', { name: /save changes/i }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove the bottom button' }));
+    await publishNow();
 
     await waitFor(() => expect(mocked.apiSaveStorefrontLayout).toHaveBeenCalledTimes(1));
     const sent = mocked.apiSaveStorefrontLayout.mock.calls[0][0];

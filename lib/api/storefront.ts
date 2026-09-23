@@ -1,5 +1,6 @@
 import { apiFetch } from './client';
 import { HERO_COLOR_FIELDS, sanitizeHeroColor } from '../hero-slide-colors';
+import { fromMenu, fromNav, isTargetComplete, moveInList } from '../storefront/targets';
 
 export type SectionType =
   | 'hero'
@@ -842,52 +843,19 @@ export function normalizeCtaTarget(target: CtaTarget): CtaTarget {
   return target;
 }
 
-/** True when a nav item is missing its target id/href or its label — unsalvageable, not defaultable. */
-function isIncompleteNavItem(item: NavItem): boolean {
-  if (isBlank(item.label)) return true;
-  switch (item.kind) {
-    case 'category':
-      return isBlank(item.categoryId);
-    case 'brand':
-      return isBlank(item.brandId);
-    case 'product':
-      return isBlank(item.productId);
-    case 'collaborator':
-      return isBlank(item.collaboratorId);
-    case 'link':
-      return isBlank(item.href);
-  }
+/** True when a nav item is missing its target id/href or its label — unsalvageable, not defaultable.
+ *  The target half is the shared rule in `lib/storefront/targets`. */
+export function isIncompleteNavItem(item: NavItem): boolean {
+  return isBlank(item.label) || !isTargetComplete(fromNav(item));
 }
 
-/** Same "missing target id/href" check as a nav item, for a mobile-menu
- * target. The five built-in kinds (home/search/account/cart/brands) need
- * nothing beyond the kind itself, so they can never be incomplete. */
-function isIncompleteMobileMenuTarget(target: MobileMenuTarget): boolean {
-  switch (target.kind) {
-    case 'category':
-      return isBlank(target.categoryId);
-    case 'brand':
-      return isBlank(target.brandId);
-    case 'product':
-      return isBlank(target.productId);
-    case 'collaborator':
-      return isBlank(target.collaboratorId);
-    case 'link':
-      return isBlank(target.href);
-    case 'home':
-    case 'search':
-    case 'account':
-    case 'cart':
-    case 'brands':
-      return false;
-  }
-}
-
-function isIncompleteMobileMenuItem(item: {
+/** Same rule for a phone-menu tile or the bottom button. The five built-in
+ * kinds (home/search/account/cart/brands) need nothing beyond the kind. */
+export function isIncompleteMobileMenuItem(item: {
   label: string;
   target: MobileMenuTarget;
 }): boolean {
-  return isBlank(item.label) || isIncompleteMobileMenuTarget(item.target);
+  return isBlank(item.label) || !isTargetComplete(fromMenu(item.target));
 }
 
 export interface NormalizeResult {
@@ -996,11 +964,8 @@ export function moveSection(
   index: number,
   direction: -1 | 1,
 ): StorefrontSection[] {
-  const target = index + direction;
-  if (target < 0 || target >= sections.length) return sections;
-  const next = [...sections];
-  [next[index], next[target]] = [next[target], next[index]];
-  return next.map((s, i) => ({ ...s, order: i }));
+  const next = moveInList(sections, index, direction);
+  return next === sections ? sections : next.map((s, i) => ({ ...s, order: i }));
 }
 
 interface SettingsEnvelope {
@@ -1014,6 +979,28 @@ export async function apiGetStorefrontLayout(): Promise<StorefrontLayout> {
     throw new Error('Store settings have no storefront layout — run the 0017 upgrade script');
   }
   return settings.storefront;
+}
+
+/**
+ * The storefront as it WOULD render with this unsaved layout — resolved by the
+ * same backend resolver the live shop uses, never persisted, never cached
+ * (backend#227). The editor frames the real storefront and hands it this.
+ */
+export interface StorefrontPreviewData {
+  home: unknown;
+  chrome: unknown;
+}
+
+export async function apiPreviewStorefrontLayout(
+  layout: StorefrontLayout,
+  signal?: AbortSignal,
+): Promise<StorefrontPreviewData> {
+  return apiFetch<StorefrontPreviewData>('/storefront/preview', {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify({ storefront: layout }),
+    signal,
+  });
 }
 
 export async function apiSaveStorefrontLayout(

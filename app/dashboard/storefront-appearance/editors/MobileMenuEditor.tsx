@@ -1,18 +1,14 @@
 'use client';
 
 /**
- * MobileMenuEditor — the "Mobile menu" tab under Storefront appearance.
- *
- * What used to be a hardcoded Home/Search/Account tile row and a hardcoded
- * Account pill in `MobileNavSheet.tsx` (the storefront rendered Account
- * twice) is now fully admin-configurable: up to 3 shortcut tiles, and one
- * optional pinned footer button. Follows the same shape/pattern as
- * `NavbarEditor.tsx` — a kind picker plus the matching `EntityPicker` — with
- * five extra built-in kinds (home/search/account/cart/brands) that need no
- * picker at all.
+ * The phone menu — half of the Navigation tab (the desktop menu bar is the
+ * other half). Up to 3 shortcut tiles and one optional pinned bottom button,
+ * each pointing anywhere via the shared TargetField, including five built-in
+ * destinations (home/search/account/cart/all makers) that need no picker.
  */
 
 import React from 'react';
+import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 import { newId } from '@/lib/api/storefront';
 import type {
   MobileMenuConfig,
@@ -21,45 +17,14 @@ import type {
   MobileMenuShortcut,
   MobileMenuTarget,
 } from '@/lib/api/storefront';
-import { MOBILE_MENU_ICONS } from '@/lib/api/storefront';
-import EntityPicker from '../pickers/EntityPicker';
+import { MOBILE_MENU_ICONS, isIncompleteMobileMenuItem } from '@/lib/api/storefront';
+import { TargetField } from '../fields/TargetField';
+import { blankTarget as blankUnified, fromMenu, moveInList, toMenu, type TargetKind } from '@/lib/storefront/targets';
 
-const MAX_SHORTCUTS = 3;
-
-const TARGET_KIND_LABELS: Record<MobileMenuTarget['kind'], string> = {
-  home: 'Home',
-  search: 'Search',
-  account: 'Account',
-  cart: 'Cart',
-  brands: 'Brands index',
-  category: 'A category',
-  brand: 'A brand',
-  product: 'A product',
-  collaborator: 'A collaborator brand',
-  link: 'Custom link',
-};
-
-const TARGET_KINDS = Object.keys(TARGET_KIND_LABELS) as MobileMenuTarget['kind'][];
+export const MAX_SHORTCUTS = 3;
 
 export function blankTarget(kind: MobileMenuTarget['kind']): MobileMenuTarget {
-  switch (kind) {
-    case 'home':
-    case 'search':
-    case 'account':
-    case 'cart':
-    case 'brands':
-      return { kind };
-    case 'category':
-      return { kind: 'category', categoryId: '' };
-    case 'brand':
-      return { kind: 'brand', brandId: '' };
-    case 'product':
-      return { kind: 'product', productId: '' };
-    case 'collaborator':
-      return { kind: 'collaborator', collaboratorId: '' };
-    case 'link':
-      return { kind: 'link', href: '' };
-  }
+  return toMenu(blankUnified(kind as TargetKind));
 }
 
 export function blankShortcut(): MobileMenuShortcut {
@@ -124,87 +89,46 @@ function IconSelect({
   onChange: (icon: MobileMenuIcon) => void;
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <IconPreview icon={value} />
-      <select
-        className="dash-input"
-        value={value}
-        onChange={(e) => onChange(e.target.value as MobileMenuIcon)}
-      >
+    <div className="sfe-icon-select">
+      <span className="sfe-icon-tile">
+        <IconPreview icon={value} />
+      </span>
+      <select className="sfe-input" aria-label="Icon" value={value} onChange={(e) => onChange(e.target.value as MobileMenuIcon)}>
         {MOBILE_MENU_ICONS.map((i) => (
-          <option key={i} value={i}>{i}</option>
+          <option key={i} value={i}>
+            {i}
+          </option>
         ))}
       </select>
     </div>
   );
 }
 
-function TargetFields({
-  target,
+export { IconPreview as MobileMenuIconPreview };
+
+function MenuItemFields({
+  item,
   onChange,
 }: {
-  target: MobileMenuTarget;
-  onChange: (next: MobileMenuTarget) => void;
+  item: { label: string; icon: MobileMenuIcon; target: MobileMenuTarget };
+  onChange: (next: { label: string; icon: MobileMenuIcon; target: MobileMenuTarget }) => void;
 }) {
   return (
-    <>
-      <label className="dash-field">
-        <span className="dash-label">Goes to</span>
-        <select
-          className="dash-input"
-          value={target.kind}
-          onChange={(e) => onChange(blankTarget(e.target.value as MobileMenuTarget['kind']))}
-        >
-          {TARGET_KINDS.map((k) => (
-            <option key={k} value={k}>{TARGET_KIND_LABELS[k]}</option>
-          ))}
-        </select>
+    <div className="sfe-grid-3">
+      <label className="sfe-field">
+        <span className="sfe-label">Label</span>
+        <input className="sfe-input" value={item.label} onChange={(e) => onChange({ ...item, label: e.target.value })} />
       </label>
-
-      {target.kind === 'link' && (
-        <label className="dash-field">
-          <span className="dash-label">Link</span>
-          <input
-            className="dash-input"
-            value={target.href}
-            placeholder="/journal or https://…"
-            onChange={(e) => onChange({ kind: 'link', href: e.target.value })}
-          />
-        </label>
-      )}
-      {target.kind === 'category' && (
-        <EntityPicker
-          kind="category"
-          label="Category"
-          value={target.categoryId || null}
-          onChange={(id) => onChange({ kind: 'category', categoryId: id ?? '' })}
-        />
-      )}
-      {target.kind === 'brand' && (
-        <EntityPicker
-          kind="brand"
-          label="Brand"
-          value={target.brandId || null}
-          onChange={(id) => onChange({ kind: 'brand', brandId: id ?? '' })}
-        />
-      )}
-      {target.kind === 'product' && (
-        <EntityPicker
-          kind="product"
-          label="Product"
-          value={target.productId || null}
-          onChange={(id) => onChange({ kind: 'product', productId: id ?? '' })}
-        />
-      )}
-      {target.kind === 'collaborator' && (
-        <EntityPicker
-          kind="collaborator"
-          label="Collaborator"
-          value={target.collaboratorId || null}
-          onChange={(id) => onChange({ kind: 'collaborator', collaboratorId: id ?? '' })}
-        />
-      )}
-    </>
+      <div className="sfe-field">
+        <span className="sfe-label">Icon</span>
+        <IconSelect value={item.icon} onChange={(icon) => onChange({ ...item, icon })} />
+      </div>
+      <TargetField
+        use="menu"
+        value={fromMenu(item.target)}
+        onChange={(t, entityLabel) => onChange({ ...item, target: toMenu(t), label: item.label || entityLabel || '' })}
+      />
+    </div>
   );
 }
 
@@ -215,155 +139,82 @@ export default function MobileMenuEditor({
   mobileMenu: MobileMenuConfig;
   onChange: (next: MobileMenuConfig) => void;
 }) {
-  const patchShortcut = (index: number, next: MobileMenuShortcut) =>
-    onChange({
-      ...mobileMenu,
-      shortcuts: mobileMenu.shortcuts.map((s, i) => (i === index ? next : s)),
-    });
-
+  const shortcuts = mobileMenu.shortcuts;
+  const setShortcuts = (next: MobileMenuShortcut[]) => onChange({ ...mobileMenu, shortcuts: next });
   const footerButton = mobileMenu.footerButton;
-  const patchFooterButton = (next: Partial<MobileMenuFooterButton>) =>
-    onChange({
-      ...mobileMenu,
-      footerButton: footerButton ? { ...footerButton, ...next } : null,
-    });
+  const setFooterButton = (next: MobileMenuFooterButton | null) => onChange({ ...mobileMenu, footerButton: next });
 
   return (
-    <div className="dash-form-card">
-      <p style={{ fontSize: 13, color: 'var(--mr-fg-3)' }}>
-        Controls the phone menu: up to {MAX_SHORTCUTS} icon tiles at the top, and one optional
-        button pinned to the bottom. Both used to be fixed — Home, Search and Account tiles,
-        plus an Account button underneath them, showing Account twice. Set below, exactly as
-        shown, with the icons from the storefront&apos;s own set.
-      </p>
-
-      <div className="dash-form-section">
-        <div className="dash-section-header">
-          <h2 className="dash-section-title">Shortcut tiles</h2>
-          {mobileMenu.shortcuts.length < MAX_SHORTCUTS && (
-            <button
-              type="button"
-              className="dash-btn-secondary"
-              onClick={() => onChange({ ...mobileMenu, shortcuts: [...mobileMenu.shortcuts, blankShortcut()] })}
-            >
-              Add tile
-            </button>
-          )}
-        </div>
-
-        {mobileMenu.shortcuts.length === 0 && (
-          <p className="dash-hint">No shortcut tiles — the top row of the phone menu is empty.</p>
-        )}
-
-        {mobileMenu.shortcuts.map((shortcut, index) => (
-          <div key={shortcut.id} className="dash-form-card" style={{ marginBottom: 10 }}>
-            <div className="dash-row-actions" style={{ marginBottom: 8 }}>
-              <strong style={{ flex: 1 }}>
-                {index + 1}. {shortcut.label || TARGET_KIND_LABELS[shortcut.target.kind]}
-              </strong>
-              <button
-                type="button"
-                className="dash-btn-ghost"
-                onClick={() =>
-                  onChange({
-                    ...mobileMenu,
-                    shortcuts: mobileMenu.shortcuts.filter((_, i) => i !== index),
-                  })
-                }
-              >
-                Remove
-              </button>
-            </div>
-            <div className="dash-form-grid">
-              <label className="dash-field">
-                <span className="dash-label">Label</span>
-                <input
-                  className="dash-input"
-                  value={shortcut.label}
-                  onChange={(e) => patchShortcut(index, { ...shortcut, label: e.target.value })}
-                />
-              </label>
-              <label className="dash-field">
-                <span className="dash-label">Icon</span>
-                <IconSelect
-                  value={shortcut.icon}
-                  onChange={(icon) => patchShortcut(index, { ...shortcut, icon })}
-                />
-              </label>
-            </div>
-            <TargetFields
-              target={shortcut.target}
-              onChange={(target) => patchShortcut(index, { ...shortcut, target })}
-            />
+    <>
+      <section className="sfe-panel" aria-labelledby="h-phone-tiles">
+        <div className="sfe-panel-h">
+          <div>
+            <h2 id="h-phone-tiles">Phone menu tiles</h2>
+            <span className="sfe-meta">
+              Up to {MAX_SHORTCUTS} icon tiles at the top of the phone menu, in this order.
+            </span>
           </div>
-        ))}
-
-        {mobileMenu.shortcuts.length >= MAX_SHORTCUTS && (
-          <p className="dash-help-text">That is the maximum — remove one before adding another.</p>
-        )}
-      </div>
-
-      <div className="dash-form-section">
-        <div className="dash-section-header">
-          <h2 className="dash-section-title">Footer button</h2>
-          {!footerButton && (
-            <button
-              type="button"
-              className="dash-btn-secondary"
-              onClick={() =>
-                onChange({
-                  ...mobileMenu,
-                  footerButton: { label: 'Account', icon: 'user', target: { kind: 'account' } },
-                })
-              }
-            >
-              Add footer button
+          {shortcuts.length < MAX_SHORTCUTS && (
+            <button type="button" className="sfe-btn sfe-btn-sm" onClick={() => setShortcuts([...shortcuts, blankShortcut()])}>
+              <Plus aria-hidden /> Add tile
             </button>
           )}
         </div>
+        {shortcuts.length === 0 && <p className="sfe-empty">No tiles. The top row of the phone menu is empty.</p>}
+        <ol className="sfe-rows">
+          {shortcuts.map((tile, index) => (
+            <li key={tile.id} className="sfe-row" data-focus-key={`tile:${tile.id}`}>
+              <div className="sfe-move">
+                <button type="button" aria-label={`Move tile ${index + 1} up`} disabled={index === 0} onClick={() => setShortcuts(moveInList(shortcuts, index, -1))}>
+                  <ChevronUp aria-hidden />
+                </button>
+                <button type="button" aria-label={`Move tile ${index + 1} down`} disabled={index === shortcuts.length - 1} onClick={() => setShortcuts(moveInList(shortcuts, index, 1))}>
+                  <ChevronDown aria-hidden />
+                </button>
+              </div>
+              <div className="sfe-row-main">
+                <div className="sfe-row-top">
+                  <b>{tile.label || `Tile ${index + 1}`}</b>
+                  {isIncompleteMobileMenuItem(tile) && <span className="sfe-pill sfe-s-warn">Unfinished</span>}
+                </div>
+                <MenuItemFields item={tile} onChange={(next) => setShortcuts(shortcuts.map((s, i) => (i === index ? { ...s, ...next } : s)))} />
+              </div>
+              <div className="sfe-row-act">
+                <button type="button" className="sfe-icon-btn" aria-label={`Remove tile ${index + 1}`} onClick={() => setShortcuts(shortcuts.filter((_, i) => i !== index))}>
+                  <Trash2 aria-hidden />
+                </button>
+              </div>
+            </li>
+          ))}
+        </ol>
+        {shortcuts.length >= MAX_SHORTCUTS && <p className="sfe-hint sfe-pad">That is the maximum. Remove one before adding another.</p>}
+      </section>
 
-        {!footerButton && (
-          <p className="dash-hint">
-            No button pinned to the bottom of the menu — nothing shows there.
-          </p>
+      <section className="sfe-panel" aria-labelledby="h-phone-button" data-focus-key="menu-button">
+        <div className="sfe-panel-h">
+          <div>
+            <h2 id="h-phone-button">Button at the bottom</h2>
+            <span className="sfe-meta">One optional button pinned to the bottom of the phone menu.</span>
+          </div>
+          {footerButton ? (
+            <button type="button" className="sfe-btn sfe-btn-sm sfe-btn-quiet" aria-label="Remove the bottom button" onClick={() => setFooterButton(null)}>
+              <Trash2 aria-hidden /> Remove
+            </button>
+          ) : (
+            <button type="button" className="sfe-btn sfe-btn-sm" onClick={() => setFooterButton({ label: 'Account', icon: 'user', target: { kind: 'account' } })}>
+              <Plus aria-hidden /> Add button
+            </button>
+          )}
+        </div>
+        {footerButton ? (
+          <div className="sfe-panel-b">
+            <MenuItemFields item={footerButton} onChange={(next) => setFooterButton({ ...footerButton, ...next })} />
+          </div>
+        ) : (
+          <p className="sfe-empty">No button. Nothing is pinned to the bottom of the phone menu.</p>
         )}
-
-        {footerButton && (
-          <>
-            <div className="dash-row-actions" style={{ marginBottom: 8 }}>
-              <span style={{ flex: 1 }} />
-              <button
-                type="button"
-                className="dash-btn-ghost"
-                onClick={() => onChange({ ...mobileMenu, footerButton: null })}
-              >
-                Remove
-              </button>
-            </div>
-            <div className="dash-form-grid">
-              <label className="dash-field">
-                <span className="dash-label">Label</span>
-                <input
-                  className="dash-input"
-                  value={footerButton.label}
-                  onChange={(e) => patchFooterButton({ label: e.target.value })}
-                />
-              </label>
-              <label className="dash-field">
-                <span className="dash-label">Icon</span>
-                <IconSelect
-                  value={footerButton.icon}
-                  onChange={(icon) => patchFooterButton({ icon })}
-                />
-              </label>
-            </div>
-            <TargetFields
-              target={footerButton.target}
-              onChange={(target) => patchFooterButton({ target })}
-            />
-          </>
-        )}
-      </div>
-    </div>
+      </section>
+    </>
   );
 }
+

@@ -1,218 +1,263 @@
 'use client';
 
 import React, { useState } from 'react';
-import { createTrustPages, newPage, slugify, SLUG_PATTERN } from '@/lib/api/storefront';
+import { Eye, FileText, Pencil, Plus, ShieldCheck, Trash2 } from 'lucide-react';
+import { PROMISE_TOKEN_LIST, createTrustPages, newPage, slugify } from '@/lib/api/storefront';
 import type { StorefrontPage } from '@/lib/api/storefront';
+import { hasPlaceholders, pageAddressProblem } from '@/lib/storefront/checks';
+import Sheet from './fields/Sheet';
+import Switch from './fields/Switch';
 
 /**
- * Storefront routes that already exist. Pages live at /<slug> now, and Next
- * resolves a real route ahead of the catch-all — so a page claiming one of
- * these slugs would save fine and then be permanently unreachable.
- * Mirrors the top-level folders in apps/minirue-frontend/app.
+ * Standalone pages at minirueshop.com/<address> — Terms, Privacy, Shipping,
+ * Returns, Contact and anything else. The address rules (format, built-in shop
+ * addresses, duplicates) live in `lib/storefront/checks` so the list, the
+ * sheet, the tab badge and "Before you publish" all agree. Partner shop
+ * addresses are still checked by the server when publishing.
  */
-/**
- * Advisory only, and deliberately so.
- *
- * The authority is the server: since minirue-backend@0.48.0 the whole root
- * namespace is guarded in one place, because partner spaces live at /<slug>
- * too — so a page named `helia` would shadow a partner's shop, which this list
- * has no way of knowing. Saving one is refused with a message naming the
- * clash.
- *
- * This copy stays only to catch the obvious cases before a round trip. It was
- * previously the ONLY check, and a hand-maintained mirror of the route tree is
- * the wrong place for the real rule: the routes it mirrors include a group,
- * (auth), whose members are not top-level folders and so do not show up when
- * you read the directory.
- */
-const RESERVED_SLUGS = new Set([
-  // 'shop' joined the list on 2026-08-21 when the storefront's two front
-  // doors merged into it; 'categories' and 'products' stay reserved because
-  // they are permanent redirects INTO /shop, so a page slugged either of
-  // those would be unreachable behind a 308.
-  'account', 'brands', 'cart', 'categories', 'checkout', 'login', 'logout', 'shop',
-  'orders', 'pages', 'products', 'search', 'signup', 'forgot',
-  'reset-password', 'api', 'robots.txt', 'sitemap.xml', 'favicon.ico',
-]);
-
 export default function PagesEditor({
   pages,
   onChange,
+  selectedId,
+  onSelect,
+  notify,
 }: {
   pages: StorefrontPage[];
   onChange: (next: StorefrontPage[]) => void;
+  /** The page shown in the preview. */
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  notify: (msg: string, undo?: () => void) => void;
 }) {
-  // Slug auto-fills from the title until the admin types in the slug field
-  // directly — once that happens for a page, stop overwriting their choice.
-  const [manualSlugIds, setManualSlugIds] = useState<Set<string>>(new Set());
-  const [createResult, setCreateResult] = useState<'created' | 'noneMissing' | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  // Slug auto-fills from the title until the owner types in the address field.
+  const [manualSlug, setManualSlug] = useState<Set<string>>(new Set());
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const handleCreateTrustPages = () => {
+  const patch = (id: string, next: Partial<StorefrontPage>) => onChange(pages.map((p) => (p.id === id ? { ...p, ...next } : p)));
+  const page = pages.find((p) => p.id === editing) ?? null;
+
+  const addTrustPages = () => {
     const { pages: next, added } = createTrustPages(pages);
-    if (added.length > 0) onChange(next);
-    setCreateResult(added.length > 0 ? 'created' : 'noneMissing');
+    if (added.length) {
+      onChange(next);
+      notify(`Added ${added.length} page${added.length > 1 ? 's' : ''}, hidden, with [placeholders] to fill in`);
+    } else {
+      notify('You already have all of them. Nothing changed');
+    }
   };
 
-  const patchPage = (index: number, next: StorefrontPage) =>
-    onChange(pages.map((p, i) => (i === index ? next : p)));
-
-  const slugCounts = pages.reduce<Record<string, number>>((acc, p) => {
-    const key = p.slug.trim();
-    if (key) acc[key] = (acc[key] ?? 0) + 1;
-    return acc;
-  }, {});
-
   return (
-    <div className="dash-form-card">
-      <div className="dash-form-section">
-        <div className="dash-section-header">
-          <h2 className="dash-section-title">Pages</h2>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              type="button"
-              className="dash-btn-secondary"
-              onClick={handleCreateTrustPages}
-            >
-              Create the pages customers look for
-            </button>
-            <button
-              type="button"
-              className="dash-btn-secondary"
-              onClick={() => onChange([...pages, newPage()])}
-            >
-              Add page
-            </button>
-          </div>
+    <section className="sfe-panel" aria-labelledby="h-pages">
+      <div className="sfe-panel-h">
+        <div>
+          <h2 id="h-pages">Pages</h2>
+          <span className="sfe-meta">
+            {pages.filter((p) => p.enabled).length} shown, {pages.filter((p) => !p.enabled).length} hidden. Click a page to see it in the preview.
+          </span>
         </div>
-        <p className="dash-hint">
-          Terms, Privacy, Shipping, Returns, and any other standalone page shown at
-          /&lt;slug&gt; on the storefront.
-        </p>
-        <p className="dash-hint">
-          &quot;Create the pages customers look for&quot; adds Contact, About, Shipping, Returns,
-          Terms of Service, Privacy Policy and Imprint / legal — whichever of those don&apos;t
-          exist yet — enabled, with honest placeholder starter copy. It never touches or
-          duplicates a page you already have. The starter copy never invents a phone number,
-          address, registration number, tax id or returns window: every real detail is left as a
-          bracketed placeholder for you to fill in before publishing, and Shipping and Returns
-          quote your live settings through {'{tokens}'} rather than numbers typed into the page.
-        </p>
-        <p className="dash-hint">
-          Terms of Service and Privacy Policy are drafting scaffolds, not legal advice — each
-          starts with a paragraph saying so. Read them with someone qualified before publishing.
-        </p>
-        {createResult === 'created' && (
-          <p className="dash-inline-ok">
-            Added the missing trust pages below — edit the bracketed placeholders, then save.
-          </p>
-        )}
-        {createResult === 'noneMissing' && (
-          <p className="dash-hint">
-            You already have all of them — nothing was added or changed.
-          </p>
-        )}
+        <div className="sfe-row-inline">
+          <button type="button" className="sfe-btn sfe-btn-sm" onClick={addTrustPages}>
+            <ShieldCheck aria-hidden /> Add the pages shoppers look for
+          </button>
+          <button
+            type="button"
+            className="sfe-btn sfe-btn-sm"
+            onClick={() => {
+              const p = newPage();
+              onChange([...pages, p]);
+              onSelect(p.id);
+              setEditing(p.id);
+            }}
+          >
+            <Plus aria-hidden /> New page
+          </button>
+        </div>
+      </div>
+      <p className="sfe-hint sfe-pad">
+        “Add the pages shoppers look for” creates Contact, About, Shipping, Returns, Terms, Privacy and Imprint when missing, hidden, with honest
+        [placeholders] and live values like {'{returnsDays}'} instead of typed numbers. Terms and Privacy are drafting scaffolds, not legal advice.
+      </p>
 
-        {pages.length === 0 && (
-          <p className="dash-hint">No pages yet — add one to publish it on the storefront.</p>
-        )}
-
-        {pages.map((page, index) => {
-          const trimmedSlug = page.slug.trim();
-          const slugInvalid = trimmedSlug === '' || !SLUG_PATTERN.test(trimmedSlug);
-          const slugDuplicate = trimmedSlug !== '' && (slugCounts[trimmedSlug] ?? 0) > 1;
-          const slugReserved = RESERVED_SLUGS.has(trimmedSlug);
-          const titleInvalid = page.title.trim() === '';
-
+      {pages.length === 0 && <p className="sfe-empty">No pages yet.</p>}
+      <ul className="sfe-rows">
+        {pages.map((p) => {
+          const problem = pageAddressProblem(p, pages);
           return (
-            <div key={page.id} className="dash-form-card" style={{ marginBottom: 12 }}>
-              <div className="dash-form-grid">
-                <label className="dash-field">
-                  <span className="dash-label">Title</span>
-                  <input
-                    className="dash-input"
-                    value={page.title}
-                    placeholder="Privacy Policy"
-                    onChange={(e) => {
-                      const title = e.target.value;
-                      const shouldAutoSync = !manualSlugIds.has(page.id);
-                      patchPage(index, {
-                        ...page,
-                        title,
-                        slug: shouldAutoSync ? slugify(title) : page.slug,
-                      });
-                    }}
-                  />
-                </label>
-                <label className="dash-field">
-                  <span className="dash-label">Slug</span>
-                  <input
-                    className="dash-input"
-                    value={page.slug}
-                    placeholder="privacy-policy"
-                    onChange={(e) => {
-                      setManualSlugIds((prev) => new Set(prev).add(page.id));
-                      patchPage(index, { ...page, slug: e.target.value });
-                    }}
-                  />
-                </label>
+            <li key={p.id} className={`sfe-row${selectedId === p.id ? ' sfe-selected' : ''}`} data-focus-key={`page:${p.id}`}>
+              <span className="sfe-icon-tile">
+                <FileText aria-hidden />
+              </span>
+              <div className="sfe-row-main">
+                <button type="button" className="sfe-row-link" onClick={() => onSelect(p.id)} aria-pressed={selectedId === p.id}>
+                  <b>{p.title || 'Untitled page'}</b>
+                  <span className="sfe-mono">/{p.slug || '…'}</span>
+                </button>
+                <div className="sfe-row-top">
+                  <span className={`sfe-pill ${p.enabled ? 'sfe-s-ok' : 'sfe-s-muted'}`}>
+                    {p.enabled ? <Eye aria-hidden /> : null}
+                    {p.enabled ? 'Shown' : 'Hidden'}
+                  </span>
+                  {problem && <span className="sfe-pill sfe-s-bad">Can’t publish</span>}
+                  {!problem && p.enabled && hasPlaceholders(p.body) && <span className="sfe-pill sfe-s-warn">[placeholders]</span>}
+                </div>
+                {problem && <span className="sfe-error">{problem}</span>}
               </div>
-
-              <p className="dash-hint">
-                Public URL: <code>/{trimmedSlug || '…'}</code>
-              </p>
-              {titleInvalid && <p className="dash-inline-error">Title is required.</p>}
-              {slugInvalid && (
-                <p className="dash-inline-error">
-                  Slug must be lowercase letters, numbers and hyphens only (e.g. &quot;privacy-policy&quot;).
-                </p>
-              )}
-              {!slugInvalid && slugReserved && (
-                <p className="dash-inline-error">
-                  &quot;{trimmedSlug}&quot; is a built-in storefront address — the shop&apos;s own
-                  page would win and this one would never be reachable. Pick another slug.
-                  Partner shop addresses are checked when you save.
-                </p>
-              )}
-              {!slugInvalid && slugDuplicate && (
-                <p className="dash-inline-error">
-                  This slug is used by another page — only one can be saved.
-                </p>
-              )}
-
-              <label className="dash-field">
-                <span className="dash-label">Body (Markdown)</span>
-                <textarea
-                  className="dash-input"
-                  rows={10}
-                  value={page.body}
-                  onChange={(e) => patchPage(index, { ...page, body: e.target.value })}
-                />
-                <span className="dash-hint">
-                  Use Markdown: # Heading, **bold**, [link](https://…), - list item
-                </span>
-              </label>
-
-              <div className="dash-row-actions" style={{ marginTop: 8 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <input
-                    type="checkbox"
-                    checked={page.enabled}
-                    onChange={(e) => patchPage(index, { ...page, enabled: e.target.checked })}
-                  />
-                  <span>Shown on the storefront</span>
-                </label>
+              <div className="sfe-row-act">
                 <button
                   type="button"
-                  className="dash-btn-ghost"
-                  onClick={() => onChange(pages.filter((_, i) => i !== index))}
+                  className="sfe-btn sfe-btn-sm"
+                  onClick={() => {
+                    onSelect(p.id);
+                    setEditing(p.id);
+                  }}
                 >
-                  Remove
+                  <Pencil aria-hidden /> Edit
+                </button>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      {page && (
+        <Sheet
+          title={page.title || 'Untitled page'}
+          subtitle={`minirueshop.com/${page.slug || '…'}`}
+          onClose={() => {
+            setEditing(null);
+            setConfirmDelete(false);
+          }}
+          footer={
+            <>
+              <button type="button" className="sfe-btn sfe-btn-quiet sfe-danger-text" onClick={() => setConfirmDelete(true)}>
+                <Trash2 aria-hidden /> Delete page
+              </button>
+              <button type="button" className="sfe-btn sfe-btn-primary" onClick={() => setEditing(null)}>
+                Done
+              </button>
+            </>
+          }
+        >
+          {confirmDelete && (
+            <div className="sfe-confirm" role="alert">
+              <p>
+                <b>Delete “{page.title || 'Untitled page'}”?</b> /{page.slug} will show “page not found”. To keep the text, hide the page instead.
+              </p>
+              <div className="sfe-row-inline">
+                <button
+                  type="button"
+                  className="sfe-btn"
+                  data-autofocus
+                  onClick={() => {
+                    patch(page.id, { enabled: false });
+                    setConfirmDelete(false);
+                    notify('Page hidden. Its text is kept');
+                  }}
+                >
+                  Hide instead
+                </button>
+                <button
+                  type="button"
+                  className="sfe-btn sfe-btn-danger"
+                  onClick={() => {
+                    const before = pages; // the list as it was, page included, in its place
+                    onChange(pages.filter((x) => x.id !== page.id));
+                    setEditing(null);
+                    setConfirmDelete(false);
+                    notify('Page deleted', () => onChange(before));
+                  }}
+                >
+                  Delete
                 </button>
               </div>
             </div>
-          );
-        })}
+          )}
+          <PageFields
+            page={page}
+            all={pages}
+            manual={manualSlug.has(page.id)}
+            onManual={() => setManualSlug((prev) => new Set(prev).add(page.id))}
+            onPatch={(next) => patch(page.id, next)}
+          />
+        </Sheet>
+      )}
+    </section>
+  );
+}
+
+function PageFields({
+  page,
+  all,
+  manual,
+  onManual,
+  onPatch,
+}: {
+  page: StorefrontPage;
+  all: StorefrontPage[];
+  manual: boolean;
+  onManual: () => void;
+  onPatch: (next: Partial<StorefrontPage>) => void;
+}) {
+  const bodyRef = React.useRef<HTMLTextAreaElement>(null);
+  const problem = pageAddressProblem(page, all);
+
+  const insertToken = (token: string) => {
+    const ta = bodyRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart ?? page.body.length;
+    const end = ta.selectionEnd ?? start;
+    const next = page.body.slice(0, start) + token + page.body.slice(end);
+    onPatch({ body: next });
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(start + token.length, start + token.length);
+    });
+  };
+
+  return (
+    <div className="sfe-stack">
+      <div className="sfe-grid-2">
+        <label className="sfe-field">
+          <span className="sfe-label">Title</span>
+          <input
+            className="sfe-input"
+            value={page.title}
+            placeholder="Privacy Policy"
+            onChange={(e) => onPatch({ title: e.target.value, ...(manual ? {} : { slug: slugify(e.target.value) }) })}
+          />
+        </label>
+        <label className="sfe-field">
+          <span className="sfe-label">Address</span>
+          <span className="sfe-prefix">
+            <span aria-hidden>/</span>
+            <input
+              className={`sfe-input${problem ? ' sfe-bad' : ''}`}
+              value={page.slug}
+              placeholder="privacy-policy"
+              aria-invalid={!!problem}
+              onChange={(e) => {
+                onManual();
+                onPatch({ slug: e.target.value });
+              }}
+            />
+          </span>
+          {problem ? <span className="sfe-error">{problem}</span> : <span className="sfe-hint">minirueshop.com/{page.slug}</span>}
+        </label>
       </div>
+      <label className="sfe-field">
+        <span className="sfe-label">Page text</span>
+        <textarea ref={bodyRef} className="sfe-input sfe-mono-input" rows={14} value={page.body} onChange={(e) => onPatch({ body: e.target.value })} />
+        <span className="sfe-hint">
+          Markdown: # Heading, **bold**, [link](https://…), - list. Insert a live value:{' '}
+          {PROMISE_TOKEN_LIST.map((t) => (
+            <button key={t} type="button" className="sfe-token" onClick={() => insertToken(t)}>
+              {t}
+            </button>
+          ))}
+        </span>
+      </label>
+      <Switch checked={page.enabled} onChange={(v) => onPatch({ enabled: v })} label="Shown on the shop" />
     </div>
   );
 }

@@ -55,3 +55,6 @@ ruvector.db.lock
 # If `.claude/` above is ever narrowed to un-ignore part of that tree (agents,
 # skills, settings), this line is what stops the hazard coming back with it.
 .claude/worktrees/
+
+# Impeccable local review artefacts (screenshots, harness scripts)
+.impeccable/review/

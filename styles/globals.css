@@ -1,11 +1,6 @@
 @import "tailwindcss";
 @plugin "tailwind-scrollbar-hide";
 @import "./mr-tokens.css";
-/* AFTER mr-tokens.css — every variable in here dereferences a token from it.
-   Maps shadcn/ui's fixed variable names onto MiniRue's palette so a shadcn
-   component is brand-coloured without being edited. Adds no element selectors
-   and restyles nothing that already exists; see the file's own header. */
-@import "./shadcn-theme.css";
 
 /* Reset lives in @layer base so it does NOT override layered layout rules.
    Unlayered declarations beat every @layer regardless of specificity — an

@@ -18,7 +18,8 @@ import {
   type HeroSlot as GuidanceSlot,
 } from '@/lib/storefront/hero-image-guidance';
 import type { ApiError } from '@/lib/api/client';
-import CtaTargetField from './CtaTargetField';
+import { TargetField } from '../fields/TargetField';
+import { fromCta, moveInList, toCta } from '@/lib/storefront/targets';
 import HeroSlideColors from './HeroSlideColors';
 import DashboardVideoViewer from '@/components/dashboard/DashboardVideoViewer';
 
@@ -106,11 +107,7 @@ export function moveSlide(
   index: number,
   direction: -1 | 1,
 ): HeroSlide[] {
-  const target = index + direction;
-  if (target < 0 || target >= slides.length) return slides;
-  const next = [...slides];
-  [next[index], next[target]] = [next[target], next[index]];
-  return next;
+  return moveInList(slides, index, direction);
 }
 
 function blankSlide(): HeroSlide {
@@ -575,9 +572,11 @@ export default function HeroEditor({
             </div>
           )}
 
-          <CtaTargetField
-            value={slide.ctaTarget}
-            onChange={(ctaTarget) => patchSlide(slide.id, { ctaTarget })}
+          <TargetField
+            use="cta"
+            label="Button goes to"
+            value={fromCta(slide.ctaTarget)}
+            onChange={(t) => patchSlide(slide.id, { ctaTarget: toCta(t) })}
           />
 
           {/* Last in the card and collapsed by default: colours are an

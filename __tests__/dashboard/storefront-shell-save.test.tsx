@@ -19,8 +19,16 @@ jest.mock('@/lib/api/storefront', () => {
     ...actual,
     apiGetStorefrontLayout: jest.fn(),
     apiSaveStorefrontLayout: jest.fn(),
+    // The live preview is out of scope here; keep it pending so it never fetches.
+    apiPreviewStorefrontLayout: jest.fn(() => new Promise(() => {})),
   };
 });
+
+/** Publishing is Publish -> the summary sheet -> Publish now (it used to be one Save button). */
+async function publishNow() {
+  await userEvent.click((await screen.findAllByRole('button', { name: /^publish$/i }))[0]);
+  await userEvent.click(await screen.findByRole('button', { name: /publish now/i }));
+}
 
 const mocked = storefrontApi as jest.Mocked<typeof storefrontApi>;
 
@@ -65,7 +73,7 @@ describe('StorefrontAppearanceClient save path', () => {
     render(<StorefrontAppearanceClient />);
 
     await screen.findByText('Storefront');
-    await userEvent.click(await screen.findByRole('button', { name: /save changes/i }));
+    await publishNow();
 
     await waitFor(() => expect(mocked.apiSaveStorefrontLayout).toHaveBeenCalledTimes(1));
 

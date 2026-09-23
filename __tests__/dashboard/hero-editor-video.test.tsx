@@ -17,9 +17,10 @@ jest.mock('@/components/dashboard/GalleryPickerModal', () => ({
   uploadDeviceFileToGallery: jest.fn(),
 }));
 jest.mock('@/components/dashboard/ImageCropModal', () => ({ __esModule: true, default: () => null }));
-jest.mock('@/app/dashboard/storefront-appearance/editors/CtaTargetField', () => ({
+jest.mock('@/app/dashboard/storefront-appearance/fields/TargetField', () => ({
   __esModule: true,
-  default: () => null,
+  TargetField: () => null,
+  HrefTargetField: () => null,
 }));
 jest.mock('@/app/dashboard/storefront-appearance/editors/HeroSlideColors', () => ({
   __esModule: true,

@@ -1,0 +1,1603 @@
+<title>MiniRue Analytics · Clarity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Jost:wght@400;500;600&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --ink-900:#0B0B0B;--ink-800:#1A1815;--ink-700:#2E2A24;--ink-600:#3F3A32;--ink-500:#5C564C;--ink-400:#8A8376;--ink-300:#B5AE9F;
+  --gold-900:#6B5526;--gold-700:#846432;--gold-500:#95783C;--gold-400:#B0924F;--gold-300:#C9B483;--gold-200:#E4D7B4;--gold-100:#EEE6D1;
+  --cream-100:#FDFBF5;--cream-200:#F6F2E9;--cream-300:#EDE7D6;--cream-400:#DCD3BB;
+  --bg:#F4F2EC;--surface:#FFFFFF;--sub:#F9F7F2;--hair:#E6E2D8;--row-hover:#F0EDE4;
+  --ok-bg:#E5F1E6;--ok-fg:#2C5A38;--warn-bg:#FBEFCF;--warn-fg:#7A5212;--danger-bg:#FADDDE;--danger-fg:#8E1418;--muted-bg:#ECE8DE;--muted-fg:#5A5244;--info-bg:#E3EAF2;--info-fg:#2E466B;
+  --c1:#A8791F;--c2:#008B77;--c3:#5B45BC;--c4:#B03A3E;
+  --fg:var(--ink-900);--fg2:var(--ink-700);--fg3:var(--ink-500);--fg4:#766F63;
+  --ui:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --label:"Jost","Futura",system-ui,sans-serif;
+  --r-sm:4px;--r-md:8px;--r-lg:14px;
+  --sh-sm:0 2px 4px rgba(11,11,11,.05),0 4px 10px rgba(11,11,11,.06);
+  --sh-lg:0 14px 28px rgba(11,11,11,.14),0 28px 56px rgba(11,11,11,.16);
+  --ease:cubic-bezier(0.16,1,0.3,1);
+  --side:216px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:400 13px/1.45 var(--ui);-webkit-font-smoothing:antialiased;accent-color:var(--ink-900)}
+::selection{background:var(--gold-100);color:var(--ink-900)}
+*{scrollbar-width:thin;scrollbar-color:var(--cream-400) transparent}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:var(--cream-400);border-radius:3px}
+.num,td,th,.tab-num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1,"lnum" 1}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--gold-400);outline-offset:2px;border-radius:4px}
+svg.i{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+svg.i.sm{width:14px;height:14px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* ── Shell ─────────────────────────────── */
+.app{display:grid;grid-template-columns:minmax(0,1fr);min-height:100%}
+.side{background:var(--ink-900);color:var(--cream-100);padding:18px 12px;position:sticky;top:0;height:100vh;display:none;flex-direction:column;gap:18px}
+.brand{font:500 17px/1 var(--label);letter-spacing:.24em;padding:6px 10px 10px;color:var(--cream-100)}
+.brand span{color:var(--gold-300)}
+.side nav{display:flex;flex-direction:column;gap:2px}
+.side a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-md);color:#C9C2B3;text-decoration:none;font-weight:500}
+.side a:hover{background:var(--ink-800);color:var(--cream-100)}
+.side a[aria-current="page"]{background:var(--ink-800);color:var(--cream-100)}
+.side a[aria-current="page"] svg{color:var(--gold-300)}
+.side .foot{margin-top:auto;font-size:12px;color:#9A9385;padding:0 10px}
+.main{min-width:0;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--ink-900);color:var(--cream-100)}
+.head{padding:20px 28px 0;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.head h1{margin:0;font:600 22px/1.2 var(--ui);letter-spacing:-.01em;text-wrap:balance}
+.head p{margin:4px 0 0;color:var(--fg3)}
+/* Animate UI: Tabs + Highlight — one indicator glides under the active tab */
+.tabs{position:relative;display:none;gap:2px;padding:14px 28px 0;border-bottom:1px solid var(--hair);overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{position:relative;background:none;border:0;padding:12px 12px 13px;color:var(--fg3);font-weight:500;white-space:nowrap;border-radius:6px 6px 0 0}
+.tab:hover{color:var(--fg)}
+.tab[aria-selected="true"]{color:var(--fg)}
+.tab .count{margin-left:6px;font-size:12px;color:var(--fg4)}
+.tab-ind{position:absolute;bottom:-1px;left:0;height:2px;background:var(--ink-900);border-radius:2px;transform-origin:left;pointer-events:none}
+@media (prefers-reduced-motion:no-preference){.tab-ind{transition:transform 240ms var(--ease),width 240ms var(--ease)}}
+/* Global toolbar */
+.toolbar{position:sticky;top:0;z-index:20;background:rgba(244,242,236,.97);border-bottom:1px solid var(--hair);padding:10px 28px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tb-group{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tb-spacer{flex:1 1 auto}
+.btn{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:var(--r-md);border:1px solid var(--hair);background:var(--surface);color:var(--fg);font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--cream-400);background:var(--cream-100)}
+.btn:active{transform:scale(.98)}
+.btn[aria-expanded="true"]{border-color:var(--gold-300);background:var(--cream-100)}
+.btn .val{color:var(--fg3);font-weight:400}
+.btn.has .val{color:var(--fg);font-weight:600}
+.btn.primary{background:var(--ink-900);border-color:var(--ink-900);color:var(--cream-100)}
+.btn.primary:hover{background:var(--ink-700)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--fg2)}
+.btn.ghost:hover{background:var(--cream-300)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.status-pill{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:999px;background:var(--ok-bg);color:var(--ok-fg);border:1px solid #CFE3D2;font-weight:500;white-space:nowrap}
+.status-pill:hover{background:#D9EBDB}
+.fresh{display:inline-flex;align-items:center;gap:6px;color:var(--fg3);white-space:nowrap}
+.fresh .btn{height:40px;width:40px;padding:0;justify-content:center}
+.spin svg{animation:spin 700ms linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.filters-mobile{display:inline-flex}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:10px 28px 0;align-items:center}
+.chips:empty{display:none}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 4px 0 10px;border-radius:999px;background:var(--gold-100);color:var(--gold-900);font-weight:500;white-space:nowrap;max-width:100%}
+.chip b{font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.chip button{display:grid;place-items:center;width:20px;height:20px;border:0;border-radius:50%;background:transparent;color:var(--gold-900)}
+.chip button:hover{background:var(--gold-200)}
+.chips .clear{border:0;background:none;color:var(--fg3);text-decoration:underline;text-underline-offset:3px;padding:4px 6px}
+.dq{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding:10px 28px 0;color:var(--fg3);font-size:12px}
+.dq span{display:inline-flex;align-items:center;gap:6px}
+.dq .ok{color:var(--ok-fg)}
+.dq .warn{color:var(--warn-fg)}
+.dq a{color:var(--fg2);text-underline-offset:3px}
+.content{padding:14px 16px 96px;display:flex;flex-direction:column;gap:16px;min-width:0;padding-bottom:150px}
+@media (prefers-reduced-motion:no-preference){.content.enter{animation:enter 220ms var(--ease)}}
+@keyframes enter{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}
+/* Panels — white surface, spent by role */
+.panel{background:var(--surface);border:1px solid var(--hair);border-radius:var(--r-lg);min-width:0}
+.panel-h{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--hair);flex-wrap:wrap}
+.panel-h h2{margin:0;font:600 14px/1.3 var(--ui)}
+.panel-h .meta{color:var(--fg3);font-size:12px}
+.panel-b{padding:14px 16px}
+.grid-2{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+.grid-2e{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+.stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+/* Funnel ledger — the signature: one strip, five stages, the leak named */
+.ledger{display:flex;grid-template-columns:repeat(5,minmax(132px,1fr));background:var(--surface);border:1px solid var(--hair);border-radius:var(--r-lg);overflow:visible;overflow-x:auto;flex-direction:column}
+.stage{position:relative;padding:12px 14px;border-right:0;min-width:0;display:grid;flex-direction:column;gap:4px 12px;border-bottom:1px solid var(--hair);grid-template-columns:minmax(0,1fr) auto;align-items:center}
+.stage:last-child{border-right:0;border-bottom:0}
+.stage-l{display:flex;align-items:center;gap:6px;font:500 12px/1.2 var(--label);letter-spacing:.04em;color:var(--fg3);grid-column:1}
+.stage-l button{border:0;background:none;padding:2px;color:var(--fg4);display:grid;place-items:center;border-radius:4px}
+.stage-l button:hover{color:var(--fg)}
+.stage-n{font:600 30px/1 var(--ui);letter-spacing:-.02em;grid-column:2;grid-row:1/span 2;font-size:26px;text-align:right}
+.stage-s{color:var(--fg3);font-size:12px;min-height:17px;grid-column:1}
+.stage-s b{color:var(--fg);font-weight:600}
+.bar{height:4px;background:var(--cream-300);border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ink-900);border-radius:2px;transform-origin:left}
+@media (prefers-reduced-motion:no-preference){.bar i{transition:transform 320ms var(--ease)}}
+.stage.leak{background:linear-gradient(90deg,var(--danger-bg),var(--danger-bg)) left/3px 100% no-repeat,var(--surface)}
+.leak-tag{display:inline-flex;align-items:center;gap:5px;align-self:flex-start;padding:2px 8px 2px 6px;border-radius:999px;background:var(--danger-bg);color:var(--danger-fg);font-weight:600;font-size:12px}
+.stage .arrow{position:absolute;right:-9px;top:17px;width:18px;height:18px;border-radius:50%;background:var(--surface);border:1px solid var(--hair);display:none;place-items:center;color:var(--fg4);z-index:1}
+.stage .arrow svg{width:11px;height:11px}
+/* Animate UI: Sliding Number — each digit is a column that slides to its value */
+.sn{display:inline-flex;overflow:hidden;height:1em;line-height:1;vertical-align:bottom}
+.sn .d{display:inline-block;height:1em;overflow:hidden}
+.sn .d span{display:flex;flex-direction:column}
+.sn .d span b{display:block;height:1em;font-weight:inherit}
+@media (prefers-reduced-motion:no-preference){.sn .d span{transition:transform 260ms var(--ease)}}
+/* Tables */
+.tw{overflow-x:auto;min-width:0}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:inherit;line-height:inherit;color:inherit}
+th,td{padding:7px 12px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--hair)}
+th:first-child,td:first-child{text-align:left}
+thead th{position:sticky;top:0;z-index:2;background:var(--sub);font:500 12px/1.3 var(--label);letter-spacing:.04em;color:var(--fg3);text-transform:none;padding-top:8px;padding-bottom:8px}
+.sticky-first th:first-child,.sticky-first td:first-child{position:sticky;left:0;z-index:1;background:var(--surface)}
+.sticky-first thead th:first-child{z-index:3;background:var(--sub)}
+tbody tr:hover td{background:var(--row-hover)}
+tbody tr:last-child td{border-bottom:0}
+th button.sort{all:unset;display:inline-flex;align-items:center;gap:4px;cursor:pointer;border-radius:4px}
+th button.sort:focus-visible{outline:2px solid var(--gold-400);outline-offset:2px}
+th button.sort svg{width:12px;height:12px;opacity:.45}
+th[aria-sort] button.sort svg{opacity:1;color:var(--fg)}
+th[aria-sort]{color:var(--fg)}
+td .cell-bar{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end;width:100%}
+td .cell-bar i{display:inline-block;height:6px;border-radius:2px;background:var(--gold-300);min-width:2px}
+td.zero{color:var(--ink-300)}
+td.drop{color:var(--danger-fg);font-weight:600}
+td.pct{color:var(--fg3)}
+th.tl,td.tl{text-align:left}
+#content:focus{outline:none}
+.name{display:flex;align-items:center;gap:8px;min-width:0}
+.name small{color:var(--fg3);font-size:12px}
+.dot{width:8px;height:8px;border-radius:2px;flex:none}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.tag.warn{background:var(--warn-bg);color:var(--warn-fg)}
+.tag.danger{background:var(--danger-bg);color:var(--danger-fg)}
+.tag.ok{background:var(--ok-bg);color:var(--ok-fg)}
+.tag.muted{background:var(--muted-bg);color:var(--muted-fg)}
+.tag.info{background:var(--info-bg);color:var(--info-fg)}
+.row-exp{border:0;background:none;padding:2px;margin-left:-4px;border-radius:4px;display:inline-grid;place-items:center;color:var(--fg3)}
+.row-exp svg{width:14px;height:14px}
+@media (prefers-reduced-motion:no-preference){.row-exp svg{transition:transform 180ms var(--ease)}}
+.row-exp[aria-expanded="true"] svg{transform:rotate(90deg)}
+tr.child td{background:var(--sub)}
+tr.child td:first-child{padding-left:34px}
+tr.clickable{cursor:pointer}
+.raw{font:12px/1.4 ui-monospace,"SF Mono",Menlo,monospace;color:var(--fg2);background:var(--cream-200);border-radius:4px;padding:1px 6px;white-space:nowrap}
+.link{color:var(--fg);text-decoration:underline;text-decoration-color:var(--cream-400);text-underline-offset:3px;background:none;border:0;padding:0}
+.link:hover{text-decoration-color:var(--fg)}
+/* Section toolbar (section-only controls) */
+.sect-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.search{position:relative;display:flex;align-items:center;flex:1 1 180px}
+.search svg{position:absolute;left:9px;color:var(--fg4)}
+.search input{height:32px;width:100%;max-width:100%;padding:0 10px 0 30px;border:1px solid var(--hair);border-radius:var(--r-md);background:var(--surface)}
+.search input:focus{outline:2px solid var(--gold-400);outline-offset:1px}
+/* Animate UI: Toggle Group — highlight slides between options */
+.tg{position:relative;display:inline-flex;padding:2px;background:var(--cream-300);border-radius:var(--r-md)}
+.tg button{position:relative;z-index:1;border:0;background:none;height:28px;padding:0 10px;border-radius:6px;color:var(--fg3);font-weight:500}
+.tg button[aria-pressed="true"]{color:var(--fg)}
+.tg .hl{position:absolute;top:2px;bottom:2px;left:0;background:var(--surface);border-radius:6px;box-shadow:0 1px 2px rgba(11,11,11,.08)}
+@media (prefers-reduced-motion:no-preference){.tg .hl{transition:transform 200ms var(--ease),width 200ms var(--ease)}}
+/* Charts */
+.chart{width:100%;height:auto;display:block;overflow:visible}
+.chart text{font:12px var(--ui);fill:var(--fg4)}
+.chart .grid{stroke:var(--hair);stroke-width:1}
+.chart .area{fill:var(--gold-100)}
+.chart .line{fill:none;stroke:var(--gold-700);stroke-width:1.75}
+.chart .end{fill:var(--gold-700);stroke:var(--surface);stroke-width:2}
+.chart .hit{fill:transparent}
+.chart .cursor{stroke:var(--ink-400);stroke-dasharray:2 3}
+.split{display:flex;height:10px;border-radius:3px;overflow:hidden;gap:2px}
+.split i{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:10px;color:var(--fg2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+/* Lists */
+.list{display:flex;flex-direction:column}
+.li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--hair)}
+.li:last-child{border-bottom:0}
+.li .t{justify-self:start;text-align:left;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li .s{grid-column:1/-1;color:var(--fg3);display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center}
+.defs{display:grid;grid-template-columns:minmax(120px,max-content) minmax(0,1fr);gap:8px 16px;margin:0}
+.defs dt{font-weight:600}
+.defs dd{margin:0;color:var(--fg2)}
+.checks{display:flex;flex-direction:column}
+.check{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--hair)}
+.check:last-child{border-bottom:0}
+.check .ok{color:var(--ok-fg)}
+.check .warn{color:var(--warn-fg)}
+.check .bad{color:var(--danger-fg)}
+.check p{margin:2px 0 0;color:var(--fg3)}
+.recon{display:grid;grid-template-columns:minmax(0,1fr);border:1px solid var(--hair);border-radius:var(--r-md);overflow:hidden}
+.recon div{padding:12px 14px;border-right:0;border-bottom:1px solid var(--hair)}
+.recon div:last-child{border-right:0;border-bottom:0}
+.recon b{display:block;font:600 22px/1.1 var(--ui)}
+.recon span{color:var(--fg3);font-size:12px}
+.recon s{color:var(--ink-400);text-decoration-thickness:1px}
+/* Journey flow */
+.journey{display:flex;flex-direction:column;gap:18px}
+.sess h3{margin:0 0 8px;font:600 13px/1.3 var(--ui);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.sess h3 span{color:var(--fg3);font-weight:400}
+.steps{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px}
+.step{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid var(--hair);border-radius:var(--r-md);background:var(--surface);min-width:0;max-width:220px}
+.step time{font-size:12px;color:var(--fg3)}
+.step b{font-weight:600;font-size:12.5px}
+.step small{color:var(--fg3)}
+.step.key{border-color:var(--gold-300);background:var(--cream-100)}
+.step.exit{background:var(--sub)}
+.steps .to{display:grid;place-items:center;color:var(--ink-300)}
+/* Page-type pills (kp) and platform pills (sp) */
+.kp,.sp{display:inline-flex;align-items:center;gap:4px;padding:1px 8px 1px 6px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;line-height:1.5}
+.kp svg,.sp svg{width:12px;height:12px}
+.sp{padding-left:8px}
+.kp-home{background:#F3EBD9;color:#6B5526}
+.kp-category{background:#DDF1EC;color:#00614F}
+.kp-product{background:#E8E3F7;color:#46329E}
+.kp-bag{background:#F8E6D9;color:#8A4216}
+.kp-checkout{background:#FADDDE;color:#8E1418}
+.kp-unknown{background:#FBEFCF;color:#7A5212}
+.kp-action{background:#ECE8DE;color:#5A5244}
+.kp-exit{background:#ECE8DE;color:#5A5244}
+.sp-tiktok{background:#0B0B0B;color:#FDFBF5}
+.sp-instagram{background:#F5E1EF;color:#7A2A69}
+.sp-facebook{background:#DDEBF4;color:#0A5A82}
+.sp-meta{background:#E3E1F7;color:#3F2F96}
+.sp-direct{background:#ECE8DE;color:#3F3A32}
+.sp-referral{background:#F8E6D9;color:#8A4216}
+.step-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.step-src{margin-top:2px}
+.step.k-product{border-color:#CFC6EE}
+.step.k-bag,.step.key.k-bag{border-color:#EBC7AC;background:#FDF6F0}
+.step.k-checkout{border-color:#F0B9BB;background:#FFF7F7}
+.step.k-unknown{border-color:#EFD9A0}
+.sess h3 .sp{font-size:12px}
+.journey.v .steps{flex-direction:column;align-items:stretch;flex-wrap:nowrap}
+.journey.v .step{max-width:none}
+.journey.v .to{height:14px}
+.journey.v .to svg{transform:rotate(90deg)}
+.jgrid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+.jl{display:flex;flex-direction:row;padding:6px;max-height:none;overflow:auto;overflow-x:auto}
+.jp{display:flex;flex-direction:column;gap:2px;align-items:flex-start;text-align:left;border:0;background:none;padding:9px 10px;border-radius:var(--r-md);flex:none;min-width:200px;min-height:44px}
+.jp:hover{background:var(--cream-200)}
+.jp[aria-current="true"]{background:var(--cream-100);box-shadow:inset 0 0 0 1px var(--gold-300)}
+.jp small{color:var(--fg3);padding-left:16px}
+/* Legend */
+.lg-toggle{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--hair);background:var(--surface);border-radius:999px;padding:2px 8px 2px 7px;color:var(--fg2);font-weight:500;font-size:12px}
+.lg-toggle:hover{border-color:var(--cream-400);color:var(--fg)}
+.lg-toggle svg:last-child{width:12px;height:12px}
+@media (prefers-reduced-motion:no-preference){.lg-toggle svg:last-child{transition:transform 180ms var(--ease)}}
+.lg-toggle[aria-expanded="true"]{background:var(--cream-100);border-color:var(--gold-300);color:var(--fg)}
+.lg-toggle[aria-expanded="true"] svg:last-child{transform:rotate(180deg)}
+.lgd{padding:0 16px}
+.lg-panel{margin-top:10px;background:var(--surface);border:1px solid var(--hair);border-radius:var(--r-lg);padding:12px 16px 14px}
+.lg-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.lg-head h2{margin:0;font:600 14px/1.3 var(--ui)}
+.lg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px 24px}
+.lg-g h3{margin:0 0 6px;font:500 12px/1.3 var(--label);letter-spacing:.04em;color:var(--fg3)}
+.lg-row{display:grid;grid-template-columns:128px minmax(0,1fr);gap:10px;align-items:center;padding:4px 0;font-size:12.5px;color:var(--fg2)}
+.lg-k{display:flex;align-items:center;min-width:0}
+.mini-lg{border:1px solid var(--hair);border-radius:var(--r-md);padding:2px 12px}
+.mini-lg .lg-grid{grid-template-columns:minmax(0,1fr);padding:4px 0 10px}
+/* Legend: spacious, organised (overrides) */
+.lg-panel{margin-top:12px;padding:20px 24px 22px}
+.lg-head{margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--hair)}
+.lg-head h2{font-size:16px}
+.lg-grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:28px 40px}
+.lg-g h3{margin:0 0 4px;padding-bottom:8px;border-bottom:2px solid var(--ink-900);font:600 13px/1.3 var(--ui);letter-spacing:0;color:var(--fg)}
+.lg-row{grid-template-columns:148px minmax(0,1fr);gap:16px;padding:10px 0;border-bottom:1px solid var(--hair);font-size:13px;line-height:1.5;color:var(--fg2)}
+.lg-row:last-child{border-bottom:0}
+.mini-lg .lg-grid{gap:20px}
+.mini-lg .lg-row{grid-template-columns:128px minmax(0,1fr);gap:12px;padding:8px 0}
+@media (max-width:480px){.lg-panel{padding:16px}.lg-row{grid-template-columns:120px minmax(0,1fr);gap:12px}}
+/* Social ads quality */
+.st{display:inline-flex;align-items:center;gap:4px;padding:1px 8px 1px 6px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;line-height:1.5}
+.st svg{width:12px;height:12px}
+.st-ok{background:var(--ok-bg);color:var(--ok-fg)}
+.st-warn{background:var(--warn-bg);color:var(--warn-fg)}
+.st-bad{background:var(--danger-bg);color:var(--danger-fg)}
+.st-unk{background:var(--info-bg);color:var(--info-fg)}
+.st-na{background:var(--muted-bg);color:var(--muted-fg)}
+.src-code{display:inline-flex;padding:1px 7px;border-radius:4px;border:1px solid var(--hair);font-size:12px;color:var(--fg2);white-space:nowrap}
+.src-code.src-plat{border-style:dashed}
+.ads-verdicts{display:grid;grid-template-columns:minmax(0,1fr);gap:0}
+.ads-v{padding:14px 16px;border-right:0;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--hair)}
+.ads-v:last-child{border-right:0;border-bottom:0}
+.ads-v-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ads-v-n{color:var(--fg2)}
+.ads-v-n b{font:600 24px/1 var(--ui);color:var(--fg);margin-right:4px}
+.ads-v-s{color:var(--fg3);font-size:12px}
+.ads-bar{display:flex;gap:2px;height:6px;border-radius:3px;overflow:hidden;background:var(--cream-300)}
+.ads-bar i{display:block;height:100%}
+.b-ok{background:#3F7A4E}
+.b-warn{background:#C89A3A}
+.b-bad{background:#B03A3E}
+.b-unk{background:#7C93B5}
+.ads-next{background:var(--sub)}
+.ads-next ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--fg2)}
+.ads-t td,.ads-t th{text-align:left;vertical-align:top;white-space:normal}
+.ads-t td{padding:10px 12px}
+.ads-t thead th{white-space:nowrap}
+.ads-n{min-width:240px}
+.ads-n small,.ads-c small{display:block;color:var(--fg3);font-size:12px;margin-top:3px}
+.ads-c{min-width:200px}
+.ads-grp th{position:static;background:var(--cream-200);font:500 12px/1.3 var(--label);letter-spacing:.04em;color:var(--fg3);text-align:left;padding:6px 12px}
+.utm-t td{vertical-align:middle}
+.utm-t .utm-url{display:block;color:var(--fg3);font-size:12px;margin-top:2px}
+.utm-ok{text-align:left}
+.utm-bad{text-align:left;background:var(--danger-bg)}
+.utm-bad .raw{background:transparent;color:var(--danger-fg);font-weight:600}
+.utm-miss{text-align:center;color:var(--danger-fg);background:#FDF1F1}
+.ub{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.ub label{display:flex;flex-direction:column;gap:4px;font:500 12px/1.3 var(--label);letter-spacing:.04em;color:var(--fg3)}
+.ub input,.ub select{height:36px;border:1px solid var(--hair);border-radius:var(--r-md);padding:0 10px;background:var(--surface);font:400 13px var(--ui);color:var(--fg);letter-spacing:0}
+.ub input:focus,.ub select:focus{outline:2px solid var(--gold-400);outline-offset:1px}
+.ub-out{grid-column:1/-1;display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
+.ub-out .raw{flex:1 1 260px;white-space:normal;overflow-wrap:anywhere;padding:8px 10px;line-height:1.5}
+.ub-note{grid-column:1/-1;margin:0;color:var(--fg3);font-size:12.5px}
+/* Answer line (every section) */
+.answer{display:flex;align-items:flex-start;gap:10px;margin:0;padding:11px 14px;border-radius:var(--r-md);background:var(--gold-100);color:var(--ink-800);line-height:1.5;flex-wrap:wrap}
+.answer>svg{margin-top:2px;color:var(--gold-900)}
+.answer span{flex:1}
+.answer .link{white-space:nowrap;font-weight:600}
+/* Source split bar */
+.src-split{border-bottom:1px solid var(--hair)}
+.src-split .split{height:12px}
+.src-split .legend small{color:var(--fg3)}
+/* Next steps */
+.steps-list{list-style:none;margin:0;padding:0}
+.nx{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px 10px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--hair)}
+.nx:last-child{border-bottom:0}
+.nx-r{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--cream-300);font-weight:600;font-size:12px}
+.nx .st{justify-self:start;grid-column:2}
+.nx-t{color:var(--fg2);grid-column:2}
+.nx-t b{color:var(--fg)}
+.nx-a{display:flex;align-items:center;gap:8px;white-space:nowrap;grid-column:2;flex-wrap:wrap}
+.nx-b{height:40px}
+@media (prefers-reduced-motion:no-preference){.nx{transition:opacity 200ms var(--ease),transform 200ms var(--ease)}}
+.nx.leaving{opacity:0;transform:translateX(12px)}
+/* Bottom tab bar (phones) */
+.bnav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--surface);border-top:1px solid var(--hair);padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px))}
+.more-i{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;font-weight:600;min-height:48px;background:var(--surface)}
+.bnav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:52px;border:0;background:none;color:var(--fg3);font-size:12px;font-weight:500;border-radius:var(--r-md)}
+.bnav button[aria-current="page"]{color:var(--fg)}
+.bnav button[aria-current="page"] svg{color:var(--gold-700)}
+.bnav button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body .proto{bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+.toasts{bottom:calc(80px + env(safe-area-inset-bottom,0px))}
+/* States */
+.sk{background:linear-gradient(90deg,var(--cream-300) 0,var(--cream-200) 40%,var(--cream-300) 80%) 0 0/300% 100%;border-radius:6px}
+@media (prefers-reduced-motion:no-preference){.sk{animation:shimmer 1.4s linear infinite}}
+@keyframes shimmer{to{background-position:-300% 0}}
+.state{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:28px;max-width:560px}
+.state h2{margin:0;font:600 17px/1.3 var(--ui)}
+.state p{margin:0;color:var(--fg2)}
+.state .ico{width:36px;height:36px;border-radius:10px;display:grid;place-items:center}
+.state .ico.warn{background:var(--warn-bg);color:var(--warn-fg)}
+.state .ico.danger{background:var(--danger-bg);color:var(--danger-fg)}
+.state .ico.muted{background:var(--muted-bg);color:var(--muted-fg)}
+.empty-row td{padding:28px 16px;text-align:left;white-space:normal;color:var(--fg2)}
+/* Animate UI: Popover / Dropdown Menu — scales from its trigger */
+.pop{position:fixed;z-index:60;min-width:220px;max-width:calc(100vw - 32px);background:var(--surface);border:1px solid var(--hair);border-radius:var(--r-md);box-shadow:var(--sh-lg);padding:6px;transform-origin:top left}
+@media (prefers-reduced-motion:no-preference){.pop{animation:pop 150ms var(--ease)}}
+@keyframes pop{from{opacity:0;transform:scale(.96) translateY(-4px)}to{opacity:1;transform:none}}
+.pop h4{margin:4px 8px 6px;font:500 12px/1.3 var(--label);letter-spacing:.04em;color:var(--fg3)}
+.opt{display:flex;align-items:center;gap:10px;width:100%;padding:8px;border:0;background:none;border-radius:6px;text-align:left;min-height:44px}
+.opt:hover,.opt:focus-visible{background:var(--cream-200)}
+.opt .n{margin-left:auto;color:var(--fg3)}
+.opt .box{width:16px;height:16px;border:1.5px solid var(--ink-400);border-radius:4px;display:grid;place-items:center;flex:none}
+.opt[aria-checked="true"] .box{background:var(--ink-900);border-color:var(--ink-900);color:var(--cream-100)}
+.opt .box svg{width:12px;height:12px;opacity:0}
+.opt[aria-checked="true"] .box svg{opacity:1}
+.opt[aria-checked="true"].radio{font-weight:600}
+.pop .sep{height:1px;background:var(--hair);margin:6px 0}
+/* Animate UI: Tooltip */
+.tip{position:fixed;z-index:80;max-width:280px;background:var(--ink-900);color:var(--cream-100);padding:8px 10px;border-radius:6px;font-size:12px;line-height:1.45;pointer-events:none;box-shadow:var(--sh-sm)}
+@media (prefers-reduced-motion:no-preference){.tip{animation:tip 140ms var(--ease) 60ms both}}
+@keyframes tip{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+.tip b{color:var(--gold-200)}
+/* Animate UI: Sheet */
+.scrim{position:fixed;inset:0;z-index:70;background:rgba(11,11,11,.32)}
+.sheet{position:fixed;z-index:71;top:auto;right:0;bottom:0;width:100vw;background:var(--surface);box-shadow:var(--sh-lg);display:flex;flex-direction:column;left:0;max-height:88vh;border-radius:var(--r-lg) var(--r-lg) 0 0}
+@media (prefers-reduced-motion:no-preference){
+  .scrim{animation:fade 200ms var(--ease)}
+  .sheet{animation:sheetUp 260ms var(--ease)}
+  .sheet.out{animation:sheetDown 180ms ease-in forwards}.scrim.out{animation:fade 180ms reverse forwards}
+}
+@keyframes fade{from{opacity:0}}
+@keyframes sheetIn{from{transform:translateX(100%)}}
+@keyframes sheetOut{to{transform:translateX(100%)}}
+.sheet-h{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 20px 14px;border-bottom:1px solid var(--hair)}
+.sheet-h h2{margin:0;font:600 17px/1.3 var(--ui)}
+.sheet-h p{margin:4px 0 0;color:var(--fg3)}
+.sheet-b{padding:16px 20px;overflow:auto;display:flex;flex-direction:column;gap:18px;flex:1}
+.sheet-f{padding:14px 20px calc(14px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--hair);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.icon-btn{display:grid;place-items:center;width:32px;height:32px;border-radius:var(--r-md);border:0;background:none;color:var(--fg2)}
+.icon-btn:hover{background:var(--cream-200)}
+fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+legend{font:500 12px/1.3 var(--label);letter-spacing:.04em;color:var(--fg3);margin-bottom:6px;padding:0}
+.choice{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;padding:12px;border:1px solid var(--hair);border-radius:var(--r-md);cursor:pointer;align-items:start}
+.choice:hover{background:var(--cream-100)}
+.choice:has(input:checked){border-color:var(--ink-900);background:var(--cream-100)}
+.choice input{margin:2px 0 0;width:16px;height:16px}
+.choice b{font-weight:600}
+.choice small{display:block;color:var(--fg3);margin-top:2px}
+.sub-list{display:grid;grid-template-columns:minmax(0,1fr);gap:4px 12px;padding:8px 0 0 28px}
+.sub-list label{display:flex;gap:8px;align-items:center;padding:4px 0}
+.sub-list[aria-disabled="true"]{opacity:.45;pointer-events:none}
+.preview{background:var(--sub);border:1px solid var(--hair);border-radius:var(--r-md);padding:12px 14px;display:flex;flex-direction:column;gap:6px;font-size:12.5px}
+.preview div{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px}
+.preview dt{color:var(--fg3)}
+.preview dd{margin:0;overflow-wrap:anywhere}
+/* Animate UI: Auto Height */
+.ah{display:grid;grid-template-rows:0fr}
+.ah>div{overflow:hidden}
+.ah.open{grid-template-rows:1fr}
+@media (prefers-reduced-motion:no-preference){.ah{transition:grid-template-rows 220ms var(--ease)}}
+.disclose{display:flex;align-items:center;gap:8px;border:0;background:none;padding:6px 0;font-weight:600}
+.disclose svg{width:14px;height:14px}
+@media (prefers-reduced-motion:no-preference){.disclose svg{transition:transform 180ms var(--ease)}}
+.disclose[aria-expanded="true"] svg{transform:rotate(90deg)}
+/* Animate UI: Progress */
+.progress{height:6px;background:var(--cream-300);border-radius:3px;overflow:hidden}
+.progress i{display:block;height:100%;width:100%;background:var(--ink-900);transform-origin:left;transform:scaleX(0)}
+@media (prefers-reduced-motion:no-preference){.progress i{transition:transform 1400ms cubic-bezier(.4,0,.2,1)}}
+.ready{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:var(--r-md);background:var(--ok-bg);color:var(--ok-fg)}
+.ready p{margin:2px 0 0;color:var(--ok-fg)}
+.audit{display:flex;flex-direction:column}
+.audit div{display:grid;grid-template-columns:88px minmax(0,1fr);gap:10px;padding:8px 0;border-bottom:1px solid var(--hair);font-size:12.5px}
+.audit div:last-child{border-bottom:0}
+.audit time{color:var(--fg3)}
+.note{padding:10px 12px;border-radius:var(--r-md);background:var(--info-bg);color:var(--info-fg);display:flex;gap:8px;align-items:flex-start}
+/* Toast */
+.toasts{position:fixed;z-index:90;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{display:flex;align-items:center;gap:8px;background:var(--ink-900);color:var(--cream-100);padding:10px 14px;border-radius:var(--r-md);box-shadow:var(--sh-lg);font-weight:500}
+.toast svg{color:var(--gold-300)}
+@media (prefers-reduced-motion:no-preference){.toast{animation:toast 220ms var(--ease)}}
+@keyframes toast{from{opacity:0;transform:translateY(8px)}}
+/* Prototype control — deliberately not product UI */
+.proto{position:fixed;z-index:50;left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:6px;padding:5px;border:1.5px dashed #7A6FB0;border-radius:999px;background:#F3F1FB;color:#3C3470;font:500 12px/1 var(--ui);box-shadow:var(--sh-sm);max-width:calc(100vw - 32px);overflow-x:auto}
+.proto>b{padding:0 6px 0 8px;font-weight:700;white-space:nowrap}
+.proto button{border:0;background:none;padding:6px 9px;border-radius:999px;color:#3C3470;white-space:nowrap}
+.proto button[aria-pressed="true"]{background:#3C3470;color:#fff}
+.proto .toggle{padding:6px}
+.proto.min button:not(.toggle){display:none}
+.proto small{padding:0 8px;color:#6A62A0;white-space:nowrap}
+.proto.min small{display:none}
+/* ── Responsive ───────────────────────── */
+.topbar .brand{padding:0;font-size:15px}
+.topbar .icon-btn{color:var(--cream-100);width:44px;height:44px}
+.topbar .icon-btn:hover{background:var(--ink-800)}
+.head,.tabs,.toolbar,.chips,.dq{padding-left:16px;padding-right:16px}
+.tb-group.filters{display:none}
+.status-pill .lbl-long{display:none}
+.fresh .txt{display:none}
+.btn,.status-pill{height:40px}
+.stage .bar{grid-column:1/-1}
+.stage .leak-tag{grid-column:1/-1}
+
+@keyframes sheetUp{from{transform:translateY(100%)}}
+@keyframes sheetDown{to{transform:translateY(100%)}}
+@media (max-width:480px){
+  .stack-cards table,.stack-cards thead,.stack-cards tbody,.stack-cards tr,.stack-cards td{display:block}
+  .stack-cards thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .stack-cards tr{border-bottom:1px solid var(--hair);padding:8px 14px}
+  .stack-cards td{border:0;padding:3px 0;text-align:left;display:flex;justify-content:space-between;gap:12px;white-space:normal}
+  .stack-cards td::before{content:attr(data-l);color:var(--fg3);font-size:12px}
+  .stack-cards td:first-child{font-weight:600;padding-bottom:6px}
+  .stack-cards td:first-child::before{content:none}
+  .stack-cards tr.child td:first-child{padding-left:0}
+  .stack-cards td .cell-bar{justify-content:flex-end;width:auto}
+  .sticky-first.stack-cards td:first-child{position:static}
+}
+@media (min-width:721px){
+  .tabs{display:flex}
+  .bnav{display:none}
+  body .proto{bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+  .content{padding-bottom:96px}
+  .toasts{bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+  .nx{grid-template-columns:28px 132px minmax(0,1fr) auto;gap:12px;padding:11px 16px}
+  .nx .st{grid-column:auto}
+  .nx-t{grid-column:auto}
+  .nx-a{grid-column:auto;flex-wrap:nowrap}
+  .nx-b{height:30px}
+  .answer{flex-wrap:nowrap}
+  .tb-group.filters{display:flex}
+  .status-pill .lbl-long{display:inline}
+  .filters-mobile{display:none}
+  .fresh .txt{display:inline}
+  .btn,.status-pill{height:32px}
+  .fresh .btn{height:32px;width:32px}
+  .tab{padding:9px 12px 11px}
+  .ledger{display:grid;overflow:hidden}
+  .stage{border-right:1px solid var(--hair);border-bottom:0;display:flex;grid-template-columns:none;align-items:normal;gap:6px;padding:14px 16px 14px}
+  .stage-n{font-size:30px;text-align:left}
+  .stage .arrow{display:grid}
+  .stage.leak{background:linear-gradient(var(--danger-bg),var(--danger-bg)) top/100% 3px no-repeat,var(--surface)}
+  .recon{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .recon div{border-right:1px solid var(--hair);border-bottom:0}
+  .search input{width:220px}
+  .search{flex:0 1 auto}
+  .sheet{top:0;left:auto;width:min(440px,100vw);max-height:none;border-radius:0}
+  .sub-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .opt{min-height:auto}
+  .choice{padding:10px 12px}
+}
+@media (min-width:981px){
+  .jgrid{grid-template-columns:260px minmax(0,1fr)}
+  .jl{flex-direction:column;max-height:560px}
+  .jp{flex:0 1 auto;min-width:auto;min-height:auto}
+  .lgd{padding:0 28px}
+  .ads-verdicts{grid-template-columns:repeat(2,minmax(0,1fr)) minmax(0,1.3fr)}
+  .ads-v{border-right:1px solid var(--hair);border-bottom:0}
+  .ub{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .app{grid-template-columns:var(--side) minmax(0,1fr)}
+  .side{display:flex}
+  .topbar{display:none}
+  .proto{left:calc(var(--side) + 16px)}
+  .head,.tabs,.toolbar,.chips,.dq{padding-left:28px;padding-right:28px}
+  .content{padding:16px 28px 96px}
+  .ledger{grid-template-columns:repeat(5,minmax(0,1fr));overflow-x:hidden}
+  .grid-2e{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (min-width:1181px){
+  .grid-2{grid-template-columns:minmax(0,1.65fr) minmax(0,1fr)}
+}
+@media (min-width:721px) and (prefers-reduced-motion:no-preference){.sheet{animation-name:sheetIn}.sheet.out{animation-name:sheetOut}}
+@media (min-width:721px){.nx-b{height:30px}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+    <symbol id="i-dl" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-sort" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16"/></symbol>
+    <symbol id="i-sdown" viewBox="0 0 24 24"><path d="M12 5v14M19 12l-7 7-7-7"/></symbol>
+    <symbol id="i-sup" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></symbol>
+    <symbol id="i-userx" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 8 5 5M22 8l-5 5"/></symbol>
+    <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8H8M16 12H8M13 16H8"/></symbol>
+    <symbol id="i-pkg" viewBox="0 0 24 24"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12M3.3 7 12 12l8.7-5"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9M13 17V5M8 17v-3"/></symbol>
+    <symbol id="i-store" viewBox="0 0 24 24"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M2 7h20"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></symbol>
+    <symbol id="i-mega" viewBox="0 0 24 24"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+    <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+  <aside class="side" aria-label="Dashboard">
+    <div class="brand">MINI<span>RUE</span></div>
+    <nav>
+      <a href="#" onclick="return false"><svg class="i"><use href="#i-receipt"/></svg>Orders</a>
+      <a href="#" onclick="return false"><svg class="i"><use href="#i-pkg"/></svg>Products</a>
+      <a href="#" onclick="return false"><svg class="i"><use href="#i-users"/></svg>Customers</a>
+      <a href="#" onclick="return false"><svg class="i"><use href="#i-wallet"/></svg>Accounting</a>
+      <a href="#" aria-current="page" onclick="return false"><svg class="i"><use href="#i-chart"/></svg>Analytics</a>
+      <a href="#" onclick="return false"><svg class="i"><use href="#i-store"/></svg>Storefront</a>
+    </nav>
+    <div class="foot">Sample based on the 23 Aug – 21 Sep 2026 export</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="icon-btn" aria-label="Open dashboard menu"><svg class="i"><use href="#i-menu"/></svg></button>
+      <div class="brand">MINI<span>RUE</span></div>
+    </div>
+
+    <header class="head">
+      <div>
+        <h1>Analytics</h1>
+        <p>Where visitors came from, where they dropped, and what to fix next.</p>
+      </div>
+    </header>
+
+    <div class="tabs" role="tablist" aria-label="Analytics sections" id="tabs"></div>
+
+    <div class="toolbar" role="toolbar" aria-label="Analytics filters and actions">
+      <button class="btn" id="b-range" aria-haspopup="menu" aria-expanded="false"><svg class="i"><use href="#i-cal"/></svg><span id="range-l">23 Aug – 21 Sep 2026</span><svg class="i sm"><use href="#i-down"/></svg></button>
+      <div class="tb-group filters" id="filter-btns"></div>
+      <button class="btn filters-mobile" id="b-filters" aria-haspopup="dialog"><svg class="i"><use href="#i-filter"/></svg>Filters<span class="val" id="fcount"></span></button>
+      <span class="tb-spacer"></span>
+      <button class="status-pill" id="b-us" aria-haspopup="dialog" data-tip="us"><svg class="i"><use href="#i-shield"/></svg><span class="lbl-long">Excluding you, staff &amp; bots</span><span class="sr">Analytics settings</span></button>
+      <span class="fresh"><button class="btn" id="b-refresh" aria-label="Refresh data"><svg class="i"><use href="#i-refresh"/></svg></button></span>
+      <button class="btn primary" id="b-export" aria-haspopup="dialog"><svg class="i"><use href="#i-dl"/></svg>Export</button>
+    </div>
+    <div class="chips" id="chips" aria-label="Active filters"></div>
+    <div class="dq" id="dq"></div>
+    <div class="lgd" id="legend"></div>
+
+    <main class="content" id="content" tabindex="-1"></main>
+    <nav class="bnav" id="bnav" aria-label="Analytics sections"></nav>
+  </div>
+</div>
+
+<div class="proto" id="proto" aria-label="Prototype state control">
+  <b>Prototype</b>
+  <button data-demo="live" aria-pressed="true">Live</button>
+  <button data-demo="loading" aria-pressed="false">Loading</button>
+  <button data-demo="empty" aria-pressed="false">Empty range</button>
+  <button data-demo="error" aria-pressed="false">Error</button>
+  <button data-demo="filtered" aria-pressed="false">Filtered</button>
+  <button data-demo="noresults" aria-pressed="false">No results</button>
+  <small>Sample data</small>
+  <button class="toggle" id="proto-min" aria-label="Collapse prototype control"><svg class="i sm"><use href="#i-x"/></svg></button>
+</div>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+<div id="live" class="sr" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+/* ─────────── Data (23 Aug – 21 Sep 2026 export, dashboard#128) ─────────── */
+const CH = {Paid:{c:'var(--c1)',l:'Paid ads'},Social:{c:'var(--c2)',l:'Social'},Direct:{c:'var(--c3)',l:'Direct'},Referral:{c:'var(--c4)',l:'Referral / other'}};
+const CAMP = {
+  mr:{l:'TikTok · Minirueshop',raw:'utm_source=tiktok&utm_medium=paid&utm_campaign=Minirueshop&utm_id=1876609874144674 · ttclid present'},
+  nn:{l:'TikTok · campaign name missing',raw:'utm_source=tiktok&utm_medium=paid&utm_campaign=__CAMPAIGN_NAME__ · ttclid present',flag:'Untagged'},
+  meta:{l:'Meta · unnamed campaign',raw:'utm_source=fb&utm_medium=paid&utm_campaign=120250555651910697 · fbclid present',flag:'ID only'},
+  ig:{l:'Instagram',raw:'referrer l.instagram.com · no utm'},fb:{l:'Facebook',raw:'referrer m.facebook.com, l.facebook.com · no utm'},
+  tto:{l:'TikTok (organic)',raw:'referrer www.tiktok.com · no utm'},dir:{l:'Direct',raw:'no referrer · no utm'},ref:{l:'Referral / other',raw:'referrer mixed (2 hosts) · no utm'}
+};
+const LAND = {sk:'/shop/skincare',home:'Home',ret:'Arencia Retinal Booster Shot',vitc:'Arencia Vitamin C Booster Shot',vita:'The Vita A Retinal Shot Tightening Booster',oth:'Other / unknown path'};
+// v visited · p viewed product · b bag · c checkout · o purchased  (people)
+const ROWS = [
+  {ch:'Paid',cp:'mr',ld:'sk',v:41,p:20,b:1,c:0,o:0},
+  {ch:'Paid',cp:'mr',ld:'ret',v:17,p:17,b:0,c:0,o:0},
+  {ch:'Paid',cp:'nn',ld:'sk',v:21,p:9,b:0,c:0,o:0},
+  {ch:'Paid',cp:'meta',ld:'home',v:15,p:5,b:0,c:0,o:0},
+  {ch:'Social',cp:'ig',ld:'home',v:20,p:8,b:0,c:0,o:0},
+  {ch:'Social',cp:'ig',ld:'ret',v:14,p:14,b:0,c:0,o:0},
+  {ch:'Social',cp:'fb',ld:'home',v:13,p:5,b:0,c:0,o:0},
+  {ch:'Social',cp:'fb',ld:'vitc',v:9,p:9,b:0,c:0,o:0},
+  {ch:'Social',cp:'tto',ld:'sk',v:5,p:2,b:0,c:0,o:0},
+  {ch:'Direct',cp:'dir',ld:'home',v:16,p:5,b:0,c:0,o:0},
+  {ch:'Direct',cp:'dir',ld:'vitc',v:5,p:5,b:1,c:1,o:0},
+  {ch:'Direct',cp:'dir',ld:'vita',v:9,p:9,b:0,c:0,o:0},
+  {ch:'Direct',cp:'dir',ld:'sk',v:4,p:2,b:0,c:0,o:0},
+  {ch:'Direct',cp:'dir',ld:'oth',v:3,p:0,b:0,c:0,o:0},
+  {ch:'Referral',cp:'ref',ld:'oth',v:2,p:0,b:0,c:0,o:0},
+  {ch:'Referral',cp:'ref',ld:'ret',v:1,p:1,b:0,c:0,o:0},
+];
+// event factor per stage (sessions, product_view, add_to_cart, begin_checkout, purchase) — sample
+const EV = {v:1.34,p:1.72,b:1,c:1,o:1};
+const DAILY = [4,5,3,6,7,5,4,6,8,7,5,6,9,11,8,6,5,7,6,4,5,8,10,9,7,6,5,4,8,6];
+const PRODUCTS = [{n:'Arencia Retinal Booster Shot',v:46,b:1,price:1139},{n:'Arencia Vitamin C Booster Shot',v:38,b:1,price:1139},{n:'The Vita A Retinal Shot Tightening Booster',v:27,b:0,price:null}];
+const CARTS = [
+  {id:1187,ch:'Paid',src:'TikTok · Minirueshop',prod:'Arencia Retinal Booster Shot',val:1139,stage:'Left in bag',when:'18 Sep 2026'},
+  {id:1203,ch:'Direct',src:'Direct',prod:'Arencia Vitamin C Booster Shot',val:1139,stage:'Left at checkout · delivery step',when:'20 Sep 2026'},
+];
+const PEOPLE = [
+  {id:1187,ch:'Paid',src:'TikTok · Minirueshop',city:'Cairo',dev:'Mobile',s:3,pv:9,last:'18 Sep, 9:08 PM',out:'Left in bag',val:1139},
+  {id:1203,ch:'Direct',src:'Direct',city:'Giza',dev:'Desktop',s:2,pv:7,last:'20 Sep, 2:32 PM',out:'Left at checkout',val:1139},
+  {id:1214,ch:'Social',src:'Instagram',city:'Cairo',dev:'Mobile',s:2,pv:5,last:'21 Sep, 10:11 AM',out:'Viewed, not added',val:0},
+  {id:1209,ch:'Paid',src:'TikTok · campaign name missing',city:'Giza',dev:'Mobile',s:1,pv:3,last:'20 Sep, 10:47 PM',out:'Viewed, not added',val:0},
+  {id:1198,ch:'Social',src:'Facebook',city:'Alexandria',dev:'Mobile',s:1,pv:2,last:'19 Sep, 7:05 PM',out:'Viewed, not added',val:0},
+  {id:1191,ch:'Direct',src:'Direct',city:'Cairo',dev:'Desktop',s:1,pv:4,last:'19 Sep, 11:40 AM',out:'Viewed, not added',val:0},
+  {id:1176,ch:'Paid',src:'Meta · unnamed campaign',city:'Mansoura',dev:'Mobile',s:1,pv:1,last:'17 Sep, 8:18 PM',out:'Bounced',val:0},
+  {id:1170,ch:'Paid',src:'TikTok · Minirueshop',city:'Cairo',dev:'Mobile',s:1,pv:1,last:'17 Sep, 1:02 PM',out:'Bounced',val:0},
+  {id:1163,ch:'Social',src:'TikTok (organic)',city:'Giza',dev:'Mobile',s:1,pv:2,last:'16 Sep, 11:31 PM',out:'Browsed, no product',val:0},
+  {id:1158,ch:'Referral',src:'Referral / other',city:'Cairo',dev:'Desktop',s:1,pv:2,last:'16 Sep, 9:54 AM',out:'Viewed, not added',val:0},
+];
+const DEFS = {
+  visitors:'<b>Unique visitors.</b> One person = one cookie visitor ID. Fingerprints are not merged across days. Excludes you, staff, test accounts and bots.',
+  sessions:'<b>Sessions.</b> A visit that ends after 30 minutes without activity. One person can have many.',
+  viewed:'<b>Viewed a product.</b> People who opened at least one product page. Not the number of product views.',
+  bag:'<b>Added to bag.</b> People with at least one add-to-bag event.',
+  checkout:'<b>Reached checkout.</b> People who started checkout (delivery step or later).',
+  purchased:'<b>Purchased.</b> People with a paid order, matched one-to-one to a backend order ID, not a pixel event.',
+  revenue:'<b>Revenue.</b> Paid order totals in EGP, after refunds. Excluded traffic never counts.',
+  us:'<b>This is us.</b> Excluding this device + signed-in staff since 12 Sep 2026, plus automatic bot filtering. Click to change.',
+  events:'<b>Events.</b> Raw tracked actions (page views, product views, add-to-bag…). One person creates many.'
+};
+const SECTIONS = [
+  {id:'overview',l:'Overview'},{id:'people',l:'People'},{id:'journeys',l:'Journeys'},
+  {id:'sources',l:'Sources'},{id:'flow',l:'Flow'},{id:'ads',l:'Social ads quality',count:'5'},{id:'quality',l:'Data quality',count:'3'}
+];
+const FILTERS = [
+  {k:'ch',l:'Source',opts:Object.keys(CH).map(k=>({v:k,l:CH[k].l}))},
+  {k:'cp',l:'Campaign',opts:['mr','nn','meta'].map(k=>({v:k,l:CAMP[k].l}))},
+  {k:'dev',l:'Device',opts:[{v:'m',l:'Mobile'},{v:'d',l:'Desktop'}],illus:true},
+  {k:'loc',l:'Location',opts:['Cairo','Giza','Alexandria','Mansoura','Other'].map(v=>({v,l:v})),illus:true},
+];
+const RANGES = ['Today','Last 7 days','Last 30 days · 23 Aug – 21 Sep 2026','This month','Custom range…'];
+
+/* ─────────── State ─────────── */
+const S = {section:'overview',f:{ch:[],cp:[],dev:[],loc:[]},demo:'live',mode:'people',sort:{k:'v',d:-1},q:'',raw:false,open:{},psort:{k:'last',d:-1},pq:'',legend:false};
+try{S.legend=localStorage.getItem('mr-legend')==='1';}catch(_){}
+const prevNums = {};
+const $ = s => document.querySelector(s);
+const fmt = n => n.toLocaleString('en-US');
+const egp = n => 'EGP ' + n.toLocaleString('en-US');
+const pct = (a,b) => b ? (a/b*100) : 0;
+const pctS = (a,b) => b ? (Math.round(a/b*1000)/10).toString().replace(/\.0$/,'') + '%' : '—';
+const icon = (id,cls='i') => `<svg class="${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+
+function rows(){
+  return ROWS.filter(r => (!S.f.ch.length || S.f.ch.includes(r.ch)) && (!S.f.cp.length || S.f.cp.includes(r.cp)));
+}
+function sum(rs){return rs.reduce((a,r)=>({v:a.v+r.v,p:a.p+r.p,b:a.b+r.b,c:a.c+r.c,o:a.o+r.o}),{v:0,p:0,b:0,c:0,o:0});}
+function ev(n,k){return S.mode==='events'?Math.round(n*EV[k]):n;}
+
+/* Animate UI: Sliding Number */
+function sn(key,val){
+  const s = fmt(val); const from = prevNums[key] ?? val; prevNums[key]=val;
+  const f = fmt(from).padStart(s.length,' ');
+  return `<span class="sn" data-sn="${key}" data-to="${s}" aria-label="${s}">${[...s].map((ch,i)=>{
+    if(!/\d/.test(ch)) return `<span aria-hidden="true">${ch}</span>`;
+    const st = /\d/.test(f[i]) ? +f[i] : 0;
+    return `<span class="d" aria-hidden="true"><span style="transform:translateY(-${st}em)">${[0,1,2,3,4,5,6,7,8,9].map(d=>`<b>${d}</b>`).join('')}</span></span>`;
+  }).join('')}</span>`;
+}
+function runSliding(){
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    document.querySelectorAll('.sn').forEach(el=>{
+      const to = el.dataset.to; let di=0;
+      const cols = el.querySelectorAll('.d>span');
+      [...to].forEach(ch=>{ if(/\d/.test(ch)){ cols[di].style.transform=`translateY(-${+ch}em)`; di++; }});
+    });
+  }));
+}
+
+/* ─────────── Shell render ─────────── */
+function renderTabs(){
+  const t = $('#tabs');
+  t.innerHTML = SECTIONS.map(s=>`<button class="tab" role="tab" id="tab-${s.id}" aria-selected="${S.section===s.id}" aria-controls="content" data-sec="${s.id}">${s.l}${s.count?`<span class="count" aria-label="${s.count} checks need attention">${s.count}</span>`:''}</button>`).join('') + '<span class="tab-ind" id="tab-ind"></span>';
+  moveInd();
+}
+function moveInd(){
+  const a = document.querySelector('.tab[aria-selected="true"]'); const ind = $('#tab-ind');
+  if(!a||!ind) return;
+  ind.style.width = (a.offsetWidth-16)+'px';
+  ind.style.transform = `translateX(${a.offsetLeft+8}px)`;
+}
+function renderFilterBtns(){
+  $('#filter-btns').innerHTML = FILTERS.map(f=>{
+    const sel = S.f[f.k]; const has = sel.length>0;
+    const v = has ? (sel.length===1 ? f.opts.find(o=>o.v===sel[0]).l : sel.length+' selected') : 'All';
+    return `<button class="btn${has?' has':''}" data-filter="${f.k}" aria-haspopup="menu" aria-expanded="false">${f.l}<span class="val">${v}</span>${icon('down','i sm')}</button>`;
+  }).join('');
+  const n = Object.values(S.f).reduce((a,x)=>a+x.length,0);
+  $('#fcount').textContent = n ? `(${n})` : '';
+}
+function renderChips(){
+  const out=[];
+  FILTERS.forEach(f=>S.f[f.k].forEach(v=>{
+    const o=f.opts.find(x=>x.v===v);
+    out.push(`<span class="chip">${f.l}: <b>${o.l}</b><button aria-label="Remove ${f.l} ${o.l}" data-rm="${f.k}:${v}">${icon('x','i sm')}</button></span>`);
+  }));
+  $('#chips').innerHTML = out.length ? out.join('') + `<button class="clear" id="clear-all">Clear all</button>` : '';
+}
+function renderDQ(){
+  const d = S.demo;
+  if(d==='error'){$('#dq').innerHTML=`<span class="warn">${icon('alert','i sm')}Data could not load. Numbers below are not current.</span>`;return;}
+  $('#dq').innerHTML = `
+    <span id="fresh-t">Updated ${S.fresh||'2 min ago · 1:58 PM Cairo time'}</span>
+    <span class="ok">${icon('ok','i sm')}Purchases reconciled to orders</span>
+    <span>${icon('shield','i sm')}1,151 events excluded · 78.8% bots</span>
+    <span class="warn">${icon('alert','i sm')}36 paid visitors have no campaign name</span>
+    <a href="#quality" data-go="quality">Data quality</a>
+    <button class="lg-toggle" data-legend aria-expanded="${S.legend}" aria-controls="lg-main">${icon('info','i sm')}Legend${icon('down','i sm')}</button>`;
+}
+/* Legend: explains every pill, label, colour and number style. Collapsible. */
+function legendHTML(groups){
+  const row=(pill,txt)=>`<div class="lg-row"><span class="lg-k">${pill}</span><span>${txt}</span></div>`;
+  const G={
+    pages:['Page visited', Object.keys(PAGE_KIND).map(k=>row(kindPill(k),{
+      home:'The shop’s home page',category:'A category list, e.g. /shop/skincare',product:'A single product page',
+      bag:'Added to bag or opened the bag',checkout:'Any checkout step (delivery, payment)',unknown:'A path the shop doesn’t know (typo, old link). Still counted.',
+      action:'Something done on a page (read reviews, opened info)',exit:'Where the visit ended'}[k])).join('')],
+    sources:['Where they came from', [
+      ['TikTok','TikTok, paid or organic'],['Instagram','Instagram (post, story, bio link)'],['Facebook','Facebook (post or link)'],
+      ['Meta','A Meta ads campaign (Facebook + Instagram ads)'],['Direct','Typed the address or used a saved link'],['Referral','Another website linked to the shop']
+    ].map(([s,t])=>row(srcPill(s),t)).join('') + row(`<span class="sp sp-direct">${icon('alert','i sm')}</span>`,'Campaign has no readable name. Can’t be credited until fixed.')],
+    channels:['Channel colours (tables and charts)', Object.keys(CH).map(k=>row(`<span class="name"><span class="dot" style="background:${CH[k].c}"></span><b>${CH[k].l}</b></span>`,{Paid:'Visitors from TikTok or Meta ads',Social:'Unpaid posts on Instagram, Facebook or TikTok',Direct:'Typed the address or used a saved link',Referral:'Other websites that linked to the shop'}[k])).join('')],
+    status:['Labels', [
+      [`<span class="tag warn">${icon('alert','i sm')}Untagged</span>`,'Ad link sends __CAMPAIGN_NAME__ instead of a name'],
+      [`<span class="tag warn">${icon('alert','i sm')}ID only</span>`,'Campaign known only by its number'],
+      [`<span class="tag muted">unknown</span>`,'Landing path the shop doesn’t recognise'],
+      [`<span class="tag warn">${icon('bag','i sm')}Open cart</span>`,'Items left in the bag, not bought'],
+      [`<span class="tag muted">${icon('userx','i sm')}No contact</span>`,'No phone or email captured, so they can’t be reached'],
+      [`<span class="tag ok">${icon('ok','i sm')}Pass</span>`,'Check passed: matched, reconciled'],
+      [`<span class="tag warn">Deduplicated</span>`,'A problem was found and corrected automatically'],
+      [`<span class="leak-tag">${icon('alert','i sm')}Biggest drop</span>`,'The funnel step that lost the most people'],
+      [`<span class="st st-ok">${icon('ok','i sm')}Ready</span>`,'Ads quality: set up and working'],
+      [`<span class="st st-warn">${icon('alert','i sm')}Partial</span>`,'Ads quality: works, but something is missing'],
+      [`<span class="st st-bad">${icon('ban','i sm')}Missing</span>`,'Ads quality: not set up. Fix before spending more'],
+      [`<span class="st st-unk">${icon('info','i sm')}Needs access</span>`,'Only the ad platform knows. Connect its API to check automatically'],
+      [`<span class="src-code">Our code</span>`,'Checked from the shop’s own code and data'],
+    ].map(([a,b])=>row(a,b)).join('')],
+    numbers:['Numbers', [
+      [`<b class="num" style="color:var(--danger-fg)">0 <small>0%</small></b>`,'Red: this step lost more than 90% of at least 5 people'],
+      [`<span class="num" style="color:var(--ink-300)">0</span>`,'Grey zero: nothing happened here'],
+      [`<span class="num" style="color:var(--fg4)">48.8%</span>`,'Small %: share of the previous step'],
+      [`${icon('info','i sm')}`,'Hover, focus or tap for the exact definition'],
+      [`<span class="tg" style="pointer-events:none"><button tabindex="-1" aria-pressed="true" style="background:var(--surface);border-radius:6px">People</button><button tabindex="-1" aria-pressed="false">Events</button></span>`,'People = unique visitors. Events = every action (one person makes many).'],
+    ].map(([a,b])=>row(a,b)).join('')],
+  };
+  return `<div class="lg-grid">${groups.map(g=>`<section class="lg-g" aria-label="${G[g][0]}"><h3>${G[g][0]}</h3>${G[g][1]}</section>`).join('')}</div>`;
+}
+function renderLegend(){
+  $('#legend').innerHTML=`<div class="ah${S.legend?' open':''}" id="lg-main"><div><div class="lg-panel">
+    <div class="lg-head"><h2>Legend</h2><button class="icon-btn" data-legend aria-label="Collapse legend">${icon('x')}</button></div>
+    ${legendHTML(['pages','sources','channels','status','numbers'])}</div></div></div>`;
+}
+function renderAll(anim){
+  renderFilterBtns(); renderChips(); renderDQ();
+  const c = $('#content');
+  c.classList.remove('enter'); if(anim){void c.offsetWidth; c.classList.add('enter');}
+  c.innerHTML = view();
+  bindContent(); runSliding(); moveInd();
+}
+
+/* ─────────── States ─────────── */
+function skeleton(){
+  const blk=(h,w='100%')=>`<div class="sk" style="height:${h}px;width:${w}"></div>`;
+  return `<div class="ledger" aria-busy="true" aria-label="Loading">${[0,1,2,3,4].map(()=>`<div class="stage">${blk(12,'60%')}${blk(28,'45%')}${blk(12,'70%')}${blk(4)}</div>`).join('')}</div>
+  <div class="grid-2"><div class="panel"><div class="panel-h">${blk(14,'180px')}</div><div class="panel-b" style="display:flex;flex-direction:column;gap:12px">${[1,2,3,4,5].map(()=>blk(18)).join('')}</div></div>
+  <div class="panel"><div class="panel-h">${blk(14,'140px')}</div><div class="panel-b">${blk(150)}</div></div></div>`;
+}
+function stateBox(kind){
+  if(kind==='empty') return `<div class="panel"><div class="state"><span class="ico muted">${icon('cal')}</span><h2>No visitors in this range yet</h2><p>Today (22 Sep) has no counted visitors so far. Tracking is running: the last event arrived 4 minutes ago and was a bot. Pick a longer range to see trends.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-range="Last 30 days · 23 Aug – 21 Sep 2026">Show last 30 days</button><button class="btn" data-go="quality">Check tracking health</button></div></div></div>`;
+  return `<div class="panel"><div class="state"><span class="ico danger">${icon('alert')}</span><h2>Analytics couldn’t load</h2><p>The analytics service didn’t answer in 10 seconds (timed out at 1:42 PM Cairo time). Your data is safe. Nothing was lost, it just wasn’t fetched.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="retry">${icon('refresh','i sm')}Retry</button><button class="btn" data-go="quality">See service health</button></div></div></div>`;
+}
+
+/* ─────────── Views ─────────── */
+function view(){
+  if(S.demo==='loading') return skeleton();
+  if(S.demo==='empty') return stateBox('empty');
+  if(S.demo==='error') return stateBox('error');
+  return answer() + ({overview,people,journeys,sources,flow,ads,quality})[S.section]();
+}
+
+/* One plain-language answer per section (from B's guidance strip + C's statement line) */
+function answer(){
+  const t=sum(rows());
+  const A={
+    overview:[`${fmt(t.v)} visitors, ${t.p} viewed a product, ${t.b} added to bag, ${t.o} bought. <b>The leak is between viewing a product and adding it to the bag.</b>`,'See what to do','steps'],
+    people:['2 of the 10 most recent visitors left something in the bag, <b>and neither left a phone number.</b>','Open their journeys','journeys'],
+    journeys:['Most journeys end on a product page: <b>109 people viewed a product and left without adding it.</b>','See the flow','flow'],
+    sources:['<b>36 paid visitors can’t be credited:</b> one TikTok ad sends __CAMPAIGN_NAME__ and one Meta campaign sends only its ID.','Fix in ads quality','ads'],
+    flow:['Every path loses people at the product page. <b>Only 2 of 16 paths reached the bag.</b>','Open data quality','quality'],
+    ads:['<b>Neither platform is ready to scale:</b> Meta has no server-side purchases and 2 campaigns have no name.','See the checks','adsm'],
+    quality:['All three views agree on <b>195 visitors</b>. Purchases reconcile to orders. <b>3 checks need a look.</b>','See the checks','qa'],
+  }[S.section];
+  return `<p class="answer">${icon('arrow')}<span>${A[0]}</span><button class="link" data-jump="${A[2]}">${A[1]}</button></p>`;
+}
+
+/* What to do next — ranked by what it costs (from B) */
+const STEPS = [
+  {id:'spend',sev:'high',t:'Hold ad spend.',d:'94 paid visitors, 0 purchases. Measure before spending more.',go:'flow',f:{ch:['Paid']}},
+  {id:'leak',sev:'high',t:'Fix the product page leak.',d:'111 viewed a product, 2 added to bag. Start with Arencia Retinal (46 viewed, 1 added): price, delivery, trust, mobile Add-to-bag.',go:'flow',q:'retinal'},
+  {id:'names',sev:'warn',t:'Name the 2 unnamed campaigns.',d:'36 paid visitors can’t be credited to any campaign.',go:'ads'},
+  {id:'capi',sev:'warn',t:'Set up Meta Conversions API.',d:'Meta sees purchases from the browser only; ad blockers and iOS hide some.',go:'ads'},
+  {id:'carts',sev:'warn',t:'Ask for a phone number earlier in checkout.',d:'2 open carts (EGP 2,278) and neither can be contacted.',go:'journeys',jid:1203},
+  {id:'diag',sev:'info',t:'Treat Add-to-bag as a signal, not a goal.',d:'Optimise ads to Add-to-bag only until purchases reconcile to orders.',go:'quality'},
+];
+const SEV = {high:['Highest','st-bad','alert'],warn:['Needs attention','st-warn','alert'],info:['For awareness','st-unk','info']};
+function nextSteps(){
+  S.stepsDone = S.stepsDone || {};
+  const open = STEPS.filter(x=>!S.stepsDone[x.id]); const done = STEPS.length-open.length;
+  return `<section class="panel" id="steps" aria-labelledby="h-next"><div class="panel-h"><div><h2 id="h-next">What to do next</h2><span class="meta">${open.length} open · ranked by what each is costing you</span></div>
+    ${done?`<button class="link" data-steps-reset>Show ${done} done</button>`:''}</div>
+    <ol class="steps-list">${open.map((x,i)=>`<li class="nx" data-step="${x.id}">
+      <span class="nx-r num">${i+1}</span>
+      <span class="st ${SEV[x.sev][1]}">${icon(SEV[x.sev][2],'i sm')}${SEV[x.sev][0]}</span>
+      <span class="nx-t"><b>${x.t}</b> ${x.d}</span>
+      <span class="nx-a"><button class="link" data-evidence="${x.id}">See the evidence</button><button class="btn nx-b" data-snooze="${x.id}">Snooze</button><button class="btn primary nx-b" data-done="${x.id}">${icon('check','i sm')}Done</button></span>
+    </li>`).join('') || `<li class="nx"><span class="nx-t">Nothing left this week. New steps appear when the numbers change.</span></li>`}</ol></section>`;
+}
+function ledger(t){
+  const st = [
+    {k:'v',l:'Visited',d:'visitors',n:t.v},
+    {k:'p',l:'Viewed a product',d:'viewed',n:t.p,prev:t.v},
+    {k:'b',l:'Added to bag',d:'bag',n:t.b,prev:t.p},
+    {k:'c',l:'Reached checkout',d:'checkout',n:t.c,prev:t.b},
+    {k:'o',l:'Purchased',d:'purchased',n:t.o,prev:t.c},
+  ];
+  // biggest drop = largest absolute people lost between stages
+  let leak=-1,max=0; st.forEach((s,i)=>{ if(i>0){const lost=st[i-1].n-s.n; if(lost>max){max=lost;leak=i;} }});
+  return `<section class="ledger" aria-label="Funnel, unique visitors">${st.map((s,i)=>{
+    const isLeak = i===leak && s.prev;
+    const lost = s.prev!=null ? s.prev - s.n : 0;
+    return `<div class="stage${isLeak?' leak':''}">
+      <div class="stage-l">${s.l}<button data-tip="${s.d}" aria-label="What counts as ${s.l}">${icon('info','i sm')}</button></div>
+      <div class="stage-n">${sn('led-'+s.k,s.n)}</div>
+      <div class="stage-s">${s.prev!=null?`<b>${pctS(s.n,s.prev)}</b> of previous step`:'unique people · 30 days'}</div>
+      <div class="bar" aria-hidden="true"><i style="transform:scaleX(${t.v?s.n/t.v:0})"></i></div>
+      ${isLeak?`<span class="leak-tag">${icon('alert','i sm')}Biggest drop · −${fmt(lost)}</span>`:''}
+      ${i<4?`<span class="arrow" aria-hidden="true">${icon('right','i')}</span>`:''}
+    </div>`;}).join('')}</section>`;
+}
+
+function trendSVG(scale){
+  const data = DAILY.map(v=>Math.round(v*scale*10)/10);
+  const W=560,H=170,pl=28,pr=12,pt=12,pb=24; const max=Math.max(12,Math.ceil(Math.max(...data)/4)*4);
+  const x=i=>pl+i*(W-pl-pr)/(data.length-1), y=v=>pt+(H-pt-pb)*(1-v/max);
+  const pts=data.map((v,i)=>[x(i),y(v)]);
+  const line='M'+pts.map(p=>p.map(n=>n.toFixed(1)).join(' ')).join('L');
+  const area=line+`L${x(data.length-1)} ${H-pb}L${pl} ${H-pb}Z`;
+  const ticks=[0,max/2,max];
+  const days=i=>{const d=new Date(2026,7,23+i);return d.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];};
+  const last=pts[pts.length-1];
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Unique visitors per day, 23 Aug to 21 Sep. Peak 11 on 5 Sep.">
+    ${ticks.map(t=>`<line class="grid" x1="${pl}" x2="${W-pr}" y1="${y(t)}" y2="${y(t)}"/><text x="${pl-6}" y="${y(t)+4}" text-anchor="end">${t}</text>`).join('')}
+    <path class="area" d="${area}"/><path class="line" d="${line}"/>
+    ${[0,7,14,21,29].map(i=>`<text x="${x(i)}" y="${H-6}" text-anchor="${i===0?'start':i===29?'end':'middle'}">${days(i)}</text>`).join('')}
+    <line class="cursor" id="cur" x1="0" x2="0" y1="${pt}" y2="${H-pb}" visibility="hidden"/>
+    <circle class="end" cx="${last[0]}" cy="${last[1]}" r="4"/>
+    ${pts.map((p,i)=>`<rect class="hit" x="${p[0]-(W-pl-pr)/(data.length-1)/2}" y="${pt}" width="${(W-pl-pr)/(data.length-1)}" height="${H-pt-pb}" data-tipx="${days(i)}: <b>${data[i]}</b> visitors" data-cx="${p[0]}"/>`).join('')}
+  </svg>`;
+}
+
+function overview(){
+  const rs=rows(), t=sum(rs);
+  const byCh = Object.keys(CH).map(k=>({k,...sum(rs.filter(r=>r.ch===k))})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
+  const maxV = Math.max(...byCh.map(x=>x.v),1);
+  const scale = t.v/195;
+  const chRows = byCh.map(c=>{
+    const camps = [...new Set(rs.filter(r=>r.ch===c.k).map(r=>r.cp))].map(cp=>({cp,...sum(rs.filter(r=>r.ch===c.k&&r.cp===cp))})).sort((a,b)=>b.v-a.v);
+    const open = S.open['ov-'+c.k];
+    const cells = x => `<td data-l="Viewed product">${x.p||'<span class="zero">0</span>'}</td><td data-l="Bag"${x.b?'':' class="zero"'}>${x.b}</td><td data-l="Checkout"${x.c?'':' class="zero"'}>${x.c}</td><td data-l="Purchased"${x.o?'':' class="zero"'}>${x.o}</td><td data-l="View → bag" class="pct">${pctS(x.b,x.p)}</td>`;
+    return `<tr><td><span class="name">${camps.length>1?`<button class="row-exp" aria-expanded="${!!open}" data-open="ov-${c.k}" aria-label="Show campaigns in ${CH[c.k].l}">${icon('right')}</button>`:''}<span class="dot" style="background:${CH[c.k].c}"></span>${CH[c.k].l}</span></td>
+      <td data-l="Visitors"><span class="cell-bar"><i style="width:${Math.round(c.v/maxV*64)}px;background:${CH[c.k].c};opacity:.55"></i>${c.v}</span></td>${cells(c)}</tr>`
+      + (open? camps.map(x=>`<tr class="child"><td><span class="name">${CAMP[x.cp].l}${CAMP[x.cp].flag?` <span class="tag warn">${icon('alert','i sm')}${CAMP[x.cp].flag}</span>`:''}</span></td><td data-l="Visitors">${x.v}</td>${cells(x)}</tr>`).join('') : '');
+  }).join('');
+  const bagFrom = {'Arencia Retinal Booster Shot':'Paid','Arencia Vitamin C Booster Shot':'Direct'};
+  const prods = PRODUCTS.map(p=>{
+    const v=Math.round(p.v*scale); const b=(bagFrom[p.n]&&(!S.f.ch.length||S.f.ch.includes(bagFrom[p.n])))?p.b:0;
+    return `<tr><td style="white-space:normal;min-width:180px">${p.n}</td><td data-l="Viewers">${v}</td><td data-l="Added"${b?'':' class="zero"'}>${b}</td><td data-l="Rate" class="${v>=5&&pct(b,v)<10?'drop':''}">${pctS(b,v)}</td></tr>`;}).join('');
+  const lands = Object.keys(LAND).map(k=>({k,...sum(rs.filter(r=>r.ld===k))})).filter(x=>x.v).sort((a,b)=>b.v-a.v).map(x=>`<tr><td>${LAND[x.k]}${x.k==='oth'?' <span class="tag muted">unknown</span>':''}</td><td data-l="Visitors">${x.v}</td><td data-l="Viewed product">${x.p}</td><td data-l="Bag"${x.b?'':' class="zero"'}>${x.b}</td></tr>`).join('');
+  const split = byCh.map(c=>`<i style="flex:${c.v};background:${CH[c.k].c}"></i>`).join('');
+  const splitLg = byCh.map(c=>`<span><span class="dot" style="background:${CH[c.k].c}"></span>${CH[c.k].l} <b class="num">${c.v}</b> <small class="num">${pctS(c.v,t.v)}</small></span>`).join('');
+  return `${ledger(t)}
+  ${nextSteps()}
+  <div class="grid-2">
+    <div class="stack">
+    <section class="panel" aria-labelledby="h-src">
+      <div class="panel-h"><h2 id="h-src">Where visitors came from</h2><span class="meta">Unique people · click a source for campaigns</span></div>
+      <div class="panel-b src-split"><div class="split" role="img" aria-label="${byCh.map(c=>CH[c.k].l+' '+c.v).join(', ')}">${split}</div><div class="legend">${splitLg}</div></div>
+      <div class="tw stack-cards sticky-first"><table><thead><tr><th scope="col">Source</th><th scope="col">Visitors</th><th scope="col">Viewed product</th><th scope="col">Bag</th><th scope="col">Checkout</th><th scope="col">Purchased</th><th scope="col">View → bag</th></tr></thead>
+      <tbody>${chRows}</tbody>
+      <tfoot><tr><td><b>Total</b></td><td data-l="Visitors"><b>${t.v}</b></td><td data-l="Viewed product"><b>${t.p}</b></td><td data-l="Bag"><b>${t.b}</b></td><td data-l="Checkout"><b>${t.c}</b></td><td data-l="Purchased"><b>${t.o}</b></td><td data-l="View → bag" class="pct">${pctS(t.b,t.p)}</td></tr></tfoot></table></div>
+    </section>
+    <section class="panel" aria-labelledby="h-land">
+      <div class="panel-h"><h2 id="h-land">Where they landed</h2><span class="meta">Clean paths · click IDs removed</span></div>
+      <div class="tw stack-cards"><table><thead><tr><th scope="col">Landing page</th><th scope="col">Visitors</th><th scope="col">Viewed product</th><th scope="col">Bag</th></tr></thead><tbody>${lands}</tbody></table></div>
+    </section>
+    </div>
+    <div class="stack">
+      <section class="panel" aria-labelledby="h-trend">
+        <div class="panel-h"><h2 id="h-trend">Visitors per day</h2><span class="meta">Peak 11 on 5 Sep</span></div>
+        <div class="panel-b">${trendSVG(scale)}</div>
+      </section>
+      <section class="panel" aria-labelledby="h-carts">
+        <div class="panel-h"><h2 id="h-carts">Open carts</h2><span class="meta">${egp(2278)} waiting</span></div>
+        <div class="panel-b list">${CARTS.filter(c=>!S.f.ch.length||S.f.ch.includes(c.ch)).map(c=>`<div class="li"><button class="link t" data-visitor="${c.id}">Visitor #${c.id}</button><b class="num">${egp(c.val)}</b><div class="s"><span>${c.prod}</span><span>· ${c.src}</span><span>· ${c.stage}</span><span class="tag muted">${icon('userx','i sm')}No contact</span></div></div>`).join('') || '<p style="margin:0;color:var(--fg3)">No open carts from this source.</p>'}</div>
+      </section>
+    <section class="panel" aria-labelledby="h-prod">
+      <div class="panel-h"><h2 id="h-prod">Products people looked at</h2><span class="meta">Unique viewers</span></div>
+      <div class="tw stack-cards"><table><thead><tr><th scope="col">Product</th><th scope="col">Viewers</th><th scope="col">Added</th><th scope="col"><span data-tip="bag">Rate</span></th></tr></thead><tbody>${prods}</tbody></table></div>
+    </section>
+    </div>
+  </div>`;
+}
+
+function flow(){
+  let rs = rows().map(r=>({...r,src:CAMP[r.cp].l,land:LAND[r.ld]}));
+  const q = S.q.trim().toLowerCase();
+  if(q) rs = rs.filter(r=>(r.src+' '+r.land+' '+CH[r.ch].l).toLowerCase().includes(q));
+  const k=S.sort.k,d=S.sort.d;
+  rs.sort((a,b)=> typeof a[k]==='string' ? a[k].localeCompare(b[k])*d : (a[k]-b[k])*d);
+  const t=sum(rs);
+  const cols=[['src','Source','string'],['land','Landing','string','tl'],['v','Visited'],['p','Viewed product'],['b','Bag'],['c','Checkout'],['o','Purchased']];
+  const th = cols.map(([key,l,_t,cls])=>`<th scope="col"${cls?' class="tl"':''}${S.sort.k===key?` aria-sort="${d<0?'descending':'ascending'}"`:''}><button class="sort" data-sort="${key}">${l}${icon(S.sort.k===key?(d<0?'sdown':'sup'):'sort')}</button></th>`).join('');
+  const stageCell=(r,key,prevKey,label)=>{
+    const n=ev(r[key],key), prev=r[prevKey];
+    const rate = prevKey? pct(r[key],prev):100;
+    const isDrop = prevKey && prev>=5 && rate<10;
+    return `<td data-l="${label}" class="${r[key]===0?'zero':''}${isDrop?' drop':''}">${fmt(n)}${prevKey&&prev?` <small style="color:var(--fg4);font-weight:400">${pctS(r[key],prev)}</small>`:''}</td>`;
+  };
+  const body = rs.length ? rs.map((r,i)=>`<tr class="clickable" tabindex="0" data-path="${ROWS.indexOf(ROWS.find(x=>x.cp===r.cp&&x.ld===r.ld))}">
+      <td><span class="name"><span class="dot" style="background:${CH[r.ch].c}"></span>${r.src}${CAMP[r.cp].flag?` <span class="tag warn">${CAMP[r.cp].flag}</span>`:''}</span></td>
+      <td data-l="Landing" class="tl">${r.land}</td>
+      ${stageCell(r,'v',null,'Visited')}${stageCell(r,'p','v','Viewed product')}${stageCell(r,'b','p','Bag')}${stageCell(r,'c','b','Checkout')}${stageCell(r,'o','c','Purchased')}
+    </tr>`).join('') : `<tr class="empty-row"><td colspan="7"><b>No paths match “${S.q}”.</b> Try a source (“tiktok”), a product (“retinal”) or a page (“skincare”). <button class="link" id="clear-q">Clear search</button></td></tr>`;
+  return `<section class="panel" aria-labelledby="h-flow">
+    <div class="panel-h">
+      <div><h2 id="h-flow">Visitor flow</h2><span class="meta">Source → landing → product → bag → checkout → purchase. Red marks a step that lost more than 90% of at least 5 people.</span></div>
+      <div class="sect-tools">
+        <label class="search"><span class="sr">Search paths</span>${icon('search')}<input id="q" type="search" placeholder="Search source, page, product" value="${S.q.replace(/"/g,'&quot;')}"></label>
+        <div class="tg" role="group" aria-label="Count people or events"><span class="hl"></span><button aria-pressed="${S.mode==='people'}" data-mode="people" data-tip="visitors">People</button><button aria-pressed="${S.mode==='events'}" data-mode="events" data-tip="events">Events</button></div>
+      </div>
+    </div>
+    <div class="tw stack-cards sticky-first" style="max-height:560px"><table>
+      <thead><tr>${th}</tr></thead>
+      <tbody>${body}</tbody>
+      ${rs.length?`<tfoot><tr><td><b>${rs.length} paths</b></td><td></td><td data-l="Visited"><b>${fmt(ev(t.v,'v'))}</b></td><td data-l="Viewed product"><b>${fmt(ev(t.p,'p'))}</b> <small>${pctS(t.p,t.v)}</small></td><td data-l="Bag"><b>${t.b}</b> <small>${pctS(t.b,t.p)}</small></td><td data-l="Checkout"><b>${t.c}</b> <small>${pctS(t.c,t.b)}</small></td><td data-l="Purchased"><b>${t.o}</b></td></tr></tfoot>`:''}
+    </table></div>
+    <div class="panel-b" style="border-top:1px solid var(--hair);display:flex;flex-wrap:wrap;gap:8px 18px;color:var(--fg2)">
+      <span>${icon('ok','i sm')} Checkout without bag: <b>0</b></span>
+      <span>${icon('ok','i sm')} Purchase without checkout: <b>0</b></span>
+      <span style="color:var(--warn-fg)">${icon('alert','i sm')} Events with no session: <b>3</b> (reordered, <button class="link" data-go="quality">see QA</button>)</span>
+      <span>${S.mode==='events'?'Showing events: a person can create many. Rates still use people.':'Showing unique people. Switch to Events for raw action counts.'}</span>
+    </div>
+  </section>`;
+}
+
+function sources(){
+  const rs=rows();
+  const camps=[...new Set(rs.map(r=>r.cp))].map(cp=>({cp,ch:rs.find(r=>r.cp===cp).ch,...sum(rs.filter(r=>r.cp===cp))})).sort((a,b)=>b.v-a.v);
+  const body=camps.map(c=>{
+    const open=S.open['src-'+c.cp];
+    const lands=rs.filter(r=>r.cp===c.cp).sort((a,b)=>b.v-a.v);
+    return `<tr><td><span class="name"><button class="row-exp" aria-expanded="${!!open}" data-open="src-${c.cp}" aria-label="Show landing pages for ${CAMP[c.cp].l}">${icon('right')}</button><span class="dot" style="background:${CH[c.ch].c}"></span>${CAMP[c.cp].l}${CAMP[c.cp].flag?` <span class="tag warn">${icon('alert','i sm')}${CAMP[c.cp].flag}</span>`:''}</span></td>
+      <td data-l="Channel">${CH[c.ch].l}</td><td data-l="Visitors">${c.v}</td><td data-l="Viewed product">${c.p}</td><td data-l="Bag"${c.b?'':' class="zero"'}>${c.b}</td><td data-l="Purchased" class="zero">${c.o}</td>
+      ${S.raw?`<td data-l="Raw values"><span class="raw">${CAMP[c.cp].raw}</span></td>`:''}</tr>`
+      + (open? lands.map(l=>`<tr class="child"><td>${icon('arrow','i sm')} ${LAND[l.ld]}</td><td data-l="Channel"></td><td data-l="Visitors">${l.v}</td><td data-l="Viewed product">${l.p}</td><td data-l="Bag"${l.b?'':' class="zero"'}>${l.b}</td><td data-l="Purchased" class="zero">0</td>${S.raw?`<td data-l="Raw values"><span class="raw">landing_path=${l.ld==='home'?'/':l.ld==='sk'?'/shop/skincare':l.ld==='oth'?'(5 unmatched paths)':'/shop/skincare/'+LAND[l.ld].toLowerCase().replace(/ /g,'-')}</span></td>`:''}</tr>`).join(''):'');
+  }).join('');
+  const t=sum(rs);
+  return `<section class="panel" aria-labelledby="h-attr">
+    <div class="panel-h"><div><h2 id="h-attr">Sources and campaigns</h2><span class="meta">Normalized names. Open a row for landing pages; turn on raw values to audit.</span></div>
+      <div class="sect-tools"><div class="tg" role="group" aria-label="Value display"><span class="hl"></span><button aria-pressed="${!S.raw}" data-raw="0">Clean</button><button aria-pressed="${S.raw}" data-raw="1">Raw values</button></div></div></div>
+    <div class="tw stack-cards sticky-first"><table><thead><tr><th scope="col">Source / campaign</th><th scope="col">Channel</th><th scope="col">Visitors</th><th scope="col">Viewed product</th><th scope="col">Bag</th><th scope="col">Purchased</th>${S.raw?'<th scope="col" style="text-align:left">Raw values</th>':''}</tr></thead><tbody>${body}</tbody>
+    <tfoot><tr><td><b>Total</b></td><td></td><td data-l="Visitors"><b>${t.v}</b></td><td data-l="Viewed product"><b>${t.p}</b></td><td data-l="Bag"><b>${t.b}</b></td><td data-l="Purchased"><b>${t.o}</b></td>${S.raw?'<td></td>':''}</tr></tfoot></table></div>
+  </section>
+  <div class="grid-2e">
+    <section class="panel" aria-labelledby="h-gap"><div class="panel-h"><h2 id="h-gap">Can’t be credited</h2><span class="meta">Kept visible, never merged</span></div>
+      <div class="panel-b checks">
+        <div class="check"><span class="warn">${icon('alert')}</span><div><b>21 visitors · TikTok campaign name missing</b><p>The ad link sends <span class="raw">utm_campaign=__CAMPAIGN_NAME__</span>. The TikTok macro isn’t being filled. Rename in TikTok Ads Manager.</p></div><span class="tag warn">Fix in TikTok</span></div>
+        <div class="check"><span class="warn">${icon('alert')}</span><div><b>15 visitors · Meta campaign has only an ID</b><p>Campaign <span class="raw">120250555651910697</span>. Give it a name here to show it everywhere.</p></div><button class="btn">Name it</button></div>
+        <div class="check"><span class="warn">${icon('alert')}</span><div><b>5 landings on unknown paths</b><p>Typos and old links such as <span class="raw">/shop/skincaree</span>. They still count as visits.</p></div><span class="tag muted">Kept</span></div>
+      </div></section>
+    <section class="panel" aria-labelledby="h-utm"><div class="panel-h"><h2 id="h-utm">UTM standard for every ad</h2></div>
+      <div class="panel-b"><dl class="defs">
+        <dt>utm_source</dt><dd>tiktok · meta · instagram · google</dd>
+        <dt>utm_medium</dt><dd>paid · social · email · referral</dd>
+        <dt>utm_campaign</dt><dd>Readable name, e.g. <span class="raw">retinal-launch-sep26</span></dd>
+        <dt>utm_content</dt><dd>Creative, e.g. <span class="raw">ugc-video-02</span></dd>
+        <dt>Landing</dt><dd>The exact product page, e.g. Arencia Retinal Booster Shot</dd>
+      </dl></div></section>
+  </div>`;
+}
+
+/* ─────────── Social ads quality ─────────── */
+const ST = {ok:['Ready','ok'],warn:['Partial','alert'],bad:['Missing','ban'],unk:['Needs access','info'],na:['Not used','x']};
+const st = (k,label) => `<span class="st st-${k}">${icon(ST[k][1],'i sm')}${label||ST[k][0]}</span>`;
+const ADS_CHECKS = [
+  {g:'Account', n:'Ad account connected', d:'The shop can read spend and campaign names from the platform.',
+    meta:['unk','Needs access','Business Manager not linked to the dashboard yet'], tiktok:['unk','Needs access','TikTok for Business not linked yet'], src:'platform'},
+  {g:'Account', n:'Ready to advertise minirueshop.com', d:'Domain verified, account active, payment method on file.',
+    meta:['unk','Needs access','Check domain verification in Business settings'], tiktok:['unk','Needs access','Check in TikTok Ads Manager'], src:'platform'},
+  {g:'Pixel', n:'Browser pixel installed', d:'Fires on every storefront page, including route changes.',
+    meta:['ok','','Pixel 2165922481025159 · last event 1:44 PM'], tiktok:['ok','','Pixel DALS583C77U9262DR9Q0 · last event 1:43 PM'], src:'code'},
+  {g:'Server side', n:'Server-side events', d:'Purchases are sent from the server too, so ad blockers and iOS can’t hide them.',
+    meta:['bad','','No Conversions API. Purchases rely on the browser only'], tiktok:['warn','Purchase only','Events API sends Purchase; other events browser-only'], src:'code'},
+  {g:'Server side', n:'No double counting', d:'Browser and server send the same event ID, so the platform counts one purchase.',
+    meta:['na','','Needs Conversions API first'], tiktok:['ok','','Shared ID purchase:{orderId}'], src:'code'},
+  {g:'Events', n:'Standard events', d:'PageView, ViewContent, AddToCart, InitiateCheckout, Purchase.',
+    meta:['ok','5 of 5',''], tiktok:['ok','5 of 5',''], src:'code'},
+  {g:'Events', n:'Extra events for optimisation', d:'AddPaymentInfo, Search, CompleteRegistration, Contact.',
+    meta:['bad','0 of 4','Not sent yet'], tiktok:['bad','0 of 4','Not sent yet'], src:'code'},
+  {g:'Events', n:'Purchase value in EGP, above 0', d:'Meta rejects a missing or zero value.',
+    meta:['unk','Waiting','No purchase in this range to check'], tiktok:['unk','Waiting','No purchase in this range to check'], src:'code'},
+  {g:'Events', n:'Test and owner traffic never sent', d:'Your own test orders never reach the ad platforms as conversions.',
+    meta:['ok','',''], tiktok:['ok','','Fixed in backend c88e6bc'], src:'code'},
+  {g:'Campaigns', n:'Every campaign has a readable name', d:'utm_campaign is a real name, not a number or an unfilled macro.',
+    meta:['bad','1 unnamed','Campaign 120250555651910697 sends its ID only'], tiktok:['warn','1 of 2','One ad sends __CAMPAIGN_NAME__'], src:'code'},
+  {g:'Campaigns', n:'Full UTM on every ad link', d:'source, medium, campaign, id, content, term.',
+    meta:['warn','3 of 6','content and term missing, campaign is an ID'], tiktok:['warn','4 of 6','content and term missing'], src:'code'},
+  {g:'Catalogue', n:'Product catalogue feed', d:'Live product feed so ads can show products and prices.',
+    meta:['bad','','Not set up (dashboard#118)'], tiktok:['bad','','Not set up (dashboard#118)'], src:'code'},
+];
+const ADS_LINKS = [
+  {plat:'TikTok', camp:'Minirueshop', cls:'ok', url:'minirueshop.com/shop/skincare', utm:{source:'tiktok',medium:'paid',campaign:'Minirueshop',id:'1876609874144674',content:'',term:''}, v:58},
+  {plat:'TikTok', camp:'campaign name missing', cls:'bad', url:'minirueshop.com/shop/skincare', utm:{source:'tiktok',medium:'paid',campaign:'__CAMPAIGN_NAME__',id:'',content:'',term:''}, v:21},
+  {plat:'Meta', camp:'unnamed campaign', cls:'bad', url:'minirueshop.com/', utm:{source:'fb',medium:'paid',campaign:'120250555651910697',id:'',content:'',term:''}, v:15},
+];
+function adsScore(plat){
+  const c=ADS_CHECKS.map(x=>x[plat][0]);
+  return {ok:c.filter(x=>x==='ok').length,warn:c.filter(x=>x==='warn').length,bad:c.filter(x=>x==='bad').length,unk:c.filter(x=>x==='unk').length,total:c.filter(x=>x!=='na').length};
+}
+function ads(){
+  const pl=[['meta','Meta','Facebook + Instagram ads','sp-meta'],['tiktok','TikTok','TikTok ads','sp-tiktok']];
+  const verdict = k => { const s=adsScore(k); return s.bad ? st('bad','Not ready') : s.warn ? st('warn','Almost ready') : st('ok','Ready'); };
+  const head = `<section class="panel" aria-labelledby="h-ads">
+    <div class="panel-h"><div><h2 id="h-ads">Social media ads quality</h2><span class="meta">Can each platform see your sales, credit the right campaign, and send traffic to minirueshop.com? Checked on every refresh.</span></div>
+      <button class="btn" id="ads-recheck">${icon('refresh','i sm')}Re-check now</button></div>
+    <div class="ads-verdicts">${pl.map(([k,l,sub,cls])=>{const s=adsScore(k);return `<div class="ads-v">
+        <div class="ads-v-top"><span class="sp ${cls}">${l}</span>${verdict(k)}</div>
+        <div class="ads-v-n"><b class="num">${s.ok}</b> of ${s.total} checks ready</div>
+        <div class="ads-bar" role="img" aria-label="${s.ok} ready, ${s.warn} partial, ${s.bad} missing, ${s.unk} need access"><i class="b-ok" style="flex:${s.ok}"></i><i class="b-warn" style="flex:${s.warn}"></i><i class="b-bad" style="flex:${s.bad}"></i><i class="b-unk" style="flex:${s.unk}"></i></div>
+        <div class="ads-v-s">${s.bad} missing · ${s.warn} partial · ${s.unk} need platform access</div></div>`;}).join('')}
+      <div class="ads-v ads-next"><b>Fix first</b>
+        <ol><li>Set up <b>Meta Conversions API</b>. Meta sees purchases from the browser only today.</li>
+        <li>Name the two unnamed campaigns (TikTok macro, Meta ID). <b>36 paid visitors</b> can’t be credited.</li>
+        <li>Connect both ad accounts so spend and names sync automatically.</li></ol></div>
+    </div></section>`;
+  let g='';
+  const rowsHTML = ADS_CHECKS.map(c=>{
+    const grp = c.g!==g ? (g=c.g, `<tr class="ads-grp"><th scope="rowgroup" colspan="4">${c.g}</th></tr>`) : '';
+    const cell = ([k,label,note]) => `<td class="ads-c">${st(k,label)}${note?`<small>${note}</small>`:''}</td>`;
+    return grp + `<tr><td class="ads-n"><b>${c.n}</b><small>${c.d}</small></td>${cell(c.meta)}${cell(c.tiktok)}<td class="ads-s">${c.src==='code'?'<span class="src-code">Our code</span>':'<span class="src-code src-plat">Ad platform</span>'}</td></tr>`;
+  }).join('');
+  const matrix = `<section class="panel" aria-labelledby="h-adsm"><div class="panel-h"><h2 id="h-adsm">Checks by platform</h2><span class="meta">Google Ads is not used yet</span></div>
+    <div class="tw"><table class="ads-t"><thead><tr><th scope="col">Check</th><th scope="col"><span class="sp sp-meta">Meta</span></th><th scope="col"><span class="sp sp-tiktok">TikTok</span></th><th scope="col">Checked from</th></tr></thead>
+    <tbody>${rowsHTML}</tbody></table></div></section>`;
+  const utmCell = v => v==='' ? `<td class="utm-miss">${icon('ban','i sm')}<span class="sr">missing</span></td>` : /^__|^\d{12,}$/.test(v) ? `<td class="utm-bad"><span class="raw">${v}</span></td>` : `<td class="utm-ok"><span class="raw">${v}</span></td>`;
+  const links = `<section class="panel" aria-labelledby="h-links"><div class="panel-h"><div><h2 id="h-links">Live ad links</h2><span class="meta">Every ad link that sent visitors in this range, part by part</span></div></div>
+    <div class="tw"><table class="utm-t"><thead><tr><th scope="col">Ad</th><th scope="col">Visitors</th><th scope="col">source</th><th scope="col">medium</th><th scope="col">campaign</th><th scope="col">id</th><th scope="col">content</th><th scope="col">term</th></tr></thead><tbody>
+    ${ADS_LINKS.map(l=>`<tr><td><span class="name">${srcPill(l.plat)} ${l.camp}</span><small class="utm-url">${l.url}</small></td><td>${l.v}</td>${['source','medium','campaign','id','content','term'].map(k=>utmCell(l.utm[k])).join('')}</tr>`).join('')}
+    </tbody></table></div></section>`;
+  const builder = `<section class="panel" aria-labelledby="h-build"><div class="panel-h"><h2 id="h-build">Build a correct ad link</h2><span class="meta">Paste the result into the ad’s website URL</span></div>
+    <div class="panel-b ub">
+      <label>Platform<select id="ub-src"><option value="tiktok">TikTok</option><option value="meta">Meta (Facebook + Instagram)</option><option value="google">Google</option></select></label>
+      <label>Landing page<select id="ub-land"><option value="/shop/skincare">/shop/skincare</option><option value="/shop/skincare/arencia-retinal-booster-shot">Arencia Retinal Booster Shot</option><option value="/shop/skincare/arencia-vitamin-c-booster-shot">Arencia Vitamin C Booster Shot</option><option value="/">Home</option></select></label>
+      <label>Campaign name<input id="ub-camp" value="retinal-launch-sep26" autocomplete="off"></label>
+      <label>Creative<input id="ub-content" value="ugc-video-02" autocomplete="off"></label>
+      <div class="ub-out"><span class="raw" id="ub-url"></span><button class="btn" id="ub-copy">${icon('check','i sm')}Copy link</button></div>
+      <p class="ub-note" id="ub-note"></p>
+    </div></section>`;
+  return head + matrix + links + builder;
+}
+function buildUtm(){
+  const src=$('#ub-src'); if(!src) return;
+  const camp=$('#ub-camp').value.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  const content=$('#ub-content').value.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  const id={tiktok:'__CAMPAIGN_ID__',meta:'{{campaign.id}}',google:'{campaignid}'}[src.value];
+  const url=`https://minirueshop.com${$('#ub-land').value}?utm_source=${src.value}&utm_medium=paid&utm_campaign=${camp||'name-me'}&utm_id=${id}&utm_content=${content||'creative'}&utm_term=${src.value==='google'?'{keyword}':'{{adset.name}}'.replace('{{adset.name}}',src.value==='tiktok'?'__AID_NAME__':'{{adset.name}}')}`;
+  $('#ub-url').textContent=url;
+  $('#ub-note').textContent = camp ? 'The id and term are platform placeholders. The platform fills them in when the ad runs, so they’re correct as-is.' : 'Give the campaign a readable name. Empty names end up as “campaign name missing”.';
+}
+function quality(){
+  return `<div class="grid-2e">
+    <section class="panel" aria-labelledby="h-def"><div class="panel-h"><h2 id="h-def">One visitor number, everywhere</h2><span class="tag ok">${icon('ok','i sm')}Matched</span></div>
+      <div class="panel-b" style="display:flex;flex-direction:column;gap:14px">
+        <p style="margin:0;color:var(--fg2)">A visitor is one cookie visitor ID. Daily fingerprints are no longer merged across days, which is why the old Overview showed more people.</p>
+        <div class="recon">
+          <div><span>Overview</span><b class="num">195</b><span>was <s>212</s></span></div>
+          <div><span>People</span><b class="num">195</b><span>unchanged</span></div>
+          <div><span>Journeys</span><b class="num">195</b><span>unchanged</span></div>
+        </div>
+      </div></section>
+    <section class="panel" aria-labelledby="h-pur"><div class="panel-h"><h2 id="h-pur">Purchases vs real orders</h2><span class="tag ok">${icon('ok','i sm')}Reconciled</span></div>
+      <div class="panel-b" style="display:flex;flex-direction:column;gap:14px">
+        <div class="recon"><div><span>Backend orders</span><b class="num">0</b></div><div><span>Tracked purchases</span><b class="num">0</b></div><div><span>Ad-attributed</span><b class="num">0</b></div></div>
+        <p style="margin:0;color:var(--fg2)">Nothing to mismatch in this range. When orders arrive, each is matched to its purchase event by order ID. Duplicates are shown, never counted twice.</p>
+      </div></section>
+  </div>
+  <section class="panel" aria-labelledby="h-qa"><div class="panel-h"><h2 id="h-qa">Checks</h2><span class="meta">Run on every refresh · 3 need a look</span></div>
+    <div class="panel-b checks">
+      <div class="check"><span class="warn">${icon('alert')}</span><div><b>3 duplicate events</b><p>Same event ID sent twice by the browser. Counted once.</p></div><span class="tag warn">Deduplicated</span></div>
+      <div class="check"><span class="warn">${icon('alert')}</span><div><b>2 impossible sequences</b><p><span class="raw">page_leave</span> logged before its <span class="raw">page_view</span> (Visitor #1187, #1203). Reordered by real time.</p></div><span class="tag warn">Reordered</span></div>
+      <div class="check"><span class="warn">${icon('alert')}</span><div><b>36 paid visitors have no campaign name</b><p>21 from a TikTok ad sending <span class="raw">__CAMPAIGN_NAME__</span>, 15 from a Meta campaign known only by its ID. Plus 5 landings on unknown paths.</p></div><button class="btn" data-go="sources">Open sources</button></div>
+      <div class="check"><span class="ok">${icon('ok')}</span><div><b>0 events missing an event ID</b></div><span class="tag ok">Pass</span></div>
+      <div class="check"><span class="ok">${icon('ok')}</span><div><b>0 checkouts without a bag</b></div><span class="tag ok">Pass</span></div>
+      <div class="check"><span class="ok">${icon('ok')}</span><div><b>0 order total mismatches</b></div><span class="tag ok">Pass</span></div>
+    </div></section>
+  <section class="panel" aria-labelledby="h-exc"><div class="panel-h"><h2 id="h-exc">What was left out, and why</h2><button class="btn" data-open-settings>${icon('shield','i sm')}Change who counts</button></div>
+    <div class="tw stack-cards"><table><thead><tr><th scope="col">Reason</th><th scope="col">Events</th><th scope="col">Share of raw</th><th scope="col" style="text-align:left">Rule</th></tr></thead><tbody>
+      <tr><td>Bots and crawlers</td><td data-l="Events">1,087</td><td data-l="Share">78.8%</td><td data-l="Rule" style="text-align:left">Known bot user agents, data-centre IPs, no interaction</td></tr>
+      <tr><td>You and staff</td><td data-l="Events">64</td><td data-l="Share">4.6%</td><td data-l="Rule" style="text-align:left">This device + signed-in staff, since 12 Sep 2026</td></tr>
+      <tr><td>Counted</td><td data-l="Events"><b>229</b></td><td data-l="Share"><b>16.6%</b></td><td data-l="Rule" style="text-align:left">195 unique people</td></tr>
+    </tbody></table></div></section>`;
+}
+
+function people(){
+  let ps=PEOPLE.filter(p=>!S.f.ch.length||S.f.ch.includes(p.ch));
+  const q=S.pq.trim().toLowerCase();
+  if(q) ps=ps.filter(p=>(`#${p.id} ${p.src} ${p.city} ${p.dev} ${p.out}`).toLowerCase().includes(q));
+  const k=S.psort.k,d=S.psort.d;
+  ps.sort((a,b)=>k==='last'?(a.id-b.id)*d:typeof a[k]==='string'?a[k].localeCompare(b[k])*d:(a[k]-b[k])*d);
+  const cols=[['id','Visitor'],['src','Came from'],['city','Location'],['dev','Device'],['s','Sessions'],['pv','Pages'],['out','Outcome'],['last','Last seen']];
+  const th=cols.map(([key,l])=>`<th scope="col"${['src','city','dev','out'].includes(key)?' class="tl"':''}${S.psort.k===key?` aria-sort="${d<0?'descending':'ascending'}"`:''}><button class="sort" data-psort="${key}">${l}${icon(S.psort.k===key?(d<0?'sdown':'sup'):'sort')}</button></th>`).join('');
+  const outTag=o=>o.startsWith('Left')?`<span class="tag warn">${icon('bag','i sm')}${o}</span>`:o==='Bounced'?`<span class="tag muted">${o}</span>`:`<span>${o}</span>`;
+  return `<section class="panel" aria-labelledby="h-ppl"><div class="panel-h"><div><h2 id="h-ppl">People</h2><span class="meta">195 counted visitors · showing 10 most recent (sample)</span></div>
+    <label class="search"><span class="sr">Search people</span>${icon('search')}<input id="pq" type="search" placeholder="Visitor #, source, city" value="${S.pq}"></label></div>
+    <div class="tw stack-cards sticky-first"><table><thead><tr>${th}</tr></thead><tbody>
+    ${ps.length?ps.map(p=>`<tr class="clickable" tabindex="0" data-visitor="${p.id}"><td><button class="link" data-visitor="${p.id}">Visitor #${p.id}</button></td><td data-l="Came from" style="text-align:left">${srcPill(p.src)}</td><td data-l="Location" style="text-align:left">${p.city}</td><td data-l="Device" style="text-align:left">${p.dev}</td><td data-l="Sessions">${p.s}</td><td data-l="Pages">${p.pv}</td><td data-l="Outcome" style="text-align:left">${outTag(p.out)}</td><td data-l="Last seen">${p.last}</td></tr>`).join('')
+    :`<tr class="empty-row"><td colspan="8"><b>No one matches “${S.pq}”.</b> Search by visitor number (“1187”), source (“instagram”) or city (“Giza”). <button class="link" id="clear-pq">Clear search</button></td></tr>`}
+    </tbody></table></div></section>`;
+}
+
+/* Every sample visitor has a full journey (sample times, consistent with their outcome) */
+const JOURNEYS = {
+  1187:{first:'16 Sep',sessions:[
+    {d:'18 Sep 2026',span:'9:04 PM – 9:08 PM · 4 min',src:'TikTok · Minirueshop',tag:'info',steps:[['9:04 PM','Landed on /shop/skincare','from TikTok ad'],['9:05 PM','Viewed Arencia Retinal Booster Shot','1 min 40 s on page'],['9:07 PM','Added to bag','EGP 1,139','key'],['9:07 PM','Opened bag',''],['9:08 PM','Left','no contact given','exit']]},
+    {d:'17 Sep 2026',span:'6:22 PM – 6:23 PM · 1 min',src:'Direct',steps:[['6:22 PM','Landed on Home',''],['6:23 PM','Left','','exit']]},
+    {d:'16 Sep 2026',span:'10:10 PM – 10:16 PM · 6 min',src:'Instagram',steps:[['10:10 PM','Landed on Home','from Instagram bio link'],['10:12 PM','Viewed Arencia Retinal Booster Shot','2 min 10 s'],['10:15 PM','Viewed Arencia Vitamin C Booster Shot','50 s'],['10:16 PM','Left','','exit']]}]},
+  1203:{first:'19 Sep',sessions:[
+    {d:'20 Sep 2026',span:'2:20 PM – 2:32 PM · 12 min',src:'Direct',tag:'info',steps:[['2:20 PM','Landed on Arencia Vitamin C Booster Shot','typed or saved link'],['2:23 PM','Read ingredients and reviews','3 min on page'],['2:24 PM','Added to bag','EGP 1,139','key'],['2:25 PM','Started checkout',''],['2:29 PM','Delivery step','address started, no phone yet','key'],['2:32 PM','Left at delivery step','no contact given','exit']]},
+    {d:'19 Sep 2026',span:'10:40 PM – 10:47 PM · 7 min',src:'Direct',steps:[['10:40 PM','Landed on Home',''],['10:41 PM','Browsed /shop/skincare','scrolled 80%'],['10:43 PM','Viewed Arencia Vitamin C Booster Shot','4 min'],['10:47 PM','Left','','exit']]}]},
+  1214:{first:'18 Sep',sessions:[
+    {d:'21 Sep 2026',span:'10:04 AM – 10:11 AM · 7 min',src:'Instagram',tag:'info',steps:[['10:04 AM','Landed on Home','from Instagram story'],['10:05 AM','Viewed Arencia Retinal Booster Shot','2 min 5 s'],['10:08 AM','Viewed The Vita A Retinal Shot Tightening Booster','1 min'],['10:10 AM','Opened delivery info',''],['10:11 AM','Left','didn’t add to bag','exit']]},
+    {d:'18 Sep 2026',span:'11:15 PM – 11:18 PM · 3 min',src:'Instagram',steps:[['11:15 PM','Landed on Arencia Retinal Booster Shot','from Instagram post'],['11:18 PM','Left','','exit']]}]},
+  1209:{first:'20 Sep',sessions:[
+    {d:'20 Sep 2026',span:'10:44 PM – 10:47 PM · 3 min',src:'TikTok · campaign name missing',tag:'warn',steps:[['10:44 PM','Landed on /shop/skincare','utm_campaign=__CAMPAIGN_NAME__'],['10:45 PM','Viewed Arencia Retinal Booster Shot','40 s'],['10:46 PM','Viewed Arencia Vitamin C Booster Shot','30 s'],['10:47 PM','Left','didn’t add to bag','exit']]}]},
+  1198:{first:'19 Sep',sessions:[
+    {d:'19 Sep 2026',span:'7:03 PM – 7:05 PM · 2 min',src:'Facebook',tag:'info',steps:[['7:03 PM','Landed on Arencia Vitamin C Booster Shot','from a Facebook post'],['7:04 PM','Scrolled to reviews',''],['7:05 PM','Went to Home',''],['7:05 PM','Left','','exit']]}]},
+  1191:{first:'19 Sep',sessions:[
+    {d:'19 Sep 2026',span:'11:31 AM – 11:40 AM · 9 min',src:'Direct',tag:'info',steps:[['11:31 AM','Landed on Home',''],['11:32 AM','Browsed /shop/skincare',''],['11:33 AM','Viewed The Vita A Retinal Shot Tightening Booster','3 min'],['11:37 AM','Viewed Arencia Retinal Booster Shot','2 min 30 s'],['11:40 AM','Left','didn’t add to bag','exit']]}]},
+  1176:{first:'17 Sep',sessions:[
+    {d:'17 Sep 2026',span:'8:18 PM · 6 s',src:'Meta · unnamed campaign',tag:'warn',steps:[['8:18 PM','Landed on Home','from Meta ad 120250555651910697'],['8:18 PM','Left after 6 s','bounced','exit']]}]},
+  1170:{first:'17 Sep',sessions:[
+    {d:'17 Sep 2026',span:'1:02 PM · 4 s',src:'TikTok · Minirueshop',tag:'info',steps:[['1:02 PM','Landed on /shop/skincare','from TikTok ad'],['1:02 PM','Left after 4 s','bounced','exit']]}]},
+  1163:{first:'16 Sep',sessions:[
+    {d:'16 Sep 2026',span:'11:28 PM – 11:31 PM · 3 min',src:'TikTok (organic)',tag:'info',steps:[['11:28 PM','Landed on /shop/skincare','from a TikTok profile link'],['11:29 PM','Scrolled the category','60%'],['11:30 PM','Went to Home',''],['11:31 PM','Left','no product opened','exit']]}]},
+  1158:{first:'16 Sep',sessions:[
+    {d:'16 Sep 2026',span:'9:50 AM – 9:54 AM · 4 min',src:'Referral / other',tag:'info',steps:[['9:50 AM','Landed on an unknown path','/shop/skincaree (typo in the link)'],['9:51 AM','Viewed Arencia Retinal Booster Shot','3 min'],['9:54 AM','Left','didn’t add to bag','exit']]}]},
+};
+/* Colour-coded pills: page type for every step, platform for every source */
+const PAGE_KIND = {
+  home:{l:'Home',ic:'store'}, category:{l:'Category',ic:'filter'}, product:{l:'Product',ic:'pkg'},
+  bag:{l:'Bag',ic:'bag'}, checkout:{l:'Checkout',ic:'receipt'}, unknown:{l:'Unknown path',ic:'alert'},
+  action:{l:'Action',ic:'check'}, exit:{l:'Left',ic:'x'}
+};
+function stepKind(t,cls){
+  if(cls==='exit') return 'exit';
+  if(/unknown path/i.test(t)) return 'unknown';
+  if(/checkout|delivery step/i.test(t)) return 'checkout';
+  if(/bag/i.test(t)) return 'bag';
+  if(/Arencia|Vita A|product/i.test(t)) return 'product';
+  if(/skincare|category/i.test(t)) return 'category';
+  if(/Home/.test(t)) return 'home';
+  return 'action';
+}
+function platform(src){
+  if(/TikTok/i.test(src)) return 'tiktok';
+  if(/Instagram/i.test(src)) return 'instagram';
+  if(/Facebook/i.test(src)) return 'facebook';
+  if(/Meta/i.test(src)) return 'meta';
+  if(/Direct/i.test(src)) return 'direct';
+  return 'referral';
+}
+const srcPill = src => `<span class="sp sp-${platform(src)}">${src}${/missing|unnamed/.test(src)?` ${icon('alert','i sm')}`:''}</span>`;
+const kindPill = k => `<span class="kp kp-${k}">${icon(PAGE_KIND[k].ic,'i sm')}${PAGE_KIND[k].l}</span>`;
+function journeyHTML(id,vertical){
+  const j=JOURNEYS[id]; const p=PEOPLE.find(x=>x.id===id);
+  const to=`<span class="to" aria-hidden="true">${icon('arrow','i sm')}</span>`;
+  const n=j.sessions.length;
+  return `<div class="journey${vertical?' v':''}">${j.sessions.map((x,i)=>{
+    const step=([time,t,s,cls=''],si)=>{const k=stepKind(t,cls);
+      return `<div class="step ${cls} k-${k}"><div class="step-top"><time>${time}</time>${kindPill(k)}</div><b>${t}</b>${si===0?`<span class="step-src">${srcPill(x.src)}</span>`:''}${s?`<small>${s}</small>`:''}</div>`;};
+    return `
+    <div class="sess"><h3>Session ${n-i} · ${x.d} <span>${x.span}${i===0?` · ${p.dev.toLowerCase()} · ${p.city}`:''}</span>${srcPill(x.src)}</h3>
+      <div class="steps">${x.steps.map(step).join(to)}</div></div>`;}).join('')}
+  </div>`;
+}
+function visitorSummary(p){
+  const j=JOURNEYS[p.id];
+  const tags=p.val?`<span class="tag warn">${icon('bag','i sm')}Open cart ${egp(p.val)}</span><span class="tag muted">${icon('userx','i sm')}No contact</span>`:`<span class="tag muted">${p.out}</span>`;
+  return {meta:`${p.s} session${p.s>1?'s':''} · ${p.pv} pages · first seen ${j.first} · ${p.city} · ${p.dev.toLowerCase()} · identity: cookie`,tags};
+}
+function journeys(){
+  const id=S.jid||1187; const p=PEOPLE.find(x=>x.id===id); const v=visitorSummary(p);
+  const list=PEOPLE.filter(x=>!S.f.ch.length||S.f.ch.includes(x.ch)).map(x=>`<button class="jp" aria-current="${x.id===id}" data-jid="${x.id}"><span class="name"><span class="dot" style="background:${CH[x.ch].c}"></span><b>Visitor #${x.id}</b></span><small>${x.src} · ${x.out}</small></button>`).join('');
+  return `<div class="jgrid">
+  <nav class="panel jlist" aria-label="Visitors"><div class="panel-h"><h2>Visitors</h2><span class="meta">Most recent · sample</span></div><div class="jl">${list}</div></nav>
+  <section class="panel" aria-labelledby="h-jr"><div class="panel-h"><div><h2 id="h-jr">Visitor #${p.id}</h2><span class="meta">${v.meta}</span></div>
+    <div class="sect-tools">${v.tags}</div></div>
+    <div class="panel-b">${journeyHTML(id)}</div></section></div>
+  <section class="panel" aria-labelledby="h-jo"><div class="panel-h"><h2 id="h-jo">How journeys ended</h2><span class="meta">195 people</span></div>
+    <div class="panel-b">
+      <div class="split" role="img" aria-label="109 viewed but never added, 79 bounced, 5 browsed without a product, 1 left in bag, 1 left in checkout">
+        <i style="flex:109;background:var(--c1)"></i><i style="flex:79;background:var(--ink-300)"></i><i style="flex:5;background:var(--c3)"></i><i style="flex:1;background:var(--c4)"></i><i style="flex:1;background:var(--c2)"></i></div>
+      <div class="legend"><span><span class="dot" style="background:var(--c1)"></span>Viewed, never added · <b>109</b></span><span><span class="dot" style="background:var(--ink-300)"></span>Bounced · <b>79</b></span><span><span class="dot" style="background:var(--c3)"></span>Browsed, no product · <b>5</b></span><span><span class="dot" style="background:var(--c4)"></span>Left in bag · <b>1</b></span><span><span class="dot" style="background:var(--c2)"></span>Left in checkout · <b>1</b></span></div>
+    </div></section>`;
+}
+
+/* ─────────── Interactions ─────────── */
+function setTG(){
+  document.querySelectorAll('.tg').forEach(g=>{
+    const on=g.querySelector('button[aria-pressed="true"]'), hl=g.querySelector('.hl');
+    if(on&&hl){hl.style.width=on.offsetWidth+'px';hl.style.transform=`translateX(${on.offsetLeft-2}px)`;}
+  });
+}
+function bindContent(){
+  setTG();
+  if($('#ub-src')){buildUtm();['#ub-src','#ub-land','#ub-camp','#ub-content'].forEach(id=>$(id).addEventListener('input',buildUtm));}
+  const q=$('#q'); if(q){q.addEventListener('input',e=>{S.q=e.target.value; const pos=e.target.selectionStart; renderAll(false); const n=$('#q'); n.focus(); n.setSelectionRange(pos,pos); announce(`${document.querySelectorAll('tbody tr.clickable').length} paths shown`);});}
+  const pq=$('#pq'); if(pq){pq.addEventListener('input',e=>{S.pq=e.target.value; const pos=e.target.selectionStart; renderAll(false); const n=$('#pq'); n.focus(); n.setSelectionRange(pos,pos);});}
+}
+function announce(t){$('#live').textContent=t;}
+function toast(msg){
+  const el=document.createElement('div'); el.className='toast'; el.innerHTML=icon('ok')+msg;
+  $('#toasts').appendChild(el); setTimeout(()=>el.remove(),3600);
+}
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button,a,tr.clickable');
+  if(!t) return;
+  if(t.dataset.sec){go(t.dataset.sec);return;}
+  if(t.dataset.jump){const j=t.dataset.jump; const map={steps:['overview','steps'],adsm:['ads','h-adsm'],qa:['quality','h-qa']}; const [sec,anchor]=map[j]||[j,null]; if(sec!==S.section) go(sec); if(anchor){const el=document.getElementById(anchor); el&&el.scrollIntoView({behavior:reduce.matches?'auto':'smooth',block:'start'});} return;}
+  if(t.dataset.evidence){const x=STEPS.find(y=>y.id===t.dataset.evidence); Object.keys(S.f).forEach(k=>S.f[k]=[]); if(x.f) Object.assign(S.f,x.f); S.q=x.q||''; if(x.jid) S.jid=x.jid; syncDemo(); go(x.go); toast('Showing the evidence'); return;}
+  if(t.dataset.done||t.dataset.snooze){const id=t.dataset.done||t.dataset.snooze; S.stepsDone[id]=t.dataset.done?'done':'snoozed'; const li=t.closest('.nx'); li.classList.add('leaving'); setTimeout(()=>{renderAll(false); const n=document.querySelector('.nx [data-done]'); n&&n.focus();}, reduce.matches?0:220); toast(t.dataset.done?'Marked done':'Snoozed for 7 days'); return;}
+  if(t.hasAttribute('data-steps-reset')){S.stepsDone={}; renderAll(false); return;}
+  if(t.dataset.bnav){ if(t.dataset.bnav==='more'){openMore(t);} else go(t.dataset.bnav); return;}
+  if(t.dataset.go){e.preventDefault();if(t.dataset.jid)S.jid=+t.dataset.jid;go(t.dataset.go);return;}
+  if(t.dataset.jid){S.jid=+t.dataset.jid;renderAll(false);const b=document.querySelector(`[data-jid="${S.jid}"]`);b&&b.focus();return;}
+  if(t.dataset.open){S.open[t.dataset.open]=!S.open[t.dataset.open];renderAll(false);const b=document.querySelector(`[data-open="${t.dataset.open}"]`);b&&b.focus();return;}
+  if(t.dataset.sort){const k=t.dataset.sort;S.sort={k,d:S.sort.k===k?-S.sort.d:-1};renderAll(false);document.querySelector(`[data-sort="${k}"]`).focus();return;}
+  if(t.dataset.psort){const k=t.dataset.psort;S.psort={k,d:S.psort.k===k?-S.psort.d:-1};renderAll(false);document.querySelector(`[data-psort="${k}"]`).focus();return;}
+  if(t.dataset.mode){S.mode=t.dataset.mode;renderAll(false);document.querySelector(`[data-mode="${S.mode}"]`).focus();return;}
+  if(t.dataset.raw){S.raw=t.dataset.raw==='1';renderAll(false);document.querySelector(`[data-raw="${t.dataset.raw}"]`).focus();return;}
+  if(t.dataset.rm){const [k,v]=t.dataset.rm.split(':');S.f[k]=S.f[k].filter(x=>x!==v);syncDemo();renderAll(true);toast('Filter removed');return;}
+  if(t.id==='clear-all'){Object.keys(S.f).forEach(k=>S.f[k]=[]);syncDemo();renderAll(true);toast('Filters cleared');return;}
+  if(t.id==='clear-q'){S.q='';renderAll(false);$('#q').focus();return;}
+  if(t.id==='clear-pq'){S.pq='';renderAll(false);$('#pq').focus();return;}
+  if(t.dataset.filter){openFilter(t);return;}
+  if(t.id==='b-range'){openRange(t);return;}
+  if(t.dataset.range){S.demo='live';setDemoBtns();$('#range-l').textContent='23 Aug – 21 Sep 2026';renderAll(true);return;}
+  if(t.id==='b-filters'){openFilterSheet();return;}
+  if(t.id==='b-export'){openExport(t);return;}
+  if(t.id==='b-us'||t.hasAttribute('data-open-settings')){openSettings(t);return;}
+  if(t.id==='b-refresh'||t.id==='retry'){refresh(t);return;}
+  if(t.dataset.visitor){openVisitor(+t.dataset.visitor,t);return;}
+  if(t.matches('tr.clickable[data-path]')){openPath(+t.dataset.path,t);return;}
+  if(t.dataset.demo){S.demo=t.dataset.demo;applyDemo();return;}
+  if(t.hasAttribute('data-legend')){S.legend=!S.legend;try{localStorage.setItem('mr-legend',S.legend?'1':'0');}catch(_){}$('#lg-main').classList.toggle('open',S.legend);document.querySelectorAll('.lg-toggle').forEach(b=>b.setAttribute('aria-expanded',S.legend));if(!S.legend){const b=document.querySelector('.lg-toggle');b&&b.focus();}return;}
+  if(t.hasAttribute('data-mini-legend')){const o=t.getAttribute('aria-expanded')!=='true';t.setAttribute('aria-expanded',o);t.nextElementSibling.classList.toggle('open',o);return;}
+  if(t.id==='ub-copy'){const u=$('#ub-url').textContent;(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>toast('Link copied'),()=>{const r=document.createRange();r.selectNodeContents($('#ub-url'));const sel=getSelection();sel.removeAllRanges();sel.addRange(r);toast('Link selected. Press Ctrl+C');});return;}
+  if(t.id==='ads-recheck'){t.disabled=true;t.classList.add('spin');setTimeout(()=>{S.fresh='just now';renderAll(false);toast('Ads checks re-run · 1:46 PM');},900);return;}
+  if(t.id==='proto-min'){$('#proto').classList.toggle('min');return;}
+});
+document.addEventListener('keydown',e=>{
+  if((e.key==='Enter'||e.key===' ')&&e.target.matches('tr.clickable')){e.preventDefault();e.target.click();}
+  if(e.target.matches('[role="tab"]')&&(e.key==='ArrowRight'||e.key==='ArrowLeft')){
+    const i=SECTIONS.findIndex(s=>s.id===S.section)+(e.key==='ArrowRight'?1:-1);
+    const s=SECTIONS[(i+SECTIONS.length)%SECTIONS.length]; go(s.id); $('#tab-'+s.id).focus();
+  }
+});
+function renderBnav(){
+  const items=[['overview','Overview','chart'],['people','People','users'],['flow','Flow','route'],['ads','Ads','mega']];
+  const inMore=['journeys','sources','quality'].includes(S.section);
+  $('#bnav').innerHTML=items.map(([id,l,ic])=>`<button data-bnav="${id}" aria-current="${S.section===id?'page':'false'}">${icon(ic)}<span>${l}</span></button>`).join('')
+    + `<button data-bnav="more" aria-current="${inMore?'page':'false'}" aria-haspopup="dialog">${icon('more')}<span>${inMore?SECTIONS.find(x=>x.id===S.section).l:'More'}</span></button>`;
+}
+function openMore(trig){
+  const body=['journeys','sources','quality'].map(id=>{const x=SECTIONS.find(s=>s.id===id);return `<button class="choice more-i" data-sec="${id}" data-close>${x.l}${x.count?` <span class="tag warn">${x.count}</span>`:''}</button>`;}).join('');
+  openSheet('More sections','',`<div style="display:flex;flex-direction:column;gap:8px">${body}</div>`,'',trig);
+}
+function go(id){
+  S.section=id; try{history.replaceState(null,'','#'+id);}catch(_){}
+  renderTabs(); renderBnav(); renderAll(true);
+  $('#content').focus({preventScroll:true});
+}
+function syncDemo(){S.demo=Object.values(S.f).some(x=>x.length)?'filtered':'live';setDemoBtns();}
+function setDemoBtns(){document.querySelectorAll('[data-demo]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.demo===S.demo));}
+function applyDemo(){
+  setDemoBtns();
+  if(S.demo==='filtered'){S.f.ch=['Paid'];}
+  else if(S.demo!=='noresults'){Object.keys(S.f).forEach(k=>S.f[k]=[]);}
+  if(S.demo==='noresults'){S.demo='live';setDemoBtns();document.querySelector('[data-demo="noresults"]').setAttribute('aria-pressed','true');S.q='serum';S.section='flow';renderTabs();}
+  else S.q='';
+  renderAll(true);
+}
+function refresh(btn){
+  const ref=$('#b-refresh'); ref.classList.add('spin'); ref.disabled=true;
+  const was=S.demo; if(was==='error'){S.demo='loading';renderAll(false);}
+  setTimeout(()=>{ref.classList.remove('spin');ref.disabled=false;S.demo=was==='error'?'live':was;setDemoBtns();S.fresh='just now';renderAll(false);toast('Data refreshed');},900);
+}
+
+/* Popovers */
+let pop=null,popTrig=null;
+function closePop(){if(pop){pop.remove();pop=null;} if(popTrig){popTrig.setAttribute('aria-expanded','false');popTrig.focus();popTrig=null;}}
+function placePop(el,trig){
+  const r=trig.getBoundingClientRect(); document.body.appendChild(el);
+  const w=el.offsetWidth; let left=Math.min(r.left,innerWidth-w-16); left=Math.max(16,left);
+  el.style.left=left+'px'; el.style.top=(r.bottom+6)+'px';
+  el.style.transformOrigin=`${r.left-left+r.width/2}px top`;
+}
+function openFilter(trig){
+  if(popTrig===trig){closePop();return;} closePop();
+  const f=FILTERS.find(x=>x.k===trig.dataset.filter);
+  pop=document.createElement('div'); pop.className='pop'; pop.setAttribute('role','menu'); pop.setAttribute('aria-label',f.l);
+  const counts=f.k==='ch'?Object.fromEntries(Object.keys(CH).map(k=>[k,sum(ROWS.filter(r=>r.ch===k)).v])):f.k==='cp'?Object.fromEntries(['mr','nn','meta'].map(k=>[k,sum(ROWS.filter(r=>r.cp===k)).v])):{};
+  pop.innerHTML=`<h4>${f.l}</h4>`+f.opts.map(o=>`<button class="opt" role="menuitemcheckbox" aria-checked="${S.f[f.k].includes(o.v)}" data-v="${o.v}"><span class="box">${icon('check')}</span>${o.l}${counts[o.v]!=null?`<span class="n num">${counts[o.v]}</span>`:''}</button>`).join('')
+    +(f.illus?`<div class="sep"></div><h4 style="text-transform:none;letter-spacing:0;font-family:var(--ui)">Illustrative in this prototype</h4>`:'');
+  placePop(pop,trig); trig.setAttribute('aria-expanded','true'); popTrig=trig;
+  pop.querySelector('.opt').focus();
+  pop.addEventListener('click',e=>{
+    const o=e.target.closest('.opt'); if(!o) return;
+    const v=o.dataset.v; const arr=S.f[f.k];
+    S.f[f.k]=arr.includes(v)?arr.filter(x=>x!==v):[...arr,v];
+    o.setAttribute('aria-checked',S.f[f.k].includes(v));
+    syncDemo(); renderAll(false); announce(`${f.l} filter updated. ${sum(rows()).v} visitors.`);
+    const nt=document.querySelector(`[data-filter="${f.k}"]`); nt.setAttribute('aria-expanded','true'); popTrig=nt;
+  });
+  menuKeys(pop);
+}
+function openRange(trig){
+  if(popTrig===trig){closePop();return;} closePop();
+  pop=document.createElement('div'); pop.className='pop'; pop.setAttribute('role','menu'); pop.setAttribute('aria-label','Date range');
+  pop.innerHTML='<h4>Date range</h4>'+RANGES.map(r=>`<button class="opt radio" role="menuitemradio" aria-checked="${r.startsWith('Last 30')}" data-r="${r}">${r}</button>`).join('');
+  placePop(pop,trig); trig.setAttribute('aria-expanded','true'); popTrig=trig; pop.querySelector('[aria-checked="true"]').focus();
+  pop.addEventListener('click',e=>{
+    const o=e.target.closest('.opt'); if(!o) return; const r=o.dataset.r;
+    closePop();
+    if(r==='Today'){S.demo='empty';$('#range-l').textContent='Today · 22 Sep';}
+    else {S.demo='loading';$('#range-l').textContent=r.startsWith('Last 30')?'23 Aug – 21 Sep 2026':r.replace('…','');renderAll(false);S.demo='live';setTimeout(()=>{renderAll(true);toast(r.startsWith('Last 30')?'Range: last 30 days':'Sample data shown for any range');},700);}
+    setDemoBtns(); renderAll(false);
+  });
+  menuKeys(pop);
+}
+function menuKeys(p){
+  p.addEventListener('keydown',e=>{
+    const items=[...p.querySelectorAll('.opt')]; const i=items.indexOf(document.activeElement);
+    if(e.key==='ArrowDown'){e.preventDefault();items[(i+1)%items.length].focus();}
+    if(e.key==='ArrowUp'){e.preventDefault();items[(i-1+items.length)%items.length].focus();}
+    if(e.key==='Escape'){e.preventDefault();closePop();}
+    if(e.key==='Tab'){closePop();}
+  });
+}
+document.addEventListener('pointerdown',e=>{if(pop&&!pop.contains(e.target)&&!e.target.closest('[aria-expanded="true"]'))closePop();});
+addEventListener('resize',()=>{closePop();moveInd();setTG();});
+addEventListener('scroll',()=>{if(pop)closePop();},{passive:true});
+
+/* Tooltips (hover, focus, tap) */
+let tip=null;
+function showTip(el,html){
+  hideTip(); tip=document.createElement('div'); tip.className='tip'; tip.setAttribute('role','tooltip'); tip.innerHTML=html; document.body.appendChild(tip);
+  const r=el.getBoundingClientRect(); const w=tip.offsetWidth,h=tip.offsetHeight;
+  let left=Math.min(Math.max(12,r.left+r.width/2-w/2),innerWidth-w-12); let top=r.top-h-8; if(top<8) top=r.bottom+8;
+  tip.style.left=left+'px'; tip.style.top=top+'px';
+}
+function hideTip(){if(tip){tip.remove();tip=null;}}
+document.addEventListener('pointerover',e=>{const el=e.target.closest('[data-tip]'); if(el&&e.pointerType==='mouse') showTip(el,DEFS[el.dataset.tip]);
+  const h=e.target.closest('[data-tipx]'); if(h){showTip(h,h.dataset.tipx); const c=$('#cur'); if(c){c.setAttribute('x1',h.dataset.cx);c.setAttribute('x2',h.dataset.cx);c.setAttribute('visibility','visible');}}});
+document.addEventListener('pointerout',e=>{if(e.target.closest('[data-tip],[data-tipx]')){hideTip(); const c=$('#cur'); c&&c.setAttribute('visibility','hidden');}});
+document.addEventListener('focusin',e=>{const el=e.target.closest('[data-tip]'); if(el) showTip(el,DEFS[el.dataset.tip]);});
+document.addEventListener('focusout',hideTip);
+document.addEventListener('pointerdown',e=>{const el=e.target.closest('[data-tip]'); if(el&&e.pointerType!=='mouse'){showTip(el,DEFS[el.dataset.tip]); setTimeout(hideTip,2600);}});
+
+/* Sheets */
+let sheetState=null;
+function openSheet(title,sub,body,foot,trig){
+  closeSheet(true);
+  const scrim=document.createElement('div'); scrim.className='scrim';
+  const sh=document.createElement('div'); sh.className='sheet'; sh.setAttribute('role','dialog'); sh.setAttribute('aria-modal','true'); sh.setAttribute('aria-labelledby','sheet-t');
+  sh.innerHTML=`<div class="sheet-h"><div><h2 id="sheet-t">${title}</h2>${sub?`<p>${sub}</p>`:''}</div><button class="icon-btn" data-close aria-label="Close">${icon('x')}</button></div><div class="sheet-b">${body}</div>${foot?`<div class="sheet-f">${foot}</div>`:''}`;
+  document.body.append(scrim,sh); sheetState={scrim,sh,trig};
+  scrim.addEventListener('click',()=>closeSheet());
+  sh.addEventListener('click',e=>{if(e.target.closest('[data-close]'))closeSheet();});
+  sh.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){e.preventDefault();closeSheet();}
+    if(e.key==='Tab'){const f=[...sh.querySelectorAll('button:not([disabled]),input:not([disabled]),a[href]')].filter(x=>x.offsetParent!==null); const a=f[0],z=f[f.length-1];
+      if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();} else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}
+  });
+  document.body.style.overflow='hidden';
+  setTimeout(()=>{(sh.querySelector('[data-autofocus]')||sh.querySelector('.sheet-b input,.sheet-b button')||sh.querySelector('[data-close]')).focus();},30);
+  return sh;
+}
+function closeSheet(instant){
+  if(!sheetState) return; const {scrim,sh,trig}=sheetState; sheetState=null; document.body.style.overflow='';
+  if(instant||reduce.matches){scrim.remove();sh.remove();}
+  else {sh.classList.add('out');scrim.classList.add('out');setTimeout(()=>{scrim.remove();sh.remove();},190);}
+  if(trig&&document.contains(trig)) trig.focus();
+}
+
+function filterContext(){
+  const parts=[]; FILTERS.forEach(f=>S.f[f.k].forEach(v=>parts.push(`${f.l}: ${f.opts.find(o=>o.v===v).l}`)));
+  return parts.length?parts.join(' · '):'None';
+}
+function openExport(trig){
+  const cur=SECTIONS.find(s=>s.id===S.section).l;
+  const body=`
+    <fieldset><legend>What to export</legend>
+      <label class="choice"><input type="radio" name="scope" id="sc-cur" value="current" checked><span><b>This section · ${cur}</b><small>Exactly what you see, every table row included</small></span></label>
+      <label class="choice"><input type="radio" name="scope" id="sc-sel" value="selected"><span><b>Selected sections</b><small>Pick the sections to include</small></span></label>
+      <div class="ah" id="sel-ah"><div><div class="sub-list" id="sub-list" aria-disabled="true">${SECTIONS.map(s=>`<label><input type="checkbox" id="exs-${s.id}" value="${s.id}"${s.id===S.section?' checked':''}>${s.l}</label>`).join('')}</div></div></div>
+      <label class="choice"><input type="radio" name="scope" id="sc-all" value="all"><span><b>Entire dashboard</b><small>All seven sections, in order</small></span></label>
+    </fieldset>
+    <fieldset><legend>Format</legend>
+      <div class="tg" role="group" aria-label="File format" id="fmt"><span class="hl"></span><button type="button" aria-pressed="true" data-fmt="CSV">CSV</button><button type="button" aria-pressed="false" data-fmt="JSON">JSON</button></div>
+    </fieldset>
+    <dl class="preview" aria-label="Export includes">
+      <div><dt>Date range</dt><dd>23 Aug – 21 Sep 2026</dd></div>
+      <div><dt>Filters</dt><dd>${filterContext()}</dd></div>
+      <div><dt>Who counts</dt><dd>Excluding this device + signed-in staff (since 12 Sep 2026) + bots</dd></div>
+      <div><dt>Sections</dt><dd id="pv-sec">${cur}</dd></div>
+      <div><dt>Generated</dt><dd id="pv-ts">at export time, e.g. 22 Sep 2026, 1:45 PM (Cairo)</dd></div>
+      <div><dt>File</dt><dd id="pv-file" class="raw" style="white-space:normal">minirue-analytics_${S.section}_2026-08-23_2026-09-21.csv</dd></div>
+    </dl>
+    <div><button class="disclose" aria-expanded="false" aria-controls="adv" id="adv-t">${icon('right')}Advanced</button>
+      <div class="ah" id="adv"><div><label class="choice" style="margin-top:6px"><input type="checkbox" id="raw-ev"><span><b>Raw events (event-level)</b><small>Every tracked event with its event ID, one row each. Large. Separate file, not a copy of the dashboard.</small></span></label></div></div></div>
+    <div id="ex-status" role="status" aria-live="polite"></div>`;
+  const foot=`<button class="btn" data-close>Cancel</button><button class="btn primary" id="ex-go" data-autofocus>${icon('dl','i sm')}Export</button>`;
+  const sh=openSheet('Export','Matches what’s on screen, with the same filters.',body,foot,trig);
+  let fmtV='CSV';
+  const upd=()=>{
+    const sc=sh.querySelector('input[name="scope"]:checked').value;
+    sh.querySelector('#sub-list').setAttribute('aria-disabled',sc!=='selected');
+    sh.querySelector('#sel-ah').classList.toggle('open',sc==='selected');
+    const secs=sc==='current'?[cur]:sc==='all'?SECTIONS.map(s=>s.l):SECTIONS.filter(s=>sh.querySelector('#exs-'+s.id).checked).map(s=>s.l);
+    sh.querySelector('#pv-sec').textContent=secs.length?secs.join(', '):'None selected: tick at least one';
+    const slug=sc==='current'?S.section:sc==='all'?'dashboard':'sections';
+    const multi=sc!=='current'&&fmtV==='CSV';
+    sh.querySelector('#pv-file').textContent=`minirue-analytics_${slug}_2026-08-23_2026-09-21.${multi?'zip (one CSV per section)':fmtV.toLowerCase()}`;
+    sh.querySelector('#ex-go').disabled=!secs.length;
+  };
+  sh.addEventListener('change',upd);
+  sh.querySelector('#fmt').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;fmtV=b.dataset.fmt;sh.querySelectorAll('#fmt button').forEach(x=>x.setAttribute('aria-pressed',x===b));setTG();upd();});
+  sh.querySelector('#adv-t').addEventListener('click',e=>{const b=e.currentTarget;const o=b.getAttribute('aria-expanded')!=='true';b.setAttribute('aria-expanded',o);sh.querySelector('#adv').classList.toggle('open',o);});
+  sh.querySelector('#ex-go').addEventListener('click',()=>{
+    const st=sh.querySelector('#ex-status'); const go=sh.querySelector('#ex-go'); go.disabled=true;
+    st.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px"><span>Building your export…</span><div class="progress"><i></i></div></div>`;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{st.querySelector('.progress i').style.transform='scaleX(1)';}));
+    setTimeout(()=>{
+      sh.querySelector('#pv-ts').textContent='22 Sep 2026, 1:45 PM (Cairo time)';
+      st.innerHTML=`<div class="ready">${icon('ok')}<div><b>Export ready</b><p>${sh.querySelector('#pv-file').textContent}${sh.querySelector('#raw-ev').checked?' + raw events file':''}. Prototype: no file is created.</p></div></div>`;
+      go.disabled=false; go.innerHTML=icon('check','i sm')+'Done'; go.onclick=()=>{closeSheet();toast('Export ready');};
+    },reduce.matches?300:1500);
+  });
+  setTimeout(setTG,40);
+}
+function openSettings(trig){
+  const modes=[
+    ['device','This device only','Everything from this browser is left out.'],
+    ['staff','This device + signed-in staff','Also leaves out anyone signed in to the dashboard.',true],
+    ['test','Test users','Accounts tagged “Ours / test” on their customer page.'],
+    ['rules','IP and device rules','Office IPs and saved device IDs.'],
+    ['none','No exclusion','Count everyone except bots. Numbers will include you.'],
+  ];
+  const body=`
+    <div class="note">${icon('info')}<span>Changes apply to every section and every export. History is re-checked on the next hourly rollup, so past days fix themselves too.</span></div>
+    <fieldset><legend>Who to leave out</legend>
+      ${modes.map(m=>`<label class="choice"><input type="radio" name="mode" id="m-${m[0]}" value="${m[0]}"${m[3]?' checked':''}><span><b>${m[1]}</b><small>${m[2]}</small></span></label>`).join('')}
+    </fieldset>
+    <dl class="preview"><div><dt>Active since</dt><dd>12 Sep 2026, 4:20 PM</dd></div><div><dt>Left out so far</dt><dd>64 events · 3 devices · 2 staff</dd></div><div><dt>Bots</dt><dd>Always filtered, 1,087 events in range</dd></div></dl>
+    <div><legend style="display:block">Change history</legend><div class="audit">
+      <div><time>12 Sep 2026</time><span>Owner switched to <b>This device + signed-in staff</b></span></div>
+      <div><time>9 Sep 2026</time><span>Owner tagged account <b>test@minirueshop.com</b> as test</span></div>
+      <div><time>2 Sep 2026</time><span>Owner excluded <b>this device</b> (Chrome · Windows)</span></div>
+    </div></div>
+    <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start"><button class="btn" id="count-again">Count this device again</button><small style="color:var(--fg3)">Your own visits from this browser will show up in the numbers from now on.</small></div>`;
+  const foot=`<button class="btn" data-close>Cancel</button><button class="btn primary" id="set-save">Save</button>`;
+  const sh=openSheet('Who counts','Analytics settings · “This is us”',body,foot,trig);
+  sh.querySelector('#count-again').addEventListener('click',e=>{e.currentTarget.disabled=true;e.currentTarget.textContent='This device is counted again';toast('This device is counted again');});
+  sh.querySelector('#set-save').addEventListener('click',()=>{const m=sh.querySelector('input[name="mode"]:checked').value;closeSheet();toast(m==='none'?'Now counting everyone except bots':'Exclusion saved · history re-checks within the hour');});
+}
+function openFilterSheet(){
+  const body=FILTERS.map(f=>`<fieldset><legend>${f.l}</legend>${f.opts.map(o=>`<label class="choice" style="grid-template-columns:18px 1fr"><input type="checkbox" data-fk="${f.k}" value="${o.v}" id="fs-${f.k}-${o.v}"${S.f[f.k].includes(o.v)?' checked':''}><span><b>${o.l}</b></span></label>`).join('')}</fieldset>`).join('');
+  const sh=openSheet('Filters','Apply to every section',body,`<button class="btn" id="fs-clear">Clear all</button><button class="btn primary" id="fs-apply">Show results</button>`,$('#b-filters'));
+  sh.querySelector('#fs-clear').addEventListener('click',()=>sh.querySelectorAll('input').forEach(i=>i.checked=false));
+  sh.querySelector('#fs-apply').addEventListener('click',()=>{FILTERS.forEach(f=>S.f[f.k]=[...sh.querySelectorAll(`input[data-fk="${f.k}"]:checked`)].map(i=>i.value));syncDemo();closeSheet();renderAll(true);toast(`${sum(rows()).v} visitors match`);});
+}
+function openVisitor(id,trig){
+  const p=PEOPLE.find(x=>x.id===id)||PEOPLE[0]; const v=visitorSummary(p);
+  const body=`<div style="display:flex;flex-direction:column;gap:8px"><span style="color:var(--fg3)">${v.meta}</span><div style="display:flex;gap:6px;flex-wrap:wrap">${v.tags}</div></div><div class="mini-lg"><button class="disclose" data-mini-legend aria-expanded="false">${icon('right')}What the pills mean</button><div class="ah"><div>${legendHTML(['pages','sources','status'])}</div></div></div>${journeyHTML(p.id,true)}`;
+  openSheet(`Visitor #${p.id}`,`${p.src} · ${p.city} · ${p.dev}`,body,`<button class="btn" data-close>Close</button><button class="btn primary" data-go="journeys" data-jid="${p.id}" data-close>Open in Journeys</button>`,trig);
+}
+function openPath(i,trig){
+  const r=ROWS[i]; const lost=r.p-r.b;
+  const ppl=PEOPLE.filter(p=>p.src===CAMP[r.cp].l).slice(0,4);
+  const body=`<dl class="preview"><div><dt>Path</dt><dd>${CAMP[r.cp].l} → ${LAND[r.ld]}</dd></div><div><dt>People</dt><dd>${r.v} visited · ${r.p} viewed a product · ${r.b} added · ${r.c} checkout · ${r.o} bought</dd></div><div><dt>Biggest loss</dt><dd>${r.v-r.p>=lost?`${r.v-r.p} left before viewing a product`:`${lost} viewed but didn’t add`}</dd></div></dl>
+    <div><legend style="display:block">People on this path</legend><div class="list">${ppl.length?ppl.map(p=>`<div class="li"><button class="link t" data-visitor="${p.id}">Visitor #${p.id}</button><span>${p.last}</span><div class="s"><span>${p.city} · ${p.dev}</span><span>· ${p.out}</span></div></div>`).join(''):'<p style="margin:0;color:var(--fg3)">Sample rows not available for this path.</p>'}</div></div>`;
+  openSheet('Path detail',`${r.v} people`,body,`<button class="btn" data-close>Close</button>`,trig);
+}
+
+/* Boot */
+const h=(location.hash||'').slice(1); if(SECTIONS.some(s=>s.id===h)) S.section=h;
+renderTabs(); renderBnav(); renderLegend(); renderAll(false);
+if(innerWidth<=720) $('#proto').classList.add('min');
+addEventListener('hashchange',()=>{const x=location.hash.slice(1); if(x!==S.section&&SECTIONS.some(s=>s.id===x)) go(x);});
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>{moveInd();setTG();});
+})();
+</script>

@@ -27,7 +27,9 @@ const contentSecurityPolicy = [
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   `connect-src 'self' https:${isProd ? "" : " ws: wss: http:"}`,
-  "frame-src 'self'",
+  // The Storefront editor frames the real shop's draft preview (dashboard#102,
+  // minirue-frontend#193). Only that one origin; the shop allows only us back.
+  "frame-src 'self' https://minirueshop.com",
   "upgrade-insecure-requests",
 ].join("; ");
 

@@ -116,14 +116,13 @@ export default function JournalEditor({
     };
   }, [imageId]);
 
+  // Asked in the page, not with window.confirm (which some embedded browsers suppress).
+  const [confirmProductMode, setConfirmProductMode] = useState(false);
+
   function handleModeChange(mode: JournalSection['mode']) {
     if (mode === 'product' && section.mode === 'editorial' && hasEditorialContent(section)) {
-      const ok = window.confirm(
-        'Switching to product mode hides your typed title, words and image — the block will ' +
-          'instead show whatever is on the chosen product. Your typed copy is kept in the saved ' +
-          'document (nothing is deleted) but will not be used while product mode is on. Continue?',
-      );
-      if (!ok) return;
+      setConfirmProductMode(true);
+      return;
     }
     onChange({ ...section, mode });
   }
@@ -154,6 +153,29 @@ export default function JournalEditor({
 
   return (
     <div className="dash-form-section">
+      {confirmProductMode && (
+        <div className="sfe-confirm" role="alert">
+          <p>
+            <b>Switch to showing a product?</b> Your typed title, words and image are hidden and the block shows the
+            chosen product instead. Nothing is deleted: your copy stays saved and comes back if you switch again.
+          </p>
+          <div className="sfe-row-inline">
+            <button type="button" className="sfe-btn" onClick={() => setConfirmProductMode(false)}>
+              Keep my own words
+            </button>
+            <button
+              type="button"
+              className="sfe-btn sfe-btn-primary"
+              onClick={() => {
+                setConfirmProductMode(false);
+                onChange({ ...section, mode: 'product' });
+              }}
+            >
+              Show a product
+            </button>
+          </div>
+        </div>
+      )}
       <div className="dash-form-grid">
         <label className="dash-field">
           <span className="dash-label">What this block is</span>

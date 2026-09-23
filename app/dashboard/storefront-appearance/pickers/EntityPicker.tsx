@@ -20,13 +20,9 @@ export interface EntityOption {
   slug?: string;
 }
 
-export function moveInList<T>(list: T[], index: number, direction: -1 | 1): T[] {
-  const target = index + direction;
-  if (target < 0 || target >= list.length) return list;
-  const next = [...list];
-  [next[index], next[target]] = [next[target], next[index]];
-  return next;
-}
+/** Re-exported from the one shared reorder helper so existing imports keep working. */
+import { moveInList } from '@/lib/storefront/targets';
+export { moveInList };
 
 function flattenCategories(nodes: Category[]): EntityOption[] {
   const out: EntityOption[] = [];
