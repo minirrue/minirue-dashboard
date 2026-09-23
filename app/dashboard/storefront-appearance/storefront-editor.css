@@ -1227,6 +1227,103 @@ input.sfe-bad {
   }
 }
 
+
+/* Product page tab: facts, promise rows, icon grid */
+.sfe-fact {
+  grid-template-columns: minmax(0, 1fr);
+}
+.sfe-perk-line {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+.sfe-grow {
+  flex: 1;
+}
+.sfe-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.sfe-reads {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--sfe-r);
+  background: var(--sfe-sub);
+  color: var(--sfe-fg2);
+}
+.sfe-reads-off {
+  opacity: 0.6;
+}
+.sfe-iconpick {
+  position: relative;
+  flex: none;
+}
+.sfe-icon-tile-btn {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--sfe-hair);
+  cursor: pointer;
+}
+.sfe-icon-tile-btn:hover,
+.sfe-icon-tile-btn[aria-expanded='true'] {
+  border-color: var(--mr-gold-300);
+  background: var(--mr-cream-100);
+}
+.sfe-iconpick-pop {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(5, 40px);
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--sfe-hair);
+  border-radius: var(--sfe-r);
+  background: var(--sfe-surface);
+  box-shadow: var(--sfe-shadow);
+}
+.sfe-iconpick-pop button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--mr-ink-700);
+  cursor: pointer;
+}
+.sfe-iconpick-pop button:hover {
+  background: var(--mr-cream-200);
+}
+.sfe-iconpick-pop button[aria-pressed='true'] {
+  border-color: var(--mr-ink-900);
+}
+.sfe-suffix {
+  display: flex;
+  align-items: stretch;
+}
+.sfe-suffix > .sfe-input {
+  border-radius: var(--sfe-r) 0 0 var(--sfe-r);
+}
+.sfe-suffix > span {
+  display: grid;
+  place-items: center;
+  padding: 0 12px;
+  border: 1px solid var(--sfe-hair);
+  border-left: 0;
+  border-radius: 0 var(--sfe-r) var(--sfe-r) 0;
+  background: var(--sfe-sub);
+  color: var(--sfe-fg3);
+}
+@media (min-width: 721px) {
+  .sfe-fact {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
 /* ── The existing editors' fields, in this screen's style ─────────────── */
 .sfe-legacy .dash-form-section,
 .sfe-editor .dash-form-section {

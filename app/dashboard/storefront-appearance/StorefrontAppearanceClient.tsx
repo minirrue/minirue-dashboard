@@ -714,6 +714,10 @@ export default function StorefrontAppearanceClient() {
                 returnsIsSet: layout.trust?.returnsWindowDays != null,
               }}
               onChange={(productSection) => patch({ productSection })}
+              onGoToTrust={() => {
+                goTab('trust');
+                focusKey('returnsWindowDays');
+              }}
             />
           </>
         );

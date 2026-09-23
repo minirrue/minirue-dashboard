@@ -6,91 +6,77 @@ import type { TrustSettings } from '@/lib/api/storefront';
 
 /**
  * The plain facts behind the storefront's trust promises — not advertising
- * copy. All optional: leaving a field blank means the storefront treats it
- * as unset and shows nothing derived from it, rather than a guess.
+ * copy. All optional: a blank field means unset, and the storefront shows
+ * nothing derived from it rather than a guess.
  *
- * Free delivery, same-day delivery and cash-on-delivery are deliberately NOT
- * edited here — those already exist as real settings (shipping rates,
- * fulfillment delivery methods, the COD limit) and are read live from there.
- * Duplicating them here would let this screen and the real setting disagree.
- * What IS advertised from them is controlled on the Product section tab's
- * promise rows (`showWhen`), not here.
+ * Free delivery, same-day and cash on delivery are deliberately NOT edited
+ * here: they are real settings (shipping rates, fulfillment, the COD limit)
+ * read live, and a second copy here could disagree with them.
  */
-export default function TrustEditor({
-  trust,
-  onChange,
-}: {
-  trust: TrustSettings | undefined;
-  onChange: (next: TrustSettings) => void;
-}) {
+export default function TrustEditor({ trust, onChange }: { trust: TrustSettings | undefined; onChange: (next: TrustSettings) => void }) {
   const value = trust ?? defaultTrustSettings();
-
   return (
-    <div className="dash-form-card">
-      <div className="dash-form-section">
-        <div className="dash-section-header">
-          <h2 className="dash-section-title">Trust</h2>
+    <section className="sfe-panel" aria-labelledby="h-trust">
+      <div className="sfe-panel-h">
+        <div>
+          <h2 id="h-trust">Trust &amp; contact</h2>
+          <span className="sfe-meta">Read by the Contact page, the product page’s contact link, and the promises on the Product page tab.</span>
         </div>
-        <p className="dash-hint">
-          Optional facts the Contact page, the product page&apos;s contact link, and the
-          &quot;Only where…&quot; promise rows on the Product section tab read. Leave anything
-          blank that isn&apos;t true yet — a blank field is never shown as though it were a fact.
-        </p>
-
-        <div className="dash-form-grid">
-          <label className="dash-field">
-            <span className="dash-label">Returns window (days)</span>
-            <input
-              className="dash-input"
-              type="number"
-              min={0}
-              max={3650}
-              value={value.returnsWindowDays ?? ''}
-              placeholder="e.g. 14"
-              onChange={(e) => {
-                const raw = e.target.value;
-                onChange({
-                  ...value,
-                  returnsWindowDays: raw === '' ? null : Math.max(0, Math.trunc(Number(raw))),
-                });
-              }}
-            />
-            <span className="dash-hint">
-              Blank means no returns window is set — the storefront will not claim one exists,
-              and no promise row conditioned on &quot;returns&quot; can show.
+      </div>
+      <div className="sfe-panel-b">
+        <div className="sfe-grid-2">
+          <label className="sfe-field">
+            <span className="sfe-label">Returns window</span>
+            <span className="sfe-suffix">
+              <input
+                className="sfe-input"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={3650}
+                value={value.returnsWindowDays ?? ''}
+                placeholder="Not set"
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  onChange({ ...value, returnsWindowDays: raw === '' ? null : Math.max(0, Math.trunc(Number(raw))) });
+                }}
+              />
+              <span aria-hidden>days</span>
+            </span>
+            <span className="sfe-hint">
+              {value.returnsWindowDays == null
+                ? 'Empty: the shop never claims a returns window, and the returns promise stays hidden.'
+                : `Promises and pages show “${value.returnsWindowDays}-day returns”.`}
             </span>
           </label>
-
-          <label className="dash-field">
-            <span className="dash-label">WhatsApp number</span>
+          <label className="sfe-field">
+            <span className="sfe-label">WhatsApp number</span>
             <input
-              className="dash-input"
+              className="sfe-input"
+              type="tel"
+              inputMode="tel"
               value={value.whatsappNumber ?? ''}
-              placeholder="e.g. +20 10 0000 0000"
+              placeholder="+20 10 0000 0000"
               onChange={(e) => onChange({ ...value, whatsappNumber: e.target.value || null })}
             />
-            <span className="dash-hint">
-              Shown on the Contact page and as the product page&apos;s contact link, once set.
-            </span>
+            <span className="sfe-hint">Shown on the Contact page and as the product page’s chat link, once set.</span>
           </label>
-
-          <label className="dash-field">
-            <span className="dash-label">Support hours</span>
+          <label className="sfe-field sfe-span">
+            <span className="sfe-label">Support hours</span>
             <input
-              className="dash-input"
+              className="sfe-input"
               value={value.supportHours ?? ''}
-              placeholder="e.g. Sun–Thu, 10am–6pm Cairo time"
+              placeholder="Sun–Thu, 10:00 AM–6:00 PM Cairo time"
               onChange={(e) => onChange({ ...value, supportHours: e.target.value || null })}
             />
+            <span className="sfe-hint">Write times in 12-hour Cairo time.</span>
           </label>
         </div>
-
-        <p className="dash-hint" style={{ marginTop: 8 }}>
-          Cash on delivery, free delivery and same-day delivery are not set here — they follow
-          your existing Settings (shipping rates, fulfillment, and the COD limit) and are checked
-          live, per product, by the promise rows on the Product section tab.
+        <p className="sfe-hint">
+          Free delivery, same-day delivery and cash on delivery aren’t set here. They follow your Settings and Fulfillment, and the Product page tab shows
+          where each is true.
         </p>
       </div>
-    </div>
+    </section>
   );
 }
