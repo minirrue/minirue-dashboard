@@ -1158,6 +1158,48 @@ input.sfe-bad {
   margin: 0;
   color: var(--sfe-fg2);
 }
+/* Edit / Browse (dashboard#130) */
+.sfe-pv-mode {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--sfe-r);
+  background: var(--mr-cream-300);
+  color: var(--sfe-fg2);
+  font: 500 13px/1.4 var(--mr-font-ui);
+}
+.sfe-pv-mode svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.sfe-pv-frame.is-browse {
+  box-shadow: inset 0 0 0 2px var(--mr-gold-400);
+}
+.sfe-pv-note {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--sfe-r);
+  background: var(--sfe-surface);
+  box-shadow: 0 6px 24px rgba(11, 11, 11, 0.18);
+  font: 400 13px/1.4 var(--mr-font-ui);
+  color: var(--sfe-fg);
+}
+.sfe-pv-note span {
+  flex: 1 1 180px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 
 
 /* Phone action bar */

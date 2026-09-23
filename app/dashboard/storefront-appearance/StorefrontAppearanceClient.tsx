@@ -56,6 +56,7 @@ import type {
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { apiGetSettings } from '@/lib/api/settings';
+import { listProducts } from '@/lib/catalog/api';
 import type { StoreSettings } from '@/lib/api/settings';
 import { countByTab, runChecks, type Check as CheckItem, type CheckTab } from '@/lib/storefront/checks';
 import { TARGET_PILL } from '@/lib/storefront/targets';
@@ -235,6 +236,9 @@ export default function StorefrontAppearanceClient() {
   const [phonePreview, setPhonePreview] = useState(false);
   const [device, setDevice] = useState<PreviewDevice>('desktop');
   const [previewPageId, setPreviewPageId] = useState<string | null>(null);
+  // The product the Product page preview shows: the newest published one,
+  // until the owner follows a product link in Browse mode.
+  const [previewProductSlug, setPreviewProductSlug] = useState<string | null>(null);
   const [checksOpen, setChecksOpen] = useState(false);
   // Per-viewer convenience. Safe to read at first render: the editor shows the
   // loading skeleton until the layout arrives, so this never affects hydration.
@@ -382,6 +386,44 @@ export default function StorefrontAppearanceClient() {
     }
   };
 
+  const showsProduct = tab === 'product' || tab === 'trust';
+  useEffect(() => {
+    if (!showsProduct || previewProductSlug) return;
+    let live = true;
+    listProducts({ status: 'PUBLISHED', limit: 1 })
+      .then((res) => {
+        if (live && res.items[0]) setPreviewProductSlug(res.items[0].slug);
+      })
+      .catch(() => {
+        // The preview keeps its loading state; Try again re-runs it.
+      });
+    return () => {
+      live = false;
+    };
+  }, [showsProduct, previewProductSlug]);
+
+  // Browse mode: a link followed inside the preview. Products and pages the
+  // current view can show are shown in place; anything else gets a note.
+  const pages = layout?.pages;
+  const onPreviewNavigate = useCallback(
+    (href: string) => {
+      const parts = href.split(/[?#]/)[0].split('/').filter(Boolean);
+      const productSlug =
+        parts[0] === 'shop' && parts.length === 3 ? parts[2] : parts[0] === 'products' && parts.length === 2 ? parts[1] : null;
+      if (productSlug && showsProduct) {
+        setPreviewProductSlug(productSlug);
+        return true;
+      }
+      const page = tab === 'pages' && parts.length === 1 ? pages?.find((p) => p.slug === parts[0]) : undefined;
+      if (page) {
+        setPreviewPageId(page.id);
+        return true;
+      }
+      return false;
+    },
+    [showsProduct, tab, pages],
+  );
+
   const onPreviewSelect = useCallback((target: string) => {
     if (target === 'navbar') {
       setTab('navigation');
@@ -468,11 +510,13 @@ export default function StorefrontAppearanceClient() {
       layout={layout}
       view={pv.view}
       page={tab === 'pages' && selectedPage ? { slug: selectedPage.slug, title: selectedPage.title, body: selectedPage.body } : null}
+      productSlug={previewProductSlug}
       highlight={pv.highlight ?? null}
       device={device}
       onDeviceChange={setDevice}
       lockDevice={pv.lock}
       onSelect={onPreviewSelect}
+      onNavigate={onPreviewNavigate}
       title={pv.title}
       subtitle={`${pv.subtitle}. Unpublished changes included.`}
     />

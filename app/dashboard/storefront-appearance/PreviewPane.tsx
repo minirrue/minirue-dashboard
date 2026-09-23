@@ -11,9 +11,15 @@
  *
  * No admin token ever reaches the storefront origin: only resolved, public
  * shop data crosses, and only to the exact origin we framed.
+ *
+ * Edit / Browse (dashboard#130): in Edit a click in the preview opens that
+ * block's editor; in Browse the shop's own clicks, hovers and keys work
+ * (`mr-preview:mode`) and nothing is edited. Links never leave the draft: the
+ * frame reports them (`mr-preview:navigate`) and the editor either shows that
+ * product or page itself or offers the live page in a new tab.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ExternalLink, Monitor, RefreshCw, Smartphone, Tablet } from 'lucide-react';
+import { ExternalLink, Hand, Monitor, MousePointerClick, RefreshCw, Smartphone, Tablet, X } from 'lucide-react';
 import {
   apiPreviewStorefrontLayout,
   normalizeStorefrontLayoutForSave,
@@ -33,6 +39,16 @@ const VIEWPORT: Record<PreviewDevice, { w: number; h: number }> = {
 };
 const READY_TIMEOUT_MS = 10000;
 const DEBOUNCE_MS = 400;
+const NAV_NOTE_MS = 8000;
+const BROWSE_KEY = 'sfe.preview.browse';
+
+function readBrowse(): boolean {
+  try {
+    return window.localStorage.getItem(BROWSE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 
 type Status = { kind: 'loading' } | { kind: 'ready' } | { kind: 'error'; message: string };
 
@@ -40,10 +56,12 @@ export default function PreviewPane({
   layout,
   view,
   page,
+  productSlug,
   highlight,
   device,
   onDeviceChange,
   onSelect,
+  onNavigate,
   title,
   subtitle,
   lockDevice,
@@ -51,11 +69,15 @@ export default function PreviewPane({
   layout: StorefrontLayout;
   view: PreviewView;
   page?: { slug: string; title: string; body: string } | null;
+  /** The product the Product page view shows. The shop renders nothing without one. */
+  productSlug?: string | null;
   highlight?: string | null;
   device: PreviewDevice;
   onDeviceChange: (d: PreviewDevice) => void;
   /** The owner clicked a block inside the preview. */
   onSelect?: (target: string) => void;
+  /** Browse mode: a link was followed. Return true when the editor showed it itself. */
+  onNavigate?: (href: string) => boolean;
   title: string;
   subtitle: string;
   /** The phone menu only exists on phones. */
@@ -70,6 +92,8 @@ export default function PreviewPane({
   const [error, setError] = useState<string | null>(null);
   const [room, setRoom] = useState({ w: 0, h: 0 });
   const [nonce, setNonce] = useState(0);
+  const [browse, setBrowse] = useState(readBrowse);
+  const [navNote, setNavNote] = useState<string | null>(null);
   const shown: PreviewDevice = lockDevice ?? device;
 
   // Resolve the draft (debounced; the in-flight request is cancelled on every edit).
@@ -103,22 +127,57 @@ export default function PreviewPane({
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
       if (e.origin !== origin || e.source !== frameRef.current?.contentWindow) return;
-      const msg = e.data as { type?: string; target?: string };
+      const msg = e.data as { type?: string; target?: string; href?: string };
       if (msg?.type === 'mr-preview:ready') setFrameReady(true);
       if (msg?.type === 'mr-preview:select' && msg.target) onSelect?.(msg.target);
+      if (msg?.type === 'mr-preview:navigate' && typeof msg.href === 'string') {
+        setNavNote(onNavigate?.(msg.href) ? null : msg.href);
+      }
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [origin, onSelect]);
+  }, [origin, onSelect, onNavigate]);
+
+  // Edit or Browse, told to the shop whenever either side changes (a reload resets the frame).
+  useEffect(() => {
+    if (!frameReady) return;
+    frameRef.current?.contentWindow?.postMessage({ type: 'mr-preview:mode', interactive: browse }, origin);
+  }, [frameReady, browse, origin, nonce]);
+
+  useEffect(() => {
+    if (!navNote) return;
+    const t = window.setTimeout(() => setNavNote(null), NAV_NOTE_MS);
+    return () => window.clearTimeout(t);
+  }, [navNote]);
+
+  const chooseBrowse = useCallback((next: boolean) => {
+    setBrowse(next);
+    setNavNote(null);
+    try {
+      window.localStorage.setItem(BROWSE_KEY, next ? '1' : '0');
+    } catch {
+      // Remembering the choice is a convenience only.
+    }
+  }, []);
 
   // Hand the resolved draft to the storefront whenever anything it shows changes.
+  // The product view needs a product: the shop ignores a render without one.
+  const waitingForProduct = view === 'product' && !productSlug;
   useEffect(() => {
-    if (!frameReady || !data) return;
+    if (!frameReady || !data || waitingForProduct) return;
     frameRef.current?.contentWindow?.postMessage(
-      { type: 'mr-preview:render', home: data.home, chrome: data.chrome, view, page: page ?? undefined, highlight: highlight ?? undefined },
+      {
+        type: 'mr-preview:render',
+        home: data.home,
+        chrome: data.chrome,
+        view,
+        page: page ?? undefined,
+        productSlug: view === 'product' ? productSlug ?? undefined : undefined,
+        highlight: highlight ?? undefined,
+      },
       origin,
     );
-  }, [frameReady, data, view, page, highlight, origin]);
+  }, [frameReady, data, view, page, productSlug, waitingForProduct, highlight, origin]);
 
   // If the storefront never says hello, say so instead of showing a blank box.
   useEffect(() => {
@@ -149,7 +208,11 @@ export default function PreviewPane({
     setNonce((n) => n + 1);
   }, []);
 
-  const status: Status = error ? { kind: 'error', message: error } : frameReady && data ? { kind: 'ready' } : { kind: 'loading' };
+  const status: Status = error
+    ? { kind: 'error', message: error }
+    : frameReady && data && !waitingForProduct
+      ? { kind: 'ready' }
+      : { kind: 'loading' };
   const vp = VIEWPORT[shown];
   // Fit the whole device screen: as wide as the pane allows, never taller than the window.
   const scale = room.w ? Math.min(1, room.w / vp.w, room.h / vp.h) : 0.4;
@@ -162,6 +225,14 @@ export default function PreviewPane({
           <small>{subtitle}</small>
         </div>
         <div className="sfe-pv-tools">
+          <div className="sfe-tg" role="group" aria-label="Clicks in the preview">
+            <button type="button" aria-pressed={!browse} onClick={() => chooseBrowse(false)} title="Click a part of the shop to edit it">
+              <MousePointerClick aria-hidden /> Edit
+            </button>
+            <button type="button" aria-pressed={browse} onClick={() => chooseBrowse(true)} title="Use the shop: menus, hovers and keys work, nothing is edited">
+              <Hand aria-hidden /> Browse
+            </button>
+          </div>
           <div className="sfe-tg" role="group" aria-label="Preview size">
             <button type="button" aria-pressed={shown === 'desktop'} disabled={lockDevice === 'phone'} onClick={() => onDeviceChange('desktop')}>
               <Monitor aria-hidden /> Desktop
@@ -178,7 +249,12 @@ export default function PreviewPane({
           </button>
         </div>
       </div>
-      <div className={`sfe-pv-frame sfe-pv-${shown}`} ref={boxRef}>
+      {browse && (
+        <p className="sfe-pv-mode" role="status">
+          <Hand aria-hidden /> Browsing: clicks, hovers and keys use the shop. Nothing is edited, and links stay in the preview.
+        </p>
+      )}
+      <div className={`sfe-pv-frame sfe-pv-${shown}${browse ? ' is-browse' : ''}`} ref={boxRef}>
         <div className="sfe-pv-box" style={{ width: vp.w * scale, height: vp.h * scale }}>
           <iframe
             key={nonce}
@@ -188,6 +264,19 @@ export default function PreviewPane({
             style={{ width: vp.w, height: vp.h, transform: `scale(${scale})` }}
             sandbox="allow-scripts allow-same-origin"
           />
+          {navNote && status.kind === 'ready' && (
+            <div className="sfe-pv-note" role="status">
+              <span>
+                That link opens <b>{navNote}</b>, which the preview can’t show with your changes.
+              </span>
+              <a className="sfe-btn sfe-btn-sm" href={new URL(navNote, origin).toString()} target="_blank" rel="noopener noreferrer">
+                <ExternalLink aria-hidden /> Open live
+              </a>
+              <button type="button" className="sfe-icon-btn" aria-label="Dismiss" onClick={() => setNavNote(null)}>
+                <X aria-hidden />
+              </button>
+            </div>
+          )}
           {status.kind !== 'ready' && (
             <div className="sfe-pv-over" role="status">
               {status.kind === 'loading' ? (
@@ -195,7 +284,7 @@ export default function PreviewPane({
                   <span className="sfe-sk" style={{ height: 36 }} />
                   <span className="sfe-sk" style={{ height: 180 }} />
                   <span className="sfe-sk" style={{ height: 120 }} />
-                  <small>Loading the shop with your changes…</small>
+                  <small>{waitingForProduct ? 'Choosing a product to show…' : 'Loading the shop with your changes…'}</small>
                 </div>
               ) : (
                 <div className="sfe-pv-error">
