@@ -7,7 +7,7 @@ import DashboardTable from '@/components/dashboard/DashboardTable';
 import type { Column } from '@/components/dashboard/DashboardTable';
 import { HorizontalBar } from '@/components/dashboard/charts';
 import { useAnalyticsRange, useProductsTop } from '@/lib/hooks/use-analytics';
-import { egp } from '@/lib/api/analytics-insights';
+import { egp } from '@/lib/analytics/format';
 import type { AnalyticsFreshness, ProductRow } from '@/lib/api/analytics-insights';
 import { useMinutesAgoLabel } from '@/lib/hooks/use-minutes-ago';
 import AnalyticsScopeBar from '@/components/dashboard/analytics/AnalyticsScopeBar';

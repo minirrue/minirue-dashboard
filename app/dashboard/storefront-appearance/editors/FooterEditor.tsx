@@ -6,7 +6,7 @@ import { newId } from '@/lib/api/storefront';
 import type { FooterColumn, FooterConfig, PaymentBadge, SocialNetwork, StorefrontPage } from '@/lib/api/storefront';
 import { moveInList } from '@/lib/storefront/targets';
 import { HrefTargetField } from '../fields/TargetField';
-import Switch from '../fields/Switch';
+import Switch from '@/components/dashboard/ui/Switch';
 
 const SOCIAL_NETWORKS: SocialNetwork[] = ['instagram', 'tiktok', 'facebook', 'x', 'youtube', 'whatsapp', 'pinterest'];
 const NETWORK_LABEL: Record<SocialNetwork, string> = {

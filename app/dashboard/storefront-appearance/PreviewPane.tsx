@@ -192,7 +192,7 @@ export default function PreviewPane({
   useEffect(() => {
     const el = boxRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
-    const measure = () => setRoom({ w: el.clientWidth, h: Math.max(320, window.innerHeight - (el.closest('.sfe-sheet') ? 190 : 230)) });
+    const measure = () => setRoom({ w: el.clientWidth, h: Math.max(320, window.innerHeight - (el.closest('.mr-sheet') ? 190 : 230)) });
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     window.addEventListener('resize', measure);

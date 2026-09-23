@@ -11,7 +11,7 @@ import {
   type SpendInput,
 } from '@/lib/api/accounting';
 import { formatAmount, parseAmountInput } from '@/lib/accounting/validate';
-import { UTM_CAMPAIGN_MAX } from '@/lib/accounting/utm-link';
+import { UTM_CAMPAIGN_MAX } from '@/lib/analytics/ad-link';
 
 export const SPEND_CHANNELS: { id: SpendChannel; label: string }[] = [
   { id: 'META', label: 'Meta (Facebook, Instagram)' },

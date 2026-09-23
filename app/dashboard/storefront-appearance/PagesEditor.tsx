@@ -5,8 +5,8 @@ import { Eye, FileText, Pencil, Plus, ShieldCheck, Trash2 } from 'lucide-react';
 import { PROMISE_TOKEN_LIST, createTrustPages, newPage, slugify } from '@/lib/api/storefront';
 import type { StorefrontPage } from '@/lib/api/storefront';
 import { hasPlaceholders, pageAddressProblem } from '@/lib/storefront/checks';
-import Sheet from './fields/Sheet';
-import Switch from './fields/Switch';
+import Sheet from '@/components/dashboard/ui/Sheet';
+import Switch from '@/components/dashboard/ui/Switch';
 
 /**
  * Standalone pages at minirueshop.com/<address> — Terms, Privacy, Shipping,
@@ -122,6 +122,7 @@ export default function PagesEditor({
 
       {page && (
         <Sheet
+          scopeClassName="sfe"
           title={page.title || 'Untitled page'}
           subtitle={`minirueshop.com/${page.slug || '…'}`}
           onClose={() => {

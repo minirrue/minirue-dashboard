@@ -21,6 +21,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: 230,
+    date: '2026-09-23',
+    area: 'Analytics',
+    summary:
+      'Analytics is rebuilt as one page with seven sections: Overview, People, Journeys, Sources, Flow, Social ads quality and Data quality. One toolbar sets the dates and the Source, Campaign, Device and Location filters for every section, and every section opens with a one-line answer. Every visitor number is now counted the same way everywhere, so Overview, People and Journeys always agree. Tap any visitor to see their whole journey, step by step, with where they came from and which pages they saw. Overview ranks what to do next, with Snooze and Done. Social ads quality checks Meta and TikTok and has a link builder that only offers real shop pages and fills in each platform’s own campaign and ad-set placeholders, with Copy link and Copy URL parameters only. One Export button downloads the section you are on, the sections you pick or the whole dashboard, as CSV or JSON, exactly as shown. The ad link builder in Accounting now suggests “paid” as the medium, so those links count as paid ads in Analytics. Old Visitors, Flow and Acquisition links still work and open the right section.',
+  },
+  {
     id: 229,
     date: '2026-09-19',
     area: 'Analytics',

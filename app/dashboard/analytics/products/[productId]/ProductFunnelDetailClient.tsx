@@ -7,7 +7,7 @@ import DashboardTable from '@/components/dashboard/DashboardTable';
 import type { Column } from '@/components/dashboard/DashboardTable';
 import { Funnel } from '@/components/dashboard/charts';
 import { useAnalyticsRange, useProductFunnel } from '@/lib/hooks/use-analytics';
-import { egp } from '@/lib/api/analytics-insights';
+import { egp } from '@/lib/analytics/format';
 import type { ProductFunnel } from '@/lib/api/analytics-insights';
 import AnalyticsScopeBar from '@/components/dashboard/analytics/AnalyticsScopeBar';
 

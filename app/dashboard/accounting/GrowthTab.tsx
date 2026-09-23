@@ -11,7 +11,7 @@ import {
   type SpendEntry,
 } from '@/lib/api/accounting';
 import { formatAmount } from '@/lib/accounting/validate';
-import { buildUtmLink, type UtmField } from '@/lib/accounting/utm-link';
+import { buildUtmLink, type UtmField } from '@/lib/analytics/ad-link';
 import SpendLog from './SpendLog';
 import './growth-tab.css';
 
@@ -260,10 +260,10 @@ function Channels({ report }: { report: GrowthReport }) {
 }
 
 const SOURCES = ['facebook', 'instagram', 'tiktok', 'google', 'youtube'];
-const MEDIUMS = ['paid_social', 'cpc', 'influencer', 'email', 'sms'];
+const MEDIUMS = ['paid', 'cpc', 'influencer', 'email', 'sms'];
 
 function UtmBuilder({ campaigns }: { campaigns: string[] }) {
-  const [form, setForm] = useState({ path: '', source: '', medium: 'paid_social', campaign: '', content: '' });
+  const [form, setForm] = useState({ path: '', source: '', medium: 'paid', campaign: '', content: '' });
   const [copied, setCopied] = useState<'ok' | 'error' | null>(null);
   const result = buildUtmLink(form);
   const set = (k: keyof typeof form, v: string) => {
@@ -328,7 +328,7 @@ function UtmBuilder({ campaigns }: { campaigns: string[] }) {
       <div className="acct-utm-grid">
         {text('path', 'Shop page', '/ for the home page, or /products/…', undefined, 'A path or a minirueshop.com link.')}
         {text('source', 'Source', 'facebook', 'acct-utm-sources', 'Where the ad runs.')}
-        {text('medium', 'Medium', 'paid_social', 'acct-utm-mediums', 'The kind of traffic.')}
+        {text('medium', 'Medium', 'paid', 'acct-utm-mediums', 'The kind of traffic. Use paid (or cpc) so analytics files it under Paid ads.')}
         {text('campaign', 'Campaign', 'eid-lip-oil', 'acct-utm-campaigns')}
         {text('content', 'Content (optional)', 'video-a', undefined, 'Tells two ads in one campaign apart.')}
       </div>

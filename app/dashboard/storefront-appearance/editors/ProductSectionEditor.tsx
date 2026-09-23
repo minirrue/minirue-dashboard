@@ -12,7 +12,7 @@ import {
 } from '@/lib/api/storefront';
 import type { ProductPerk, ProductPerkIcon, ProductSectionConfig, PromiseShowWhen, PromiseTokenValues } from '@/lib/api/storefront';
 import { moveInList } from '@/lib/storefront/targets';
-import Switch from '../fields/Switch';
+import Switch from '@/components/dashboard/ui/Switch';
 
 /**
  * The dashboard's own copy of the storefront's line-icon set, purely for

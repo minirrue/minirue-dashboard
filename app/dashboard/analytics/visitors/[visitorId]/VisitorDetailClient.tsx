@@ -2,196 +2,108 @@
 
 import React, { useMemo } from 'react';
 import Link from 'next/link';
-import AnalyticsSubnav from '@/components/dashboard/AnalyticsSubnav';
+import { ArrowLeft } from 'lucide-react';
 import TrafficFlagPanel from '@/components/dashboard/analytics/TrafficFlagPanel';
-import { useAnalyticsRange, useVisitorDetail, useVisitorJourney } from '@/lib/hooks/use-analytics';
-import { egp } from '@/lib/api/analytics-insights';
-import AnalyticsScopeBar from '@/components/dashboard/analytics/AnalyticsScopeBar';
-import { visitorLabel } from '@/components/dashboard/analytics/VisitorName';
-import { apiGetVisitorStory, shortPath, STOP_REASON_LABEL, storyFromJourney } from '@/lib/api/story';
-import { useQuery } from '@tanstack/react-query';
-import '../flow.css';
-import { formatDateTime, formatTime } from '@/lib/dates/format';
+import { useAnalyticsRange, useCatalogueRoutes, useVisitorDetail, useVisitorStory } from '@/lib/hooks/use-analytics';
+import { visitorLabel } from '@/lib/analytics/visitors';
+import { withScope } from '@/lib/analytics/range';
+import { knownRoutes } from '@/lib/analytics/ad-link';
+import { cairoStamp, countryName, egp, fmtInt } from '@/lib/analytics/format';
+import { STOP_REASON_LABEL } from '@/lib/analytics/funnel';
+import JourneyView from '../../_ui/JourneyView';
+import { Skeleton } from '../../_ui/parts';
+import '../../_ui/analytics.css';
 
-function ScreenSkeleton() {
-  return (
-    <div className="dash-card" style={{ padding: 20 }}>
-      <span className="dash-skeleton" style={{ width: '60%', height: 20, marginBottom: 12 }} />
-      <span className="dash-skeleton" style={{ width: '100%', height: 120 }} />
-    </div>
-  );
-}
-
-function ScreenError({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div className="dash-card" style={{ padding: 32, textAlign: 'center' }}>
-      <p className="dash-inline-error" style={{ display: 'inline-block' }}>{message}</p>
-      <div style={{ marginTop: 12 }}>
-        <button className="dash-btn-secondary" onClick={onRetry}>Retry</button>
-      </div>
-    </div>
-  );
-}
-
-function ScreenEmpty({ message }: { message: string }) {
-  return (
-    <div className="dash-card" style={{ padding: 32, textAlign: 'center' }}>
-      <p className="dash-help-text" style={{ margin: 0 }}>{message}</p>
-    </div>
-  );
-}
-
-function formatDate(iso: string): string {
-  return formatDateTime(iso, { year: true });
-}
-
+/**
+ * One visitor's page (dashboard#123, #128): their verdict ("This is us",
+ * bot, verified real), their totals and the same journey view the Analytics
+ * sheet shows. Old links from orders and customers still land here.
+ */
 export default function VisitorDetailClient({ visitorId }: { visitorId: string }) {
-  const { range, setRange } = useAnalyticsRange();
+  const { range } = useAnalyticsRange();
   const detail = useVisitorDetail(visitorId, range);
-  const journey = useVisitorJourney(visitorId, range);
-
-  const isLoading = detail.isLoading || journey.isLoading;
-  const isError = detail.isError || journey.isError;
-  const errorMessage =
-    detail.error?.message ?? journey.error?.message ?? 'Visitor detail could not load.';
-
-  const retry = () => {
-    void detail.refetch();
-    void journey.refetch();
-  };
-
-  const events = journey.data?.data;
-  // The same story the Visitors drawer shows: visits split on 30-minute gaps,
-  // each summarised — including where a non-buyer stopped.
-  // The server story (named products, touch, verdict over the whole history);
-  // the journey-built one stands in while it loads or if it is unavailable.
-  const served = useQuery({
-    queryKey: ['analytics', 'story', visitorId, range],
-    queryFn: () => apiGetVisitorStory(visitorId, range),
-    staleTime: 60_000,
-  });
-  const localStory = useMemo(() => storyFromJourney(visitorId, events ?? [], null), [visitorId, events]);
-  const story = served.data?.data ?? localStory;
-  const verdict = story.verdict;
+  const story = useVisitorStory(visitorId, range);
+  const catalogue = useCatalogueRoutes(true);
+  const routes = useMemo(() => (catalogue.data ? knownRoutes(catalogue.data.categories, catalogue.data.products) : null), [catalogue.data]);
+  const d = detail.data?.data;
+  const name = d ? visitorLabel({ ...d, visitorId }) : story.data ? visitorLabel(story.data) : 'Visitor';
+  const verdict = story.data?.verdict;
 
   return (
-    <>
-      <AnalyticsSubnav />
-      <div className="dash-page-header">
-        <h1 className="dash-page-title">
-          {detail.data ? visitorLabel({ ...detail.data.data, visitorId }) : 'Visitor'}
-          {detail.data?.data.customer && (
-            <Link href={`/customers/${detail.data.data.customer.id}`} className="dash-link" style={{ marginLeft: 12, fontSize: 14, fontWeight: 600 }}>
-              Customer profile →
-            </Link>
-          )}
-        </h1>
-        <Link href="/analytics/visitors" className="dash-btn-secondary">Back to visitors</Link>
-      </div>
-      {/* dashboard#111: this one device's verdict — misfiled bot, our own phone, or verified real. */}
-      <div style={{ marginBottom: 20 }}>
-        <TrafficFlagPanel subjectType="VISITOR" subjectId={visitorId} onChange={() => { void detail.refetch(); }} />
-      </div>
-      <AnalyticsScopeBar range={range} onChange={setRange} />
-
-      {isLoading ? (
-        <ScreenSkeleton />
-      ) : isError ? (
-        <ScreenError message={errorMessage} onRetry={retry} />
-      ) : !detail.data ? (
-        <ScreenEmpty message="No record for this visitor." />
-      ) : (
-        <>
-          <div
-            style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 16, marginBottom: 20 }}
-          >
-            <div className="dash-card">
-              <span className="dash-section-title" style={{ margin: 0 }}>Sessions</span>
-              <p className="mr-num" style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0' }}>
-                {detail.data.data.sessionCount.toLocaleString()}
-              </p>
-            </div>
-            <div className="dash-card">
-              <span className="dash-section-title" style={{ margin: 0 }}>Pageviews</span>
-              <p className="mr-num" style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0' }}>
-                {detail.data.data.pageviewCount.toLocaleString()}
-              </p>
-            </div>
-            <div className="dash-card">
-              <span className="dash-section-title" style={{ margin: 0 }}>Orders</span>
-              <p className="mr-num" style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0' }}>
-                {detail.data.data.orderCount.toLocaleString()}
-              </p>
-            </div>
-            <div className="dash-card">
-              <span className="dash-section-title" style={{ margin: 0 }}>Total revenue</span>
-              <p className="mr-num" style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0' }}>
-                {egp(detail.data.data.revenueMinor)}
-              </p>
-            </div>
-          </div>
-
-          <p style={{ fontSize: 13, color: 'var(--mr-fg-3)', marginBottom: 20 }}>
-            First seen {formatDate(detail.data.data.firstSeenAt)} · Last seen {formatDate(detail.data.data.lastSeenAt)}
-            {' · '}First channel: {detail.data.data.firstChannel}
-            {detail.data.data.country && ` · ${detail.data.data.country}`}
-            {detail.data.data.isBot && ' · Flagged as bot traffic'}
+    <div className="anx anx-page" style={{ gap: 16, display: 'flex', flexDirection: 'column' }}>
+      <header className="anx-head">
+        <div>
+          <h1>{name}</h1>
+          <p>
+            {d
+              ? `First seen ${cairoStamp(d.firstSeenAt)} · last seen ${cairoStamp(d.lastSeenAt)} · first came from ${d.firstChannel.toLowerCase()}${d.country ? ` · ${countryName(d.country)}` : ''}`
+              : 'Full journey'}
           </p>
+        </div>
+        <div className="anx-tools">
+          {d?.customer?.id ? (
+            <Link className="anx-btn" href={`/customers/${d.customer.id}`}>
+              Customer profile
+            </Link>
+          ) : null}
+          <Link className="anx-btn" href={withScope('/analytics?section=people', range)}>
+            <ArrowLeft className="anx-i-sm" aria-hidden />
+            Back to People
+          </Link>
+        </div>
+      </header>
 
-          {verdict && verdict.reason !== 'bought' ? (
-            <p className="flow-verdict">
-              <strong>{STOP_REASON_LABEL[verdict.reason] ?? 'Didn’t buy'}.</strong> {verdict.detail}
-            </p>
-          ) : (
-            detail.data.data.orderCount === 0 &&
-            story.sessions.length > 0 && (
-              <p className="flow-verdict">
-                <strong>Didn&apos;t buy.</strong> Last visit: {story.sessions[0].summary}
-              </p>
-            )
-          )}
-          <p className="dash-section-title" style={{ marginBottom: 12 }}>Story</p>
-          {story.sessions.length === 0 ? (
-            <div className="dash-card">
-              <p style={{ color: 'var(--mr-fg-4)', fontSize: 14, textAlign: 'center', padding: '20px 0', margin: 0 }}>
-                No recorded events for this visitor in this range.
-              </p>
+      {/* dashboard#111: this one device's verdict: a misfiled bot, our own phone, or verified real. */}
+      <TrafficFlagPanel subjectType="VISITOR" subjectId={visitorId} onChange={() => void detail.refetch()} />
+
+      {detail.isError ? (
+        <div className="anx-panel">
+          <div className="anx-state">
+            <h2>This visitor could not load</h2>
+            <p>{detail.error?.message ?? 'The analytics service did not answer.'}</p>
+            <button type="button" className="anx-btn anx-btn-primary" onClick={() => void detail.refetch()}>
+              Retry
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="anx-recon anx-panel" style={{ borderRadius: 'var(--anx-r-lg)' }}>
+          {[
+            ['Visits', d ? fmtInt(d.sessionCount) : null],
+            ['Pages', d ? fmtInt(d.pageviewCount) : null],
+            ['Orders', d ? `${fmtInt(d.orderCount)} · ${egp(d.revenueMinor)}` : null],
+          ].map(([label, value]) => (
+            <div key={label as string}>
+              <span>{label}</span>
+              {value == null ? <Skeleton h={22} w="50%" /> : <b className="anx-num">{value}</b>}
             </div>
-          ) : (
-            <div className="dash-card">
-              <ol className="flow-sessions">
-                {story.sessions.map((ss, i) => (
-                  <li key={i} className="flow-session">
-                    <div className="flow-session__touch">
-                      <span className="flow-session__when">{formatDate(ss.startedAt)}</span>
-                      <span className="flow-session__src" data-medium={ss.touch.medium ?? undefined}>
-                        {[ss.touch.platform ?? 'Direct', ss.touch.campaign].filter(Boolean).join(' · ')}
-                      </span>
-                      {ss.touch.landingPath && (
-                        <span className="flow-session__when" title={ss.touch.landingPath}>landed on {shortPath(ss.touch.landingPath)}</span>
-                      )}
-                    </div>
-                    <p className="flow-session__summary">{ss.summary}</p>
-                    <ol className="flow-steps">
-                      {ss.steps.map((st, j) => (
-                        <li key={j} className="flow-step" data-kind={st.kind}>
-                          <span className="flow-step__dot" aria-hidden="true" />
-                          <span className="flow-step__label" title={st.path ?? undefined}>{st.path ? `${st.label.split(' · ')[0]} · ${shortPath(st.path)}` : st.label}</span>
-                          <span className="flow-step__meta">
-                            {[st.valueMinor != null ? egp(st.valueMinor) : null, formatTime(st.at)]
-                              .filter(Boolean)
-                              .join(' · ')}
-                          </span>
-                        </li>
-                      ))}
-                    </ol>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
-        </>
+          ))}
+        </div>
       )}
-    </>
+
+      {verdict ? (
+        <p className="anx-answer">
+          <span>
+            <b>{STOP_REASON_LABEL[verdict.reason] ?? verdict.reason}.</b> {verdict.detail}
+          </span>
+        </p>
+      ) : null}
+
+      <section className="anx-panel" aria-labelledby="anx-vd-journey">
+        <div className="anx-panel-h">
+          <h2 id="anx-vd-journey">Journey</h2>
+          <span className="anx-meta">Every session, newest first · times in Cairo</span>
+        </div>
+        <div className="anx-panel-b">
+          {story.isLoading ? (
+            <Skeleton h={120} />
+          ) : story.isError ? (
+            <p className="anx-p">The journey could not load ({story.error?.message ?? 'error'}).</p>
+          ) : (
+            <JourneyView sessions={story.data?.sessions ?? []} routes={routes} />
+          )}
+        </div>
+      </section>
+    </div>
   );
 }

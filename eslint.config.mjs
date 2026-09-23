@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     // to its rules.
     ".claude/**",
 
+    // Local Impeccable review harnesses (gitignored Playwright .cjs scripts).
+    // Not app code; linting them crashed the whole run on a plugin lookup.
+    ".impeccable/review/**",
+
     // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",

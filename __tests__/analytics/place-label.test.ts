@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { placeLabel, realOrNull } from '@/lib/api/story';
+import { placeLabel, realOrNull } from "@/lib/analytics/format";
 
 const name = (code: string) => ({ EG: 'Egypt', US: 'United States' })[code] ?? code;
 

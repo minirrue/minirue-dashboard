@@ -2,9 +2,17 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import * as api from '@/lib/api/analytics-insights';
+import { apiFetch } from '@/lib/api/client';
+import { buildAnalyticsQuery, readRange, writeRange, type AnalyticsRangeState } from '@/lib/analytics/range';
+import { apiGetAllPeople, apiGetVisitorStory, PEOPLE_CAP, type PersonRow, type VisitorStory } from '@/lib/api/story';
+import { apiListTrafficFlags, type TrafficFlag } from '@/lib/api/traffic-flags';
+import { apiGetStaffDeviceStatus, type StaffDeviceStatus } from '@/lib/api/analytics';
+import { listCategories, listProducts } from '@/lib/catalog/api';
+import type { Category, ProductListItem } from '@/lib/catalog/types';
 import type {
   AnalyticsEnvelope,
   AnalyticsQueryParams,
+  VisitorsPage,
   PageSort,
   ProductSort,
   SourceGroupBy,
@@ -236,41 +244,14 @@ export function useVisitorJourney(visitorId: string | undefined, params: Analyti
 }
 
 /* ── Range state, held in the URL so a filtered view is shareable and
-   survives a refresh ─────────────────────────────────────────────────── */
+   survives a refresh (reader/writer: lib/analytics/range.ts) ───────────── */
+
+export type { TrafficScope, AnalyticsRangeState } from '@/lib/analytics/range';
 
 /**
- * Whose traffic a screen shows (dashboard#90, #115). `real` — the default —
- * leaves out bots, staff, the owner and anything an admin flagged; `all`
- * shows everything, for checking the exclusions themselves.
- */
-export type TrafficScope = 'real' | 'all';
-
-export interface AnalyticsRangeState {
-  from: string;
-  to: string;
-  compare: boolean;
-  traffic: TrafficScope;
-}
-
-const DEFAULT_WINDOW_DAYS = 30;
-
-function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-function defaultWindow(): { from: string; to: string } {
-  const to = new Date();
-  const from = new Date(to);
-  from.setDate(from.getDate() - (DEFAULT_WINDOW_DAYS - 1));
-  return { from: isoDate(from), to: isoDate(to) };
-}
-
-/**
- * Reads/writes `from`, `to` and `compare` on the current URL's query string.
- * Uses `next/navigation`'s `useSearchParams`, which opts the calling route
- * into dynamic (client) rendering — expected here since every analytics
- * screen is already behind the `ADMIN_ONLY` auth guard and has nothing
- * static to prerender.
+ * Reads/writes `from`, `to`, `compare` and `traffic` on the current URL.
+ * `useSearchParams` opts the route into client rendering, which every
+ * analytics screen already is (behind the ADMIN_ONLY guard).
  */
 export function useAnalyticsRange(): {
   range: AnalyticsRangeState;
@@ -280,29 +261,121 @@ export function useAnalyticsRange(): {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const range = useMemo<AnalyticsRangeState>(() => {
-    const from = searchParams.get('from');
-    const to = searchParams.get('to');
-    const compare = searchParams.get('compare') === 'true';
-    const traffic: TrafficScope = searchParams.get('traffic') === 'all' ? 'all' : 'real';
-    if (from && to) return { from, to, compare, traffic };
-    return { ...defaultWindow(), compare, traffic };
-  }, [searchParams]);
+  const range = useMemo<AnalyticsRangeState>(() => readRange(searchParams), [searchParams]);
 
   const setRange = useCallback(
     (next: Partial<AnalyticsRangeState>) => {
-      const merged = { ...range, ...next };
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('from', merged.from);
-      params.set('to', merged.to);
-      if (merged.compare) params.set('compare', 'true');
-      else params.delete('compare');
-      if (merged.traffic === 'all') params.set('traffic', 'all');
-      else params.delete('traffic');
+      const params = writeRange(new URLSearchParams(searchParams.toString()), { ...range, ...next });
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
     [range, router, pathname, searchParams],
   );
 
   return { range, setRange };
+}
+
+/* ── The Analytics shell's data (dashboard#128) ───────────────────────── */
+
+export interface PeopleAll {
+  rows: PersonRow[];
+  /** The list stopped at PEOPLE_CAP; figures cover the most recent people only. */
+  capped: boolean;
+  /** Served by the older `/visitors` list, which lacks source and stage detail. */
+  legacy: boolean;
+  fetchedAt: number;
+}
+
+/**
+ * Everyone in the range, every page of `/people` walked, in one cache entry.
+ * This is the spine of Overview, People, Journeys, Sources and Flow: each of
+ * them counts these rows through `countedVisitors`, so they always agree.
+ */
+export function usePeopleAll(params: AnalyticsQueryParams) {
+  return useQuery<PeopleAll, ApiError>({
+    queryKey: [...BASE_KEY, 'people-all', params.from, params.to, params.traffic ?? 'real'],
+    staleTime: DAILY_STALE_TIME,
+    queryFn: async () => {
+      let out = { rows: [] as PersonRow[], capped: false, legacy: false };
+      await apiGetAllPeople(
+        params,
+        {},
+        { sort: 'lastSeenAt' },
+        (rows, done, legacy) => {
+          out = { rows, capped: done && rows.length >= PEOPLE_CAP, legacy };
+        },
+        { aborted: false },
+      );
+      return { ...out, fetchedAt: Date.now() };
+    },
+  });
+}
+
+/** Visits and pages per visitor (all time) from `/visitors`, walked back to `from`. */
+export function useVisitCounts(params: AnalyticsQueryParams) {
+  return useQuery<Map<string, { sessions: number; pages: number }>, ApiError>({
+    queryKey: [...BASE_KEY, 'visit-counts', params.from, params.to, params.traffic ?? 'real'],
+    staleTime: DAILY_STALE_TIME,
+    queryFn: async () => {
+      const map = new Map<string, { sessions: number; pages: number }>();
+      let cursor: string | null = null;
+      for (let page = 0; page < 15; page += 1) {
+        const res: AnalyticsEnvelope<VisitorsPage> = await apiFetch(
+          `/analytics/visitors?${buildAnalyticsQuery(params, { limit: '200', cursor })}`,
+          { auth: true },
+        );
+        for (const r of res.data.rows) map.set(r.visitorId, { sessions: r.sessionCount, pages: r.pageviewCount });
+        cursor = res.data.nextCursor;
+        const last = res.data.rows[res.data.rows.length - 1];
+        // Newest first and not bounded by the range: stop once it is older than `from`.
+        if (!cursor || !last || last.lastSeenAt.slice(0, 10) < params.from) break;
+      }
+      return map;
+    },
+  });
+}
+
+export function useVisitorStory(visitorId: string | null | undefined, params: AnalyticsQueryParams) {
+  return useQuery<VisitorStory, ApiError>({
+    queryKey: [...BASE_KEY, 'story', visitorId ?? '', params.from, params.to, params.traffic ?? 'real'],
+    enabled: !!visitorId,
+    staleTime: DAILY_STALE_TIME,
+    queryFn: async () => (await apiGetVisitorStory(visitorId as string, params)).data,
+  });
+}
+
+/** Every "This is us" verdict, active and revoked: the exclusion list and its history. */
+export function useTrafficFlags() {
+  return useQuery<TrafficFlag[], ApiError>({
+    queryKey: [...BASE_KEY, 'flags'],
+    staleTime: DAILY_STALE_TIME,
+    queryFn: async () => (await apiListTrafficFlags(false)).items,
+  });
+}
+
+/** Whether this browser is excluded, and why. Public by design; never fails the screen. */
+export function useStaffDevice() {
+  return useQuery<StaffDeviceStatus | null, ApiError>({
+    queryKey: [...BASE_KEY, 'staff-device'],
+    staleTime: DAILY_STALE_TIME,
+    queryFn: async () => {
+      try {
+        return await apiGetStaffDeviceStatus();
+      } catch {
+        return null;
+      }
+    },
+  });
+}
+
+/** The shop's categories and published products: the real routes an ad can land on. */
+export function useCatalogueRoutes(enabled = true) {
+  return useQuery<{ categories: Category[]; products: ProductListItem[] }, ApiError>({
+    queryKey: [...BASE_KEY, 'catalogue-routes'],
+    enabled,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const [cats, prods] = await Promise.all([listCategories(), listProducts({ status: 'PUBLISHED', limit: 200 })]);
+      return { categories: cats.items, products: prods.items };
+    },
+  });
 }

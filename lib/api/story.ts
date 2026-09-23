@@ -3,6 +3,9 @@ import { getAccessToken } from '@/lib/auth/tokens';
 import type { ApiError } from './client';
 import { apiGetVisitorJourney } from './analytics-insights';
 import type { AnalyticsQueryParams, JourneyEvent, VisitorsPage } from './analytics-insights';
+import type { TrafficClass as FlagClass } from './traffic-flags';
+import { buildAnalyticsQuery } from '@/lib/analytics/range';
+import { exportFileName } from '@/lib/analytics/export';
 
 /**
  * Visitors & journeys (dashboard#123): the visitor graph. Every figure
@@ -14,36 +17,12 @@ import type { AnalyticsQueryParams, JourneyEvent, VisitorsPage } from './analyti
  * so the screen always shows current data rather than a placeholder.
  */
 
-export type FlowDimension = 'platform' | 'campaign' | 'landing' | 'product' | 'stage';
-/** Flow columns, plus filter-only keys. */
-export type FlowFilterKey = FlowDimension | 'country' | 'device' | 'reason';
+/** Filter keys `/people` and `/export` accept (dashboard#123). */
+export type FlowFilterKey = 'platform' | 'campaign' | 'landing' | 'product' | 'stage' | 'country' | 'device' | 'reason';
 export type FlowFilter = Partial<Record<FlowFilterKey, string>>;
 
-export interface FlowNode {
-  dimension: FlowDimension;
-  value: string;
-  /** Human label; `value` is what filters. */
-  label: string;
-  visitors: number;
-  /** Paid / social / organic / direct … for platform nodes. */
-  medium?: string | null;
-}
-
-export interface FlowLink {
-  from: { dimension: FlowDimension; value: string };
-  to: { dimension: FlowDimension; value: string };
-  visitors: number;
-}
-
-export interface FlowResponse {
-  nodes: FlowNode[];
-  links: FlowLink[];
-  totalVisitors: number;
-  /** Why non-buyers stopped (#123 stop reasons). */
-  reasons?: { reason: string; label: string; visitors: number }[];
-}
-
-export type TrafficClass = 'REAL' | 'OWNER' | 'INTERNAL' | 'BOT' | 'SUSPICIOUS' | 'TRUSTED';
+/** A verdict an admin can give (traffic-flags), or REAL for everyone the filters kept. */
+export type TrafficClass = FlagClass | 'REAL';
 
 export interface PersonRow {
   visitorId: string;
@@ -110,11 +89,9 @@ export interface VisitorStory {
   verdict?: { reason: string; detail: string | null } | null;
 }
 
+/** People endpoints take the range and scope, never `compare`. */
 function scopeQuery(params: AnalyticsQueryParams, extra: Record<string, string | undefined> = {}): string {
-  const q = new URLSearchParams({ from: params.from, to: params.to });
-  if (params.traffic === 'all') q.set('includeBots', 'true');
-  for (const [k, v] of Object.entries(extra)) if (v !== undefined && v !== '') q.set(k, v);
-  return q.toString();
+  return buildAnalyticsQuery({ from: params.from, to: params.to, traffic: params.traffic }, extra);
 }
 
 /** The backend names the landing column `landingPath`; everything else matches. */
@@ -128,10 +105,6 @@ const notYet = (e: unknown) => {
   const st = (e as ApiError | undefined)?.status;
   return st === 404 || st === 501;
 };
-
-export function apiGetFlow(params: AnalyticsQueryParams, filter: FlowFilter): Promise<{ data: FlowResponse }> {
-  return apiFetch(`/analytics/flow?${scopeQuery(params, { filter: filterParam(filter) })}`, { auth: true });
-}
 
 /**
  * The people behind a filter. Uses `/people` (#123) when the backend has it;
@@ -339,7 +312,7 @@ export async function downloadServerExport(
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${filename}-${params.from}-to-${params.to}.${format}`;
+    a.download = exportFileName(filename, format, params);
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -353,99 +326,4 @@ export async function downloadServerExport(
 /** Full-set export path (server builds it). */
 export function exportPath(dataset: 'people' | 'flow' | 'story', format: 'csv' | 'json', params: AnalyticsQueryParams, filter: FlowFilter): string {
   return `/analytics/export/${dataset}?${scopeQuery(params, { format, filter: filterParam(filter) })}`;
-}
-
-export const DIMENSION_LABEL: Record<FlowFilterKey, string> = {
-  reason: 'Stopped because',
-  country: 'Country',
-  device: 'Device',
-  platform: 'Came from',
-  campaign: 'Campaign / ad',
-  landing: 'Landed on',
-  product: 'Looked at',
-  stage: 'Got to',
-};
-
-export const STAGE_LABEL: Record<string, string> = {
-  viewed: 'Browsed only',
-  product: 'Viewed a product',
-  bag: 'Added to bag',
-  checkout: 'Started checkout',
-  checkout_step: 'Started checkout',
-  checkout_contact: 'Checkout · contact',
-  checkout_address: 'Checkout · address',
-  checkout_shipping: 'Checkout · shipping',
-  checkout_payment: 'Checkout · payment',
-  paid: 'Paid',
-  refunded: 'Refunded',
-};
-
-/** Why a visitor didn't buy, in the owner's words (#123). */
-export const STOP_REASON_LABEL: Record<string, string> = {
-  bounced: 'Left within seconds',
-  browsed_no_product: 'Browsed, opened no product',
-  browsed_left: 'Browsed, then left',
-  viewed_not_added: 'Looked, did not add',
-  added_then_removed: 'Added, then removed',
-  left_in_bag: 'Left it in the bag',
-  left_checkout_contact: 'Left at checkout · contact',
-  left_checkout_address: 'Left at checkout · address',
-  left_checkout_shipping: 'Left at checkout · delivery',
-  left_checkout_payment: 'Left at checkout · payment',
-  payment_failed: 'Payment failed',
-  bought: 'Bought',
-  refunded: 'Refunded',
-};
-
-/**
- * Facebook and Instagram share one Meta pixel, so the dashboard shows them
- * apart (the ads tag utm_source=fb / ig) and totals them under Meta
- * (backend#223). "Meta" alone is a click whose placement is unknowable.
- */
-export const PLATFORM_NETWORK: Record<string, string> = {
-  Facebook: 'Meta',
-  Instagram: 'Meta',
-  Meta: 'Meta',
-  TikTok: 'TikTok',
-};
-
-/**
- * The collector writes the literal string "unknown" for a city or region it
- * cannot resolve (the MaxMind city database is not live — backend#177), so a
- * bare `city ?? country` printed "unknown" over perfectly good country data.
- */
-export function realOrNull(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const v = value.trim();
-  return v && !/^(unknown|undefined|null|n\/a|-)$/i.test(v) ? v : null;
-}
-
-/** "Cairo · Egypt", "Egypt", or "Country unknown" — never the word "unknown" alone. */
-export function placeLabel(city: string | null | undefined, country: string | null | undefined, countryName: (code: string) => string): string {
-  const c = realOrNull(city);
-  const cc = realOrNull(country);
-  if (c && cc) return `${c} · ${countryName(cc)}`;
-  if (c) return c;
-  if (cc) return countryName(cc);
-  return 'Country unknown';
-}
-
-/**
- * A path fit to print. Ad links arrive carrying a 200-character click id
- * (fbclid, ttclid, gclid…) which ran straight out of the story card; the page
- * itself is what a human reads, so the tags become a short "+ ad tags" note
- * and the raw string stays in the title attribute.
- */
-export function shortPath(raw: string | null | undefined): string {
-  if (!raw) return '';
-  const [path, query] = raw.split('?');
-  const clean = path.length > 72 ? `${path.slice(0, 69)}…` : path;
-  if (!query) return clean || '/';
-  const tagged = /(fbclid|ttclid|gclid|msclkid|yclid|utm_)/i.test(query);
-  return `${clean || '/'}${tagged ? ' · ad tags' : ''}`;
-}
-
-export function personName(p: { visitorNumber: number | null; visitorId: string; customer?: { name: string | null } | null }): string {
-  if (p.customer?.name) return p.customer.name;
-  return p.visitorNumber ? `Visitor #${p.visitorNumber.toLocaleString('en-US')}` : `Visitor ${p.visitorId.slice(0, 6)}`;
 }

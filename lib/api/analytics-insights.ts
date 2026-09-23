@@ -1,4 +1,5 @@
 import { apiFetch } from './client';
+import { buildAnalyticsQuery, type ScopeQuery } from '@/lib/analytics/range';
 
 /**
  * Typed client for the first-party visitor-analytics query API
@@ -51,50 +52,11 @@ export interface AnalyticsEnvelope<T> {
   previous?: T;
 }
 
-export interface AnalyticsQueryParams {
-  from: string;
-  to: string;
-  compare?: boolean;
-  /** `all` includes bots, staff, owner and flagged traffic; default is real only. */
-  traffic?: 'real' | 'all';
-}
+/** `from`/`to` (inclusive, `YYYY-MM-DD`), `compare`, and whose traffic (`all` includes bots, staff, owner, flagged). */
+export type AnalyticsQueryParams = ScopeQuery;
 
-function buildQuery(params: AnalyticsQueryParams, extra?: Record<string, string | undefined>): string {
-  const q = new URLSearchParams();
-  q.set('from', params.from);
-  q.set('to', params.to);
-  // The backend's `compare` query param is `'previous' | 'year' | 'none'`
-  // (`BaseQuerySchema` in `common.dto.ts`), not a boolean — sending
-  // `compare=true` fails schema validation with a 422 on every request where
-  // the "Compare to previous period" checkbox is on. The UI only ever offers
-  // that one comparison, so `previous` is the correct (and only) mapping.
-  if (params.compare) q.set('compare', 'previous');
-  // Excluded traffic (bots, staff, owner, flagged) is dropped unless asked for (#115, #122).
-  if (params.traffic === 'all') q.set('includeBots', 'true');
-  if (extra) {
-    for (const [key, value] of Object.entries(extra)) {
-      if (value !== undefined) q.set(key, value);
-    }
-  }
-  return q.toString();
-}
-
-/**
- * Money formatting for the `…Minor` (piastres) fields this API returns.
- * Moved here from `AnalyticsClient.tsx` (which keeps its own private copy
- * for now — that screen is rebuilt in a later lane) so every new analytics
- * screen shares one implementation instead of re-deriving it.
- */
-export function egp(minor: number): string {
-  return `EGP ${(minor / 100).toLocaleString('en-EG', { minimumFractionDigits: 2 })}`;
-}
-
-export function egpShort(minor: number): string {
-  const val = minor / 100;
-  if (val >= 1_000_000) return `EGP ${(val / 1_000_000).toFixed(1)}M`;
-  if (val >= 1_000) return `EGP ${(val / 1_000).toFixed(1)}K`;
-  return egp(minor);
-}
+/** One query builder for every analytics endpoint: `lib/analytics/range.ts`. */
+const buildQuery = buildAnalyticsQuery;
 
 /* ── Data shapes — matched field-for-field against the backend DTOs ─────── */
 
@@ -703,43 +665,3 @@ export async function apiGetPurchaseReconciliation(params: AnalyticsQueryParams)
  *   - POST /analytics/rollups/run         (SUPERADMIN-only manual backfill;
  *     acknowledges but does not yet dispatch — see the controller comment)
  */
-
-/* ── Geo ────────────────────────────────────────────────────────────────── */
-
-/**
- * `GET /analytics/geo?dimension=country` → one row per country.
- *
- * Promoted here from `OverviewGrid.tsx` once a second screen (Acquisition)
- * needed it. It lived local to that file while there was exactly one caller;
- * two is where a private copy stops being pragmatic and starts being drift.
- */
-export interface GeoRow {
-  key: string;
-  sessions: number;
-  visitors: number;
-  revenueMinor: number;
-}
-
-/**
- * Query string for the endpoints that have no typed client function yet.
- *
- * `compare` is deliberately mapped, not passed through: the backend takes
- * `'previous' | 'year' | 'none'` (BaseQuerySchema in common.dto.ts), never a
- * boolean. Sending `compare=true` returns 422 — the exact bug the rest of this
- * file was reconciled to avoid.
- */
-export function buildAnalyticsQueryString(
-  params: AnalyticsQueryParams,
-  extra?: Record<string, string>,
-): string {
-  const q = new URLSearchParams();
-  q.set('from', params.from);
-  q.set('to', params.to);
-  if (params.compare) q.set('compare', 'previous');
-  // Excluded traffic (bots, staff, owner, flagged) is dropped unless asked for (#115, #122).
-  if (params.traffic === 'all') q.set('includeBots', 'true');
-  if (extra) {
-    for (const [key, value] of Object.entries(extra)) q.set(key, value);
-  }
-  return q.toString();
-}

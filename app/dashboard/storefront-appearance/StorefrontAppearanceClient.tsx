@@ -73,8 +73,8 @@ import ProductSectionEditor from './editors/ProductSectionEditor';
 import TrustEditor from './editors/TrustEditor';
 import PagesEditor from './PagesEditor';
 import { HrefTargetField } from './fields/TargetField';
-import Sheet from './fields/Sheet';
-import Switch from './fields/Switch';
+import Sheet from '@/components/dashboard/ui/Sheet';
+import Switch from '@/components/dashboard/ui/Switch';
 import PreviewPane, { type PreviewDevice, type PreviewView } from './PreviewPane';
 import './storefront-editor.css';
 
@@ -978,6 +978,7 @@ export default function StorefrontAppearanceClient() {
 
       {section && (
         <Sheet
+          scopeClassName="sfe"
           wide
           title={
             <span className="sfe-row-top">
@@ -1042,6 +1043,7 @@ export default function StorefrontAppearanceClient() {
 
       {publishOpen && (
         <Sheet
+          scopeClassName="sfe"
           title="Publish to minirueshop.com"
           subtitle={dirty ? `${changedTabs.length} area${changedTabs.length > 1 ? 's' : ''} changed` : 'Cleaning up unfinished items'}
           onClose={() => setPublishOpen(false)}
@@ -1093,7 +1095,7 @@ export default function StorefrontAppearanceClient() {
       )}
 
       {phonePreview && (
-        <Sheet wide title="Preview" subtitle="Unpublished changes included" onClose={() => setPhonePreview(false)}>
+        <Sheet scopeClassName="sfe" wide title="Preview" subtitle="Unpublished changes included" onClose={() => setPhonePreview(false)}>
           <div className="sfe-pv-in-sheet">{preview}</div>
         </Sheet>
       )}

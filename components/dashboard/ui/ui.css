@@ -1,0 +1,209 @@
+/*
+ * Shared dashboard primitives: Sheet and Switch (moved out of the Storefront
+ * editor so Analytics uses the same ones, dashboard#128).
+ *
+ * MOBILE FIRST: the base rules are the phone layout, `min-width` queries add
+ * the tablet/desktop one. Colours come from mr-tokens only. Class names are
+ * `mr-sheet*` / `mr-switch*`, so they never collide with a screen's own scope.
+ */
+
+/* Animate UI: Sheet. Rises from the bottom on phones, slides in from the right from 721px. */
+.mr-sheet-root {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+.mr-sheet-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(11, 11, 11, 0.32);
+}
+.mr-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 92svh;
+  display: flex;
+  flex-direction: column;
+  background: var(--mr-dash-surface);
+  color: var(--mr-fg);
+  border-radius: var(--mr-radius-lg) var(--mr-radius-lg) 0 0;
+  box-shadow: var(--mr-shadow-lg);
+  font: 400 14px/1.5 var(--mr-font-ui);
+}
+.mr-sheet:focus {
+  outline: none;
+}
+.mr-sheet :focus-visible {
+  outline: 2px solid var(--mr-gold-400);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mr-sheet-scrim {
+    animation: mr-sheet-fade 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .mr-sheet {
+    animation: mr-sheet-up 260ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+@keyframes mr-sheet-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes mr-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes mr-sheet-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+.mr-sheet-h {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--mr-dash-hair);
+}
+.mr-sheet-h h2 {
+  margin: 0;
+  font: 600 17px/1.3 var(--mr-font-ui);
+  text-wrap: balance;
+}
+.mr-sheet-h p {
+  margin: 4px 0 0;
+  color: var(--mr-fg-3);
+}
+.mr-sheet-close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--mr-radius-md);
+  background: none;
+  color: var(--mr-fg-2);
+  cursor: pointer;
+}
+.mr-sheet-close:hover {
+  background: var(--mr-cream-200);
+  color: var(--mr-fg);
+}
+.mr-sheet-close svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.75;
+}
+.mr-sheet-b {
+  flex: 1;
+  overflow: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+.mr-sheet-f {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--mr-dash-hair);
+}
+@media (min-width: 721px) {
+  .mr-sheet {
+    top: 0;
+    left: auto;
+    width: min(560px, 100vw);
+    max-height: none;
+    border-radius: 0;
+  }
+  .mr-sheet--narrow {
+    width: min(440px, 100vw);
+  }
+  .mr-sheet--wide {
+    width: min(720px, 100vw);
+  }
+  .mr-sheet-h {
+    padding: 18px 20px 14px;
+  }
+  .mr-sheet-b {
+    padding: 18px 20px;
+  }
+  .mr-sheet-f {
+    padding: 14px 20px calc(14px + env(safe-area-inset-bottom, 0px));
+  }
+}
+@media (min-width: 721px) and (prefers-reduced-motion: no-preference) {
+  .mr-sheet {
+    animation-name: mr-sheet-in;
+  }
+}
+
+/* Switch */
+.mr-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.mr-switch[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.mr-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.mr-switch-track {
+  position: relative;
+  width: 36px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--mr-cream-400);
+  flex: none;
+}
+.mr-switch-track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(11, 11, 11, 0.2);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mr-switch-track,
+  .mr-switch-track::after {
+    transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+.mr-switch input:checked + .mr-switch-track {
+  background: var(--mr-ink-900);
+}
+.mr-switch input:checked + .mr-switch-track::after {
+  transform: translateX(14px);
+}
+.mr-switch input:focus-visible + .mr-switch-track {
+  outline: 2px solid var(--mr-gold-400);
+  outline-offset: 2px;
+}
+.mr-switch-text {
+  min-width: 52px;
+  color: var(--mr-fg-2);
+}

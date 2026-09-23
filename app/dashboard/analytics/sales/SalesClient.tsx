@@ -11,16 +11,7 @@ import type { AnalyticsOverview, RevenuePoint, TopProduct, OrdersFunnel } from '
 import type { ApiError } from '@/lib/api/client';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import AnalyticsSubnav from '@/components/dashboard/AnalyticsSubnav';
-
-function egp(cents: number): string {
-  return `EGP ${(cents / 100).toLocaleString('en-EG', { minimumFractionDigits: 2 })}`;
-}
-function egpShort(cents: number): string {
-  const val = cents / 100;
-  if (val >= 1_000_000) return `EGP ${(val / 1_000_000).toFixed(1)}M`;
-  if (val >= 1_000) return `EGP ${(val / 1_000).toFixed(1)}K`;
-  return egp(cents);
-}
+import { egpExact as egp, egpShort } from '@/lib/analytics/format';
 
 function StatCard({ title, value, sub }: { title: string; value: string; sub?: string }) {
   return (

@@ -1,19 +1,14 @@
-import { redirect } from 'next/navigation';
+import { redirectToSection } from '../_ui/section-redirect';
 
 /**
- * Merged into Visitors (owner, 2026-09-19): every figure that was here is now
- * a set of real visitors there. Old links keep their dates and filters.
+ * Checkout lives in the Flow section of Analytics now (dashboard#128): the
+ * checkout column of every path, with open carts on Overview. Old links keep
+ * their dates.
  */
 export default async function AnalyticsCheckoutPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const sp = await searchParams;
-  const q = new URLSearchParams('stage=checkout_step');
-  for (const [k, v] of Object.entries(sp)) {
-    for (const one of Array.isArray(v) ? v : v === undefined ? [] : [v]) q.append(k, one);
-  }
-  const qs = q.toString();
-  redirect(qs ? `/analytics/visitors?${qs}` : '/analytics/visitors');
+  return redirectToSection(searchParams, 'flow');
 }

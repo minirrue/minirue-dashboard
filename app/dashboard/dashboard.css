@@ -2752,23 +2752,6 @@
 .dash-link-button:disabled { opacity: .5; cursor: default; }
 .dash-link-button:focus-visible { outline: 2px solid var(--mr-gold-500); outline-offset: 2px; border-radius: 2px; }
 
-/* The strip under the Analytics toolbar: facts on the left, one action on the right. */
-.dash-exclusions {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px 24px;
-  margin: 0 0 20px;
-  padding: 12px 16px;
-  border: 1px solid var(--mr-dash-hair);
-  border-radius: var(--mr-radius-md);
-  background: var(--mr-dash-sub);
-}
-.dash-exclusions__facts { display: grid; gap: 6px; min-width: 0; flex: 1 1 320px; }
-.dash-exclusions__facts p { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; font-size: 13px; color: var(--mr-fg-3); }
-.dash-exclusions__facts strong { min-width: 84px; color: var(--mr-fg); font-weight: 600; }
-.dash-exclusions > .dash-inline-error { flex-basis: 100%; margin: 0; }
 
 /* QR panel: code on the left at a size a phone camera reads from a laptop screen. */
 .dash-exclude-device { position: relative; min-width: 0; flex: none; }
@@ -2850,9 +2833,7 @@
   .dash-exclude-device__panel { position: static; width: 100%; margin-top: 10px; grid-template-columns: 1fr; grid-template-areas: 'qr' 'copy' 'row' 'foot'; box-shadow: none; }
   .dash-exclude-device__qr { width: min(200px, 60vw); justify-self: center; }
   .dash-flag-panel__head { flex-direction: column; }
-  .dash-flag-panel__head .dash-btn-secondary,
-  .dash-exclusions .dash-exclude-device > .dash-btn-secondary { width: 100%; justify-content: center; min-height: 44px; }
-  .dash-exclusions .dash-exclude-device { width: 100%; }
+  .dash-flag-panel__head .dash-btn-secondary { width: 100%; justify-content: center; min-height: 44px; }
   .dash-flags-filters__class, .dash-flags-filters__search { max-width: none; flex: 1 1 100%; }
 }
 .dash-status[data-status="in_transit"] {
@@ -5898,10 +5879,6 @@ a.dash-card:focus-visible {
   .dash-analytics-nav__tabs::-webkit-scrollbar { display: none; }
 }
 
-/* Visitor names (dashboard#123): customers by name, everyone else "Visitor #N". */
-.dash-visitor-name { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: inherit; font-weight: 600; text-decoration: none; }
-a.dash-visitor-name:hover { text-decoration: underline; text-underline-offset: 3px; }
-.dash-visitor-name__badge { flex: none; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--mr-gold-500) 20%, transparent); font-size: 10px; font-weight: 700; letter-spacing: .03em; }
 
 /* Scope toolbar on phones: a single summary line until tapped (#115). */
 .dash-analytics-scope__summary { display: none; }

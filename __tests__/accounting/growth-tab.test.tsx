@@ -213,7 +213,7 @@ describe('GrowthTab', () => {
     fireEvent.change(screen.getByLabelText('Campaign'), { target: { value: 'Eid Reels' } });
     expect(
       screen.getByText(
-        'https://minirueshop.com/products/revox-plex?utm_source=facebook&utm_medium=paid_social&utm_campaign=eid-reels',
+        'https://minirueshop.com/products/revox-plex?utm_source=facebook&utm_medium=paid&utm_campaign=eid-reels',
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy link' })).toBeInTheDocument();

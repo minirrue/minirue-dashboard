@@ -49,7 +49,7 @@ export default function RefreshButton({
 
   return (
     <span className="dash-refresh">
-      <button type="button" className="flow-pill-btn dash-refresh__btn" onClick={() => void run()} disabled={busy} title={title} aria-busy={busy}>
+      <button type="button" className="dash-refresh__btn" onClick={() => void run()} disabled={busy} title={title} aria-busy={busy}>
         <span className="dash-refresh__icon" aria-hidden="true" data-spin={busy || undefined}>↻</span>
         {busy ? 'Refreshing…' : label}
       </button>

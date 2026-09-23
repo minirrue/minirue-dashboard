@@ -3,6 +3,7 @@
 import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { withScope } from '@/lib/analytics/range';
 
 /**
  * Analytics & Media navigation (dashboard#90, #115): two tiers.
@@ -34,7 +35,7 @@ const TABS: Tab[] = [
   { label: 'Realtime', href: '/analytics/realtime', match: (p) => p.startsWith('/analytics/realtime') },
   // dashboard#123: every real shopper as one connected flow, down to the person
   // and why they didn't buy. Story Flow merged in here; /analytics/flow redirects.
-  { label: 'Visitors', href: '/analytics/visitors', match: (p) => ['/analytics/visitors', '/analytics/flow', '/analytics/acquisition', '/analytics/checkout'].some((r) => p.startsWith(r)) },
+  { label: 'Visitors', href: '/analytics?section=people', match: (p) => ['/analytics/visitors', '/analytics/flow', '/analytics/acquisition', '/analytics/checkout'].some((r) => p.startsWith(r)) },
   { label: 'Pages', href: '/analytics/pages', match: (p) => p.startsWith('/analytics/pages') },
   { label: 'Products', href: '/analytics/products', match: (p) => p.startsWith('/analytics/products') },
   { label: 'Events', href: '/analytics/events', match: (p) => p.startsWith('/analytics/events') },
@@ -91,18 +92,6 @@ const tabByLabel = (label: string) => TABS.find((t) => t.label === label)!;
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z]+/g, '-').replace(/^-|-$/g, '');
 
 type ScopeParams = { get(key: string): string | null };
-
-/** Keep the range and traffic scope when moving between screens. */
-function withScope(href: string, params: ScopeParams | null): string {
-  if (!params) return href;
-  const keep = new URLSearchParams();
-  for (const key of ['from', 'to', 'compare', 'traffic']) {
-    const v = params.get(key);
-    if (v) keep.set(key, v);
-  }
-  const qs = keep.toString();
-  return qs ? `${href}?${qs}` : href;
-}
 
 /**
  * `useSearchParams` needs a Suspense boundary on statically rendered pages; the
