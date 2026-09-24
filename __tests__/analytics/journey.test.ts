@@ -11,6 +11,8 @@ describe('page types from the shop’s real routes', () => {
     expect(pageKindOfPath('/shop/all', routes)).toBe('category');
     expect(pageKindOfPath('/shop/skincare', routes)).toBe('category');
     expect(pageKindOfPath('/shop/skincare/arencia-retinal-booster-shot', routes)).toBe('product');
+    expect(pageKindOfPath('/bundles', routes)).toBe('category');
+    expect(pageKindOfPath('/bundles/karseell-collagen-hair-mask-argan-oil-set?utm_source=Meta', routes)).toBe('product');
     expect(pageKindOfPath('/cart', routes)).toBe('bag');
     expect(pageKindOfPath('/checkout/delivery', routes)).toBe('checkout');
     expect(pageKindOfPath('/terms', routes)).toBe('page');
@@ -19,6 +21,7 @@ describe('page types from the shop’s real routes', () => {
   it('a /shop slug the catalogue doesn’t have is an unknown path', () => {
     expect(pageKindOfPath('/shop/skincaree', routes)).toBe('unknown');
     expect(pageKindOfPath('/shop/skincare/old-product', routes)).toBe('unknown');
+    expect(pageKindOfPath('/bundles/old/extra', routes)).toBe('unknown');
     // Before the catalogue loads, a well-formed /shop path is trusted.
     expect(pageKindOfPath('/shop/skincaree', null)).toBe('category');
   });
