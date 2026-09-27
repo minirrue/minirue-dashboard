@@ -12,9 +12,9 @@ import { formatOrderRef } from '@/lib/orders/order-format';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
 import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
-import ManualOrderModal from './ManualOrderModal';
 import InternalOrderBadge from '@/components/dashboard/InternalOrderBadge';
 import RowActionsMenu from '@/components/dashboard/RowActionsMenu';
+import DashboardActionBar from '@/components/dashboard/DashboardActionBar';
 
 function formatAmount(amount: string, currency: string): string {
   return `${currency} ${parseFloat(amount).toLocaleString('en-EG', { minimumFractionDigits: 2 })}`;
@@ -194,7 +194,6 @@ export default function OrdersClient() {
   const [error, setError] = useState<string | null>(null);
   const [transitionError, setTransitionError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const [manualOpen, setManualOpen] = useState(false);
   const [channelFilter, setChannelFilter] = useState<'' | 'ONLINE' | 'MANUAL'>('');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -326,9 +325,9 @@ export default function OrdersClient() {
     <>
       <div className="dash-page-header">
         <h1 className="dash-page-title">Orders</h1>
-        <button type="button" className="dash-btn-primary" onClick={() => setManualOpen(true)}>
+        <Link className="dash-btn-primary" href="/orders/new">
           New manual order
-        </button>
+        </Link>
       </div>
 
       <div className="dash-filters">
@@ -397,15 +396,9 @@ export default function OrdersClient() {
         />
       )}
 
-      {manualOpen && (
-        <ManualOrderModal
-          onClose={() => setManualOpen(false)}
-          onCreated={(order) => {
-            setManualOpen(false);
-            setOrders((prev) => [order, ...prev]);
-          }}
-        />
-      )}
+      <DashboardActionBar title="Orders" description="Support and in-person sales">
+        <Link className="dash-btn-primary" href="/orders/new">New manual order</Link>
+      </DashboardActionBar>
     </>
   );
 }
