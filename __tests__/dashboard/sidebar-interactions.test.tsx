@@ -29,7 +29,31 @@ jest.mock('@/components/dashboard/PricingWarningsLink', () => {
 });
 
 describe('collapsible dashboard navigation', () => {
-  beforeEach(() => window.localStorage.clear());
+  beforeEach(() => {
+    window.localStorage.clear();
+    window.matchMedia = jest.fn().mockReturnValue({
+      matches: false, addEventListener: jest.fn(), removeEventListener: jest.fn(),
+    });
+  });
+
+  it('makes the page inert while the drawer is open and restores it on close', () => {
+    const { container, rerender } = render(<div><main className="dash-main"><button>Page action</button></main><DashboardSidebar userRole={Role.STAFF} mobileDrawerOpen /></div>);
+    const main = container.querySelector<HTMLElement>('.dash-main')!;
+    expect(main.inert).toBe(true);
+    rerender(<div><main className="dash-main"><button>Page action</button></main><DashboardSidebar userRole={Role.STAFF} mobileDrawerOpen={false} /></div>);
+    expect(main.inert).toBe(false);
+  });
+
+  it('closes the mobile drawer when the viewport switches to desktop', () => {
+    let onChange: (() => void) | undefined;
+    const media = { matches: false, addEventListener: jest.fn((_type, fn) => { onChange = fn; }), removeEventListener: jest.fn() };
+    window.matchMedia = jest.fn().mockReturnValue(media);
+    const onClose = jest.fn();
+    render(<DashboardSidebar userRole={Role.STAFF} mobileDrawerOpen onMobileDrawerClose={onClose} />);
+    media.matches = true;
+    onChange?.();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 
   it('collapses with Ctrl+B and persists the choice for the signed-in user', async () => {
     const { container, unmount } = render(

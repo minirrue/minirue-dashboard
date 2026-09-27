@@ -79,6 +79,7 @@ export default function UserMenu({ userName = 'Admin', userRole }: UserMenuProps
           </svg>
         </span>
         <span className="dash-user-menu-copy">
+          <span className="dash-user-menu-name">{userName}</span>
           {userRole ? <RoleBadge role={userRole} size="compact" /> : null}
         </span>
         <svg

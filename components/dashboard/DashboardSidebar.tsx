@@ -416,17 +416,22 @@ export default function DashboardSidebar({
   React.useEffect(() => {
     if (!mobileDrawerOpen) return;
     const previousOverflow = document.body.style.overflow;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const main = document.querySelector<HTMLElement>('.dash-main');
+    const previousInert = main?.inert ?? false;
+    if (main) main.inert = true;
     document.body.style.overflow = 'hidden';
     const focusableSelector = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
-    const focusables = Array.from(
+    const getFocusables = () => Array.from(
       drawerRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [],
-    );
-    focusables[0]?.focus();
+    ).filter((element) => !element.closest('[hidden]') && window.getComputedStyle(element).display !== 'none');
+    getFocusables()[0]?.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onMobileDrawerClose?.();
         return;
       }
+      const focusables = getFocusables();
       if (event.key !== 'Tab' || focusables.length === 0) return;
       const first = focusables[0];
       const last = focusables[focusables.length - 1];
@@ -439,10 +444,15 @@ export default function DashboardSidebar({
       }
     };
     document.addEventListener('keydown', handleKeyDown);
+    const desktop = window.matchMedia('(min-width: 761px)');
+    const closeOnDesktop = () => { if (desktop.matches) onMobileDrawerClose?.(); };
+    desktop.addEventListener('change', closeOnDesktop);
     return () => {
+      if (main) main.inert = previousInert;
       document.body.style.overflow = previousOverflow;
       document.removeEventListener('keydown', handleKeyDown);
-      document.querySelector<HTMLElement>('[aria-label="Toggle navigation menu"]')?.focus();
+      desktop.removeEventListener('change', closeOnDesktop);
+      previousFocus?.focus();
     };
   }, [mobileDrawerOpen, onMobileDrawerClose]);
 
@@ -565,13 +575,20 @@ export default function DashboardSidebar({
           <div className="dash-sidebar-group-items" id={groupId} hidden={!groupOpen}>
             {group.items.map((item) => {
               const unread = navUnreadCount(item.href, byCategory);
+              const active = activePath === item.href ||
+                (!hasNestedSibling(item.href) && activePath.startsWith(`${item.href}/`));
+              const accessibleLabel = [item.label,
+                unread > 0 ? `${unread} unread` : '',
+                item.href === '/accounting' && pricingWarnings > 0 ? pricingWarningsLabel(pricingWarnings) : '',
+              ].filter(Boolean).join(', ');
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className="dash-sidebar-link"
-                  aria-label={rail ? item.label : undefined}
-                  title={rail ? item.label : undefined}
+                  aria-label={rail ? accessibleLabel : undefined}
+                  aria-current={active ? 'page' : undefined}
+                  title={rail ? accessibleLabel : undefined}
                   data-tooltip={rail ? item.label : undefined}
                   data-active={
                     activePath === item.href ||
