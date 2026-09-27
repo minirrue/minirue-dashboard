@@ -5,3 +5,8 @@
 @media(min-width:1500px){.ao-entry-grid{grid-template-columns:minmax(0,1.8fr) minmax(330px,1fr)}.ao-products{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px}.ao-product{grid-template-columns:56px minmax(0,1fr)}.ao-product>button{grid-column:2}}
 @media(max-width:479px){.ao-panel{padding:16px}.ao-heading>div{align-items:flex-start;flex-direction:column}.ao-mode button{width:100%}.ao-filters>*{width:100%}.ao-receipt li>strong{font-size:14px}.ao-qr{justify-content:center}.ao-qr>p{text-align:center}.ao-inline-actions>*{width:100%}.ao-phone>span{padding:0 8px;font-size:12px}}
 @media(prefers-reduced-motion:reduce){.ao-spin{animation:none}}
+/* The picker scrolls independently so customer details stay within reach. */
+.ao-products{max-height:min(45dvh,520px);overflow-y:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable;scroll-padding-block:8px;padding-right:6px}
+.ao-products:focus-visible{outline:3px solid #8b723a;outline-offset:4px;border-radius:6px}
+.ao-products::-webkit-scrollbar{width:8px}.ao-products::-webkit-scrollbar-thumb{background:#c5c5cc;border:2px solid white;border-radius:8px}
+@media(min-width:768px){.ao-products{max-height:min(50dvh,520px)}}
