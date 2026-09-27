@@ -370,7 +370,7 @@ export default function PricesTab() {
   const groundCells = (key: string) => {
     const item = groundByKey.get(key);
     return <>
-      <td data-label="Ground price" className="acct-num acct-ground-cell">{item ? <><strong>{formatEgpMinor(item.groundPriceMinor)}</strong><span className="acct-prices-sub">{item.mode === 'SYSTEM' ? 'Linked to online' : 'My Ground price'}</span></> : <span>{groundError ? 'Unavailable' : 'Loading…'}</span>}</td>
+      <td data-label="Ground price" className="acct-num acct-ground-cell">{item ? <><strong>{formatEgpMinor(item.groundPriceMinor)}</strong><span className="acct-prices-sub">{item.mode === 'SYSTEM' ? 'Linked to online' : 'My Ground price'}</span><span className="acct-prices-sub">Current online: {formatEgpMinor(item.onlinePriceMinor)}</span></> : <span>{groundError ? 'Unavailable' : 'Loading…'}</span>}</td>
       <td data-label="Ground margin" className="acct-num acct-ground-cell">{item?.marginBp != null ? formatMargin(item.marginBp) : '—'}</td>
       <td data-label="Edit"><div className="acct-price-actions">{key.startsWith('VARIANT:') ? <button type="button" className="dash-btn-secondary" onClick={event => {event.stopPropagation();setOpenId(key.slice(8));}}>Edit online</button> : <Link className="dash-btn-secondary" href={`/catalogue/bundles/${key.slice(7)}/edit`}>Edit online</Link>}<button type="button" className="dash-btn-secondary" disabled={!item} onClick={event => { event.stopPropagation(); if (item) setGroundEditor(item); }}>Edit Ground</button></div></td>
     </>;
@@ -472,7 +472,7 @@ export default function PricesTab() {
       </header>
 
       {groundError && <div className="acct-ground-notice" role="alert">{groundError} <button type="button" className="dash-btn-secondary" onClick={() => void loadGround()}>Retry Ground prices</button></div>}
-      {ground && <div className="acct-ground-notice"><div><strong>Ground System prices stay linked</strong><p>Default: {ground.rule.type === 'PERCENT' ? `${ground.rule.value / 100}%` : formatEgpMinor(ground.rule.value)} above online. Ground margin uses bought cost only.</p></div><button type="button" className="dash-btn-secondary" onClick={() => setGroundEditor('bulk')}>Edit Ground rule</button></div>}
+      {ground && <div className="acct-ground-notice"><div><strong>Ground System prices stay linked</strong><p>Default: {ground.rule.type === 'PERCENT' ? `${ground.rule.value / 100}%` : formatEgpMinor(ground.rule.value)} above the current online selling price, including automatic offers. The Price column shows the online list price. Ground margin uses bought cost only.</p></div><button type="button" className="dash-btn-secondary" onClick={() => setGroundEditor('bulk')}>Edit Ground rule</button></div>}
 
       <div className="acct-prices-tools" aria-label="Price table controls">
         <label className="acct-prices-search">

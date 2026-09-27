@@ -222,6 +222,19 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe('PricesTab', () => {
+  it('shows the server effective online reference beside Ground pricing when offers differ from list price', async () => {
+    serve(overviewOf([revox]));
+    const existing = mockFetch.getMockImplementation()!;
+    mockFetch.mockImplementation((path: string, init?: RequestInit) => path === '/accounting/ground-prices'
+      ? Promise.resolve({revision:1,rule:{type:'PERCENT',value:1000},items:[{id:revox.variantId,kind:'VARIANT',name:revox.productName,sku:revox.sku,onlinePriceMinor:72810,groundPriceMinor:80091,costMinor:65000,marginBp:1884,mode:'SYSTEM',rule:null}]})
+      : existing(path, init));
+    render(<PricesTab />);
+    const reference = await screen.findByText(/Current online:/);
+    expect(reference.textContent?.replace(/,/g, '')).toContain('728.10');
+    const row = reference.closest('tr')!;
+    expect(row.querySelector('[data-label="Price"]')?.textContent?.replace(/,/g, '')).toContain('809.00');
+    expect(row.querySelector('[data-label="Ground price"]')?.textContent?.replace(/,/g, '')).toContain('800.91');
+  });
   it('joins product covers from the bounded catalogue read and keeps prices usable when thumbnails fail', async () => {
     const product = {
       id: revox.productId,
