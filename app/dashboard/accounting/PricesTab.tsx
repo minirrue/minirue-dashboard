@@ -10,6 +10,11 @@ import { apiAccountingOverview, type AccountingOverview, type PriceFlag } from '
 import { listProducts } from '@/lib/catalog/api';
 import PricingDrawer, { FLAG_LABELS, MODE, formatSignedEgp } from './PricingDrawer';
 import './prices-tab.css';
+import { MenuSelect } from '@/components/dashboard/AnimatedControls';
+import DashboardActionBar from '@/components/dashboard/DashboardActionBar';
+import { getGroundPrices, groundItemKey, undoGroundPrices, type GroundPrices, type GroundPriceItem } from '@/lib/api/ground-pricing';
+import GroundPriceEditor from './GroundPriceEditor';
+import DownScrollHeader from './DownScrollHeader';
 
 function formatMargin(bp: number): string {
   const pct = Math.round(bp / 10) / 10;
@@ -20,17 +25,8 @@ const PAGE_SIZES = [20, 50, 100] as const;
 type PageSize = (typeof PAGE_SIZES)[number];
 type ModeFilter = 'ALL' | 'SYSTEM' | 'MANUAL';
 type FlagFilter = 'ALL' | 'FLAGGED' | 'CLEAR';
-type SortField = 'COST' | 'PRICE' | 'MARGIN' | 'PROFIT';
-type SortValue =
-  | 'DEFAULT'
-  | 'COST_DESC'
-  | 'COST_ASC'
-  | 'MARGIN_DESC'
-  | 'MARGIN_ASC'
-  | 'PRICE_DESC'
-  | 'PRICE_ASC'
-  | 'PROFIT_DESC'
-  | 'PROFIT_ASC';
+type SortField = 'ITEM' | 'MODE' | 'COST' | 'MARKET' | 'FLOOR' | 'PRICE' | 'MARGIN' | 'PROFIT' | 'FLAGS' | 'GROUND' | 'GROUNDMARGIN';
+type SortValue = 'DEFAULT' | `${SortField}_${'ASC' | 'DESC'}`;
 
 const SORT_VALUES: readonly SortValue[] = [
   'DEFAULT',
@@ -42,6 +38,9 @@ const SORT_VALUES: readonly SortValue[] = [
   'PRICE_ASC',
   'PROFIT_DESC',
   'PROFIT_ASC',
+  'ITEM_ASC', 'ITEM_DESC', 'MODE_ASC', 'MODE_DESC', 'MARKET_ASC', 'MARKET_DESC',
+  'FLOOR_ASC', 'FLOOR_DESC', 'FLAGS_ASC', 'FLAGS_DESC', 'GROUND_ASC', 'GROUND_DESC',
+  'GROUNDMARGIN_ASC', 'GROUNDMARGIN_DESC',
 ] as const;
 
 /** desc -> asc -> default, matching the header's own column each time. */
@@ -163,6 +162,23 @@ export default function PricesTab() {
   const pathname = usePathname();
   const params = useSearchParams();
   const [overview, setOverview] = useState<AccountingOverview | null>(null);
+  const [ground, setGround] = useState<GroundPrices | null>(null);
+  const [groundError, setGroundError] = useState('');
+  const [selected, setSelected] = useState<string[]>([]);
+  const [groundEditor, setGroundEditor] = useState<GroundPriceItem | 'bulk' | null>(null);
+  const [undoRun, setUndoRun] = useState<string | null>(null);
+  const [undoBusy, setUndoBusy] = useState(false);
+  const tableRef = useRef<HTMLTableElement>(null);
+  const loadGround = useCallback(async () => {
+    try { setGround(await getGroundPrices()); setGroundError(''); }
+    catch { setGroundError('Ground prices could not load. Online prices are still available.'); }
+  }, []);
+  useEffect(() => {
+    let active = true;
+    getGroundPrices().then(result => { if (active) setGround(result); }).catch(() => { if (active) setGroundError('Ground prices could not load. Online prices are still available.'); });
+    return () => { active = false; };
+  }, []);
+  const groundByKey = useMemo(() => new Map(ground?.items.map(item => [groundItemKey(item), item]) ?? []), [ground]);
   const [coverByProduct, setCoverByProduct] = useState<Record<string, string | null>>({});
   const [error, setError] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -213,7 +229,8 @@ export default function PricesTab() {
   /** After a drawer save: a fresh GET, so the row shows what the backend stored. */
   const refresh = useCallback(async () => {
     setOverview(await apiAccountingOverview());
-  }, []);
+    await loadGround();
+  }, [loadGround]);
 
   const items = useMemo(() => overview?.variants ?? [], [overview]);
   /** Sets (backend#166) list below the variants and open in the bundle editor. */
@@ -248,7 +265,7 @@ export default function PricesTab() {
 
   const sortHeader = useCallback(
     (field: SortField, label: string) => (
-      <th scope="col" className="acct-num" aria-sort={ariaSortFor(sort, field)}>
+      <th scope="col" className={field === 'ITEM' || field === 'MODE' ? undefined : 'acct-num'} aria-sort={ariaSortFor(sort, field)}>
         <button type="button" className="acct-prices-sort-btn" onClick={() => applySort(field)}>
           {label}
           <SortIcon direction={ariaSortFor(sort, field)} />
@@ -285,6 +302,9 @@ export default function PricesTab() {
         price: row.currentPriceMinor,
         profit: row.current.productProfitMinor,
         searchText: `${row.productName} ${row.sku}`.toLowerCase(),
+        name: row.productName, key: `VARIANT:${row.variantId}`,
+        market: row.system.marketMinor, floor: row.system.floors?.noLossShownMinor ?? null,
+        flags: row.system.flags.length,
       })),
       ...sets.map((row) => ({
         kind: 'set' as const,
@@ -296,6 +316,9 @@ export default function PricesTab() {
         price: row.currentPriceMinor,
         profit: row.current.productProfitMinor,
         searchText: row.name.toLowerCase(),
+        name: row.name, key: `BUNDLE:${row.bundleId}`,
+        market: null, floor: row.system?.floors?.noLossShownMinor ?? null,
+        flags: row.warnings.length,
       })),
     ],
     [items, sets],
@@ -311,20 +334,47 @@ export default function PricesTab() {
     );
     if (sort === 'DEFAULT') return next;
     const [field, direction] = sort.split('_') as [SortField, 'ASC' | 'DESC'];
-    const value = (item: (typeof next)[number]) =>
-      field === 'COST' ? item.cost : field === 'MARGIN' ? item.margin : field === 'PRICE' ? item.price : item.profit;
+    const value = (item: (typeof next)[number]): string | number | null => {
+      if (field === 'ITEM') return item.name;
+      if (field === 'MODE') return item.mode;
+      if (field === 'MARKET') return item.market;
+      if (field === 'FLOOR') return item.floor;
+      if (field === 'FLAGS') return item.flags;
+      if (field === 'GROUND') return groundByKey.get(item.key)?.groundPriceMinor ?? null;
+      if (field === 'GROUNDMARGIN') return groundByKey.get(item.key)?.marginBp ?? null;
+      return field === 'COST' ? item.cost : field === 'MARGIN' ? item.margin : field === 'PRICE' ? item.price : item.profit;
+    };
     return next.sort((a, b) => {
       const av = value(a);
       const bv = value(b);
       if (av === null) return bv === null ? 0 : 1;
       if (bv === null) return -1;
-      return direction === 'ASC' ? av - bv : bv - av;
+      const result = typeof av === 'string' && typeof bv === 'string' ? av.localeCompare(bv) : Number(av) - Number(bv);
+      return direction === 'ASC' ? result : -result;
     });
-  }, [allRows, flagFilter, modeFilter, sort, debouncedSearch]);
+  }, [allRows, flagFilter, modeFilter, sort, debouncedSearch, groundByKey]);
 
   const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const pagedRows = filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pageKeys = pagedRows.map(item => item.key).filter(key => groundByKey.has(key));
+  const toggleSelected = (key: string) => setSelected(current => current.includes(key) ? current.filter(value => value !== key) : [...current, key]);
+  const priceHeader = <tr>
+    <th scope="col"><input type="checkbox" aria-label="Select this page for Ground pricing" checked={pageKeys.length > 0 && pageKeys.every(key => selected.includes(key))} disabled={!pageKeys.length} onChange={event => setSelected(current => event.target.checked ? [...new Set([...current, ...pageKeys])] : current.filter(key => !pageKeys.includes(key)))} /></th>
+    {sortHeader('ITEM', 'Item')}{sortHeader('MODE', 'Mode')}{sortHeader('COST', 'Cost')}
+    {sortHeader('MARKET', 'Market')}{sortHeader('FLOOR', 'Law 1 / no-loss floor')}
+    {sortHeader('PRICE', 'Price')}{sortHeader('MARGIN', 'Margin')}{sortHeader('PROFIT', 'Profit')}
+    {sortHeader('FLAGS', 'Flags')}{sortHeader('GROUND', 'Ground price')}{sortHeader('GROUNDMARGIN', 'Ground margin')}
+    <th scope="col">Edit</th>
+  </tr>;
+  const groundCells = (key: string) => {
+    const item = groundByKey.get(key);
+    return <>
+      <td data-label="Ground price" className="acct-num acct-ground-cell">{item ? <><strong>{formatEgpMinor(item.groundPriceMinor)}</strong><span className="acct-prices-sub">{item.mode === 'SYSTEM' ? 'Linked to online' : 'My Ground price'}</span></> : <span>{groundError ? 'Unavailable' : 'Loading…'}</span>}</td>
+      <td data-label="Ground margin" className="acct-num acct-ground-cell">{item?.marginBp != null ? formatMargin(item.marginBp) : '—'}</td>
+      <td data-label="Edit"><div className="acct-price-actions">{key.startsWith('VARIANT:') ? <button type="button" className="dash-btn-secondary" onClick={event => {event.stopPropagation();setOpenId(key.slice(8));}}>Edit online</button> : <Link className="dash-btn-secondary" href={`/catalogue/bundles/${key.slice(7)}/edit`}>Edit online</Link>}<button type="button" className="dash-btn-secondary" disabled={!item} onClick={event => { event.stopPropagation(); if (item) setGroundEditor(item); }}>Edit Ground</button></div></td>
+    </>;
+  };
 
   const changePage = useCallback(
     (next: number) => {
@@ -421,6 +471,9 @@ export default function PricesTab() {
         </p>
       </header>
 
+      {groundError && <div className="acct-ground-notice" role="alert">{groundError} <button type="button" className="dash-btn-secondary" onClick={() => void loadGround()}>Retry Ground prices</button></div>}
+      {ground && <div className="acct-ground-notice"><div><strong>Ground System prices stay linked</strong><p>Default: {ground.rule.type === 'PERCENT' ? `${ground.rule.value / 100}%` : formatEgpMinor(ground.rule.value)} above online. Ground margin uses bought cost only.</p></div><button type="button" className="dash-btn-secondary" onClick={() => setGroundEditor('bulk')}>Edit Ground rule</button></div>}
+
       <div className="acct-prices-tools" aria-label="Price table controls">
         <label className="acct-prices-search">
           <span>Search</span>
@@ -433,99 +486,18 @@ export default function PricesTab() {
             aria-label="Search prices by product, SKU or set name"
           />
         </label>
-        <label>
-          <span>Mode</span>
-          <select
-            value={modeFilter}
-            onChange={(event) => {
-              const value = event.target.value as ModeFilter;
-              setModeFilter(value);
-              setPage(1);
-              updateUrl({ mode: value === 'ALL' ? null : value, page: null });
-            }}
-          >
-            <option value="ALL">All modes</option>
-            <option value="SYSTEM">System price</option>
-            <option value="MANUAL">My price</option>
-          </select>
-        </label>
-        <label>
-          <span>Flags</span>
-          <select
-            value={flagFilter}
-            onChange={(event) => {
-              const value = event.target.value as FlagFilter;
-              setFlagFilter(value);
-              setPage(1);
-              updateUrl({ flags: value === 'ALL' ? null : value, page: null });
-            }}
-          >
-            <option value="ALL">All items</option>
-            <option value="FLAGGED">Needs attention</option>
-            <option value="CLEAR">No flags</option>
-          </select>
-        </label>
-        <label className="acct-prices-sort">
-          <span>Sort</span>
-          <select
-            value={sort}
-            onChange={(event) => {
-              const value = event.target.value as SortValue;
-              setSort(value);
-              setPage(1);
-              updateUrl({ sort: value === 'DEFAULT' ? null : value, page: null });
-            }}
-          >
-            <option value="DEFAULT">Catalogue order</option>
-            <option value="COST_DESC">Cost: highest first</option>
-            <option value="COST_ASC">Cost: lowest first</option>
-            <option value="PRICE_DESC">Price: highest first</option>
-            <option value="PRICE_ASC">Price: lowest first</option>
-            <option value="MARGIN_DESC">Margin: highest first</option>
-            <option value="MARGIN_ASC">Margin: lowest first</option>
-            <option value="PROFIT_DESC">Profit: highest first</option>
-            <option value="PROFIT_ASC">Profit: lowest first</option>
-          </select>
-        </label>
-        <label>
-          <span>Rows</span>
-          <select
-            aria-label="Rows per page"
-            value={pageSize}
-            onChange={(event) => {
-              const value = pageSizeFrom(event.target.value);
-              setPageSize(value);
-              setPage(1);
-              updateUrl({ size: value === 20 ? null : String(value), page: null });
-            }}
-          >
-            {PAGE_SIZES.map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </select>
-        </label>
+        <MenuSelect label="Mode" value={modeFilter} options={[{value:'ALL',label:'All modes'},{value:'SYSTEM',label:'System price'},{value:'MANUAL',label:'My price'}]} onChange={value => { setModeFilter(value); setPage(1); updateUrl({ mode: value === 'ALL' ? null : value, page: null }); }} />
+        <MenuSelect label="Flags" value={flagFilter} options={[{value:'ALL',label:'All items'},{value:'FLAGGED',label:'Needs attention'},{value:'CLEAR',label:'No flags'}]} onChange={value => { setFlagFilter(value); setPage(1); updateUrl({ flags: value === 'ALL' ? null : value, page: null }); }} />
+        <MenuSelect label="Sort" value={sort} options={SORT_VALUES.map(value => ({value,label:value === 'DEFAULT' ? 'Catalogue order' : value.replace('GROUNDMARGIN','Ground margin').replace('_ASC',': lowest first').replace('_DESC',': highest first')}))} onChange={value => { setSort(value); setPage(1); updateUrl({ sort: value === 'DEFAULT' ? null : value, page: null }); }} />
+        <MenuSelect label="Rows per page" value={String(pageSize)} options={PAGE_SIZES.map(size => ({value:String(size),label:String(size)}))} onChange={raw => { const value = pageSizeFrom(raw); setPageSize(value); setPage(1); updateUrl({ size: value === 20 ? null : String(value), page: null }); }} />
       </div>
 
       {items.length === 0 && sets.length === 0 ? (
         <p className="acct-prices-empty">No house products yet. Items you add to the catalogue appear here.</p>
       ) : (
         <div className="dash-table-wrap">
-          <table className="dash-table acct-prices-table" aria-label="Prices">
-            <thead>
-              <tr>
-                <th scope="col">Item</th>
-                <th scope="col">Mode</th>
-                {sortHeader('COST', 'Cost')}
-                <th scope="col" className="acct-num">Market</th>
-                <th scope="col" className="acct-num">Law 1 / no-loss floor</th>
-                {sortHeader('PRICE', 'Price')}
-                {sortHeader('MARGIN', 'Margin')}
-                {sortHeader('PROFIT', 'Profit')}
-                <th scope="col" className="acct-num">Flags</th>
-              </tr>
-            </thead>
+          <table ref={tableRef} className="dash-table acct-prices-table" aria-label="Prices">
+            <thead>{priceHeader}</thead>
             <tbody>
               {pagedRows.map((item) => {
                 if (item.kind === 'variant') {
@@ -538,6 +510,7 @@ export default function PricesTab() {
                 const belowLaw1 = floors !== null && price < floors.law1ShownMinor;
                 return (
                   <tr key={row.variantId} className="acct-prices-row" onClick={() => setOpenId(row.variantId)}>
+                    <td data-label="Select" onClick={event => event.stopPropagation()}><input type="checkbox" aria-label={`Select ${row.productName} for Ground pricing`} disabled={!groundByKey.has(item.key)} checked={selected.includes(item.key)} onChange={() => toggleSelected(item.key)} /></td>
                     <td data-label="Item" className="acct-prices-item">
                       <div className="acct-prices-item-layout">
                         <ProductThumb src={coverByProduct[row.productId]} />
@@ -620,6 +593,7 @@ export default function PricesTab() {
                     <td data-label="Flags" className="acct-num">
                       <FlagCount flags={row.system.flags} />
                     </td>
+                    {groundCells(item.key)}
                   </tr>
                 );
                 }
@@ -639,9 +613,10 @@ export default function PricesTab() {
                     data-kind="set"
                     data-highlight={set.bundleId === highlightSetId ? 'true' : undefined}
                   >
+                    <td data-label="Select"><input type="checkbox" aria-label={`Select ${set.name} for Ground pricing`} disabled={!groundByKey.has(item.key)} checked={selected.includes(item.key)} onChange={() => toggleSelected(item.key)} /></td>
                     <td data-label="Item" className="acct-prices-item">
                       <Link href={`/catalogue/bundles/${set.bundleId}/edit`} className="acct-prices-item-layout">
-                        <span className="acct-prices-thumb acct-prices-thumb-set" aria-hidden="true">Set</span>
+                        <ProductThumb src={coverByProduct[set.members[0]?.productId]} />
                         <span className="acct-prices-item-copy">
                           <span className="acct-prices-name">{set.name}</span>{' '}
                           <span className="acct-prices-detail">
@@ -726,6 +701,7 @@ export default function PricesTab() {
                         </span>
                       )}
                     </td>
+                    {groundCells(item.key)}
                   </tr>
                 );
               })}
@@ -767,6 +743,14 @@ export default function PricesTab() {
           )}
         </div>
       )}
+
+      <DownScrollHeader tableRef={tableRef}>{priceHeader}</DownScrollHeader>
+      <DashboardActionBar title={selected.length ? `${selected.length} selected` : 'Accounting'} description="Ground prices track online prices">
+        {selected.length > 0 && <button className="dash-btn-secondary" type="button" onClick={() => setSelected([])}>Clear selection</button>}
+        {undoRun && <button className="dash-btn-secondary" type="button" disabled={undoBusy} onClick={async () => { setUndoBusy(true); try { setGround(await undoGroundPrices(undoRun)); setUndoRun(null); setGroundError(''); } catch (error) { setGroundError(error instanceof Error ? error.message : 'Could not undo. Reload prices and try again.'); } finally { setUndoBusy(false); } }}>{undoBusy ? 'Undoing…' : 'Undo Ground change'}</button>}
+        <button type="button" className="dash-btn-primary" disabled={!ground} onClick={() => setGroundEditor('bulk')}>Bulk edit Ground</button>
+      </DashboardActionBar>
+      {ground && groundEditor && <GroundPriceEditor overview={ground} item={groundEditor === 'bulk' ? undefined : groundEditor} selected={selected} onClose={() => setGroundEditor(null)} onSaved={(result) => { setGround(result); setUndoRun(result.runId); setGroundError(''); setGroundEditor(null); }} />}
 
       {openRow && (
         <PricingDrawer

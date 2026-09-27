@@ -11,6 +11,10 @@ import type { AccountingOverview, SetRow, VariantRow } from '@/lib/api/accountin
  */
 
 jest.mock('@/lib/api/client', () => ({ apiFetch: jest.fn() }));
+jest.mock('@/components/dashboard/AnimatedControls', () => ({
+  MenuSelect: ({ label, value, options, onChange }: { label: string; value: string; options: {value: string;label: string}[]; onChange: (value: string) => void }) => <select aria-label={label} value={value} onChange={event => onChange(event.target.value)}>{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>,
+  SideSheet: () => null,
+}));
 
 const replace = jest.fn();
 let search = new URLSearchParams();
@@ -180,6 +184,7 @@ function serve(
   let current = first;
   mockFetch.mockImplementation((path: string, init?: RequestInit) => {
     const method = init?.method ?? 'GET';
+    if (path === '/accounting/ground-prices') return Promise.resolve({rule:{type:'PERCENT',value:1000},revision:1,items:[]});
     if (path === '/accounting/overview' && method === 'GET') return Promise.resolve(current);
     if (path.startsWith('/catalog/admin/products') && method === 'GET') {
       return catalogueFails
@@ -212,6 +217,7 @@ beforeEach(() => {
   replace.mockReset();
   search = new URLSearchParams();
   Element.prototype.scrollIntoView = jest.fn();
+  global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
 });
 afterEach(() => cleanup());
 
@@ -300,7 +306,7 @@ describe('PricesTab', () => {
       within(table)
         .getAllByRole('row')
         .slice(1)
-        .map((row) => within(row).getByRole('button').textContent?.match(/REVOX PLEX|Lumen Mist|Atelier Tote/)?.[0]);
+        .map((row) => within(row).getByRole('button', {name:/REVOX PLEX|Lumen Mist|Atelier Tote/}).textContent?.match(/REVOX PLEX|Lumen Mist|Atelier Tote/)?.[0]);
 
     fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'MARGIN_DESC' } });
     expect(itemNames()).toEqual(['REVOX PLEX', 'Lumen Mist', 'Atelier Tote']);
@@ -364,7 +370,7 @@ describe('PricesTab', () => {
         .slice(1)
         .map((row) => within(row).getAllByRole('button')[0].textContent?.match(/REVOX PLEX|Lumen Mist|Atelier Tote/)?.[0]);
 
-    const priceHeader = within(table).getByRole('columnheader', { name: /price/i });
+    const priceHeader = within(table).getByRole('columnheader', { name: /^price$/i });
     expect(priceHeader).toHaveAttribute('aria-sort', 'none');
 
     fireEvent.click(within(priceHeader).getByRole('button', { name: 'Price' }));
@@ -388,7 +394,7 @@ describe('PricesTab', () => {
 
     const table = await screen.findByRole('table', { name: /prices/i });
     const headers = within(table).getAllByRole('columnheader').map((h) => h.textContent);
-    expect(headers).toEqual(['Item', 'Mode', 'Cost', 'Market', 'Law 1 / no-loss floor', 'Price', 'Margin', 'Profit', 'Flags']);
+    expect(headers).toEqual(['', 'Item', 'Mode', 'Cost', 'Market', 'Law 1 / no-loss floor', 'Price', 'Margin', 'Profit', 'Flags', 'Ground price', 'Ground margin', 'Edit']);
 
     const rows = within(table).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(3);

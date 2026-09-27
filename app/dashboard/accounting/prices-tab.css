@@ -754,3 +754,30 @@
     padding-right: 16px;
   }
 }
+
+/* Ground pricing shares the accounting engine, with a separate selling channel. */
+.acct-ground-notice { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; margin:16px 20px; padding:16px 20px; background:#edf4fc; color:#285078; border:1px solid #cfe0f7; border-radius:10px; font-size:14px; }
+.acct-ground-notice p { margin:6px 0 0; line-height:1.5; }
+.acct-ground-cell { background:#f1f6fc; }
+.acct-price-actions { display:flex; gap:8px; flex-wrap:wrap; min-width:120px; }
+.acct-prices-tools .dash-input { min-height:44px; }
+.acct-prices input[type="checkbox"] { width:20px; height:20px; accent-color:#18181b; }
+.acct-floating-header { position:fixed; top:0; z-index:29; overflow:hidden; background:#edf4fc; border-bottom:1px solid #cbd8e5; }
+.acct-floating-header .acct-prices-table { margin:0; min-width:0; }
+.acct-floating-header th { background:#edf4fc; }
+.acct-ground-editor { display:grid; gap:20px; }
+.acct-ground-editor > label:not(.acct-ground-check) { display:grid; gap:8px; font-size:14px; }
+.acct-ground-editor .dash-input { min-height:44px; }
+.acct-ground-check { display:flex; align-items:center; gap:10px; min-height:44px; }
+.acct-ground-error { padding:12px 16px; background:#fff1f1; color:#a32121; border:1px solid #edcccc; border-radius:8px; }
+.acct-ground-changes { display:grid; gap:0; }
+.acct-ground-changes article { display:grid; gap:6px; padding:16px 0; border-bottom:1px solid #e4e4e7; }
+.acct-ground-changes small { color:#60616a; font-size:13px; }
+@media (max-width:640px) {
+ .acct-ground-notice { margin:12px; padding:16px; }
+ .acct-ground-notice > button { width:100%; justify-content:center; }
+ .acct-prices-tools > button { width:100%; justify-content:space-between; }
+ .acct-price-actions { width:100%; }
+ .acct-price-actions > :is(a,button) { flex:1; justify-content:center; }
+ .acct-prices-table td[data-label="Select"] { justify-content:flex-end; }
+}
