@@ -26,6 +26,7 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
+  { label: 'Customer needs', href: '/catalogue/needs', match: (p) => p.startsWith('/catalogue/needs') },
   {
     label: 'Brands',
     href: '/catalogue/brands',
@@ -71,6 +72,7 @@ const ORDER = [
   'Brands',
   'Global variants',
   'Bundles',
+  'Customer needs',
 ];
 
 /**

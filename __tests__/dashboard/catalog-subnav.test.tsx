@@ -21,6 +21,7 @@ describe('CatalogSubnav active tab', () => {
     ['/catalogue/brands', 'Brands'],
     ['/catalogue/global-variants', 'Global variants'],
     ['/catalogue/categories', 'Categories'],
+    ['/catalogue/needs', 'Customer needs'],
     // Tolerant of the app-router path with its /dashboard prefix.
     ['/dashboard/catalogue/brands', 'Brands'],
   ];
@@ -42,6 +43,7 @@ describe('CatalogSubnav active tab', () => {
       'Brands',
       'Global variants',
       'Bundles',
+      'Customer needs',
     ]);
   });
 

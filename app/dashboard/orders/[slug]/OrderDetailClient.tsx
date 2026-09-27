@@ -612,7 +612,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
             </>
           )}
           <p style={{ margin: '4px 0', fontSize: 14, color: 'var(--mr-fg-3)' }}>
-            {order.channel === 'MANUAL'
+            {order.salesMode === 'GROUND' ? 'Bought at Ground · collected in person' : order.salesMode === 'ONLINE' ? 'Assisted online purchase · delivery' : order.channel === 'MANUAL'
               ? 'Registered manually from the dashboard'
               : 'Placed on the storefront'}
           </p>

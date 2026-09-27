@@ -271,7 +271,7 @@ export default function OrdersClient() {
           row.channel === 'MANUAL' ? (
             <span className="dash-status" data-status="processing">
               <span className="dash-status-dot" />
-              Manual
+              {row.salesMode === 'GROUND' ? 'Ground' : row.salesMode === 'ONLINE' ? 'Assisted online' : 'Manual'}
             </span>
           ) : (
             <span style={{ color: 'var(--mr-fg-3)' }}>Storefront</span>

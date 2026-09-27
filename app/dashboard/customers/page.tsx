@@ -1,9 +1,9 @@
-import CustomersClient from './CustomersClient';
+import CustomersWorkspace from './CustomersWorkspace';
 
 export const metadata = {
   title: 'Customers — MiniRue Admin',
 };
 
 export default function CustomersPage() {
-  return <CustomersClient />;
+  return <CustomersWorkspace />;
 }

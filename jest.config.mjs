@@ -27,6 +27,8 @@ const config = {
     '^@/(.*)$': '<rootDir>/$1',
   },
   testMatch: ['**/__tests__/**/*.test.{ts,tsx}'],
+  // Standalone Next builds include a second package.json; do not index output.
+  modulePathIgnorePatterns: ['<rootDir>/.next/'],
   // NOTE: the d3 packages behind the chart kit are ESM-only with a locked
   // `exports` map, so there is no CJS build to fall back to and Jest cannot
   // require them. Setting `transformIgnorePatterns` here does NOT fix it —

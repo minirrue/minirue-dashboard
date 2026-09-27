@@ -99,6 +99,8 @@ export interface Order {
   orderSeq: number;
   userId: string | null;
   channel: OrderChannel;
+  salesMode?: 'GROUND' | 'ONLINE' | null;
+  groundCustomerId?: string | null;
   guestContact: GuestContact | null;
   status: OrderStatus;
   subtotalAmount: string;

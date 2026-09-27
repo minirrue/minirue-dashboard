@@ -43,6 +43,7 @@ export interface LoyaltyCustomerDetailDto extends LoyaltyAccountDto {
 
 export interface LoyaltyRulesDto {
   pointsPerEgp: number;
+  egpPerPoint?: number | null;
   redemptionEnabled: false;
   milestonesEnabled: false;
   milestones: [];

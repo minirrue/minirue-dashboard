@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import CopyButton from '@/components/dashboard/CopyButton';
+import DashboardActionBar from '@/components/dashboard/DashboardActionBar';
 import { ReasonPicker } from '@/components/dashboard/ReasonPicker';
 import RetryingImage from '@/components/dashboard/RetryingImage';
 import {
@@ -154,19 +155,22 @@ function RulesPanel() {
   const { data: user } = useUser();
   const canEdit = user?.role === 'ADMIN' || user?.role === 'SUPERADMIN';
   const [rate, setRate] = useState('2');
+  const [pointValue, setPointValue] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  useEffect(() => { apiAdminGetLoyaltyRules().then((rules) => setRate(String(rules.pointsPerEgp))).catch(() => setMessage('Could not load the current earning rate.')).finally(() => setLoading(false)); }, []);
+  useEffect(() => { apiAdminGetLoyaltyRules().then((rules) => { setRate(String(rules.pointsPerEgp)); setPointValue(rules.egpPerPoint == null ? '' : String(rules.egpPerPoint)); }).catch(() => setMessage('Could not load the current loyalty settings.')).finally(() => setLoading(false)); }, []);
   async function save(event: React.FormEvent) {
     event.preventDefault(); const value = Number(rate);
     if (!Number.isInteger(value) || value < 1 || value > 1000) { setMessage('Enter a whole number from 1 to 1,000.'); return; }
+    const egpPerPoint = pointValue.trim() === '' ? null : Number(pointValue);
+    if (egpPerPoint !== null && (!Number.isFinite(egpPerPoint) || egpPerPoint <= 0)) { setMessage('Enter a positive EGP value per point, or leave it blank.'); return; }
     setSaving(true); setMessage(null);
-    try { await apiUpdateSettings({ loyalty: { pointsPerEgp: value } }); setMessage('Earning rate saved.'); }
+    try { await apiUpdateSettings({ loyalty: { pointsPerEgp: value, egpPerPoint } }); setMessage('Loyalty settings saved.'); }
     catch (err) { setMessage((err as ApiError).message ?? 'Could not save the earning rate.'); }
     finally { setSaving(false); }
   }
-  return <div className="dash-card loyalty-rules"><span className="loyalty-eyebrow">Earning rule</span><h2>Reward every pound spent</h2><p>Points are added only after an order is delivered. Refunds and cancellations reverse the matching points automatically.</p><form onSubmit={save}><span>1 EGP</span><span aria-hidden>→</span><label><span className="loyalty-sr">Points per EGP</span><input className="dash-input" type="number" min="1" max="1000" step="1" value={rate} onChange={(e) => setRate(e.target.value)} disabled={!canEdit || loading} /></label><span>points</span>{canEdit && <button className="dash-btn-primary" disabled={saving || loading}>{saving ? 'Saving…' : 'Save rate'}</button>}</form>{!canEdit && <p className="loyalty-note">You can view this rule. An administrator can change it.</p>}{message && <p className="loyalty-note" role="status">{message}</p>}</div>;
+  return <div className="dash-card loyalty-rules"><h2>Loyalty earning and value</h2><p>Points are added after delivery or confirmed Ground handover. Refunds reverse the matching points.</p><form id="loyalty-rules-form" onSubmit={save}><label>Points earned per EGP<input className="dash-input" type="number" min="1" max="1000" step="1" value={rate} onChange={(e) => setRate(e.target.value)} disabled={!canEdit || loading} /></label><label>EGP value per point<input className="dash-input" type="number" min="0.0001" step="any" placeholder="Not configured" value={pointValue} onChange={(e) => setPointValue(e.target.value)} disabled={!canEdit || loading}/></label></form><p className="loyalty-note">The value appears in customer order reviews. Leave it blank to show points without a monetary equivalent. This does not enable checkout redemption.</p>{!canEdit && <p className="loyalty-note">An administrator can change these settings.</p>}{message && <p className="loyalty-note" role="status">{message}</p>}{canEdit && <DashboardActionBar title="Loyalty settings" description="Used by online and Ground purchase reviews"><button form="loyalty-rules-form" type="submit" className="dash-btn-primary" disabled={saving || loading}>{saving ? 'Saving…' : 'Save settings'}</button></DashboardActionBar>}</div>;
 }
 
 export default function LoyaltyClient() {
