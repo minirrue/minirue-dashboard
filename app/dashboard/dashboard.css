@@ -5950,8 +5950,8 @@ a.dash-card:focus-visible {
 .dash-sidebar-logo { font-size: 34px; }
 .dash-sidebar-subtitle { font-size: 11px; letter-spacing: .18em; color: #60616a; }
 .dash-sidebar-logo-mark { display: none; }
-.dash-sidebar-nav { padding: 12px; overscroll-behavior: contain; scrollbar-gutter: stable; }
-.dash-sidebar-group { animation: none; margin-bottom: 24px; }
+.dash-sidebar-nav { padding: 12px; gap: 20px; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.dash-sidebar-group { animation: none; margin-bottom: 0; flex-shrink: 0; }
 .dash-sidebar-section { min-height: 44px; font-size: 12px; letter-spacing: .08em; color: #60616a; }
 .dash-sidebar-link { min-height: 44px; padding: 10px 12px; font-size: 14px; border-radius: 9px; color: #52525b; }
 .dash-sidebar-link:hover { transform: none; }
