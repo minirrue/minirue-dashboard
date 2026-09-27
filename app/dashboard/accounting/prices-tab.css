@@ -773,6 +773,11 @@
 .acct-ground-changes { display:grid; gap:0; }
 .acct-ground-changes article { display:grid; gap:6px; padding:16px 0; border-bottom:1px solid #e4e4e7; }
 .acct-ground-changes small { color:#60616a; font-size:13px; }
+@media (min-width:641px) {
+ .acct-prices-table { min-width:1900px; }
+ .acct-prices-table th:nth-child(2), .acct-prices-table td.acct-prices-item { min-width:290px; width:290px; }
+ .acct-prices-item-layout { min-width:258px; }
+}
 @media (max-width:640px) {
  .acct-ground-notice { margin:12px; padding:16px; }
  .acct-ground-notice > button { width:100%; justify-content:center; }
