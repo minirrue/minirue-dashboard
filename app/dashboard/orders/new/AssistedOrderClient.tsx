@@ -20,6 +20,11 @@ const errorMessage = (error: unknown, fallback: string) => {
   return typeof message === 'string' && message.length < 400 ? message : fallback;
 };
 type BasketLine = { item: AssistedCatalogItem; qty: number };
+const itemPrice = (item: AssistedCatalogItem, mode: SalesMode): number | null => mode === 'GROUND' ? item.groundPriceMinor : item.onlinePriceMinor;
+const displayItemPrice = (item: AssistedCatalogItem, mode: SalesMode) => {
+  const price = itemPrice(item, mode);
+  return price == null ? 'Ground price unavailable' : money(price);
+};
 
 export default function AssistedOrderClient() {
   const router = useRouter();
@@ -80,6 +85,10 @@ export default function AssistedOrderClient() {
       getAssistedCatalog({ q: query.trim(), concernId: need || undefined, page }).then(result => {
         if (!active) return;
         setCatalog(old => page === 1 ? result.data : [...old, ...result.data]);
+        setBasket(current => current.map(line => {
+          const fresh = result.data.find(item => item.id === line.item.id);
+          return fresh ? { ...line, item: fresh } : line;
+        }));
         setHasMore(result.hasMore);
       }).catch(e => { if (active) setCatalogError(errorMessage(e, 'Products could not load. Try again.')); }).finally(() => { if (active) setCatalogBusy(false); });
     }, 200);
@@ -102,11 +111,12 @@ export default function AssistedOrderClient() {
   }, [customerUrl]);
 
   function changeQty(item: AssistedCatalogItem, delta: number) {
+    if (delta > 0 && itemPrice(item, mode) == null) return;
     setBasket(current => {
       const existing = current.find(line => line.item.id === item.id);
       const next = Math.max(0, Math.min(item.availableStock, (existing?.qty ?? 0) + delta));
       if (!next) return current.filter(line => line.item.id !== item.id);
-      return existing ? current.map(line => line.item.id === item.id ? { ...line, qty: next } : line) : [...current, { item, qty: next }];
+      return existing ? current.map(line => line.item.id === item.id ? { item, qty: next } : line) : [...current, { item, qty: next }];
     });
   }
 
@@ -117,11 +127,12 @@ export default function AssistedOrderClient() {
       const normalized = normalizeAssistedPhone(phone);
       if (!normalized) { setError('Enter a valid Egyptian mobile number, for example 01012431350.'); document.getElementById('assisted-phone')?.focus(); return; }
       if (!firstName.trim() || !basket.length) { setError('Add the customer’s first name and at least one item.'); return; }
+      if (basket.some(({ item }) => itemPrice(item, mode) == null)) { setError('A Ground price is unavailable. Remove that item or ask an admin to set its price before reviewing.'); return; }
       pendingQuote.current = {
         idempotencyKey: crypto.randomUUID(), salesMode: mode,
         customer: { firstName: firstName.trim(), lastName: lastName.trim() || undefined, phone: normalized, email: email.trim() || undefined },
         items: basket.map(({ item, qty }) => (item.kind === 'BUNDLE' ? { bundleId: item.bundleId!, qty } : { variantId: item.variantId!, qty })),
-        paymentMethod: payment, notes: notes.trim() || undefined,
+        paymentMethod: payment, notes: notes.trim() || undefined, concernId: need || undefined,
         ...(mode === 'ONLINE' ? { shippingAddress: { line1: line1.trim(), city: city.trim(), governorate: governorate.trim() } } : {}),
       };
     }
@@ -172,8 +183,9 @@ export default function AssistedOrderClient() {
       setFirstName(review.customer.firstName); setLastName(review.customer.lastName ?? ''); setPhone(assistedPhoneLocal(review.customer.phone)); setEmail(review.customer.email ?? ''); setMode(review.salesMode);
       if (review.paymentMethod) setPayment(review.paymentMethod);
       setNotes(review.notes ?? '');
+      setNeed(review.concern?.id ?? '');
       if (review.shippingAddress) { setLine1(review.shippingAddress.line1); setCity(review.shippingAddress.city); setGovernorate(review.shippingAddress.governorate); }
-      if (!basket.length) setBasket(review.items.map(item => ({ item: { id: item.id, kind: item.kind, bundleId: item.bundleId, variantId: item.variantId, productId: null, name: item.name, sku: item.sku, sizeMl: item.sizeMl, onlinePriceMinor: item.unitPriceMinor, groundPriceMinor: item.unitPriceMinor, availableStock: item.quantity, imageUrl: item.imageUrl }, qty: item.quantity })));
+      if (!basket.length) setBasket(review.items.map(item => ({ item: { id: item.id, kind: item.kind, bundleId: item.bundleId, variantId: item.variantId, productId: null, name: item.name, sku: item.sku, sizeMl: item.sizeMl, onlinePriceMinor: item.unitPriceMinor, groundPriceMinor: review.salesMode === 'GROUND' ? item.unitPriceMinor : null, availableStock: item.quantity, imageUrl: item.imageUrl }, qty: item.quantity })));
       setReview(null); pendingQuote.current = null; setPaid(false); setHanded(false); setQr('');
       router.replace('/orders/new');
     } catch (e) { setError(errorMessage(e, 'The review could not be replaced. Check its status before trying again.')); }
@@ -191,7 +203,9 @@ export default function AssistedOrderClient() {
     } catch { setError('The receipt could not be read. Choose the image again.'); }
     finally { setReceiptBusy(false); }
   }
-  const estimated = basket.reduce((sum, { item, qty }) => sum + qty * (mode === 'GROUND' ? item.groundPriceMinor : item.onlinePriceMinor), 0);
+  const missingPrice = basket.some(({ item }) => itemPrice(item, mode) == null);
+  const estimated = missingPrice ? null : basket.reduce((sum, { item, qty }) => sum + qty * (itemPrice(item, mode) ?? 0), 0);
+  const estimateLabel = estimated == null ? 'Price unavailable' : money(estimated);
   const done = review?.status === 'COMPLETED';
   const expired = review?.status === 'EXPIRED';
   const locked = busy || quoteUncertain;
@@ -223,15 +237,15 @@ export default function AssistedOrderClient() {
           {catalogError && <div className="ao-alert" role="alert">{catalogError}<button type="button" className="dash-btn-ghost" onClick={() => setReload(n => n + 1)}>Retry</button></div>}
           {catalogBusy && <p role="status" className="ao-hint">Loading products…</p>}
           {!catalogBusy && !catalogError && !catalog.length && <p className="ao-empty">No products match this search. Try a different name or customer need.</p>}
-          <div className="ao-products">{catalog.map(item => { const qty = basket.find(line => line.item.id === item.id)?.qty ?? 0; return <article className="ao-product" key={item.id}><ProductImage src={item.imageUrl}/><div><h3>{item.name}</h3><p>{item.sizeMl ? `${item.sizeMl} ml · ` : ''}{item.sku}</p><strong>{money(mode === 'GROUND' ? item.groundPriceMinor : item.onlinePriceMinor)}</strong><span>{item.availableStock > 0 ? `${item.availableStock} available` : 'Out of stock'}</span></div><button type="button" className="dash-btn-secondary" disabled={qty >= item.availableStock} onClick={() => changeQty(item, 1)} aria-label={`Add ${item.name}`}><Plus size={17}/>{qty ? `Add (${qty})` : 'Add'}</button></article>; })}</div>
+          <div className="ao-products">{catalog.map(item => { const qty = basket.find(line => line.item.id === item.id)?.qty ?? 0; return <article className="ao-product" key={item.id}><ProductImage src={item.imageUrl}/><div><h3>{item.name}</h3><p>{item.sizeMl ? `${item.sizeMl} ml · ` : ''}{item.sku}</p><strong>{displayItemPrice(item, mode)}</strong><span>{item.availableStock > 0 ? `${item.availableStock} available` : 'Out of stock'}</span></div><button type="button" className="dash-btn-secondary" disabled={qty >= item.availableStock || itemPrice(item, mode) == null} onClick={() => changeQty(item, 1)} aria-label={`Add ${item.name}`}><Plus size={17}/>{qty ? `Add (${qty})` : 'Add'}</button></article>; })}</div>
           {hasMore && <button type="button" className="dash-btn-secondary" disabled={catalogBusy} onClick={() => setPage(n => n + 1)}>Load more products</button>}
         </section><section className="ao-panel"><h2>Customer details</h2><p className="ao-hint">First name and mobile identify this customer. Email is optional.</p><div className="ao-fields"><label className="ao-field">First name<input className="dash-input" required autoComplete="given-name" maxLength={80} value={firstName} onChange={e => setFirstName(e.target.value)}/></label><label className="ao-field">Last name <span>Optional</span><input className="dash-input" autoComplete="family-name" maxLength={80} value={lastName} onChange={e => setLastName(e.target.value)}/></label><label className="ao-field">Mobile number<div className="ao-phone"><span>Egypt +20</span><input id="assisted-phone" required type="tel" autoComplete="tel-national" inputMode="tel" placeholder="1012431350" value={phone} onBlur={() => setPhone(assistedPhoneLocal(phone))} onChange={e => setPhone(e.target.value)}/></div><small>Accepts 01012431350 or 1012431350.</small></label><label className="ao-field">Email <span>Optional</span><input className="dash-input" type="email" autoComplete="email" maxLength={254} value={email} onChange={e => setEmail(e.target.value)}/></label></div>
           {mode === 'ONLINE' && <div className="ao-address"><h3>Delivery address</h3><label className="ao-field">Street address<input className="dash-input" required value={line1} onChange={e => setLine1(e.target.value)} autoComplete="address-line1"/></label><div className="ao-fields"><label className="ao-field">City<input className="dash-input" required value={city} onChange={e => setCity(e.target.value)} autoComplete="address-level2"/></label><label className="ao-field">Governorate<input className="dash-input" required value={governorate} onChange={e => setGovernorate(e.target.value)} autoComplete="address-level1"/></label></div></div>}
-        </section></div><aside className="ao-basket-area"><section className="ao-panel"><h2>Order items</h2>{!basket.length ? <div className="ao-empty"><Package size={28}/><p>Add the products this customer wants.</p></div> : <ul className="ao-basket">{basket.map(({ item, qty }) => <li key={item.id}><div><strong>{item.name}</strong><span>{money(mode === 'GROUND' ? item.groundPriceMinor : item.onlinePriceMinor)} each</span></div><div className="ao-quantity"><button type="button" aria-label={`Decrease ${item.name}`} onClick={() => changeQty(item, -1)}><Minus size={16}/></button><output>{qty}</output><button type="button" aria-label={`Increase ${item.name}`} disabled={qty >= item.availableStock} onClick={() => changeQty(item, 1)}><Plus size={16}/></button><button type="button" aria-label={`Remove ${item.name}`} onClick={() => setBasket(current => current.filter(line => line.item.id !== item.id))}><Trash2 size={16}/></button></div></li>)}</ul>}
-          <dl className="ao-totals"><div className="ao-total"><dt>Items estimate</dt><dd>{money(estimated)}</dd></div></dl><p className="ao-hint">{mode === 'GROUND' ? 'Ground prices · no shipping charge.' : 'Online prices. Delivery is calculated in the review.'} Final prices and availability are checked before confirmation.</p>
+        </section></div><aside className="ao-basket-area"><section className="ao-panel"><h2>Order items</h2>{!basket.length ? <div className="ao-empty"><Package size={28}/><p>Add the products this customer wants.</p></div> : <ul className="ao-basket">{basket.map(({ item, qty }) => <li key={item.id}><div><strong>{item.name}</strong><span>{displayItemPrice(item, mode)} each</span></div><div className="ao-quantity"><button type="button" aria-label={`Decrease ${item.name}`} onClick={() => changeQty(item, -1)}><Minus size={16}/></button><output>{qty}</output><button type="button" aria-label={`Increase ${item.name}`} disabled={qty >= item.availableStock || itemPrice(item, mode) == null} onClick={() => changeQty(item, 1)}><Plus size={16}/></button><button type="button" aria-label={`Remove ${item.name}`} onClick={() => setBasket(current => current.filter(line => line.item.id !== item.id))}><Trash2 size={16}/></button></div></li>)}</ul>}
+          <dl className="ao-totals"><div className="ao-total"><dt>Items estimate</dt><dd>{estimateLabel}</dd></div></dl><p className="ao-hint">{mode === 'GROUND' ? 'Ground prices · no shipping charge.' : 'Online prices. Delivery is calculated in the review.'} Final prices and availability are checked before confirmation.</p>
         </section><section className="ao-panel"><h2>Payment and notes</h2><MenuSelect label="Payment" value={payment} options={[{ value: 'CASH', label: 'Cash' }, { value: 'INSTAPAY', label: 'InstaPay transfer' }, { value: 'CARD', label: 'Card · collected by staff' }]} onChange={setPayment}/><label className="ao-field">Staff notes <span>Optional</span><textarea className="dash-input" rows={3} maxLength={2000} value={notes} onChange={e => setNotes(e.target.value)}/></label></section></aside></div>
       </fieldset>
-      <DashboardActionBar title={money(estimated)} description={`${basket.reduce((n, line) => n + line.qty, 0)} items · ${mode === 'GROUND' ? 'Ground' : 'Online'}`}><Link href="/orders" className="dash-btn-secondary">Back to Orders</Link>{quoteUncertain ? <button type="button" className="dash-btn-primary" disabled={busy} onClick={() => create()}>{busy ? 'Recovering review…' : 'Retry same review'}</button> : <button type="submit" form="assisted-entry" className="dash-btn-primary" disabled={busy || !basket.length}>{busy ? <LoaderCircle className="ao-spin" size={18}/> : <Eye size={18}/>} {busy ? 'Preparing review…' : 'Review with customer'}</button>}</DashboardActionBar>
+      <DashboardActionBar title={estimateLabel} description={`${basket.reduce((n, line) => n + line.qty, 0)} items · ${mode === 'GROUND' ? 'Ground' : 'Online'}`}><Link href="/orders" className="dash-btn-secondary">Back to Orders</Link>{quoteUncertain ? <button type="button" className="dash-btn-primary" disabled={busy} onClick={() => create()}>{busy ? 'Recovering review…' : 'Retry same review'}</button> : <button type="submit" form="assisted-entry" className="dash-btn-primary" disabled={busy || !basket.length || missingPrice}>{busy ? <LoaderCircle className="ao-spin" size={18}/> : <Eye size={18}/>} {busy ? 'Preparing review…' : 'Review with customer'}</button>}</DashboardActionBar>
     </form>}
   </div>;
 }

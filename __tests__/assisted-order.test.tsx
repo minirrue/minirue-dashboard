@@ -38,6 +38,20 @@ test('creates a bundle review with normalized mobile and never completes a purch
   expect(await screen.findByText('Not signed up')).toBeInTheDocument();
 });
 
+test('missing Ground price is unavailable rather than free and cannot be added', async () => {
+  jest.mocked(getAssistedCatalog).mockResolvedValue({ data: [{ id: 'unpriced', kind: 'VARIANT', variantId: 'unpriced', bundleId: null, productId: 'p1', name: 'Unpriced item', sku: null, sizeMl: null, onlinePriceMinor: 50000, groundPriceMinor: null, availableStock: 2, imageUrl: null }], page: 1, hasMore: false });
+  render(<AssistedOrderClient />);
+  expect(await screen.findByText('Ground price unavailable')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Add Unpriced item' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Online · delivery' }));
+  expect(screen.getByRole('button', { name: 'Add Unpriced item' })).toBeEnabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Add Unpriced item' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Ground · collect in person' }));
+  expect(screen.getByRole('button', { name: 'Review with customer' })).toBeDisabled();
+  expect(screen.getAllByText('Price unavailable').length).toBeGreaterThan(0);
+  expect(createAssistedReview).not.toHaveBeenCalled();
+});
+
 test('ambiguous completion checks status and never issues a duplicate completion', async () => {
   savedReview = 'review-1';
   jest.mocked(completeAssistedReview).mockRejectedValue(new Error('lost response'));
