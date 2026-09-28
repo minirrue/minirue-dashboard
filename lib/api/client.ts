@@ -6,7 +6,14 @@ export interface ApiError {
   error?: string;
 }
 
-const BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8002') + '/v1';
+/** Browser calls use the dashboard's own proxy; server rendering keeps its backend origin. */
+export function getApiOrigin(): string {
+  return typeof window === 'undefined'
+    ? (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8002').replace(/\/+$/, '')
+    : window.location.origin;
+}
+
+const BASE = getApiOrigin() + '/v1';
 
 /** Exported for the one call that has to bypass apiFetch — see apiStopActingAs. */
 export const API_BASE = BASE;

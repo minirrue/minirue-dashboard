@@ -1,4 +1,4 @@
-import { apiFetch } from './client';
+import { apiFetch, getApiOrigin } from './client';
 
 /**
  * The truth layer (dashboard#111, #90 S1): an admin's verdict on who counts
@@ -84,6 +84,5 @@ export const TRAFFIC_CLASS_COPY: Record<TrafficClass, { label: string; short: st
 
 /** API origin the storefront beacons use, so a device link opens on the same host. */
 export function apiOrigin(): string {
-  const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8002';
-  return base.replace(/\/+$/, '');
+  return getApiOrigin();
 }

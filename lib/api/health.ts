@@ -11,7 +11,9 @@
  * polling it cannot get the dashboard rate-limited.
  */
 
-const HEALTH_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8002') + '/health';
+import { getApiOrigin } from './client';
+
+const HEALTH_URL = getApiOrigin() + '/health';
 
 export type ServerHealth = 'online' | 'degraded' | 'offline';
 
