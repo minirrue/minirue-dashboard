@@ -8,9 +8,13 @@ export interface ApiError {
 
 /** Browser calls use the dashboard's own proxy; server rendering keeps its backend origin. */
 export function getApiOrigin(): string {
-  return typeof window === 'undefined'
-    ? (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8002').replace(/\/+$/, '')
-    : window.location.origin;
+  if (typeof window !== 'undefined') return window.location.origin;
+  return (
+    process.env.API_PROXY_ORIGIN ??
+    (process.env.VERCEL_ENV === 'preview'
+      ? 'https://pre-backend.minirueshop.com'
+      : process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8002')
+  ).replace(/\/+$/, '');
 }
 
 const BASE = getApiOrigin() + '/v1';
