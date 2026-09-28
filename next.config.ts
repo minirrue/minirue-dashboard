@@ -97,7 +97,17 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
+    // Keep API calls on the dashboard origin while forwarding server-side.
+    // Use API_PROXY_ORIGIN per deployment; preview defaults to pre-backend.
+    const apiOrigin = (
+      process.env.API_PROXY_ORIGIN ??
+      (process.env.VERCEL_ENV === "preview"
+        ? "https://pre-backend.minirueshop.com"
+        : "https://backend.minirueshop.com")
+    ).replace(/\/$/, "");
     return [
+      { source: "/v1/:path*", destination: `${apiOrigin}/v1/:path*` },
+      { source: "/health", destination: `${apiOrigin}/health` },
       { source: "/overview", destination: "/dashboard" },
       // Catalogue: one /catalogue parent, slash sub-tabs. The app-router files
       // stay under /dashboard/products and /dashboard/categories; only the

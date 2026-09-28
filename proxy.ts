@@ -5,6 +5,11 @@ const PUBLIC = ['/login']
 
 export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
+  // API calls are authenticated by the backend. The dashboard page guard must
+  // not redirect same-origin `/v1` requests before the external rewrite runs.
+  if (pathname === '/v1' || pathname.startsWith('/v1/') || pathname === '/health') {
+    return NextResponse.next()
+  }
   const isPublic = PUBLIC.some(p => pathname.startsWith(p))
   const isAuthed = request.cookies.has(AUTH_COOKIE)
 
