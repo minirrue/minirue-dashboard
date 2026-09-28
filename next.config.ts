@@ -181,6 +181,8 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       // Our own storage. Without these, next/image returns 400 for every
       // product/gallery/support image the API resolves.
+      { protocol: "https", hostname: "backend.minirueshop.com" },
+      { protocol: "https", hostname: "pre-backend.minirueshop.com" },
       { protocol: "https", hostname: "img.minirueshop.com" },
       { protocol: "https", hostname: "storage.minirueshop.com" },
       { protocol: "https", hostname: "picsum.photos" },
