@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import AssistedOrderClient from '@/app/dashboard/orders/new/AssistedOrderClient';
 import { completeAssistedReview, createAssistedReview, getAssistedCatalog, getAssistedReview, getCustomerNeeds, type AssistedReview } from '@/lib/api/assisted-sales';
+import { assistedReviewOrigin } from '@/lib/storefront/origin';
 
 let savedReview: string | null = null;
 const replace = jest.fn();
@@ -25,6 +26,12 @@ beforeEach(() => {
   jest.mocked(getAssistedCatalog).mockResolvedValue({ data: [{ id: 'bundle-1', kind: 'BUNDLE', bundleId: 'bundle-1', variantId: null, productId: null, name: 'Hair set', sku: 'SET', sizeMl: null, onlinePriceMinor: 140000, groundPriceMinor: 149900, availableStock: 3, imageUrl: null }], page: 1, hasMore: false });
   jest.mocked(getAssistedReview).mockResolvedValue(review);
   jest.mocked(createAssistedReview).mockResolvedValue(review);
+});
+
+test('customer review links stay in the matching preview or production environment', () => {
+  expect(assistedReviewOrigin('pre-dashboard.minirueshop.com')).toBe('https://pre.minirueshop.com');
+  expect(assistedReviewOrigin('dashboard.minirueshop.com')).toBe('https://minirueshop.com');
+  expect(assistedReviewOrigin('localhost')).toBe('https://minirueshop.com');
 });
 
 test('creates a bundle review with normalized mobile and never completes a purchase from the form', async () => {

@@ -8,7 +8,7 @@ import { ArrowLeft, Check, Copy, Eye, LoaderCircle, Minus, Package, Plus, Search
 import QRCode from 'qrcode';
 import DashboardActionBar from '@/components/dashboard/DashboardActionBar';
 import { MenuSelect } from '@/components/dashboard/AnimatedControls';
-import { storefrontOrigin } from '@/lib/storefront/origin';
+import { assistedReviewOrigin } from '@/lib/storefront/origin';
 import { assistedPhoneLocal, normalizeAssistedPhone } from '@/lib/orders/assisted-phone';
 import { cancelAssistedReview, completeAssistedReview, createAssistedReview, getAssistedCatalog, getAssistedReview, getCustomerNeeds, type AssistedCatalogItem, type AssistedReview, type CreateAssistedReview, type CustomerNeed, type SalesMode } from '@/lib/api/assisted-sales';
 import './assisted-order.css';
@@ -102,7 +102,7 @@ export default function AssistedOrderClient() {
     return () => { active = false; };
   }, [reviewId, review?.id, reload]);
 
-  const customerUrl = review ? `${storefrontOrigin()}${review.reviewPath}` : '';
+  const customerUrl = review ? `${assistedReviewOrigin()}${review.reviewPath}` : '';
   useEffect(() => {
     if (!customerUrl) return;
     let active = true;

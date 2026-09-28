@@ -13,4 +13,11 @@ export function storefrontOrigin(): string {
   return STOREFRONT_PRODUCTION_ORIGIN;
 }
 
+/** A review token belongs to the same environment that issued it. */
+export function assistedReviewOrigin(hostname = typeof window === 'undefined' ? '' : window.location.hostname): string {
+  return hostname === 'pre-dashboard.minirueshop.com'
+    ? 'https://pre.minirueshop.com'
+    : STOREFRONT_PRODUCTION_ORIGIN;
+}
+
 export const DRAFT_PREVIEW_PATH = '/_internal/draft-preview';
