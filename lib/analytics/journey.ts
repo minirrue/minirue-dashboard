@@ -7,8 +7,8 @@ import { landingKey } from './source';
  *
  * Page types come from the step's own event first (a `product_view` is a
  * product whatever its URL), then from the shop's real routes: `/`, `/shop`,
- * `/shop/all`, `/shop/<category>`, `/shop/<category>/<product>`. When the
- * catalogue is known, a `/shop/…` slug it does not contain is an unknown path
+ * `/shop/all`, `/shop/<category>`, `/shop/<category>/<product>`, and bundles.
+ * When the catalogue is known, a `/shop/…` slug it does not contain is an unknown path
  * (a typo or an old link), still counted as a visit.
  */
 
@@ -53,6 +53,8 @@ export function pageKindOfPath(rawPath: string | null | undefined, routes?: Know
   if (/^\/(cart|bag)(\/|$)/.test(path)) return 'bag';
   if (/^\/checkout(\/|$)/.test(path)) return 'checkout';
   if (path === '/shop' || path === '/shop/all' || path === '/products') return 'category';
+  if (path === '/bundles') return 'category';
+  if (/^\/bundles\/[^/]+$/.test(path)) return 'product';
   const m = /^\/shop\/([^/]+)(?:\/([^/]+))?$/.exec(path);
   if (m) {
     const [, cat, prod] = m;
