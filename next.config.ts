@@ -188,7 +188,18 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
+    // Dev only (#144): the local backend resolves media to
+    // http://localhost:8002/v1/media/…, which next/image rejects in `next dev`,
+    // and Next's optimizer refuses an upstream on a private IP unless told
+    // otherwise. Production gets neither: its `images` config is unchanged.
+    ...(isProd ? {} : { dangerouslyAllowLocalIP: true }),
     remotePatterns: [
+      ...(isProd
+        ? []
+        : [
+            { protocol: "http" as const, hostname: "localhost" },
+            { protocol: "http" as const, hostname: "127.0.0.1" },
+          ]),
       // Our own storage. Without these, next/image returns 400 for every
       // product/gallery/support image the API resolves.
       { protocol: "https", hostname: "backend.minirueshop.com" },
