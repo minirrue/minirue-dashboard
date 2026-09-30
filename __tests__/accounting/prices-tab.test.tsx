@@ -10,7 +10,9 @@ import type { AccountingOverview, SetRow, VariantRow } from '@/lib/api/accountin
  * wire bodies are asserted against the backend DTOs.
  */
 
-jest.mock('@/lib/api/client', () => ({ apiFetch: jest.fn() }));
+// Keep the client's other exports real: the sidebar imported below reaches
+// lib/api/health.ts, which calls getApiOrigin() when it loads (#134).
+jest.mock('@/lib/api/client', () => ({ ...jest.requireActual('@/lib/api/client'), apiFetch: jest.fn() }));
 jest.mock('@/components/dashboard/AnimatedControls', () => ({
   MenuSelect: ({ label, value, options, onChange }: { label: string; value: string; options: {value: string;label: string}[]; onChange: (value: string) => void }) => <select aria-label={label} value={value} onChange={event => onChange(event.target.value)}>{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>,
   SideSheet: () => null,
