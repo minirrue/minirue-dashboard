@@ -2,7 +2,14 @@ import { apiFetch } from './client';
 
 export type GiveawayPool = 'BOOTH' | 'ONLINE';
 export type GiveawayPublicState = 'OFF' | 'OPEN' | 'DRAWN' | 'PENDING_DRAW' | 'NO_ENTRIES' | 'REVEALED';
-export type GiveawayAuditAction = 'CREATE' | 'UPDATE' | 'ENABLE' | 'DISABLE' | 'DRAW' | 'PICK' | 'RESET' | 'VOID' | 'HIDE' | 'SHOW';
+/**
+ * EXCLUDE and INCLUDE log an entrant taken out of the draw or put back.
+ * Open-ended, so an action a newer backend adds still renders.
+ */
+export type GiveawayAuditAction =
+  | 'CREATE' | 'UPDATE' | 'ENABLE' | 'DISABLE' | 'DRAW' | 'PICK' | 'RESET' | 'VOID' | 'HIDE' | 'SHOW'
+  | 'EXCLUDE' | 'INCLUDE'
+  | (string & {});
 
 export interface GiveawayPutBody {
   enabled: boolean;
@@ -10,13 +17,22 @@ export interface GiveawayPutBody {
   countShipping: boolean;
   revealTime: string;
   title: string;
+  /**
+   * A catalogue product as the prize, or null for a custom prize. With a
+   * product, an empty title or description and a null image fall back to the
+   * product's own name, description and cover; anything set here wins.
+   */
+  prizeProductId: string | null;
   prizeTitle: string;
   prizeDescription: string;
   prizeGalleryItemId: string | null;
   terms: string;
 }
 
-export interface GiveawayConfig extends GiveawayPutBody {
+/** Settings as the server returns them. `prizeProductId` is absent on a backend older than giveaway v2. */
+export type GiveawaySettings = Omit<GiveawayPutBody, 'prizeProductId'> & { prizeProductId?: string | null };
+
+export interface GiveawayConfig extends GiveawaySettings {
   id: string;
   pool: GiveawayPool;
   day: string;
@@ -41,18 +57,22 @@ export interface GiveawayEntrant {
   email: string | null;
   totalMinor: number;
   orders: GiveawayOrder[];
+  /** Qualified and not removed from the draw. */
   eligible: boolean;
+  /** When their spend reached the minimum; null while it has not. */
   qualifiedAt: string | null;
-  hidden: boolean;
-  publicName: string | null;
-  phoneTail: string | null;
+  /** Removed from the draw by an admin. Absent on an older backend, which means "not removed". */
+  excluded?: boolean;
+  /**
+   * Legacy. Since backend 0.140.2 it mirrors `excluded`; before that it only masked the
+   * public name. Read `excluded`, never this.
+   */
+  hidden?: boolean;
 }
 
 export interface GiveawayWinner {
   key: string;
   ref: string;
-  publicName: string | null;
-  phoneTail: string | null;
   fullName: string;
   phone: string | null;
   email: string | null;
@@ -79,6 +99,29 @@ export interface GiveawayAuditEntry {
   at: string;
 }
 
+export interface GiveawayTopSpender {
+  key: string;
+  fullName: string;
+  totalMinor: number;
+  orderCount: number;
+}
+
+/** Admin-only figures for the pool and day, always from the live list (not the frozen draw). */
+export interface GiveawayStats {
+  /** Buyers whose spend reached the minimum, removed ones included. */
+  entrantCount: number;
+  eligibleCount: number;
+  excludedCount: number;
+  /** Every paid buyer in the pool that day, qualified or not. */
+  buyerCount: number;
+  /** Across every buyer. */
+  totalSpendMinor: number;
+  /** totalSpendMinor / buyerCount. */
+  averageSpendMinor: number;
+  /** Up to five, highest spend first, qualified or not. */
+  topSpenders: GiveawayTopSpender[];
+}
+
 export interface GiveawayView {
   pool: GiveawayPool;
   day: string;
@@ -91,13 +134,18 @@ export interface GiveawayView {
     description: string;
     imageUrl: string | null;
     mediaKind: 'image' | 'video';
+    /** Set when the prize is a catalogue product; absent on an older backend. */
+    productId?: string | null;
   };
-  defaults: GiveawayPutBody | null;
+  defaults: GiveawaySettings | null;
   publicState: GiveawayPublicState;
+  /** Latest first. */
   entrants: GiveawayEntrant[];
   frozenKeys: string[] | null;
   draw: GiveawayDraw | null;
   audit: GiveawayAuditEntry[];
+  /** Absent on a backend older than giveaway v2. */
+  stats?: GiveawayStats | null;
 }
 
 const BASE = '/admin/giveaways';
@@ -140,10 +188,14 @@ export function voidGiveawayDraw(id: string, reason: string): Promise<{ ok: true
   });
 }
 
-export function setGiveawayEntrantHidden(id: string, key: string, hidden: boolean): Promise<{ ok: true }> {
-  return apiFetch<{ ok: true }>(`${BASE}/${id}/hidden`, {
+/**
+ * Remove an entrant from the draw, or put them back. 409 while a draw exists.
+ * The legacy `/hidden` route does the same since backend 0.140.2; this is the one to call.
+ */
+export function setGiveawayEntrantExcluded(id: string, key: string, excluded: boolean): Promise<{ ok: true }> {
+  return apiFetch<{ ok: true }>(`${BASE}/${id}/excluded`, {
     method: 'POST',
     auth: true,
-    body: JSON.stringify({ key, hidden }),
+    body: JSON.stringify({ key, excluded }),
   });
 }
