@@ -16,3 +16,17 @@ export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 export function formatOrderStatus(status: OrderStatus): string {
   return status.charAt(0) + status.slice(1).toLowerCase();
 }
+
+/**
+ * The status label for one order. A booth (Ground) sale is recorded as
+ * DELIVERED because it is handed over in person, and loyalty, analytics and
+ * refunds rely on that; "Delivered" reads as a courier drop-off, so the label
+ * says what happened instead (dashboard#138). Label only: the status is unchanged.
+ */
+export function formatOrderStatusFor(order: {
+  status: OrderStatus;
+  salesMode?: 'GROUND' | 'ONLINE' | null;
+}): string {
+  if (order.salesMode === 'GROUND' && order.status === 'DELIVERED') return 'Collected at booth';
+  return formatOrderStatus(order.status);
+}

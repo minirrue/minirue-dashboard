@@ -7,7 +7,7 @@ import type { Column } from '@/components/dashboard/DashboardTable';
 import { apiAdminListOrders, apiAdminTransitionStatus } from '@/lib/api/orders';
 import type { Order, OrderStatus } from '@/lib/api/orders';
 import type { ApiError } from '@/lib/api/client';
-import { ORDER_TRANSITIONS, formatOrderStatus } from '@/lib/orders/transitions';
+import { ORDER_TRANSITIONS, formatOrderStatus, formatOrderStatusFor } from '@/lib/orders/transitions';
 import { formatOrderRef } from '@/lib/orders/order-format';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
 import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
@@ -39,11 +39,11 @@ const STATUS_DATA_ATTR: Record<OrderStatus, string> = {
   REFUNDED: 'cancelled',
 };
 
-function OrderStatusBadge({ status }: { status: OrderStatus }) {
+function OrderStatusBadge({ status, salesMode }: { status: OrderStatus; salesMode?: Order['salesMode'] }) {
   return (
     <span className="dash-status" data-status={STATUS_DATA_ATTR[status]}>
       <span className="dash-status-dot" />
-      {formatOrderStatus(status)}
+      {formatOrderStatusFor({ status, salesMode })}
     </span>
   );
 }
@@ -282,7 +282,7 @@ export default function OrdersClient() {
         label: 'Status',
         // Read-only chip only (#124): advancing the order moved to the
         // row-end button/menu in the '' column below.
-        render: (row) => <OrderStatusBadge status={shownStatus(row)} />,
+        render: (row) => <OrderStatusBadge status={shownStatus(row)} salesMode={row.salesMode} />,
       },
       {
         key: 'fulfillment',

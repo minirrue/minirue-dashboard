@@ -202,4 +202,18 @@ describe('OrdersClient channel column and customer fallback', () => {
       expect(within(row).getByRole('link', { name: /view/i })).toBeInTheDocument();
     });
   });
+
+  it('dashboard#138: a delivered booth (Ground) sale reads "Collected at booth"; an online delivered order still reads "Delivered"', async () => {
+    const booth = makeOrder({ id: 'ord_booth', orderNumber: 'MR-BOOTH', status: 'DELIVERED', channel: 'MANUAL', salesMode: 'GROUND' });
+    const online = makeOrder({ id: 'ord_online', orderNumber: 'MR-ONLINE', status: 'DELIVERED' });
+    mockedOrders.apiAdminListOrders.mockResolvedValue({ data: [booth, online], total: 2, page: 1, limit: 100 });
+
+    render(<OrdersClient />);
+    await screen.findByText('MR-BOOTH');
+
+    expect(within(screen.getByText('MR-BOOTH').closest('tr')!).getByText('Collected at booth')).toBeInTheDocument();
+    const onlineRow = screen.getByText('MR-ONLINE').closest('tr')!;
+    expect(within(onlineRow).getByText('Delivered')).toBeInTheDocument();
+    expect(within(onlineRow).queryByText('Collected at booth')).not.toBeInTheDocument();
+  });
 });

@@ -27,6 +27,7 @@ import SameDayFeeEntry from '@/components/dashboard/SameDayFeeEntry';
 import RefundOrderModal from '@/components/dashboard/RefundOrderModal';
 import type { RefundTicketDto } from '@/lib/api/refunds';
 import { formatOrderRef } from '@/lib/orders/order-format';
+import { formatOrderStatusFor } from '@/lib/orders/transitions';
 import InternalOrderBadge from '@/components/dashboard/InternalOrderBadge';
 import ReturnToStockModal from '@/components/dashboard/ReturnToStockModal';
 import { formatDeliveryWindow, mapsLinkFor } from '@/lib/orders/delivery-format';
@@ -234,11 +235,11 @@ const STATUS_DATA_ATTR: Record<OrderStatus, string> = {
   REFUNDED: 'cancelled',
 };
 
-function OrderStatusBadge({ status }: { status: OrderStatus }) {
+function OrderStatusBadge({ status, salesMode }: { status: OrderStatus; salesMode?: 'GROUND' | 'ONLINE' | null }) {
   return (
     <span className="dash-status" data-status={STATUS_DATA_ATTR[status]}>
       <span className="dash-status-dot" />
-      {status.charAt(0) + status.slice(1).toLowerCase()}
+      {formatOrderStatusFor({ status, salesMode })}
     </span>
   );
 }
@@ -507,7 +508,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
           {/* Never disagrees with the Refunds tab: a refund on this order
               overrides whatever `status` still says, even for a row no
               repair migration touched. */}
-          <OrderStatusBadge status={order.refundedAt ? 'REFUNDED' : order.status} />
+          <OrderStatusBadge status={order.refundedAt ? 'REFUNDED' : order.status} salesMode={order.salesMode} />
         </div>
         <OrderActions
           order={order}
