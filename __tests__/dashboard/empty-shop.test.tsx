@@ -175,6 +175,24 @@ describe('Loyalty on an empty shop', () => {
     })), { timeout: 1500 });
   });
 
+  it('shows an unregistered buyer with pending points and no adjust action', async () => {
+    const guest: loyaltyApi.LoyaltyGuestRow = {
+      id: null, customerId: null, registered: false, kind: 'GUEST', buyerKey: `phone:${'b'.repeat(64)}`,
+      name: 'Booth Buyer', email: null, tier: null, avatarUrl: null, phoneTail: '567', sources: ['BOOTH'],
+      orderCount: 2, balance: 0, earnedLast30Days: 0, adjustedLast30Days: 0,
+      lastActivity: '2026-10-01T10:00:00.000Z', pendingPoints: 300, pendingOrderCount: 2, adjustable: false,
+    };
+    mockedLoyalty.apiAdminListLoyaltyAccounts.mockResolvedValue({ data: [guest], total: 1, page: 1, limit: 20 });
+    render(<LoyaltyClient />);
+
+    expect(await screen.findByText('Booth Buyer')).toBeInTheDocument();
+    expect(screen.getByText('Not registered')).toBeInTheDocument();
+    expect(screen.getByText(/pending 300 pts — earns when they create an account/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /booth buyer/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /view ledger/i })).not.toBeInTheDocument();
+    expect(mockedLoyalty.apiAdminListLoyaltyAccounts).toHaveBeenCalledWith(expect.objectContaining({ includeGuests: true }));
+  });
+
   it('requires a note for Other and refreshes the ledger after a compensation', async () => {
     const account: loyaltyApi.LoyaltyAccountDto = {
       id: 'account-1', customerId: 'customer-123456', name: 'Mona Ali', email: 'mona@example.test',

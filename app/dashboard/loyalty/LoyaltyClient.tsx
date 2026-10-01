@@ -15,6 +15,8 @@ import {
   type LoyaltyAccountDto,
   type LoyaltyAdjustmentReason,
   type LoyaltyCustomerDetailDto,
+  type LoyaltyGuestRow,
+  type LoyaltyListRow,
   type LoyaltyTier,
 } from '@/lib/api/loyalty';
 import { apiUpdateSettings } from '@/lib/api/settings';
@@ -42,10 +44,29 @@ const dateTime = { format: (d: Date) => formatDateTime(d, { year: true }) };
 import { formatDateTime } from '@/lib/dates/format';
 const titleCase = (value: string) => value.toLowerCase().replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 
-function Avatar({ account, large = false }: { account: LoyaltyAccountDto; large?: boolean }) {
+function Avatar({ account, large = false }: { account: Pick<LoyaltyListRow, 'name' | 'avatarUrl'>; large?: boolean }) {
   const fallback = <span aria-hidden>{account.name?.trim().charAt(0).toUpperCase() || '?'}</span>;
   if (!account.avatarUrl) return <span className={`loyalty-avatar${large ? ' loyalty-avatar-lg' : ''}`}>{fallback}</span>;
   return <RetryingImage src={account.avatarUrl} alt={`${account.name} profile`} className={`loyalty-avatar${large ? ' loyalty-avatar-lg' : ''}`} fallback={fallback} />;
+}
+
+const isLoyaltyGuest = (row: LoyaltyListRow): row is LoyaltyGuestRow => row.registered === false;
+
+/**
+ * A buyer with no account: no ledger to open and nothing to adjust (an
+ * unverified phone never moves points). Shows what their delivered orders
+ * would earn once they create an account.
+ */
+function GuestLoyaltyRow({ row }: { row: LoyaltyGuestRow }) {
+  const sources = row.sources.map((s) => (s === 'BOOTH' ? 'Booth' : 'Online')).join(' & ');
+  return <tr data-guest="true">
+    <td data-label="Customer"><span className="loyalty-guest-person"><Avatar account={row} /><span><strong>{row.name || 'Unnamed buyer'}</strong><small>{sources}{row.phoneTail ? <> · <span dir="ltr">••• {row.phoneTail}</span></> : null} · {row.orderCount.toLocaleString()} {row.orderCount === 1 ? 'order' : 'orders'}</small></span></span></td>
+    <td data-label="Customer ID"><span className="loyalty-guest-badge">Not registered</span></td>
+    <td data-label="Tier"><span className="loyalty-muted">No tier</span></td>
+    <td data-label="Balance" className="loyalty-num" colSpan={2}><strong>0</strong>{row.pendingPoints > 0 ? <small className="loyalty-pending">Pending {row.pendingPoints.toLocaleString()} pts — earns when they create an account</small> : <small>No pending points yet</small>}</td>
+    <td data-label="Last activity">{dateTime.format(new Date(row.lastActivity))}</td>
+    <td><span className="loyalty-sr">No adjustments: this buyer has no account</span></td>
+  </tr>;
 }
 
 function CustomerDrawer({ account, onClose, onChanged }: { account: LoyaltyAccountDto; onClose: () => void; onChanged: () => Promise<void> }) {
@@ -185,12 +206,12 @@ export default function LoyaltyClient() {
   const [direction, setDirection] = useState<Direction>((searchParams.get('direction') as Direction) || 'desc');
   const [page, setPage] = useState(Math.max(1, Number(searchParams.get('page')) || 1));
   const [limit, setLimit] = useState<20 | 50 | 100>([20, 50, 100].includes(Number(searchParams.get('limit'))) ? Number(searchParams.get('limit')) as 20 | 50 | 100 : 20);
-  const [accounts, setAccounts] = useState<LoyaltyAccountDto[]>([]); const [total, setTotal] = useState(0);
+  const [accounts, setAccounts] = useState<LoyaltyListRow[]>([]); const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [selected, setSelected] = useState<LoyaltyAccountDto | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
-    try { const res = await apiAdminListLoyaltyAccounts({ page, limit, q: debouncedSearch || undefined, tier: tier || undefined, hasBalance: hasBalance || undefined, recentlyAdjusted: recentlyAdjusted || undefined, sort, direction }); setAccounts(Array.isArray(res?.data) ? res.data : []); setTotal(Number(res?.total) || 0); }
+    try { const res = await apiAdminListLoyaltyAccounts({ page, limit, q: debouncedSearch || undefined, tier: tier || undefined, hasBalance: hasBalance || undefined, recentlyAdjusted: recentlyAdjusted || undefined, sort, direction, includeGuests: true }); setAccounts(Array.isArray(res?.data) ? res.data : []); setTotal(Number(res?.total) || 0); }
     catch (err) { setError((err as ApiError).message ?? 'Failed to load loyalty customers.'); }
     finally { setLoading(false); }
   }, [page, limit, debouncedSearch, tier, hasBalance, recentlyAdjusted, sort, direction]);
@@ -212,7 +233,7 @@ export default function LoyaltyClient() {
       <main className="loyalty-content">
         {view === 'rules' ? <RulesPanel /> : view === 'milestones' ? <div className="dash-card loyalty-coming"><span className="loyalty-coming-mark">Soon</span><h2>Milestones & rewards</h2><p>Celebrate repeat customers with milestone gifts and point redemption. These controls will appear here once the reward engine is ready.</p><div><span>Birthday rewards</span><span>VIP milestones</span><span>Points spending</span></div></div> : <div className="dash-card loyalty-customers">
           <div className="loyalty-tools"><label className="loyalty-search"><span className="loyalty-sr">Search customers</span><input className="dash-input" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search name, ID, phone or email" /></label><label><span>Tier</span><select className="dash-input" value={tier} onChange={(e) => { setTier(e.target.value as LoyaltyTier | ''); setPage(1); }}><option value="">All tiers</option>{['BRONZE','SILVER','GOLD','PLATINUM'].map((value) => <option key={value} value={value}>{titleCase(value)}</option>)}</select></label><label><span>Sort</span><select className="dash-input" value={`${sort}:${direction}`} onChange={(e) => { const [nextSort, nextDirection] = e.target.value.split(':') as [Sort, Direction]; setSort(nextSort); setDirection(nextDirection); setPage(1); }}><option value="lastActivity:desc">Recently active</option><option value="name:asc">Name A–Z</option><option value="balance:desc">Highest balance</option><option value="earned30d:desc">Most earned · 30d</option><option value="adjusted30d:desc">Most adjusted · 30d</option></select></label><div className="loyalty-checks"><label><input type="checkbox" checked={hasBalance} onChange={(e) => { setHasBalance(e.target.checked); setPage(1); }} /> Has balance</label><label><input type="checkbox" checked={recentlyAdjusted} onChange={(e) => { setRecentlyAdjusted(e.target.checked); setPage(1); }} /> Recently adjusted</label></div></div>
-          {loading ? <div className="loyalty-loading">{Array.from({length: 5}).map((_, index) => <span className="dash-skeleton" key={index} />)}</div> : error ? <div className="loyalty-state"><p className="dash-inline-error">{error}</p><button className="dash-btn-secondary" onClick={() => void load()}>Retry</button></div> : accounts.length === 0 ? <div className="loyalty-state"><strong>No matching customers</strong><p>Try clearing a filter or searching another email, phone, name or ID.</p></div> : <div className="dash-table-wrap"><table className="dash-table loyalty-table"><thead><tr><th>Customer</th><th>Customer ID</th><th>Tier</th><th className="loyalty-num">Balance</th><th className="loyalty-num">Last 30 days</th><th>Last activity</th><th /></tr></thead><tbody>{accounts.map((account) => <tr key={account.id}><td data-label="Customer"><button className="loyalty-customer-button" onClick={() => setSelected(account)}><Avatar account={account} /><span><strong>{account.name || 'Unnamed customer'}</strong><small>{account.email || 'No email'}</small></span></button></td><td data-label="Customer ID"><span className="loyalty-table-id"><code>{account.customerId.slice(0, 10)}…</code><CopyButton value={account.customerId} /></span></td><td data-label="Tier"><span className="loyalty-tier" data-tier={account.tier}>{titleCase(account.tier)}</span></td><td data-label="Balance" className="loyalty-num"><strong>{account.balance.toLocaleString()}</strong><small>points</small></td><td data-label="Last 30 days" className="loyalty-num"><span className="loyalty-positive">+{account.earnedLast30Days.toLocaleString()} earned</span><small>{account.adjustedLast30Days > 0 ? '+' : ''}{account.adjustedLast30Days.toLocaleString()} adjusted</small></td><td data-label="Last activity">{account.lastActivity ? dateTime.format(new Date(account.lastActivity)) : 'Never'}</td><td><button className="dash-btn-ghost" onClick={() => setSelected(account)}>View ledger</button></td></tr>)}</tbody></table></div>}
+          {loading ? <div className="loyalty-loading">{Array.from({length: 5}).map((_, index) => <span className="dash-skeleton" key={index} />)}</div> : error ? <div className="loyalty-state"><p className="dash-inline-error">{error}</p><button className="dash-btn-secondary" onClick={() => void load()}>Retry</button></div> : accounts.length === 0 ? <div className="loyalty-state"><strong>No matching customers</strong><p>Try clearing a filter or searching another email, phone, name or ID.</p></div> : <div className="dash-table-wrap"><table className="dash-table loyalty-table"><thead><tr><th>Customer</th><th>Customer ID</th><th>Tier</th><th className="loyalty-num">Balance</th><th className="loyalty-num">Last 30 days</th><th>Last activity</th><th /></tr></thead><tbody>{accounts.map((account) => isLoyaltyGuest(account) ? <GuestLoyaltyRow key={account.buyerKey} row={account} /> : <tr key={account.id}><td data-label="Customer"><button className="loyalty-customer-button" onClick={() => setSelected(account)}><Avatar account={account} /><span><strong>{account.name || 'Unnamed customer'}</strong><small>{account.email || 'No email'}</small></span></button></td><td data-label="Customer ID"><span className="loyalty-table-id"><code>{account.customerId.slice(0, 10)}…</code><CopyButton value={account.customerId} /></span></td><td data-label="Tier"><span className="loyalty-tier" data-tier={account.tier}>{titleCase(account.tier)}</span></td><td data-label="Balance" className="loyalty-num"><strong>{account.balance.toLocaleString()}</strong><small>points</small></td><td data-label="Last 30 days" className="loyalty-num"><span className="loyalty-positive">+{account.earnedLast30Days.toLocaleString()} earned</span><small>{account.adjustedLast30Days > 0 ? '+' : ''}{account.adjustedLast30Days.toLocaleString()} adjusted</small></td><td data-label="Last activity">{account.lastActivity ? dateTime.format(new Date(account.lastActivity)) : 'Never'}</td><td><button className="dash-btn-ghost" onClick={() => setSelected(account)}>View ledger</button></td></tr>)}</tbody></table></div>}
           <footer className="loyalty-pagination"><label>Rows <select className="dash-input" value={limit} onChange={(e) => { setLimit(Number(e.target.value) as 20 | 50 | 100); setPage(1); }}><option>20</option><option>50</option><option>100</option></select></label><span>{range}</span><div><button className="dash-btn-secondary" disabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)}>Previous</button><span>Page {page} of {pageCount}</span><button className="dash-btn-secondary" disabled={page >= pageCount || loading} onClick={() => setPage((value) => value + 1)}>Next</button></div></footer>
         </div>}
       </main>

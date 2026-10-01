@@ -93,4 +93,53 @@ describe('CustomersClient name + search', () => {
     expect(screen.getByText('Youssef Abdelrahman')).toBeInTheDocument();
     expect(screen.queryByText('Mona Khaled')).not.toBeInTheDocument();
   });
+
+  it('lists an unregistered buyer and opens their orders, not a profile', async () => {
+    const buyerKey = `phone:${'a'.repeat(64)}`;
+    const guest: customersApi.GuestCustomerListItem = {
+      registered: false,
+      kind: 'GUEST',
+      buyerKey,
+      customerId: null,
+      displayName: 'Booth Buyer',
+      phoneTail: '567',
+      sources: ['BOOTH', 'ONLINE'],
+      tier: null,
+      orderCount: 2,
+      totalSpendAmount: '150.00',
+      totalSpendCurrency: 'EGP',
+      firstOrderAt: '2026-10-01T10:00:00.000Z',
+      lastOrderAt: '2026-10-02T10:00:00.000Z',
+    };
+    mockedCustomers.apiAdminListCustomers.mockResolvedValue({
+      data: [{ ...makeCustomer(), registered: true }, guest],
+      total: 2,
+      page: 1,
+      limit: 100,
+    });
+    mockedCustomers.apiAdminGetGuestCustomer.mockResolvedValue({
+      ...guest,
+      pendingPoints: 300,
+      orders: [{
+        id: 'order-1', orderNumber: 'MR-1001', createdAt: '2026-10-01T10:00:00.000Z',
+        status: 'DELIVERED', salesMode: 'GROUND', source: 'BOOTH',
+        totalAmount: '100.00', totalCurrency: 'EGP', refundedAmountCents: 0,
+      }],
+    });
+    render(<CustomersClient />);
+
+    expect(await screen.findByText('Booth Buyer')).toBeInTheDocument();
+    expect(screen.getByText('Not registered')).toBeInTheDocument();
+    expect(screen.getByText('2 orders')).toBeInTheDocument();
+    expect(mockedCustomers.apiAdminListCustomers).toHaveBeenCalledWith(
+      expect.objectContaining({ includeGuests: true, limit: 100 }),
+    );
+    // Registered rows still open the account profile.
+    expect(screen.getByRole('link', { name: /youssef abdelrahman/i })).toHaveAttribute('href', '/customers/cus_youssef_1');
+
+    await userEvent.setup().click(screen.getByRole('button', { name: /view orders/i }));
+    expect(mockedCustomers.apiAdminGetGuestCustomer).toHaveBeenCalledWith(buyerKey);
+    expect(await screen.findByText('MR-1001')).toBeInTheDocument();
+    expect(await screen.findByText('300 pts')).toBeInTheDocument();
+  });
 });

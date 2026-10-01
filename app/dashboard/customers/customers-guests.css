@@ -1,0 +1,81 @@
+/* Unregistered buyers in the Customers list and their orders sheet. */
+.cg-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cg-name:focus-visible {
+  outline: 2px solid var(--mr-gold-500, #b0924f);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.cg-name-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.cg-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--mr-fg-3, #636b75);
+}
+.cg-meta .collected-status {
+  padding: 2px 7px;
+  font-size: 11px;
+}
+.cg-muted,
+.cg-sub {
+  color: var(--mr-fg-3, #636b75);
+}
+.cg-sub {
+  font-size: 12px;
+}
+.cg-stack {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cg-stack-end {
+  align-items: flex-end;
+}
+.cg-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 4px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--mr-dash-sub, #f4f1ec);
+}
+.cg-stats div {
+  min-width: 0;
+}
+.cg-stats dt {
+  font-size: 12px;
+  color: var(--mr-fg-3, #636b75);
+}
+.cg-stats dd {
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 420px) {
+  .cg-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+}

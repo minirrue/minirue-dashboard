@@ -18,10 +18,56 @@ export interface CustomerListItem {
    *  has no photo — render the generic silhouette, never an initial letter. */
   avatarUrl: string | null;
   addressCount: number;
+  /** Set by the API when guests are requested; absent on older backends. */
+  registered?: true;
+}
+
+export type GuestSource = 'BOOTH' | 'ONLINE';
+
+/**
+ * A buyer with no account (booth contact or guest/manual online orders),
+ * grouped by phone. No tier, no profile page: it opens as a list of orders.
+ */
+export interface GuestCustomerListItem {
+  registered: false;
+  kind: 'GUEST';
+  /** `phone:<hash>` — stable across booth and online purchases. */
+  buyerKey: string;
+  customerId: null;
+  displayName: string | null;
+  /** Last three digits of their phone. */
+  phoneTail: string | null;
+  sources: GuestSource[];
+  tier: null;
+  orderCount: number;
+  totalSpendAmount: string;
+  totalSpendCurrency: string;
+  firstOrderAt: string;
+  lastOrderAt: string;
+}
+
+export type CustomerListRow = CustomerListItem | GuestCustomerListItem;
+
+export interface GuestCustomerOrder {
+  id: string;
+  orderNumber: string;
+  createdAt: string;
+  status: string;
+  salesMode: string | null;
+  source: GuestSource;
+  totalAmount: string;
+  totalCurrency: string;
+  refundedAmountCents: number;
+}
+
+export interface GuestCustomerDetail extends GuestCustomerListItem {
+  /** What their delivered orders would earn on an account. Never credited. */
+  pendingPoints: number;
+  orders: GuestCustomerOrder[];
 }
 
 export interface CustomerListResponse {
-  data: CustomerListItem[];
+  data: CustomerListRow[];
   total: number;
   page: number;
   limit: number;
@@ -83,13 +129,20 @@ export async function apiAdminListCustomers(params?: {
   page?: number;
   limit?: number;
   tier?: TierLevel;
+  /** Also list buyers with no account (backend 0.139.1+; older ones ignore it). */
+  includeGuests?: boolean;
 }): Promise<CustomerListResponse> {
   const qs = new URLSearchParams();
   if (params?.page != null) qs.set('page', String(params.page));
   if (params?.limit != null) qs.set('limit', String(params.limit));
   if (params?.tier) qs.set('tier', params.tier);
+  if (params?.includeGuests) qs.set('includeGuests', 'true');
   const query = qs.toString() ? `?${qs.toString()}` : '';
   return apiFetch<CustomerListResponse>(`/customers${query}`, { auth: true });
+}
+
+export async function apiAdminGetGuestCustomer(buyerKey: string): Promise<GuestCustomerDetail> {
+  return apiFetch<GuestCustomerDetail>(`/customers/guest/${encodeURIComponent(buyerKey)}`, { auth: true });
 }
 
 export async function apiAdminGetCustomer(userId: string): Promise<CustomerDetail> {

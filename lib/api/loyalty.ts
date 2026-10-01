@@ -19,7 +19,37 @@ export interface LoyaltyAccountDto {
   earnedLast30Days: number;
   adjustedLast30Days: number;
   lastActivity: string | null;
+  /** Set when guests are requested; absent on older backends. */
+  registered?: true;
 }
+
+/**
+ * A buyer with no account. No ledger, nothing spendable, never adjustable:
+ * `pendingPoints` is what their delivered orders would earn once they sign up.
+ */
+export interface LoyaltyGuestRow {
+  id: null;
+  customerId: null;
+  registered: false;
+  kind: 'GUEST';
+  buyerKey: string;
+  name: string | null;
+  email: null;
+  tier: null;
+  avatarUrl: null;
+  phoneTail: string | null;
+  sources: Array<'BOOTH' | 'ONLINE'>;
+  orderCount: number;
+  balance: 0;
+  earnedLast30Days: 0;
+  adjustedLast30Days: 0;
+  lastActivity: string;
+  pendingPoints: number;
+  pendingOrderCount: number;
+  adjustable: false;
+}
+
+export type LoyaltyListRow = LoyaltyAccountDto | LoyaltyGuestRow;
 
 export interface PointsTransactionDto {
   id: string;
@@ -58,6 +88,8 @@ export interface LoyaltyAccountsParams {
   recentlyAdjusted?: boolean;
   sort?: 'name' | 'balance' | 'earned30d' | 'adjusted30d' | 'lastActivity';
   direction?: 'asc' | 'desc';
+  /** Also list buyers with no account (backend 0.139.1+; older ones ignore it). */
+  includeGuests?: boolean;
 }
 
 function query<T extends object>(params: T) {
@@ -67,7 +99,7 @@ function query<T extends object>(params: T) {
   return value ? `?${value}` : '';
 }
 
-export async function apiAdminListLoyaltyAccounts(params: LoyaltyAccountsParams = {}): Promise<{ data: LoyaltyAccountDto[]; total: number; page: number; limit: number }> {
+export async function apiAdminListLoyaltyAccounts(params: LoyaltyAccountsParams = {}): Promise<{ data: LoyaltyListRow[]; total: number; page: number; limit: number }> {
   return apiFetch(`/admin/loyalty/accounts${query(params)}`, { auth: true });
 }
 

@@ -33,6 +33,15 @@
 .loyalty-num { text-align: right; font-variant-numeric: tabular-nums; }
 .loyalty-num > * { display: block; }
 .loyalty-positive { color: var(--mr-st-ok-fg); font-weight: 500; }
+/* Buyers with no account: read-only rows, pending points only. */
+.loyalty-guest-person { display: flex; align-items: center; gap: 10px; min-width: 170px; }
+.loyalty-guest-person > span:last-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.loyalty-guest-person strong { font-weight: 600; }
+.loyalty-guest-person small { color: var(--mr-fg-4); }
+.loyalty-guest-badge { display: inline-flex; padding: 3px 9px; border-radius: var(--mr-radius-pill); background: #fff2d6; color: #805516; font-size: var(--mr-text-xs); font-weight: 600; white-space: nowrap; }
+.loyalty-muted { color: var(--mr-fg-4); }
+.loyalty-num small.loyalty-pending { max-width: 30ch; margin-left: auto; color: #805516; font-weight: 500; line-height: 1.35; }
+@media (max-width: 640px) { .loyalty-num small.loyalty-pending { max-width: none; margin-left: 0; } }
 .loyalty-loading { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
 .loyalty-loading span { height: 40px; }
 .loyalty-state { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 70px 20px; text-align: center; color: var(--mr-fg-3); }
