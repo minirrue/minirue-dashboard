@@ -479,7 +479,7 @@ export default function StockOverviewClient({ initialSearch = '' }: { initialSea
         .inventory-table tr[data-selected='true'] { background: var(--mr-dash-sub); }
         .inventory-table .num { text-align: right; font-variant-numeric: tabular-nums; }
         .inventory-product { display: flex; align-items: center; gap: 10px; min-width: 190px; }
-        .inventory-product :global(img), .inventory-image-placeholder { width: 38px; height: 46px; flex: 0 0 auto; border-radius: 5px; object-fit: cover; background: var(--mr-dash-sub); }
+        .inventory-product :global(img), .inventory-image-placeholder { width: 38px; height: 46px; flex: 0 0 auto; border-radius: 5px; object-fit: contain; background: var(--mr-dash-sub); }
         .inventory-product strong, .inventory-table td > strong { display: block; color: var(--mr-fg); font-size: 13px; font-weight: 600; }
         .inventory-product small, .inventory-table td > small { display: block; margin-top: 3px; color: var(--mr-fg-4); font-size: 11px; }
         .inventory-sku { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; }

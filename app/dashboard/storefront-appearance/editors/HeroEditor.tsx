@@ -67,6 +67,7 @@ function HeroImageFrame({
           media={{ url, posterUrl: video.poster, status, processingError: video.processingError }}
           variant="thumbnail"
           label="Chosen video"
+          className="dash-video-thumb--fill"
           style={{ width: '100%', height: '100%' }}
         />
       ) : url && (

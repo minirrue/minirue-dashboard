@@ -93,7 +93,8 @@ export async function uploadDeviceFileToGallery(
 const TILE_MEDIA_STYLE: React.CSSProperties = {
   width: '100%',
   aspectRatio: '4/5',
-  objectFit: 'cover',
+  objectFit: 'contain',
+  background: 'var(--mr-dash-sub)',
   display: 'block',
 };
 

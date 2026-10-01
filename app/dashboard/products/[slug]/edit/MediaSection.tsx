@@ -491,7 +491,8 @@ export default function MediaSection({
                   style={{
                     width: '100%',
                     aspectRatio: '4/5',
-                    objectFit: 'cover',
+                    objectFit: 'contain',
+                    background: 'var(--mr-dash-sub)',
                     borderRadius: 'var(--mr-radius-sm)',
                     border: m.deletedAt
                       ? '1px dashed var(--mr-dash-danger, #b3261e)'

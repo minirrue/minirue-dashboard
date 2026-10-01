@@ -239,7 +239,8 @@ export default function ReviewsClient() {
                                     width={72}
                                     height={72}
                                     style={{
-                                      objectFit: 'cover',
+                                      objectFit: 'contain',
+                                      background: 'var(--mr-dash-sub)',
                                       borderRadius: 'var(--mr-radius-sm)',
                                       border: '1px solid var(--mr-dash-hair)',
                                       display: 'block',

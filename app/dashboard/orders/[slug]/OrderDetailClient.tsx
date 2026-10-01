@@ -829,7 +829,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
                           <img
                             src={receiptUrl}
                             alt="Instapay receipt"
-                            style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, display: 'block' }}
+                            style={{ width: 56, height: 56, objectFit: 'contain', background: 'var(--mr-dash-sub)', borderRadius: 4, display: 'block' }}
                           />
                         </button>
                       )}

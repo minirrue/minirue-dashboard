@@ -180,7 +180,7 @@
   border-radius: 10px;
   background: var(--mr-dash-sub);
   color: var(--mr-fg-4);
-  object-fit: cover;
+  object-fit: contain;
 }
 .acct-prices-thumb svg {
   width: 20px;

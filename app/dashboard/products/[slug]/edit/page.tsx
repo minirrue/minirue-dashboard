@@ -503,7 +503,8 @@ export default function EditProductPage() {
                     style={{
                       width: '100%',
                       aspectRatio: '4/5',
-                      objectFit: 'cover',
+                      objectFit: 'contain',
+                      background: 'var(--mr-dash-sub)',
                       borderRadius: 'var(--mr-radius-sm)',
                       border: '1px solid var(--mr-dash-hair)',
                     }}

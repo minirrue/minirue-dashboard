@@ -215,7 +215,8 @@ function CategoryRow<T extends CategoryTreeNode>({
                   width: 28,
                   height: 28,
                   borderRadius: 4,
-                  objectFit: 'cover',
+                  objectFit: 'contain',
+                  background: 'var(--mr-dash-sub, #f4f1ec)',
                   flexShrink: 0,
                 }}
               />

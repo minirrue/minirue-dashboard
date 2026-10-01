@@ -392,9 +392,9 @@ export default function ProductsClient() {
                 width: 36,
                 height: 44,
                 borderRadius: 4,
-                // 'cover' here, unlike a brand logo: a product photo is a
-                // photograph, and filling the frame is the right crop for one.
-                objectFit: 'cover',
+                // 'contain': the whole product, letterboxed on the frame's
+                // ground. A crop hid caps and labels (owner, 2026-10).
+                objectFit: 'contain',
                 background: 'var(--mr-dash-sub, #f4f1ec)',
                 flexShrink: 0,
               }}

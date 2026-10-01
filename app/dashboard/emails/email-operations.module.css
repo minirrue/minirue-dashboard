@@ -106,7 +106,7 @@
 .logoPreview { display: block; width: 150px; height: 54px; background-position: left center; background-repeat: no-repeat; background-size: contain; }
 .logoPreview[data-shape='RECTANGLE'] { border-radius: 0; }
 .logoPreview[data-shape='ROUNDED'] { border-radius: 10px; }
-.logoPreview[data-shape='CIRCLE'] { width: 54px; border-radius: 50%; background-position: center; background-size: cover; }
+.logoPreview[data-shape='CIRCLE'] { width: 54px; border-radius: 50%; background-position: center; background-size: contain; }
 .branding { padding: 22px; }
 .branding > div:first-child h2 { margin: 0; color: var(--mr-fg); font-size: 17px; }
 .branding > div:first-child p { margin: 5px 0 20px; color: var(--mr-fg-4); font-size: 12px; }

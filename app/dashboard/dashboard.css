@@ -3221,7 +3221,8 @@
 .collab-brand-logo {
   width: 80px;
   height: 80px;
-  object-fit: cover;
+  /* A logo is shown whole, never centre-cropped (owner, 2026-10). */
+  object-fit: contain;
   border-radius: var(--mr-radius-md);
   border: 1px solid var(--mr-dash-hair);
 }
@@ -3246,6 +3247,9 @@
    avatar), not the brand logo's rounded square. */
 .collab-avatar {
   border-radius: 50%;
+  /* A round person avatar keeps the fill crop; letterboxing a face inside a
+     circle reads as broken. */
+  object-fit: cover;
 }
 .collab-brand-logo-uploading {
   position: absolute;
@@ -3858,7 +3862,8 @@
 .dash-gallery-item-media {
   width: 100%;
   height: 130px;
-  object-fit: cover;
+  /* The whole picture, letterboxed on the tile's own ground — never cropped. */
+  object-fit: contain;
   display: block;
   background: var(--mr-dash-sub);
 }
@@ -4148,7 +4153,9 @@
 .dash-video-facts { display: flex; flex-wrap: wrap; gap: 0; margin: 0; padding: 10px 14px; background: #111; color: rgba(255,255,255,.62); font-size: 11px; }
 .dash-video-facts span + span::before { content: '·'; padding: 0 8px; color: var(--mr-gold-500, #c7a45c); }
 .dash-video-thumb { position: relative; display: block; overflow: hidden; background: var(--mr-dash-sub); }
-.dash-video-thumb-media { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dash-video-thumb-media { width: 100%; height: 100%; object-fit: contain; display: block; }
+/* Hero previews mirror the storefront's full-bleed crop, so they opt back in. */
+.dash-video-thumb--fill .dash-video-thumb-media { object-fit: cover; }
 .dash-video-thumb-play { position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, -50%); display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid rgba(255,255,255,.4); border-radius: 50%; background: rgba(11,11,11,.62); color: #fff; backdrop-filter: blur(8px); }
 .dash-video-thumb-play svg { width: 14px; height: 14px; margin-left: 1px; }
 .dash-video-state-badge { position: absolute; top: 8px; left: 8px; padding: 4px 8px; border-radius: 999px; background: rgba(11,11,11,.76); color: #fff; font-size: 10px; font-weight: 650; letter-spacing: .02em; backdrop-filter: blur(8px); }
@@ -5624,7 +5631,7 @@ a.dash-card:focus-visible {
 .mr-bundle-thumb-empty {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 
@@ -5984,8 +5991,12 @@ a.dash-card:focus-visible {
   padding: 8px;
   gap: 10px;
   overscroll-behavior: contain;
-  scrollbar-gutter: stable;
+  /* No visible scrollbar and no reserved gutter: the rail's width goes to the
+     links. It still scrolls by wheel, touch and keyboard focus (owner, 2026-10). */
+  scrollbar-width: none;
+  scrollbar-gutter: auto;
 }
+.dash-sidebar-nav::-webkit-scrollbar { display: none; }
 .dash-sidebar-group {
   gap: 4px;
   margin: 0;
@@ -6083,12 +6094,33 @@ a.dash-card:focus-visible {
 .dash-sidebar-footer .dash-user-menu-wrap { flex: 1 1 auto; min-width: 0; width: auto; }
 .dash-user-menu-trigger { min-height: 40px; padding: 4px 6px; gap: 7px; }
 .dash-user-menu-item { min-height: 40px; }
+/* Collapsed rail: the server dot is a badge on the avatar, not a sibling.
+   ServerStatus sets display inline (it must render bare on /login), so the old
+   `display: none` here never applied and its 36px button squeezed the avatar
+   off-centre. Both children now share one centred grid cell; the dot is nudged
+   onto the 30px avatar's lower-right edge (its 45° point sits ~11px from the
+   centre) and ringed in the rail surface so it reads against the gold. */
 .dash-sidebar[data-collapsed="true"] .dash-sidebar-footer {
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  place-items: center;
   min-height: 64px;
-  justify-content: center;
   padding-inline: 8px;
 }
-.dash-sidebar[data-collapsed="true"] .dash-sidebar-footer > .dash-server-status { display: none; }
+.dash-sidebar[data-collapsed="true"] .dash-sidebar-footer > * { grid-area: 1 / 1; }
+.dash-sidebar[data-collapsed="true"] .dash-sidebar-footer > .dash-server-status {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  min-height: 0;
+  transform: translate(11px, 11px);
+  /* The whole avatar keeps opening the account menu; the status stays
+     announced (role=status), focusable, and clickable in the top bar. */
+  pointer-events: none;
+}
+.dash-sidebar[data-collapsed="true"] .dash-sidebar-footer > .dash-server-status > span:first-child {
+  outline: 2px solid var(--mr-dash-surface);
+}
 .dash-sidebar[data-collapsed="true"] .dash-user-menu-trigger {
   min-height: 44px;
   justify-content: center;

@@ -1042,7 +1042,8 @@ const STYLES = `
 .mrc-pending-img {
   width: 56px;
   height: 56px;
-  object-fit: cover;
+  object-fit: contain;
+  background: var(--mr-dash-sub);
   border-radius: 8px;
   border: 1px solid var(--mr-dash-hair);
 }
