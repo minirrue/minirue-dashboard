@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import { Role } from '@/lib/auth/role';
@@ -50,12 +50,16 @@ describe('collapsible dashboard navigation', () => {
     window.matchMedia = jest.fn().mockReturnValue(media);
     const onClose = jest.fn();
     render(<DashboardSidebar userRole={Role.STAFF} mobileDrawerOpen onMobileDrawerClose={onClose} />);
+    expect(window.matchMedia).toHaveBeenCalledWith('(min-width: 1024px)');
     media.matches = true;
-    onChange?.();
+    act(() => onChange?.());
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('collapses with Ctrl+B and persists the choice for the signed-in user', async () => {
+    window.matchMedia = jest.fn().mockReturnValue({
+      matches: true, addEventListener: jest.fn(), removeEventListener: jest.fn(),
+    });
     const { container, unmount } = render(
       <DashboardShell userId="qa-admin" userName="Youssef" userRole={Role.ADMIN} activePath="/orders">
         <p>Orders</p>
@@ -112,6 +116,115 @@ describe('collapsible dashboard navigation', () => {
     expect(accountButtons[accountButtons.length - 1]).toHaveFocus();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('locks the page, traps focus, then restores the opener when Escape closes the drawer', async () => {
+    render(
+      <DashboardShell userName="Youssef" userRole={Role.STAFF} activePath="/orders">
+        <button>Page action</button>
+      </DashboardShell>,
+    );
+    const toggle = screen.getByRole('button', { name: 'Toggle navigation menu' });
+    toggle.focus();
+    fireEvent.click(toggle);
+
+    const drawer = screen.getByRole('dialog', { name: 'Dashboard navigation' });
+    const main = document.querySelector<HTMLElement>('.dash-main')!;
+    expect(document.body.style.overflow).toBe('hidden');
+    expect(main.inert).toBe(true);
+    expect(screen.getByRole('button', { name: 'Close navigation menu' })).toHaveFocus();
+
+    const accountButtons = screen.getAllByRole('button', { name: 'Account' });
+    accountButtons[accountButtons.length - 1].focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(screen.getByRole('button', { name: 'Close navigation menu' })).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(drawer).toHaveAttribute('aria-hidden', 'true'));
+    expect(document.body.style.overflow).toBe('');
+    expect(main.inert).toBe(false);
+    expect(toggle).toHaveFocus();
+  });
+
+  it.each(['Escape', 'button', 'backdrop'])(
+    'returns focus to the visible hamburger after %s closes a drawer opened from a focused input',
+    async (dismiss) => {
+      const { container } = render(
+        <DashboardShell userName="Youssef" userRole={Role.STAFF} activePath="/orders" searchTrigger={<input aria-label="Search dashboard" />}>
+          <button>Page action</button>
+        </DashboardShell>,
+      );
+      const search = screen.getByRole('textbox', { name: 'Search dashboard' });
+      const toggle = screen.getByRole('button', { name: 'Toggle navigation menu' });
+      search.focus();
+      expect(search).toHaveFocus();
+      fireEvent.click(toggle);
+      const drawer = screen.getByRole('dialog', { name: 'Dashboard navigation' });
+      const main = container.querySelector<HTMLElement>('.dash-main')!;
+      expect(drawer).toHaveAttribute('aria-hidden', 'false');
+      expect(main.inert).toBe(true);
+      expect(document.body.style.overflow).toBe('hidden');
+
+      if (dismiss === 'Escape') fireEvent.keyDown(document, { key: 'Escape' });
+      else if (dismiss === 'button') fireEvent.click(screen.getByRole('button', { name: 'Close navigation menu' }));
+      else fireEvent.click(container.querySelector('.dash-mobile-backdrop')!);
+
+      await waitFor(() => expect(drawer).toHaveAttribute('aria-hidden', 'true'));
+      expect(main.inert).toBe(false);
+      expect(document.body.style.overflow).toBe('');
+      expect(toggle).toHaveFocus();
+    },
+  );
+
+  it('moves focus to the desktop collapse control when the mobile opener becomes hidden', async () => {
+    render(
+      <DashboardShell userName="Youssef" userRole={Role.STAFF} activePath="/orders">
+        <p>Orders</p>
+      </DashboardShell>,
+    );
+    const toggle = screen.getByRole('button', { name: 'Toggle navigation menu' });
+    toggle.focus();
+    fireEvent.click(toggle);
+    toggle.style.display = 'none';
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Collapse sidebar' })).toHaveFocus());
+  });
+
+  it('closes the drawer when the active route changes', async () => {
+    const { rerender } = render(
+      <DashboardShell userName="Youssef" userRole={Role.STAFF} activePath="/orders">
+        <p>Orders</p>
+      </DashboardShell>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle navigation menu' }));
+    expect(screen.getByRole('dialog', { name: 'Dashboard navigation' })).toBeVisible();
+
+    rerender(
+      <DashboardShell userName="Youssef" userRole={Role.STAFF} activePath="/discounts">
+        <p>Discounts</p>
+      </DashboardShell>,
+    );
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Dashboard navigation' })).toBeNull());
+    expect(document.body.style.overflow).toBe('');
+  });
+
+  it('does not apply a persisted desktop rail preference on drawer-sized viewports', async () => {
+    window.localStorage.setItem('minirue:dashboard-sidebar:qa-admin', 'collapsed');
+    window.matchMedia = jest.fn().mockReturnValue({
+      matches: false, addEventListener: jest.fn(), removeEventListener: jest.fn(),
+    });
+
+    const { container } = render(
+      <DashboardShell userId="qa-admin" userName="Youssef" userRole={Role.ADMIN} activePath="/orders">
+        <p>Orders</p>
+      </DashboardShell>,
+    );
+
+    await waitFor(() => expect(container.querySelector('.dash-shell')).not.toHaveAttribute('data-sidebar-collapsed'));
+    expect(window.localStorage.getItem('minirue:dashboard-sidebar:qa-admin')).toBe('collapsed');
   });
 
   it('keeps the closed mobile drawer out of keyboard navigation', () => {

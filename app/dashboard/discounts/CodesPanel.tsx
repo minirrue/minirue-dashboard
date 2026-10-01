@@ -166,7 +166,7 @@ export default function CodesPanel({
   const codes = rows.filter((d) => d.kind !== 'AUTOMATIC');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div className="discounts-panel-stack">
       {error && <p className="dash-error">{error}</p>}
 
       {justCreated && (

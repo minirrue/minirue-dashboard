@@ -164,6 +164,7 @@ const nextConfig: NextConfig = {
       { source: "/emails", destination: "/dashboard/emails" },
       { source: "/reviews", destination: "/dashboard/reviews" },
       { source: "/loyalty", destination: "/dashboard/loyalty" },
+      { source: "/giveaway", destination: "/dashboard/giveaway" },
       { source: "/admin", destination: "/dashboard/admin" },
       { source: "/settings", destination: "/dashboard/settings" },
       { source: "/info", destination: "/dashboard/info" },

@@ -46,7 +46,7 @@ interface ServerStatusProps {
   /**
    * Keeps the label visually hidden even while `dot` would otherwise reveal
    * it for an unhealthy server. For an instance placed somewhere with no
-   * room to grow — the collapsed sidebar rail is 72px wide — "SERVER
+   * room to grow — the collapsed sidebar rail is 64px wide — "SERVER
    * DEGRADED" doesn't fit and instead overflows its centered container in
    * both directions, bleeding clipped text into the sidebar's own edge and
    * squeezing/offsetting whatever renders beside it (#91). The dot's color

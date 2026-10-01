@@ -1,0 +1,142 @@
+/* Prices owns a single compact record view; the sort select replaces the wide column strip. */
+.acct-prices .acct-prices-list {
+  container-type: inline-size;
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+}
+.acct-prices .acct-prices-table,
+.acct-prices .acct-prices-table tbody {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  table-layout: auto;
+}
+.acct-prices .acct-prices-table thead { display: none; }
+.acct-prices .acct-prices-table tr.acct-prices-row {
+  display: grid;
+  grid-template-columns: 44px repeat(2, minmax(0, 1fr));
+  gap: 4px 12px;
+  align-items: start;
+  width: 100%;
+  padding: 12px 16px;
+  border-top: 1px solid var(--mr-dash-table-border);
+  cursor: default;
+}
+.acct-prices .acct-prices-table td,
+.acct-prices .acct-prices-table td.acct-num {
+  display: block;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  text-align: left;
+  white-space: normal;
+  background: transparent;
+  overflow-wrap: break-word;
+}
+.acct-prices .acct-prices-table td::before { content: none; }
+.acct-prices .acct-prices-table td:nth-child(1) { grid-column: 1; grid-row: 1; }
+.acct-prices .acct-prices-table td:nth-child(2) { grid-column: 2 / -1; grid-row: 1; }
+.acct-prices .acct-prices-table td:nth-child(3) { grid-column: 2 / -1; grid-row: 2; }
+.acct-prices .acct-prices-table td:nth-child(7) { grid-column: 2; grid-row: 3; }
+.acct-prices .acct-prices-table td:nth-child(11) { grid-column: 3; grid-row: 3; }
+.acct-prices .acct-prices-table td:nth-child(13) { grid-column: 2 / -1; grid-row: 4; }
+.acct-prices .acct-prices-table tr:not([data-expanded='true']) td:nth-child(4),
+.acct-prices .acct-prices-table tr:not([data-expanded='true']) td:nth-child(5),
+.acct-prices .acct-prices-table tr:not([data-expanded='true']) td:nth-child(6),
+.acct-prices .acct-prices-table tr:not([data-expanded='true']) td:nth-child(8),
+.acct-prices .acct-prices-table tr:not([data-expanded='true']) td:nth-child(9),
+.acct-prices .acct-prices-table tr:not([data-expanded='true']) td:nth-child(10),
+.acct-prices .acct-prices-table tr:not([data-expanded='true']) td:nth-child(12) { display: none; }
+.acct-prices .acct-prices-table tr[data-expanded='true'] td:nth-child(4),
+.acct-prices .acct-prices-table tr[data-expanded='true'] td:nth-child(5),
+.acct-prices .acct-prices-table tr[data-expanded='true'] td:nth-child(6),
+.acct-prices .acct-prices-table tr[data-expanded='true'] td:nth-child(8),
+.acct-prices .acct-prices-table tr[data-expanded='true'] td:nth-child(9),
+.acct-prices .acct-prices-table tr[data-expanded='true'] td:nth-child(10),
+.acct-prices .acct-prices-table tr[data-expanded='true'] td:nth-child(12) {
+  grid-column: 2 / -1;
+  border-top: 1px solid var(--mr-dash-hair);
+  padding-top: 8px;
+}
+.acct-prices .acct-prices-detail-label {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--mr-fg-3);
+  font-size: var(--mr-text-xs);
+}
+.acct-prices .acct-prices-table .acct-prices-floors { align-items: flex-start; }
+.acct-prices .acct-prices-field-label {
+  display: block;
+  color: var(--mr-fg-3);
+  font-size: var(--mr-text-xs);
+  font-family: var(--mr-font-label);
+}
+.acct-prices .acct-prices-table .acct-ground-cell strong,
+.acct-prices .acct-prices-table .acct-prices-price { display: block; font-weight: 650; font-variant-numeric: tabular-nums; }
+.acct-prices .acct-prices-table td.acct-prices-item { min-width: 0; width: auto; }
+.acct-prices .acct-prices-table .acct-prices-item-layout { min-width: 0; width: 100%; flex-wrap: wrap; }
+.acct-prices .acct-prices-table .acct-prices-item-layout > :is(.acct-prices-open, .acct-prices-item-copy) { flex: 1 1 100px; min-width: 0; }
+.acct-prices .acct-prices-table .acct-prices-open,
+.acct-prices .acct-prices-table .acct-prices-item-layout > a { min-height: 44px; }
+.acct-prices .acct-prices-table .acct-prices-detail { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.acct-prices .acct-prices-table .acct-prices-detail[data-sku-revealed='true'] { overflow: visible; white-space: normal; overflow-wrap: anywhere; }
+.acct-prices .acct-prices-table .acct-prices-set-sku { display: block; overflow-wrap: anywhere; color: var(--mr-fg-3); font-size: var(--mr-text-xs); }
+.acct-prices .acct-prices-sku-toggle {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 1px solid var(--mr-dash-hair);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-dash-sub);
+  color: var(--mr-fg-2);
+  font: inherit;
+  font-size: var(--mr-text-xs);
+  cursor: pointer;
+}
+.acct-prices .acct-prices-check { display: grid; width: 44px; height: 44px; place-items: center; cursor: pointer; }
+.acct-prices .acct-prices-check:has(input:disabled) { cursor: not-allowed; }
+.acct-prices .acct-prices-check:has(input:focus-visible),
+.acct-prices .acct-prices-sku-toggle:focus-visible,
+.acct-prices .acct-price-actions > :is(button, a):focus-visible { outline: 2px solid var(--mr-gold-500); outline-offset: 2px; }
+.acct-prices .acct-price-actions { min-width: 0; width: 100%; gap: 6px; }
+.acct-prices .acct-price-actions > :is(button, a) { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; flex: 1 1 96px; text-align: center; }
+.acct-prices .acct-price-actions .acct-prices-details { flex: 0 1 auto; }
+.acct-prices .acct-prices-tools { display: flex; }
+.acct-prices .acct-prices-tools .acct-prices-page-select {
+  display: inline-flex;
+  flex: 0 1 auto;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.acct-prices .acct-prices-page-select:has(input:focus-visible) { outline: 2px solid var(--mr-gold-500); outline-offset: 2px; }
+.acct-prices .acct-prices-tools > :is(button, label),
+.acct-prices .acct-prices-tools .acct-prices-search { min-width: min(100%, 140px); }
+.acct-prices .acct-prices-tools :is(button, input:not([type='checkbox']), select),
+.acct-prices .acct-ground-notice button,
+.acct-prices .acct-prices-pagination button { min-height: 44px; }
+.acct-prices .acct-prices-pagination { flex-wrap: wrap; }
+.acct-prices .acct-prices-pagination > div { flex-wrap: wrap; }
+
+@container (min-width: 780px) {
+  .acct-prices .acct-prices-table tr.acct-prices-row {
+    grid-template-columns: 44px minmax(0, 2fr) minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1.25fr);
+    align-items: center;
+    gap: 4px 16px;
+  }
+  .acct-prices .acct-prices-table td:nth-child(2) { grid-column: 2; grid-row: 1; }
+  .acct-prices .acct-prices-table td:nth-child(3) { grid-column: 3; grid-row: 1; }
+  .acct-prices .acct-prices-table td:nth-child(7) { grid-column: 4; grid-row: 1; }
+  .acct-prices .acct-prices-table td:nth-child(11) { grid-column: 5; grid-row: 1; }
+  .acct-prices .acct-prices-table td:nth-child(13) { grid-column: 2 / -1; grid-row: 2; }
+  .acct-prices .acct-price-actions { justify-content: flex-end; }
+  .acct-prices .acct-price-actions > :is(button, a) { flex: 0 1 150px; }
+}
+@container (max-width: 400px) {
+  .acct-prices .acct-prices-table tr.acct-prices-row { padding: 12px; gap: 4px 8px; }
+  .acct-prices .acct-prices-table td:nth-child(3) { grid-column: 2 / -1; }
+  .acct-prices .acct-price-actions .acct-prices-details { flex: 1 1 110px; }
+}

@@ -4,6 +4,7 @@ import React from 'react';
 import CodesPanel from './CodesPanel';
 import SitewidePanel from './SitewidePanel';
 import UsagePanel from './UsagePanel';
+import './discounts-responsive.css';
 
 type Tab = 'CODES' | 'SITEWIDE' | 'USAGE';
 
@@ -22,9 +23,20 @@ export default function DiscountsClient() {
   const [tab, setTab] = React.useState<Tab>('CODES');
   const [refreshToken, setRefreshToken] = React.useState(0);
   const bump = React.useCallback(() => setRefreshToken((n) => n + 1), []);
+  const tabs: Tab[] = ['CODES', 'SITEWIDE', 'USAGE'];
+  const onTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, current: Tab) => {
+    const index = tabs.indexOf(current);
+    const next = event.key === 'ArrowRight' ? tabs[(index + 1) % tabs.length]
+      : event.key === 'ArrowLeft' ? tabs[(index + tabs.length - 1) % tabs.length]
+      : event.key === 'Home' ? tabs[0] : event.key === 'End' ? tabs[tabs.length - 1] : null;
+    if (!next) return;
+    event.preventDefault();
+    setTab(next);
+    document.getElementById(`disc-tab-${next}`)?.focus();
+  };
 
   return (
-    <>
+    <div className="discounts-page">
       <div className="dash-page-header">
         <h1 className="dash-page-title">Discounts</h1>
       </div>
@@ -43,6 +55,8 @@ export default function DiscountsClient() {
             role="tab"
             id={`disc-tab-${t.id}`}
             aria-selected={tab === t.id}
+            tabIndex={tab === t.id ? 0 : -1}
+            onKeyDown={event => onTabKeyDown(event, t.id)}
             aria-controls={`disc-panel-${t.id}`}
             className={tab === t.id ? 'dash-btn-primary' : 'dash-btn-secondary'}
             onClick={() => setTab(t.id)}
@@ -57,6 +71,6 @@ export default function DiscountsClient() {
         {tab === 'SITEWIDE' && <SitewidePanel onChanged={bump} refreshToken={refreshToken} />}
         {tab === 'USAGE' && <UsagePanel refreshToken={refreshToken} />}
       </div>
-    </>
+    </div>
   );
 }

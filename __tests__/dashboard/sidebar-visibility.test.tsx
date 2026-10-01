@@ -96,7 +96,7 @@ describe('sidebar visibility', () => {
     const visible = visibleTo(Role.STAFF);
     for (const forbidden of [
       '/catalogue', '/settings', '/admin', '/collaborators', '/storefront-appearance',
-      '/analytics', '/seo', '/reviews', '/info', '/accounting', '/partners',
+      '/analytics', '/seo', '/reviews', '/info', '/accounting', '/partners', '/giveaway',
     ]) {
       expect(visible).not.toContain(forbidden);
     }
@@ -121,7 +121,7 @@ describe('sidebar visibility', () => {
     expect(bySection('Store')).toEqual(['Overview', 'Catalogue', 'Collaborators', 'Accounting', 'Storefront']);
     // Inventory is open to ADMIN again (owner, 2026-09-15: "inventory for admin also").
     expect(bySection('Operations')).toEqual([
-      'Orders', 'Customers', 'Loyalty', 'Gallery', 'Discounts',
+      'Orders', 'Customers', 'Loyalty', 'Giveaway', 'Gallery', 'Discounts',
       'Chat', 'Email', 'Reviews', 'Fulfillment', 'Refunds and payments', 'Inventory',
     ]);
     // dashboard#90: renamed Analytics & Media (owner-approved regroup).

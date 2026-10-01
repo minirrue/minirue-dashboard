@@ -288,7 +288,7 @@ export default function SitewidePanel({
   const preview = formatCodeName(code);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div className="discounts-panel-stack">
       {error && <p className="dash-error">{error}</p>}
 
       <section className="dash-card">
@@ -325,7 +325,7 @@ export default function SitewidePanel({
 
       {mode === 'AUTOMATIC' ? (
         <>
-          <section className="dash-card">
+          <section className={`dash-card${!loading && !live ? ' discounts-inactive-status' : ''}`}>
             <h2 className="dash-card-title">Running now</h2>
             {loading ? (
               <p className="dash-muted">Loading…</p>
@@ -434,7 +434,7 @@ export default function SitewidePanel({
             </p>
           )}
 
-          <section className="dash-card">
+          <section className={`dash-card${!loading && manualLive.length === 0 ? ' discounts-inactive-status' : ''}`}>
             <h2 className="dash-card-title" id="manual-running-label">Manual codes running now</h2>
             {loading ? (
               <p className="dash-muted">Loading…</p>

@@ -45,6 +45,17 @@ test('creates a bundle review with normalized mobile and never completes a purch
   expect(await screen.findByText('Not signed up')).toBeInTheDocument();
 });
 
+test('entry keeps optional indicators alongside their labels and does not duplicate the exit in its transaction footer', async () => {
+  render(<AssistedOrderClient />);
+  await screen.findByRole('button', { name: 'Add Hair set' });
+  const last = screen.getByLabelText(/Last name/).closest('label')!;
+  const email = screen.getByLabelText(/Email/).closest('label')!;
+  expect(last.querySelector('.ao-label-line')).toHaveTextContent('Last name Optional');
+  expect(email.querySelector('.ao-label-line')).toHaveTextContent('Email Optional');
+  expect(screen.getAllByRole('link', { name: 'Orders' })).toHaveLength(1);
+  expect(document.querySelector('footer')?.querySelector('a[href="/orders"]')).toBeNull();
+});
+
 test('missing Ground price is unavailable rather than free and cannot be added', async () => {
   jest.mocked(getAssistedCatalog).mockResolvedValue({ data: [{ id: 'unpriced', kind: 'VARIANT', variantId: 'unpriced', bundleId: null, productId: 'p1', name: 'Unpriced item', sku: null, sizeMl: null, onlinePriceMinor: 50000, groundPriceMinor: null, availableStock: 2, imageUrl: null }], page: 1, hasMore: false });
   render(<AssistedOrderClient />);

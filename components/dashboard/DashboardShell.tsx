@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import DashboardSidebar from './DashboardSidebar';
 import DashboardTopbar, { type BreadcrumbItem } from './DashboardTopbar';
 
@@ -20,6 +20,12 @@ export interface DashboardShellProps {
   shellEyebrow?: string;
   /** Optional topbar title */
   shellTitle?: string;
+  /**
+   * Working search control supplied by the dashboard-search provider.
+   * The shell only places it; keyboard shortcuts and dialog state stay with
+   * the provider so chrome never creates an inert or duplicate search UI.
+   */
+  searchTrigger?: React.ReactNode;
 }
 
 export function DashboardShell({
@@ -31,12 +37,17 @@ export function DashboardShell({
   userRole,
   shellEyebrow,
   shellTitle,
+  searchTrigger,
 }: DashboardShellProps) {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const sidebarStorageKey = `minirue:dashboard-sidebar:${userId ?? `${userRole ?? 'loading'}:${userName ?? 'user'}`}`;
-  const toggleDrawer = () => setMobileDrawerOpen((v) => !v);
-  const closeDrawer = () => setMobileDrawerOpen(false);
+  const drawerTriggerRef = useRef<HTMLButtonElement>(null);
+  const toggleDrawer = useCallback(() => {
+    drawerTriggerRef.current = document.querySelector<HTMLButtonElement>('.dash-hamburger-btn');
+    setMobileDrawerOpen((value) => !value);
+  }, []);
+  const closeDrawer = useCallback(() => setMobileDrawerOpen(false), []);
   const toggleSidebar = useCallback(() => {
     setSidebarCollapsed((value) => {
       const next = !value;
@@ -47,17 +58,38 @@ export function DashboardShell({
 
   useEffect(() => {
     let active = true;
-    queueMicrotask(() => {
-      if (active) setSidebarCollapsed(window.localStorage.getItem(sidebarStorageKey) === 'collapsed');
-    });
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const syncDesktopPreference = () => {
+      if (!active) return;
+      setSidebarCollapsed(
+        desktop.matches && window.localStorage.getItem(sidebarStorageKey) === 'collapsed',
+      );
+    };
+    queueMicrotask(syncDesktopPreference);
+    desktop.addEventListener('change', syncDesktopPreference);
     return () => {
       active = false;
+      desktop.removeEventListener('change', syncDesktopPreference);
     };
   }, [sidebarStorageKey]);
 
   useEffect(() => {
+    let active = true;
+    queueMicrotask(() => {
+      if (active) setMobileDrawerOpen(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [activePath]);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'b') {
+      if (
+        (event.ctrlKey || event.metaKey)
+        && event.key.toLowerCase() === 'b'
+        && window.matchMedia('(min-width: 1024px)').matches
+      ) {
         event.preventDefault();
         toggleSidebar();
       }
@@ -75,6 +107,7 @@ export function DashboardShell({
         userId={userId}
         mobileDrawerOpen={mobileDrawerOpen}
         onMobileDrawerClose={closeDrawer}
+        drawerTriggerRef={drawerTriggerRef}
         collapsed={sidebarCollapsed}
         onCollapsedChange={toggleSidebar}
       />
@@ -85,6 +118,7 @@ export function DashboardShell({
           userRole={userRole}
           eyebrow={shellEyebrow}
           title={shellTitle}
+          searchTrigger={searchTrigger}
           onToggleDrawer={toggleDrawer}
         />
         <div className="dash-content">

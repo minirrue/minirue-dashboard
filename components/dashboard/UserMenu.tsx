@@ -68,8 +68,8 @@ export default function UserMenu({ userName = 'Admin', userRole }: UserMenuProps
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={userName}
-        title={userName}
+        aria-label={userRole ? `${userName}, ${userRole}` : userName}
+        title={userRole ? `${userName} · ${userRole}` : userName}
         data-trace-id="PG-DASHBOARD-IAM-002::EL-REGION-user-menu"
       >
         <span className="dash-sidebar-footer-avatar" aria-hidden="true">

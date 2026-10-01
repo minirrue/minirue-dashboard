@@ -10,11 +10,11 @@ import { apiAccountingOverview, type AccountingOverview, type PriceFlag } from '
 import { listProducts } from '@/lib/catalog/api';
 import PricingDrawer, { FLAG_LABELS, MODE, formatSignedEgp } from './PricingDrawer';
 import './prices-tab.css';
+import './prices-responsive.css';
 import { MenuSelect } from '@/components/dashboard/AnimatedControls';
 import DashboardActionBar from '@/components/dashboard/DashboardActionBar';
 import { getGroundPrices, groundItemKey, undoGroundPrices, type GroundPrices, type GroundPriceItem } from '@/lib/api/ground-pricing';
 import GroundPriceEditor from './GroundPriceEditor';
-import DownScrollHeader from './DownScrollHeader';
 
 function formatMargin(bp: number): string {
   const pct = Math.round(bp / 10) / 10;
@@ -165,10 +165,13 @@ export default function PricesTab() {
   const [ground, setGround] = useState<GroundPrices | null>(null);
   const [groundError, setGroundError] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
+  const [expanded, setExpanded] = useState<string[]>([]);
+  const [revealedSku, setRevealedSku] = useState<string[]>([]);
+  const toggleDetails = (key: string) => setExpanded(current => current.includes(key) ? current.filter(value => value !== key) : [...current, key]);
+  const toggleSku = (key: string) => setRevealedSku(current => current.includes(key) ? current.filter(value => value !== key) : [...current, key]);
   const [groundEditor, setGroundEditor] = useState<GroundPriceItem | 'bulk' | null>(null);
   const [undoRun, setUndoRun] = useState<string | null>(null);
   const [undoBusy, setUndoBusy] = useState(false);
-  const tableRef = useRef<HTMLTableElement>(null);
   const loadGround = useCallback(async () => {
     try { setGround(await getGroundPrices()); setGroundError(''); }
     catch { setGroundError('Ground prices could not load. Online prices are still available.'); }
@@ -360,7 +363,7 @@ export default function PricesTab() {
   const pageKeys = pagedRows.map(item => item.key).filter(key => groundByKey.has(key));
   const toggleSelected = (key: string) => setSelected(current => current.includes(key) ? current.filter(value => value !== key) : [...current, key]);
   const priceHeader = <tr>
-    <th scope="col"><input type="checkbox" aria-label="Select this page for Ground pricing" checked={pageKeys.length > 0 && pageKeys.every(key => selected.includes(key))} disabled={!pageKeys.length} onChange={event => setSelected(current => event.target.checked ? [...new Set([...current, ...pageKeys])] : current.filter(key => !pageKeys.includes(key)))} /></th>
+    <th scope="col" />
     {sortHeader('ITEM', 'Item')}{sortHeader('MODE', 'Mode')}{sortHeader('COST', 'Cost')}
     {sortHeader('MARKET', 'Market')}{sortHeader('FLOOR', 'Law 1 / no-loss floor')}
     {sortHeader('PRICE', 'Price')}{sortHeader('MARGIN', 'Margin')}{sortHeader('PROFIT', 'Profit')}
@@ -370,9 +373,9 @@ export default function PricesTab() {
   const groundCells = (key: string) => {
     const item = groundByKey.get(key);
     return <>
-      <td data-label="Ground price" className="acct-num acct-ground-cell">{item ? <><strong>{formatEgpMinor(item.groundPriceMinor)}</strong><span className="acct-prices-sub">{item.mode === 'SYSTEM' ? 'Linked to online' : 'My Ground price'}</span><span className="acct-prices-sub">Current online: {formatEgpMinor(item.onlinePriceMinor)}</span></> : <span>{groundError ? 'Unavailable' : 'Loading…'}</span>}</td>
-      <td data-label="Ground margin" className="acct-num acct-ground-cell">{item?.marginBp != null ? formatMargin(item.marginBp) : '—'}</td>
-      <td data-label="Edit"><div className="acct-price-actions">{key.startsWith('VARIANT:') ? <button type="button" className="dash-btn-secondary" onClick={event => {event.stopPropagation();setOpenId(key.slice(8));}}>Edit online</button> : <Link className="dash-btn-secondary" href={`/catalogue/bundles/${key.slice(7)}/edit`}>Edit online</Link>}<button type="button" className="dash-btn-secondary" disabled={!item} onClick={event => { event.stopPropagation(); if (item) setGroundEditor(item); }}>Edit Ground</button></div></td>
+      <td data-label="Ground price" className="acct-num acct-ground-cell"><span className="acct-prices-field-label">Ground price</span>{item ? <><strong>{formatEgpMinor(item.groundPriceMinor)}</strong><span className="acct-prices-sub">{item.mode === 'SYSTEM' ? 'Linked to online' : 'My Ground price'}</span><span className="acct-prices-sub">Current online: {formatEgpMinor(item.onlinePriceMinor)}</span></> : <span>{groundError ? 'Unavailable' : 'Loading…'}</span>}</td>
+      <td data-label="Ground margin" className="acct-num acct-ground-cell"><span className="acct-prices-detail-label">Ground margin</span>{item?.marginBp != null ? formatMargin(item.marginBp) : '—'}</td>
+      <td data-label="Edit"><div className="acct-price-actions">{key.startsWith('VARIANT:') ? <button type="button" className="dash-btn-secondary" onClick={event => {event.stopPropagation();setOpenId(key.slice(8));}}>Edit online</button> : <Link className="dash-btn-secondary" href={`/catalogue/bundles/${key.slice(7)}/edit`}>Edit online</Link>}<button type="button" className="dash-btn-secondary" disabled={!item} onClick={event => { event.stopPropagation(); if (item) setGroundEditor(item); }}>Edit Ground</button><button type="button" className="acct-prices-details dash-btn-secondary" aria-expanded={expanded.includes(key)} onClick={event => { event.stopPropagation(); toggleDetails(key); }}>{expanded.includes(key) ? 'Hide details' : 'Show details'}</button></div></td>
     </>;
   };
 
@@ -472,9 +475,10 @@ export default function PricesTab() {
       </header>
 
       {groundError && <div className="acct-ground-notice" role="alert">{groundError} <button type="button" className="dash-btn-secondary" onClick={() => void loadGround()}>Retry Ground prices</button></div>}
-      {ground && <div className="acct-ground-notice"><div><strong>Ground System prices stay linked</strong><p>Default: {ground.rule.type === 'PERCENT' ? `${ground.rule.value / 100}%` : formatEgpMinor(ground.rule.value)} above the current online selling price, including automatic offers. The Price column shows the online list price. Ground margin uses bought cost only.</p></div><button type="button" className="dash-btn-secondary" onClick={() => setGroundEditor('bulk')}>Edit Ground rule</button></div>}
+      {ground && <div className="acct-ground-notice"><div><strong>Ground System prices stay linked</strong><p>Default: {ground.rule.type === 'PERCENT' ? `${ground.rule.value / 100}%` : formatEgpMinor(ground.rule.value)} above the current online selling price, including automatic offers. Each item shows its online list price. Ground margin uses bought cost only.</p></div><button type="button" className="dash-btn-secondary" onClick={() => setGroundEditor('bulk')}>Edit Ground rule</button></div>}
 
       <div className="acct-prices-tools" aria-label="Price table controls">
+        <label className="acct-prices-page-select"><input type="checkbox" aria-label="Select this page for Ground pricing" checked={pageKeys.length > 0 && pageKeys.every(key => selected.includes(key))} disabled={!pageKeys.length} onChange={event => setSelected(current => event.target.checked ? [...new Set([...current, ...pageKeys])] : current.filter(key => !pageKeys.includes(key)))} /><span>Select page for Ground</span></label>
         <label className="acct-prices-search">
           <span>Search</span>
           <input
@@ -495,8 +499,8 @@ export default function PricesTab() {
       {items.length === 0 && sets.length === 0 ? (
         <p className="acct-prices-empty">No house products yet. Items you add to the catalogue appear here.</p>
       ) : (
-        <div className="dash-table-wrap">
-          <table ref={tableRef} className="dash-table acct-prices-table" aria-label="Prices">
+        <div className="dash-table-wrap acct-prices-list">
+          <table className="dash-table acct-prices-table" aria-label="Prices">
             <thead>{priceHeader}</thead>
             <tbody>
               {pagedRows.map((item) => {
@@ -509,8 +513,8 @@ export default function PricesTab() {
                 const belowNoLoss = floors !== null && price < floors.noLossShownMinor;
                 const belowLaw1 = floors !== null && price < floors.law1ShownMinor;
                 return (
-                  <tr key={row.variantId} className="acct-prices-row" onClick={() => setOpenId(row.variantId)}>
-                    <td data-label="Select" onClick={event => event.stopPropagation()}><input type="checkbox" aria-label={`Select ${row.productName} for Ground pricing`} disabled={!groundByKey.has(item.key)} checked={selected.includes(item.key)} onChange={() => toggleSelected(item.key)} /></td>
+                  <tr key={row.variantId} className="acct-prices-row" data-expanded={expanded.includes(item.key)} onClick={() => setOpenId(row.variantId)}>
+                    <td data-label="Select" onClick={event => event.stopPropagation()}><label className="acct-prices-check"><input type="checkbox" aria-label={`Select ${row.productName} for Ground pricing`} disabled={!groundByKey.has(item.key)} checked={selected.includes(item.key)} onChange={() => toggleSelected(item.key)} /></label></td>
                     <td data-label="Item" className="acct-prices-item">
                       <div className="acct-prices-item-layout">
                         <ProductThumb src={coverByProduct[row.productId]} />
@@ -523,11 +527,12 @@ export default function PricesTab() {
                           }}
                         >
                           <span className="acct-prices-name">{row.productName}</span>{' '}
-                          <span className="acct-prices-detail">
+                          <span className="acct-prices-detail" data-sku-revealed={revealedSku.includes(item.key)}>
                             {row.sku}
                             {!row.isActive && ' · Inactive'}
                           </span>
                         </button>
+                        <button type="button" className="acct-prices-sku-toggle" aria-label={revealedSku.includes(item.key) ? 'Hide full SKU' : 'Show full SKU'} aria-expanded={revealedSku.includes(item.key)} onClick={event => { event.stopPropagation(); toggleSku(item.key); }}>{revealedSku.includes(item.key) ? 'Hide SKU' : 'SKU'}</button>
                       </div>
                     </td>
                     <td data-label="Mode">
@@ -535,21 +540,21 @@ export default function PricesTab() {
                         {MODE[row.mode].label}
                       </span>
                     </td>
-                    <td data-label="Cost" className="acct-num">
+                    <td data-label="Cost" className="acct-num"><span className="acct-prices-detail-label">Cost</span>
                       {row.costMinor === null ? (
                         <span className="acct-prices-missing">No cost</span>
                       ) : (
                         <span className="mr-num">{formatEgpMinor(row.costMinor)}</span>
                       )}
                     </td>
-                    <td data-label="Market" className="acct-num">
+                    <td data-label="Market" className="acct-num"><span className="acct-prices-detail-label">Market</span>
                       {market === null ? (
                         <span className="acct-prices-none">None</span>
                       ) : (
                         <span className="mr-num">{formatEgpMinor(market)}</span>
                       )}
                     </td>
-                    <td data-label="Law 1 / no-loss" className="acct-num">
+                    <td data-label="Law 1 / no-loss" className="acct-num"><span className="acct-prices-detail-label">Law 1 / no-loss</span>
                       {floors ? (
                         <span className="acct-prices-floors mr-num">
                           <span>{formatEgpMinor(floors.law1ShownMinor)}</span>
@@ -560,6 +565,7 @@ export default function PricesTab() {
                       )}
                     </td>
                     <td data-label="Price" className="acct-num">
+                      <span className="acct-prices-field-label">Online list price</span>
                       <span
                         className="acct-prices-price mr-num"
                         data-tone={belowNoLoss ? 'danger' : belowLaw1 ? 'warn' : undefined}
@@ -572,7 +578,7 @@ export default function PricesTab() {
                         </span>
                       )}
                     </td>
-                    <td data-label="Margin" className="acct-num">
+                    <td data-label="Margin" className="acct-num"><span className="acct-prices-detail-label">Margin</span>
                       {marginBp === null ? (
                         <span className="acct-prices-none">—</span>
                       ) : (
@@ -581,7 +587,7 @@ export default function PricesTab() {
                         </span>
                       )}
                     </td>
-                    <td data-label="Profit" className="acct-num">
+                    <td data-label="Profit" className="acct-num"><span className="acct-prices-detail-label">Profit</span>
                       {productProfitMinor === null ? (
                         <span className="acct-prices-none">Unknown</span>
                       ) : (
@@ -590,7 +596,7 @@ export default function PricesTab() {
                         </span>
                       )}
                     </td>
-                    <td data-label="Flags" className="acct-num">
+                    <td data-label="Flags" className="acct-num"><span className="acct-prices-detail-label">Flags</span>
                       <FlagCount flags={row.system.flags} />
                     </td>
                     {groundCells(item.key)}
@@ -612,8 +618,9 @@ export default function PricesTab() {
                     className="acct-prices-row"
                     data-kind="set"
                     data-highlight={set.bundleId === highlightSetId ? 'true' : undefined}
+                    data-expanded={expanded.includes(item.key)}
                   >
-                    <td data-label="Select"><input type="checkbox" aria-label={`Select ${set.name} for Ground pricing`} disabled={!groundByKey.has(item.key)} checked={selected.includes(item.key)} onChange={() => toggleSelected(item.key)} /></td>
+                    <td data-label="Select"><label className="acct-prices-check"><input type="checkbox" aria-label={`Select ${set.name} for Ground pricing`} disabled={!groundByKey.has(item.key)} checked={selected.includes(item.key)} onChange={() => toggleSelected(item.key)} /></label></td>
                     <td data-label="Item" className="acct-prices-item">
                       <Link href={`/catalogue/bundles/${set.bundleId}/edit`} className="acct-prices-item-layout">
                         <ProductThumb src={coverByProduct[set.members[0]?.productId]} />
@@ -624,6 +631,7 @@ export default function PricesTab() {
                             {set.mode === 'SYSTEM' && ` · ${formatMargin(set.effectiveSavingBp)} off`}
                             {!set.isActive && ' · Inactive'}
                           </span>
+                          {groundByKey.get(item.key)?.sku && <span className="acct-prices-set-sku">SKU: {groundByKey.get(item.key)?.sku}</span>}
                         </span>
                       </Link>
                     </td>
@@ -632,17 +640,17 @@ export default function PricesTab() {
                         {MODE[set.mode].label}
                       </span>
                     </td>
-                    <td data-label="Cost" className="acct-num">
+                    <td data-label="Cost" className="acct-num"><span className="acct-prices-detail-label">Cost</span>
                       {set.costMinor === null ? (
                         <span className="acct-prices-missing">No cost</span>
                       ) : (
                         <span className="mr-num">{formatEgpMinor(set.costMinor)}</span>
                       )}
                     </td>
-                    <td data-label="Market" className="acct-num">
+                    <td data-label="Market" className="acct-num"><span className="acct-prices-detail-label">Market</span>
                       <span className="acct-prices-none">—</span>
                     </td>
-                    <td data-label="Law 1 / no-loss" className="acct-num">
+                    <td data-label="Law 1 / no-loss" className="acct-num"><span className="acct-prices-detail-label">Law 1 / no-loss</span>
                       {floors ? (
                         <span className="acct-prices-floors mr-num">
                           <span>{formatEgpMinor(floors.law1ShownMinor)}</span>
@@ -653,6 +661,7 @@ export default function PricesTab() {
                       )}
                     </td>
                     <td data-label="Price" className="acct-num">
+                      <span className="acct-prices-field-label">Online list price</span>
                       <span
                         className="acct-prices-price mr-num"
                         data-tone={breach === 'NO_LOSS' ? 'danger' : breach === 'LAW1' ? 'warn' : undefined}
@@ -665,7 +674,7 @@ export default function PricesTab() {
                         </span>
                       )}
                     </td>
-                    <td data-label="Margin" className="acct-num">
+                    <td data-label="Margin" className="acct-num"><span className="acct-prices-detail-label">Margin</span>
                       {marginBp === null ? (
                         <span className="acct-prices-none">—</span>
                       ) : (
@@ -674,7 +683,7 @@ export default function PricesTab() {
                         </span>
                       )}
                     </td>
-                    <td data-label="Profit" className="acct-num">
+                    <td data-label="Profit" className="acct-num"><span className="acct-prices-detail-label">Profit</span>
                       {productProfitMinor === null ? (
                         <span className="acct-prices-none">Unknown</span>
                       ) : (
@@ -683,7 +692,7 @@ export default function PricesTab() {
                         </span>
                       )}
                     </td>
-                    <td data-label="Warnings" className="acct-num">
+                    <td data-label="Warnings" className="acct-num"><span className="acct-prices-detail-label">Warnings</span>
                       {set.warnings.length === 0 ? (
                         <span className="acct-prices-none" aria-label="No warnings">
                           —
@@ -744,7 +753,6 @@ export default function PricesTab() {
         </div>
       )}
 
-      <DownScrollHeader tableRef={tableRef}>{priceHeader}</DownScrollHeader>
       <DashboardActionBar title={selected.length ? `${selected.length} selected` : 'Accounting'} description="Ground prices track online prices">
         {selected.length > 0 && <button className="dash-btn-secondary" type="button" onClick={() => setSelected([])}>Clear selection</button>}
         {undoRun && <button className="dash-btn-secondary" type="button" disabled={undoBusy} onClick={async () => { setUndoBusy(true); try { setGround(await undoGroundPrices(undoRun)); setUndoRun(null); setGroundError(''); } catch (error) { setGroundError(error instanceof Error ? error.message : 'Could not undo. Reload prices and try again.'); } finally { setUndoBusy(false); } }}>{undoBusy ? 'Undoing…' : 'Undo Ground change'}</button>}

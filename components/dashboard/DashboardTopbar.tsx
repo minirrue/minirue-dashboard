@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import NotificationDrawer from './NotificationDrawer';
 import ServerStatus from './ServerStatus';
 import PricingWarningsLink from './PricingWarningsLink';
@@ -22,11 +22,13 @@ export interface DashboardTopbarProps {
   userRole?: string;
   eyebrow?: string;
   title?: string;
+  /** Working search trigger supplied by the search feature; omitted means no search UI. */
+  searchTrigger?: ReactNode;
   /** Mobile drawer toggle callback */
   onToggleDrawer?: () => void;
 }
 
-export default function DashboardTopbar({ onToggleDrawer }: DashboardTopbarProps) {
+export default function DashboardTopbar({ searchTrigger, onToggleDrawer }: DashboardTopbarProps) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useUnreadNotificationCount();
 
@@ -38,37 +40,34 @@ export default function DashboardTopbar({ onToggleDrawer }: DashboardTopbarProps
   return (
     <>
     <header className="dash-topbar dash-topbar--minimal">
-      <div className="dash-topbar-actions">
+      <div className="dash-topbar-leading">
         <button
+          type="button"
           className="dash-hamburger-btn"
           onClick={onToggleDrawer}
           aria-label="Toggle navigation menu"
         >
-          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <line x1="3" y1="6" x2="21" y2="6" />
             <line x1="3" y1="12" x2="21" y2="12" />
             <line x1="3" y1="18" x2="21" y2="18" />
           </svg>
         </button>
+        {searchTrigger ? <div className="dash-topbar-search-slot">{searchTrigger}</div> : null}
+      </div>
 
-        {/* Is the API up. Sits before the bell because a dead server makes
-            every other control in here a lie — including the bell's count. */}
-        <ServerStatus variant="dot" />
-
-        {/* Yellow pricing warnings, beside the bell; renders nothing at 0. */}
+      <div className="dash-topbar-actions">
+        <ServerStatus variant="dot" className="dash-server-status" />
         <PricingWarningsLink />
-
         <button
+          type="button"
           className="dash-notif-btn"
           onClick={() => setNotifOpen(true)}
           aria-label={unreadCount > 0 ? `Open notifications (${unreadCount} unread)` : 'Open notifications'}
         >
-          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M6 9a6 6 0 0 1 12 0v5l2 3H4l2-3V9zM10 19a2 2 0 0 0 4 0" />
           </svg>
-          {/* The count was already being fetched correctly and thrown away to
-              draw a 6px dot, so the bell could say "something happened" but
-              never "how much". */}
           {unreadCount > 0 && (
             <span className="dash-notif-count">
               {unreadCount > 99 ? '99+' : unreadCount}

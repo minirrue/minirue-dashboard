@@ -1,6 +1,8 @@
 'use client';
 
-import React, {useState, useCallback, useMemo, useEffect } from 'react';
+import React, {useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import OrdersResponsiveList from './OrdersResponsiveList';
+import './orders-responsive.css';
 import Link from 'next/link';
 import DashboardTable from '@/components/dashboard/DashboardTable';
 import type { Column } from '@/components/dashboard/DashboardTable';
@@ -14,7 +16,6 @@ import { useClearNavBadge } from '@/lib/hooks/use-clear-nav-badge';
 import { HREF_CATEGORIES } from '@/lib/notifications/nav-counts';
 import InternalOrderBadge from '@/components/dashboard/InternalOrderBadge';
 import RowActionsMenu from '@/components/dashboard/RowActionsMenu';
-import DashboardActionBar from '@/components/dashboard/DashboardActionBar';
 
 function formatAmount(amount: string, currency: string): string {
   return `${currency} ${parseFloat(amount).toLocaleString('en-EG', { minimumFractionDigits: 2 })}`;
@@ -190,6 +191,18 @@ export default function OrdersClient() {
   // open, instead of leaving it lit until the next 60s poll.
   useClearNavBadge(HREF_CATEGORIES['/orders']);
   const [orders, setOrders] = useState<Order[]>([]);
+  const listWidthRef = useRef<HTMLDivElement>(null);
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const element = listWidthRef.current;
+    if (!element) return;
+    const update = (width: number) => { if (width > 0) setCompact(width < 980); };
+    update(element.getBoundingClientRect().width);
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(entries => update(entries[0].contentRect.width));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [transitionError, setTransitionError] = useState<string | null>(null);
@@ -342,6 +355,7 @@ export default function OrdersClient() {
         <select
           className="dash-select"
           value={statusFilter}
+          aria-label="Filter by status"
           onChange={(e) => setStatusFilter(e.target.value)}
         >
           {STATUS_OPTIONS.map((o) => (
@@ -368,6 +382,7 @@ export default function OrdersClient() {
         </p>
       )}
 
+      <div ref={listWidthRef} className="orders-results">
       {loading ? (
         <SkeletonRows />
       ) : error ? (
@@ -382,23 +397,15 @@ export default function OrdersClient() {
           </button>
         </div>
       ) : (
+        compact ? <OrdersResponsiveList orders={orders} columns={columns} emptyMessage={debouncedSearch ? `No order matches "${debouncedSearch}".` : statusFilter ? 'No orders match the selected status.' : 'No orders yet.'} /> :
         <DashboardTable<Order>
           columns={columns}
           data={orders}
           pageSize={20}
-          emptyMessage={
-            debouncedSearch
-              ? `No order matches "${debouncedSearch}".`
-              : statusFilter
-                ? 'No orders match the selected status.'
-                : 'No orders yet.'
-          }
+          emptyMessage={debouncedSearch ? `No order matches "${debouncedSearch}".` : statusFilter ? 'No orders match the selected status.' : 'No orders yet.'}
         />
       )}
-
-      <DashboardActionBar title="Orders" description="Support and in-person sales">
-        <Link className="dash-btn-primary" href="/orders/new">New manual order</Link>
-      </DashboardActionBar>
+      </div>
     </>
   );
 }

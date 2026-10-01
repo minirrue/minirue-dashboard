@@ -87,6 +87,7 @@ export const DASHBOARD_ROUTE_ACCESS: Record<string, readonly RoleType[]> = {
   // Reactivated for STAFF (#74): loyalty accounts + adjust are on the backend
   // STAFF allow-list, and Loyalty moved out of Insights into Operations.
   '/loyalty': ADMIN_AND_SUPPORT,
+  '/giveaway': ADMIN_ONLY,
   '/settings': ADMIN_ONLY,
   // Was STAFF_ROLES — narrowed to ADMIN_ONLY 2026-07-30 per owner ask ("hide
   // from him info also").

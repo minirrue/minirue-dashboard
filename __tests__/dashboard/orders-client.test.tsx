@@ -152,6 +152,14 @@ describe('OrdersClient channel column and customer fallback', () => {
     expect(screen.getByRole('link', { name: /view/i })).toHaveAttribute('href', '/orders/ord_staff');
   });
 
+  it('offers only one new manual order entry point', async () => {
+    mockedOrders.apiAdminListOrders.mockResolvedValue({ data: [], total: 0, page: 1, limit: 100 });
+    render(<OrdersClient />);
+    await screen.findByText('No orders yet.');
+    expect(screen.getAllByRole('link', { name: 'New manual order' })).toHaveLength(1);
+    expect(screen.getByRole('combobox', { name: 'Filter by status' })).toBeInTheDocument();
+  });
+
   describe('#124: row-end next-step button replaces the Status-column dropdown', () => {
     it('shows only the chip in Status, and a "Confirm →" button that advances the order', async () => {
       const pending = makeOrder({ id: 'ord_pending', orderNumber: 'MR-PEND', status: 'PENDING' });

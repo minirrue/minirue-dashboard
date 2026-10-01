@@ -7,14 +7,12 @@ import UserMenu from './UserMenu';
 import ServerStatus from './ServerStatus';
 import { useNotificationCounts } from '@/lib/hooks/use-notification-counts';
 import { formatNavCount, navUnreadCount } from '@/lib/notifications/nav-counts';
-import { Sparkle } from '../primitives';
 import { CHANGELOG } from '@/lib/changelog';
 import { hasUnreadChangelog } from '@/lib/changelog-read-state';
 import NotificationDrawer from './NotificationDrawer';
 import { useUnreadNotificationCount } from '@/lib/hooks/use-unread-notifications';
 import { apiCollabOverview, type CollabModule } from '@/lib/api/collab-portal';
 import { useMountedEffect } from '@/lib/hooks/useMountedEffect';
-import { useShopName } from '@/lib/hooks/use-shop-name';
 import { usePricingWarnings } from '@/lib/hooks/use-pricing-warnings';
 import PricingWarningsLink, { IconWarningTriangle, pricingWarningsLabel } from './PricingWarningsLink';
 
@@ -258,6 +256,8 @@ export interface DashboardSidebarProps {
   mobileDrawerOpen?: boolean;
   /** Mobile drawer close callback */
   onMobileDrawerClose?: () => void;
+  /** Button that invoked the drawer, for focus restoration on dismissal. */
+  drawerTriggerRef?: React.RefObject<HTMLButtonElement | null>;
   /** Desktop icon rail state. Mobile always uses the full-width drawer. */
   collapsed?: boolean;
   /** Toggle the desktop rail. Also available through Ctrl/Cmd+B. */
@@ -337,6 +337,7 @@ export const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
       { label: 'Orders', href: '/orders', icon: <IconShoppingBag /> },
       { label: 'Customers', href: '/customers', icon: <IconUsers /> },
       { label: 'Loyalty', href: '/loyalty', icon: <IconStar /> },
+      { label: 'Giveaway', href: '/giveaway', icon: <IconStar />, adminOnly: true },
       { label: 'Gallery', href: '/gallery', icon: <IconImage /> },
       // Merchandising, but it lives with Operations rather than the catalogue:
       // a code is something you run and watch, not something you shelve.
@@ -387,12 +388,10 @@ export default function DashboardSidebar({
   userId,
   mobileDrawerOpen,
   onMobileDrawerClose,
+  drawerTriggerRef,
   collapsed = false,
   onCollapsedChange,
 }: DashboardSidebarProps) {
-  // The ONE shop name (2026-07-31 owner ask) — replaces the hardcoded
-  // "MiniRue" wordmark below so a rename in Settings reaches the sidebar too.
-  const shopName = useShopName();
   const drawerRef = React.useRef<HTMLElement>(null);
   const groupStorageKey = `minirue:dashboard-groups:${userId ?? `${userRole ?? 'loading'}:${userName ?? 'user'}`}`;
   const [closedGroups, setClosedGroups] = React.useState<string[]>([]);
@@ -416,7 +415,7 @@ export default function DashboardSidebar({
   React.useEffect(() => {
     if (!mobileDrawerOpen) return;
     const previousOverflow = document.body.style.overflow;
-    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const trigger = drawerTriggerRef?.current;
     const main = document.querySelector<HTMLElement>('.dash-main');
     const previousInert = main?.inert ?? false;
     if (main) main.inert = true;
@@ -444,7 +443,7 @@ export default function DashboardSidebar({
       }
     };
     document.addEventListener('keydown', handleKeyDown);
-    const desktop = window.matchMedia('(min-width: 761px)');
+    const desktop = window.matchMedia('(min-width: 1024px)');
     const closeOnDesktop = () => { if (desktop.matches) onMobileDrawerClose?.(); };
     desktop.addEventListener('change', closeOnDesktop);
     return () => {
@@ -452,9 +451,13 @@ export default function DashboardSidebar({
       document.body.style.overflow = previousOverflow;
       document.removeEventListener('keydown', handleKeyDown);
       desktop.removeEventListener('change', closeOnDesktop);
-      previousFocus?.focus();
+      const triggerStyle = trigger?.isConnected ? window.getComputedStyle(trigger) : null;
+      const focusTarget = triggerStyle && triggerStyle.display !== 'none' && triggerStyle.visibility !== 'hidden'
+        ? trigger
+        : document.querySelector<HTMLElement>('.dash-sidebar-collapse');
+      focusTarget?.focus();
     };
-  }, [mobileDrawerOpen, onMobileDrawerClose]);
+  }, [mobileDrawerOpen, onMobileDrawerClose, drawerTriggerRef]);
 
   const toggleGroup = (section: string) => {
     setClosedGroups((current) => {
@@ -534,11 +537,9 @@ export default function DashboardSidebar({
     setShowInfoDot(hasUnreadChangelog(latestId));
   }, [activePath]);
 
-  // Notification bell moved here from the topbar — the topbar is now
-  // desktop-hidden entirely (it duplicated context already shown in the
-  // sidebar), so this is its only home on desktop. Mobile keeps its own
-  // copy in the slim mobile-only bar (DashboardTopbar) since the sidebar
-  // itself is hidden there.
+  // Keep the existing sidebar notification instance for behavior and test
+  // compatibility. CSS visually reserves desktop utility chrome for the
+  // shared topbar, while the drawer continues using that same topbar instance.
   const [notifOpen, setNotifOpen] = React.useState(false);
   // Fetches the true unread count on mount, so the bell dot reflects reality
   // before the drawer is ever opened (it used to only update after opening).
@@ -637,19 +638,8 @@ export default function DashboardSidebar({
     </nav>
   );
 
-  const renderBrand = (showNotifButton = false, mobile = false) => (
+  const renderHeader = (showNotifButton = false, mobile = false) => (
     <div className="dash-sidebar-brand">
-      <div className="dash-sidebar-brand-copy">
-        <div className="dash-sidebar-logo">
-          <span className="dash-sidebar-logo-full">{shopName}</span>
-          <span className="dash-sidebar-logo-compact" aria-hidden="true">M</span>
-          <span className="dash-sidebar-logo-mark" aria-hidden="true">
-            <Sparkle size={9} />
-          </span>
-        </div>
-        {/* MiniRue is not French (owner, 2026-09-15) — was "Atelier dashboard". */}
-        <div className="dash-sidebar-subtitle">Dashboard</div>
-      </div>
       <div className="dash-sidebar-brand-actions">
       {showNotifButton && (
         <>
@@ -698,16 +688,12 @@ export default function DashboardSidebar({
 
   const renderFooter = (rail = false) => (
     <div className="dash-sidebar-footer">
-      {/* Is the API up. It lives here rather than only in the topbar because
-          .dash-topbar--minimal is display:none above the mobile breakpoint —
-          a status shown only in the topbar would be invisible on desktop,
-          which is where this dashboard is actually used. */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-        {/* Latency is admin-only: STAFF and partners have no action to take on
-            it and no sense of whether a number is bad, so for them it is noise
-            that reads like a warning. Everyone still sees up/down. */}
-        <ServerStatus variant={rail ? 'dot' : 'full'} showLatency={!rail && isAdminRole(userRole)} compact={rail} />
-      </div>
+      <ServerStatus
+        variant="dot"
+        showLatency={isAdminRole(userRole)}
+        compact={rail}
+        className="dash-server-status"
+      />
       <UserMenu userName={userName} userRole={userRole} />
     </div>
   );
@@ -716,7 +702,7 @@ export default function DashboardSidebar({
     <>
       {/* Desktop sidebar */}
       <aside className="dash-sidebar" data-collapsed={collapsed ? 'true' : undefined} aria-label="Dashboard navigation">
-        {renderBrand(true)}
+        {renderHeader(true)}
         {renderNav(collapsed)}
         {renderFooter(collapsed)}
       </aside>
@@ -737,7 +723,7 @@ export default function DashboardSidebar({
         aria-hidden={!mobileDrawerOpen}
         inert={!mobileDrawerOpen}
       >
-        {renderBrand(false, true)}
+        {renderHeader(false, true)}
         {renderNav(false, true)}
         {renderFooter()}
       </aside>
