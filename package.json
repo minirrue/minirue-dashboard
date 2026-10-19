@@ -1,15 +1,12 @@
 {
   "name": "minirue-dashboard",
-  "version": "0.98.4",
+  "version": "0.98.5",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack --port 3021",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
     "test:e2e": "playwright test"
   },
   "dependencies": {
@@ -35,16 +32,11 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@jest/globals": "^30.3.0",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^14.6.1",
     "@types/d3-array": "^3.2.2",
     "@types/d3-scale": "^4.0.9",
     "@types/d3-shape": "^3.1.8",
-    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^19",
@@ -52,10 +44,7 @@
     "babel-plugin-react-compiler": "*",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
-    "jest": "^30.3.0",
-    "jest-environment-jsdom": "^30.3.0",
     "tailwindcss": "^4",
-    "ts-jest": "^29.4.9",
     "typescript": "^5"
   }
 }
