@@ -100,8 +100,9 @@ const nextConfig: NextConfig = {
     // Keep API calls on the dashboard origin while forwarding server-side.
     // Use API_PROXY_ORIGIN per deployment; preview defaults to pre-backend.
     const apiOrigin = (
-      process.env.API_PROXY_ORIGIN ??
-      (process.env.VERCEL_ENV === "preview"
+      process.env.NODE_ENV === "development"
+        ? "http://127.0.0.1:8002"
+        : process.env.API_PROXY_ORIGIN ?? (process.env.VERCEL_ENV === "preview"
         ? "https://pre-backend.minirueshop.com"
         : "https://backend.minirueshop.com")
     ).replace(/\/$/, "");

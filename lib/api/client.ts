@@ -1,20 +1,10 @@
 import { getAccessToken, setTokens, clearTokens } from '@/lib/auth/tokens';
+import { getApiOrigin } from './origin';
 
 export interface ApiError {
   status: number;
   message: string;
   error?: string;
-}
-
-/** Browser calls use the dashboard's own proxy; server rendering keeps its backend origin. */
-export function getApiOrigin(): string {
-  if (typeof window !== 'undefined') return window.location.origin;
-  return (
-    process.env.API_PROXY_ORIGIN ??
-    (process.env.VERCEL_ENV === 'preview'
-      ? 'https://pre-backend.minirueshop.com'
-      : process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8002')
-  ).replace(/\/+$/, '');
 }
 
 const BASE = getApiOrigin() + '/v1';

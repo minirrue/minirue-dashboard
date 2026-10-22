@@ -11,7 +11,7 @@
  * polling it cannot get the dashboard rate-limited.
  */
 
-import { getApiOrigin } from './client';
+import { getApiOrigin } from './origin';
 
 const HEALTH_URL = getApiOrigin() + '/health';
 

@@ -1,4 +1,5 @@
-import { apiFetch, getApiOrigin } from './client';
+import { apiFetch } from './client';
+import { getApiOrigin } from './origin';
 
 /**
  * The truth layer (dashboard#111, #90 S1): an admin's verdict on who counts
